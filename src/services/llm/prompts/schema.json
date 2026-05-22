@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://imagepilot.dev/schemas/classification.json",
+  "title": "ImagePilot Classification Result",
+  "description": "LLM Provider 归一化分类结果。被 ResponseValidator 用 ajv 编译校验；校验失败触发 LLMProviderService 的 1 次重试，仍失败则按 fallbackToLocal 处理。",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["contentCategory", "colorTheme"],
+  "properties": {
+    "contentCategory": {
+      "type": "string",
+      "description": "图片主体内容分类",
+      "enum": [
+        "single_person",
+        "social",
+        "pet",
+        "food",
+        "scenery",
+        "id_card",
+        "screenshot",
+        "qrcode",
+        "other"
+      ]
+    },
+    "colorTheme": {
+      "type": "string",
+      "description": "整体色调",
+      "enum": [
+        "blue",
+        "green",
+        "red",
+        "yellow",
+        "black",
+        "white",
+        "warm",
+        "cold",
+        "mixed"
+      ]
+    },
+    "isScreenshot": {
+      "type": "boolean",
+      "description": "是否为屏幕截图",
+      "default": false
+    },
+    "isIDCard": {
+      "type": "boolean",
+      "description": "是否包含身份证 / 证件",
+      "default": false
+    },
+    "confidence": {
+      "type": "number",
+      "description": "分类置信度",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.5
+    },
+    "description": {
+      "type": "string",
+      "description": "简短自然语言描述（建议 < 30 字）",
+      "maxLength": 200,
+      "default": ""
+    }
+  }
+}
