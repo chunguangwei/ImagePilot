@@ -2435,11 +2435,19 @@ class GalleryScannerService {
               };
             }
             
-            // ========== 节点2: 远程推理 ==========
+            // ========== 节点2: 远程推理（按 aiProvider.active 路由）==========
             logger.debug(`✅ 批次 ${batchNumber}: 数据准备完成，开始远程推理 ${validResults.length} 张图片`);
-            
-            const batchResult = await this.imageClassifier.batchClassifyRemote(validResults, { userId: clientId });
-            
+
+            // 默认/local-onnx：沿用原私有后端流程（行为完全不变）；
+            // 配置了云端 Provider 时：走用户配置的 LLM（失败自动回退本流程）。
+            const aiCfg = await this._getAIProviderConfigSafe();
+            let batchResult;
+            if (!aiCfg || !aiCfg.active || aiCfg.active === 'local-onnx') {
+              batchResult = await this.imageClassifier.batchClassifyRemote(validResults, { userId: clientId });
+            } else {
+              batchResult = await this._classifyBatchWithLLM(validResults, aiCfg, clientId);
+            }
+
             logger.debug(`✅ 批次 ${batchNumber}: 远程推理完成`);
             
             // ========== 节点3: 处理结果并保存 ==========
@@ -3329,6 +3337,67 @@ class GalleryScannerService {
    * @param {string} fileName - 文件名
    * @returns {Promise<Blob>} - 缩放后的图像blob
    */
+
+  // ==================== 🆕 云端 LLM 路由（可配置个人 API Key 的在线分类）====================
+
+  /**
+   * 安全读取 aiProvider 配置。任何异常都按 local-onnx 处理（不影响默认离线分类）。
+   * 动态 import，避免把 LLM 配置模块带进默认路径的打包。
+   */
+  async _getAIProviderConfigSafe() {
+    try {
+      const mod = await import('./llm/adapters/UnifiedDataConfigService.js');
+      return await mod.default.getAIProviderConfig();
+    } catch (error) {
+      logger.warn('读取 aiProvider 配置失败，按 local-onnx 处理:', error?.message || error);
+      return null;
+    }
+  }
+
+  /**
+   * 云端 LLM 批量分类。把 validResults 转 base64 后交给 wireLLMRouting，
+   * 结果形状与原 batchClassifyRemote 一致。任何失败 → 回退原私有后端流程。
+   */
+  async _classifyBatchWithLLM(validResults, aiCfg, clientId) {
+    try {
+      const inputs = await Promise.all(
+        validResults.map(async (vr) => ({
+          id: vr.hash,
+          imageBase64: await this._validResultToBase64(vr),
+        })),
+      );
+      const { classifyCloudBatch } = await import('./llm/wireLLMRouting.js');
+      const platform = Platform.OS === 'web' ? 'pc' : Platform.OS;
+      return await classifyCloudBatch({
+        imageClassifier: this.imageClassifier,
+        platform,
+        inputs,
+        validResults,
+        aiCfg,
+      });
+    } catch (error) {
+      logger.warn('云端 LLM 分类失败，回退原远程流程:', error?.message || error);
+      return this.imageClassifier.batchClassifyRemote(validResults, { userId: clientId });
+    }
+  }
+
+  /**
+   * 把 preprocessImagesForRemoteInference 产出的 validResult 转成无前缀 base64。
+   * Web/PC：result.blob（FileReader 读 dataURL 后切掉前缀）；移动端：RNFS 读 resizedUri。
+   */
+  async _validResultToBase64(vr) {
+    if (vr.blob) {
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+        reader.onerror = reject;
+        reader.readAsDataURL(vr.blob);
+      });
+    }
+    const localPath = getLocalPath(vr.resizedUri);
+    if (!localPath) throw new Error(`无法获取缩放图片本地路径: ${vr.resizedUri}`);
+    return RNFS.readFile(localPath, 'base64');
+  }
 
 }
 
