@@ -1047,6 +1047,15 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             true
           )}
 
+          {/* 🆕 AI 模型设置：配置个人 LLM API Key，启用云端在线分类 */}
+          {renderActionButton(
+            '☁️',
+            t('settings.aiModelConfig') || 'AI 模型设置（在线分类）',
+            t('settings.aiModelConfigDesc') || '配置 OpenAI / Kimi 等大模型 API Key，启用云端在线分类',
+            () => navigation.navigate('AIModelConfig'),
+            false
+          )}
+
           {/* 本地分类设置 - 与目录设置平级，使用actionButton样式 */}
           <View style={styles.actionButton}>
             <Text style={styles.actionButtonText}>🔍 {t('settings.localClassification')}</Text>

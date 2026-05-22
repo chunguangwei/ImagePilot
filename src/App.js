@@ -37,6 +37,8 @@ console.log('📦 App.js: ImagePreviewScreen 导入成功');
 import SettingsScreen from './screens/mobile/SettingsScreen.mobile';
 console.log('📦 App.js: SettingsScreen 导入成功');
 import EnhanceResultScreen from './screens/mobile/EnhanceResultScreen.mobile';
+import { AIModelConfigScreen } from './ui/config/AIModelConfigScreen.mobile.jsx';
+import { makeAIModelConfigDeps } from './ui/config/aiModelConfigDeps.js';
 
 // 静态导入服务模块（避免 release 构建时的 require undefined 问题）
 import UnifiedDataService from './services/UnifiedDataService';
@@ -396,6 +398,9 @@ export default function App() {
           <Stack.Screen name="Category" component={CategoryScreen} />
           <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} />
           <Stack.Screen name="EnhanceResult" component={EnhanceResultScreen} options={{ presentation: 'modal' }} />
+          <Stack.Screen name="AIModelConfig" options={{ headerShown: true, title: 'AI 模型设置' }}>
+            {() => <AIModelConfigScreen deps={makeAIModelConfigDeps()} />}
+          </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>
       </View>
