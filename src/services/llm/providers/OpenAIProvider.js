@@ -60,15 +60,39 @@ export class OpenAIProvider extends BaseProvider {
   }
 
   /**
-   * 构造 headers
+   * 是否为 Azure OpenAI 端点（决定鉴权头：Azure 经典部署用 api-key，而非 Bearer）
+   * 判据：host 以 .openai.azure.com 结尾，或 URL 带 api-version 查询参数。
+   * @protected
+   */
+  _isAzure() {
+    const u = this.config.baseURL || '';
+    return /\.openai\.azure\.com/i.test(u) || /[?&]api-version=/i.test(u);
+  }
+
+  /**
+   * 构造最终请求 URL。
+   * - baseURL 已含 /chat/completions（可带 ?api-version=…）→ 原样使用，不重复拼接（参考 LLMWiKi）
+   * - 否则追加 /chat/completions
+   * @protected
+   */
+  _buildUrl() {
+    const raw = this.config.baseURL || '';
+    if (/\/chat\/completions(\?|$)/i.test(raw)) return raw; // 已是完整路径（保留查询串）
+    return `${raw.replace(/\/+$/, '')}/chat/completions`;
+  }
+
+  /**
+   * 构造 headers。Azure 端点用 `api-key` 头；标准 OpenAI 兼容端点用 `Authorization: Bearer`。
    * @protected
    */
   _buildHeaders() {
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${this.config.apiKey}`,
-      ...this.config.headersExtra,
-    };
+    const headers = { 'Content-Type': 'application/json', ...this.config.headersExtra };
+    if (this._isAzure()) {
+      headers['api-key'] = this.config.apiKey;
+    } else {
+      headers.Authorization = `Bearer ${this.config.apiKey}`;
+    }
+    return headers;
   }
 
   /**
@@ -122,7 +146,7 @@ export class OpenAIProvider extends BaseProvider {
       );
     }
     const start = Date.now();
-    const url = `${this.config.baseURL.replace(/\/+$/, '')}/chat/completions`;
+    const url = this._buildUrl();
     const resp = await this._fetchWithTimeout(url, {
       method: 'POST',
       headers: this._buildHeaders(),

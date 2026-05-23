@@ -51,6 +51,9 @@ class WeChatAuthService {
    * 返回 { isMember: boolean, isFollowed: boolean, memberExpireAt: string|null }
    */
   async getMembershipStatus() {
+    // 🆕 关闭会员限制：恒返回已开通会员 + 已关注，不再依赖远程后端
+    return { isMember: true, isFollowed: true, memberExpireAt: null };
+    // eslint-disable-next-line no-unreachable -- 下方原逻辑保留以便回退
     try {
       // 统一使用 getCredits 接口获取会员状态和关注状态
       const creditsResult = await this.getCredits();
@@ -249,6 +252,9 @@ class WeChatAuthService {
    * @returns {Promise<{total: number, used: number, remaining: number, isFollowed: boolean, isMember: boolean, memberExpireAt: string|null}>}
    */
   async getCredits() {
+    // 🆕 关闭会员限制：恒返回充足额度 + 已开通会员 + 已关注，不再查远程后端
+    return { total: 999999, used: 0, remaining: 999999, isFollowed: true, isMember: true, memberExpireAt: null };
+    // eslint-disable-next-line no-unreachable -- 下方原逻辑保留以便回退
     try {
       const clientId = await this.getClientId();
       
