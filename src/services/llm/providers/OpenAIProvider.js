@@ -58,7 +58,8 @@ export class OpenAIProvider extends BaseProvider {
       ],
       max_tokens: 300,
       temperature: 0,
-      response_format: { type: 'json_object' },
+      // 不发 response_format（参考 LLMWiKi）：部分端点/模型不支持，且 json_object 模式要求
+      // messages 含 "json" 字样，多模态数组 content 常触发 400。改为纯提示词约束 + _extractJSON 容错。
     };
     this._adaptStrictModel(body);
     return body;
