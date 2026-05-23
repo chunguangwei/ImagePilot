@@ -244,6 +244,9 @@ const HomeScreen = () => {
         case 'Settings':
           ScreenComponent = (await import('./SettingsScreen.desktop')).default;
           break;
+        case 'AIModelConfig':
+          ScreenComponent = (await import('./AIModelConfigScreen.desktop')).default;
+          break;
         default:
           return null;
       }
@@ -1350,6 +1353,7 @@ const HomeScreen = () => {
     const CategoryScreen = loadedScreens.Category;
     const ImagePreviewScreen = loadedScreens.ImagePreview;
     const SettingsScreen = loadedScreens.Settings;
+    const AIModelConfigScreen = loadedScreens.AIModelConfig;
     
     return (
       <SafeAreaView style={styles.container}>
@@ -1528,12 +1532,26 @@ const HomeScreen = () => {
                     setCurrentScreen('Home');
                     logger.debug('从设置页面返回，重新加载数据');
                     await loadData();
+                  },
+                  navigate: (name) => {
+                    setCurrentScreen(name);
+                    setScreenProps({});
                   }
                 }}
                 onScanProgress={handleScanProgress}
                 isScanning={isScanning}
               />
             ) : <View style={styles.loadingContainer}><Text>{t('home.loadingSettings')}</Text></View>}
+          </View>
+        )}
+
+        {currentScreen === 'AIModelConfig' && (
+          <View style={styles.screenContainer}>
+            {AIModelConfigScreen ? (
+              <AIModelConfigScreen
+                navigation={{ goBack: () => setCurrentScreen('Settings') }}
+              />
+            ) : <View style={styles.loadingContainer}><Text>{t('home.loading') || '加载中…'}</Text></View>}
           </View>
         )}
       </SafeAreaView>

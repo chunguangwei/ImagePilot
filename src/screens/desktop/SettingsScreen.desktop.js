@@ -717,6 +717,16 @@ const SettingsScreen = ({ navigation, onRescanGallery, onScanProgress, isScannin
             </Text>
           </TouchableOpacity>
 
+          {/* 🆕 AI 模型设置：配置个人 LLM API Key，启用云端在线分类 */}
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => navigation && navigation.navigate && navigation.navigate('AIModelConfig')}>
+            <Text style={styles.actionButtonText}>☁️ {t('settings.aiModelConfig') || 'AI 模型设置（在线分类）'}</Text>
+            <Text style={styles.actionButtonDescription}>
+              {t('settings.aiModelConfigDesc') || '配置 OpenAI / Kimi 等大模型 API Key，启用云端在线分类'}
+            </Text>
+          </TouchableOpacity>
+
           {/* 本地分类设置 - 子区域 */}
           <View style={styles.switchPanel}>
             <Text style={styles.switchPanelTitle}>🔍 {t('settings.localClassification')}</Text>
