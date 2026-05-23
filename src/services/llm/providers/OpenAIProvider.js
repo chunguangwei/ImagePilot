@@ -37,7 +37,7 @@ export class OpenAIProvider extends BaseProvider {
    * @protected
    */
   _buildBody(imageBase64, prompt) {
-    return {
+    const body = {
       model: this.config.model,
       messages: [
         {
@@ -60,6 +60,34 @@ export class OpenAIProvider extends BaseProvider {
       temperature: 0,
       response_format: { type: 'json_object' },
     };
+    this._adaptStrictModel(body);
+    return body;
+  }
+
+  /**
+   * 是否为 OpenAI「严格 completion」模型（gpt-5 / o 系列）。
+   * 这些模型不收 max_tokens（要 max_completion_tokens）且拒绝非默认采样参数。
+   * 判据按模型名（参考 LLMWiKi isOpenAiStrictCompletionModel）。
+   * @protected
+   */
+  _isStrictCompletionModel() {
+    const m = (this.config.model || '').trim().toLowerCase();
+    return /^gpt-5(?:[.\-_]|$)/.test(m) || /^o\d+(?:[.\-_]|$)/.test(m);
+  }
+
+  /**
+   * 按 gpt-5 / o 系列要求改写 body：max_tokens→max_completion_tokens，删 temperature/top_p。
+   * 参考 LLMWiKi adaptOpenAiStrictCompletionBody。
+   * @protected
+   */
+  _adaptStrictModel(body) {
+    if (!this._isStrictCompletionModel() && !this._forceStrict) return;
+    if (typeof body.max_tokens === 'number') {
+      body.max_completion_tokens = body.max_tokens;
+      delete body.max_tokens;
+    }
+    delete body.temperature;
+    delete body.top_p;
   }
 
   /**
@@ -150,18 +178,28 @@ export class OpenAIProvider extends BaseProvider {
     }
     const start = Date.now();
     const url = this._buildUrl();
-    const resp = await this._fetchWithTimeout(url, {
-      method: 'POST',
-      headers: this._buildHeaders(),
-      body: JSON.stringify(this._buildBody(imageBase64, prompt)),
-    });
+    const send = () =>
+      this._fetchWithTimeout(url, {
+        method: 'POST',
+        headers: this._buildHeaders(),
+        body: JSON.stringify(this._buildBody(imageBase64, prompt)),
+      });
 
+    let resp = await send();
     if (!resp.ok) {
-      const text = await resp.text().catch(() => '');
-      if (isVisionUnsupportedError(text)) {
-        throw new LLMProviderError(VISION_HINT, LLMErrorCode.VISION_UNSUPPORTED, false);
+      let text = await resp.text().catch(() => '');
+      // 反应式兜底：模型要求 max_completion_tokens（模型名未被 _isStrictCompletionModel 命中时）
+      if (resp.status === 400 && /max_completion_tokens/i.test(text) && !this._forceStrict) {
+        this._forceStrict = true;
+        resp = await send();
+        if (!resp.ok) text = await resp.text().catch(() => '');
       }
-      throw this._mapHttpError(resp.status, text);
+      if (!resp.ok) {
+        if (isVisionUnsupportedError(text)) {
+          throw new LLMProviderError(VISION_HINT, LLMErrorCode.VISION_UNSUPPORTED, false);
+        }
+        throw this._mapHttpError(resp.status, text);
+      }
     }
 
     let data;

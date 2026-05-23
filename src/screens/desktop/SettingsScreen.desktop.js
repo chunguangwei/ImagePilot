@@ -891,7 +891,8 @@ const SettingsScreen = ({ navigation, onRescanGallery, onScanProgress, isScannin
           
         </View>
 
-        {/* 会员服务 */}
+        {/* 会员服务（已按需求隐藏，不向用户展示会员/额度/二维码） */}
+        {false && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>💎 {t('settings.membershipService')}</Text>
           
@@ -974,6 +975,7 @@ const SettingsScreen = ({ navigation, onRescanGallery, onScanProgress, isScannin
             </View>
           </View>
         </View>
+        )}
 
         {/* App Info */}
         <View style={styles.section}>

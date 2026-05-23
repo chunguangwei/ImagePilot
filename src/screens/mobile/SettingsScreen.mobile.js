@@ -1252,7 +1252,8 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           
         </View>
 
-        {/* 会员服务 */}
+        {/* 会员服务（已按需求隐藏，不向用户展示会员/额度/二维码） */}
+        {false && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.titleRow}>
@@ -1337,6 +1338,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             )}
           </View>
         </View>
+        )}
 
         {/* 应用信息 */}
         <View style={styles.section}>
