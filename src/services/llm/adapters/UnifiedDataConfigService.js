@@ -23,6 +23,8 @@ const DEFAULTS = {
   providers: {
     openai: { baseURL: 'https://api.openai.com/v1', model: 'gpt-4o-mini', apiKeyRef: 'kc:openai_key' },
     kimi: { baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k-vision-preview', apiKeyRef: 'kc:kimi_key' },
+    anthropic: { baseURL: 'https://api.anthropic.com', model: 'claude-3-5-sonnet-latest', apiKeyRef: 'kc:anthropic_key' },
+    gemini: { baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-1.5-flash', apiKeyRef: 'kc:gemini_key' },
     ollama: { baseURL: 'http://localhost:11434', model: 'qwen2.5vl:7b' },
     custom: { baseURL: '', model: '', apiKeyRef: 'kc:custom_key', headersExtra: {} },
   },

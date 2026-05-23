@@ -17,8 +17,23 @@ export const LLMErrorCode = Object.freeze({
   SERVER: 'SERVER',
   INVALID_RESPONSE: 'INVALID_RESPONSE',
   CONFIG: 'CONFIG',
+  VISION_UNSUPPORTED: 'VISION_UNSUPPORTED', // 模型不支持图像 → 提示用户换多模态模型
   UNKNOWN: 'UNKNOWN',
 });
+
+/**
+ * 从错误响应文本判断是否「模型不支持图像/多模态」。各家措辞不同，做宽匹配。
+ * 命中后 provider 应抛 VISION_UNSUPPORTED，引导用户切换多模态模型。
+ * @param {string} bodyText 错误响应体文本
+ * @returns {boolean}
+ */
+export function isVisionUnsupportedError(bodyText) {
+  if (!bodyText) return false;
+  const t = String(bodyText).toLowerCase();
+  return (
+    /does\s*not\s*support\s*image|image\s*input.*not|not.*support.*image|image_url|invalid.*modalit|multimodal.*not|vision.*not.*support|no.*image.*support|content.*type.*image.*not|不支持图|不支持图像|不支持多模态|无法处理图/.test(t)
+  );
+}
 
 export class LLMProviderError extends Error {
   constructor(message, code = LLMErrorCode.UNKNOWN, retryable = false, cause = null) {

@@ -9,7 +9,10 @@
  * Kimi/Custom Provider 直接继承本类，仅替换 baseURL/model 即可。
  */
 
-import { BaseProvider, LLMProviderError, LLMErrorCode } from './BaseProvider.js';
+import { BaseProvider, LLMProviderError, LLMErrorCode, isVisionUnsupportedError } from './BaseProvider.js';
+
+const VISION_HINT =
+  '当前模型不支持图像识别，请在设置里改用多模态模型（如 OpenAI gpt-4o / Claude 3.5 / Gemini 1.5）。';
 
 const DEFAULT_BASE_URL = 'https://api.openai.com/v1';
 const DEFAULT_MODEL = 'gpt-4o-mini';
@@ -71,7 +74,7 @@ export class OpenAIProvider extends BaseProvider {
 
   /**
    * 构造最终请求 URL。
-   * - baseURL 已含 /chat/completions（可带 ?api-version=…）→ 原样使用，不重复拼接（参考 LLMWiKi）
+   * - baseURL 已含 /chat/completions（可带 ?api-version=…）→ 原样使用，不重复拼接
    * - 否则追加 /chat/completions
    * @protected
    */
@@ -155,6 +158,9 @@ export class OpenAIProvider extends BaseProvider {
 
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
+      if (isVisionUnsupportedError(text)) {
+        throw new LLMProviderError(VISION_HINT, LLMErrorCode.VISION_UNSUPPORTED, false);
+      }
       throw this._mapHttpError(resp.status, text);
     }
 

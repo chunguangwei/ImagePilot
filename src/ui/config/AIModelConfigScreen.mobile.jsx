@@ -15,7 +15,9 @@ import { AIModelConfigController } from './AIModelConfigController.js';
 const REMOTE_LABELS = {
   openai: 'OpenAI',
   kimi: 'Kimi（Moonshot）',
-  custom: '自定义（OpenAI 兼容）',
+  anthropic: 'Claude（Anthropic）',
+  gemini: 'Gemini（Google）',
+  custom: '自定义 / Azure（OpenAI 兼容）',
 };
 
 export function AIModelConfigScreen({ deps, styles = {} }) {
