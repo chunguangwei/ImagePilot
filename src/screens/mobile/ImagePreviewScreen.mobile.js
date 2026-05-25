@@ -1651,6 +1651,14 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           <Text style={styles.actionIcon}>✨</Text>
           <Text style={styles.actionLabel}>{t('imagePreview.enhance')}</Text>
         </TouchableOpacity>
+
+        {/* 🆕 滤镜修图（jimp 本地处理，离线） */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => displayUri && navigation.navigate('FilterEditor', { imageUri: displayUri })}>
+          <Text style={styles.actionIcon}>🎨</Text>
+          <Text style={styles.actionLabel}>滤镜</Text>
+        </TouchableOpacity>
         
         {/* 分类按钮 */}
         <TouchableOpacity style={styles.actionButton} onPress={openCategoryModal}>
