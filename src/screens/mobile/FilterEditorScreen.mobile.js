@@ -48,7 +48,9 @@ export default function FilterEditorScreen({ route, navigation }) {
         });
         const uri = resized?.uri;
         if (!uri) throw new Error('缩放未返回有效 URI');
-        const path = getLocalPath(uri) || uri.replace(/^file:\/\//, '');
+        // resize 产出的是干净 file:// URI，直接剥前缀得绝对路径；
+        // 不走 getLocalPath（它对该 URI 会返回缺前导斜杠的相对路径 → RNFS ENOENT）。
+        const path = uri.startsWith('file://') ? uri.replace(/^file:\/\//, '') : (getLocalPath(uri) || uri);
         const b64 = await RNFS.readFile(path, 'base64');
         setSrcBase64(b64);
       } catch (e) {
