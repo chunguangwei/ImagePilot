@@ -37,6 +37,7 @@ console.log('📦 App.js: ImagePreviewScreen 导入成功');
 import SettingsScreen from './screens/mobile/SettingsScreen.mobile';
 console.log('📦 App.js: SettingsScreen 导入成功');
 import EnhanceResultScreen from './screens/mobile/EnhanceResultScreen.mobile';
+import CustomCategoriesScreen from './screens/mobile/CustomCategoriesScreen.mobile';
 import { AIModelConfigScreen } from './ui/config/AIModelConfigScreen.mobile.jsx';
 import { makeAIModelConfigDeps } from './ui/config/aiModelConfigDeps.js';
 
@@ -417,6 +418,7 @@ export default function App() {
           <Stack.Screen name="Category" component={CategoryScreen} />
           <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} />
           <Stack.Screen name="EnhanceResult" component={EnhanceResultScreen} options={{ presentation: 'modal' }} />
+          <Stack.Screen name="CustomCategories" component={CustomCategoriesScreen} />
           <Stack.Screen name="FilterEditor">
             {(props) => (
               <FilterErrorBoundary>

@@ -1056,6 +1056,15 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             false
           )}
 
+          {/* 🆕 自定义分类：定义规则，云端大模型按规则归类 */}
+          {renderActionButton(
+            '🏷️',
+            '自定义分类',
+            '定义你自己的分类规则，云端大模型按规则把图片归入',
+            () => navigation.navigate('CustomCategories'),
+            false
+          )}
+
           {/* 本地分类设置 - 与目录设置平级，使用actionButton样式 */}
           <View style={styles.actionButton}>
             <Text style={styles.actionButtonText}>🔍 {t('settings.localClassification')}</Text>
