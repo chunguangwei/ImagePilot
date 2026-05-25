@@ -35,22 +35,20 @@ export default function FilterEditorScreen({ route, navigation }) {
   const win = Dimensions.get('window');
   const size = Math.min(win.width, win.height - 220);
 
-  // 一次性读入原图字节。content:// 拿不到本地路径，故先用 ImageProcessor 缩放出 file 临时文件再读。
+  // 一次性读入原图字节。content:// / 组合路径都不可靠，统一用 ImageProcessor.resizeImage
+  // 产出一个可读的 file 临时文件再读（与分类/增强流程一致，避免 getLocalPath 给出不存在的路径）。
   useEffect(() => {
     (async () => {
       try {
         if (!imageUri) throw new Error('未传入图片');
-        let path = getLocalPath(imageUri);
-        if (!path) {
-          // content:// 等：缩放到 ≤1024 输出 file，再读（同分类/增强流程的做法）
-          const resized = await ImageProcessor.resizeImage(imageUri, 1024, 1024, {
-            maintainAspectRatio: true,
-            outputFormat: 'jpeg',
-            quality: 90,
-          });
-          path = getLocalPath(resized?.uri) || resized?.uri;
-        }
-        if (!path) throw new Error('无法解析图片路径');
+        const resized = await ImageProcessor.resizeImage(imageUri, 1024, 1024, {
+          maintainAspectRatio: true,
+          outputFormat: 'jpeg',
+          quality: 90,
+        });
+        const uri = resized?.uri;
+        if (!uri) throw new Error('缩放未返回有效 URI');
+        const path = getLocalPath(uri) || uri.replace(/^file:\/\//, '');
         const b64 = await RNFS.readFile(path, 'base64');
         setSrcBase64(b64);
       } catch (e) {
