@@ -9,6 +9,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { RNFS, getLocalPath, ModelPathAdapter } from '../../adapters/WebAdapters';
+import ImageProcessor from '../../services/ImageProcessor';
 import { JIMP_FILTERS, JIMP_FILTER_IDS, hasIntensity, applyJimpFilterToBase64 } from '../../services/enhance/jimpFilters.js';
 
 const SR_MODEL = 'real_esrgan_general_x4v3.onnx';
@@ -34,16 +35,26 @@ export default function FilterEditorScreen({ route, navigation }) {
   const win = Dimensions.get('window');
   const size = Math.min(win.width, win.height - 220);
 
-  // 一次性读入原图字节
+  // 一次性读入原图字节。content:// 拿不到本地路径，故先用 ImageProcessor 缩放出 file 临时文件再读。
   useEffect(() => {
     (async () => {
       try {
-        const path = getLocalPath(imageUri);
-        if (!path) throw new Error('无法解析图片本地路径');
+        if (!imageUri) throw new Error('未传入图片');
+        let path = getLocalPath(imageUri);
+        if (!path) {
+          // content:// 等：缩放到 ≤1024 输出 file，再读（同分类/增强流程的做法）
+          const resized = await ImageProcessor.resizeImage(imageUri, 1024, 1024, {
+            maintainAspectRatio: true,
+            outputFormat: 'jpeg',
+            quality: 90,
+          });
+          path = getLocalPath(resized?.uri) || resized?.uri;
+        }
+        if (!path) throw new Error('无法解析图片路径');
         const b64 = await RNFS.readFile(path, 'base64');
         setSrcBase64(b64);
       } catch (e) {
-        setError(e?.message || String(e));
+        setError('读图失败：' + (e?.message || String(e)));
       }
     })();
   }, [imageUri]);
