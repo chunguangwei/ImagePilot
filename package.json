@@ -35,6 +35,8 @@
     "expo-gl": "^13.0.1",
     "expo-image-manipulator": "^14.0.7",
     "expo-modules-core": "^2.5.0",
+    "gl-react": "^6.0.0",
+    "gl-react-native": "^6.0.0",
     "i18next": "^25.7.2",
     "i18next-browser-languagedetector": "^8.2.0",
     "jimp": "^1.6.0",
