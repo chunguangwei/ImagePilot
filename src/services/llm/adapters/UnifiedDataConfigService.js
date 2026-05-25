@@ -29,6 +29,7 @@ const DEFAULTS = {
     custom: { baseURL: '', model: '', apiKeyRef: 'kc:custom_key', headersExtra: {} },
   },
   promptOverride: null,
+  customCategories: [], // [{ id, name, rule }]，A 方案：LLM 按规则归入自定义分类
 };
 
 export class UnifiedDataConfigService {
@@ -65,6 +66,11 @@ export class UnifiedDataConfigService {
   async setAIProviderTopLevel(patch = {}) {
     const { apiKey, ...safe } = patch;
     await this._mergeTopLevel(safe);
+  }
+
+  /** 设置自定义分类列表 [{ id, name, rule }] */
+  async setCustomCategories(list) {
+    await this._mergeTopLevel({ customCategories: Array.isArray(list) ? list : [] });
   }
 
   async _mergeTopLevel(patch) {
