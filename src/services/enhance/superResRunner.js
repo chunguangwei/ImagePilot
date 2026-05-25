@@ -17,12 +17,14 @@ import { rgbaToCHW, chwToRGBA, planTiles } from './superResTensor.js';
 
 /** 默认配置：对应 Qualcomm Real-ESRGAN-General-x4v3（固定 128 输入、x4）。换模型改这里。 */
 export const DEFAULT_SR_CONFIG = Object.freeze({
-  inputName: 'image',     // 模型输入张量名（用 onnxruntime 读 session.inputNames 确认后填）
-  outputName: null,        // null = 用第一个输出
+  // 已用 Qualcomm Real-ESRGAN-General-x4v3 的 metadata 核实：
+  // 输入 image[1,3,128,128] [0,1]；输出 upscaled_image[1,3,512,512] [0,1]；x4。
+  inputName: 'image',
+  outputName: 'upscaled_image',
   tileSize: 128,           // 固定输入块边长
   fixedInput: true,        // 输入尺寸固定 → 不足块补齐
   scale: 4,                // 放大倍数
-  maxInputEdge: 512,       // 处理前把长边限到该值（控制耗时；总输出 = maxInputEdge*scale）
+  maxInputEdge: 256,       // 处理前把长边限到 256（移动端控耗时；输出最大 1024×1024）
 });
 
 /** 从完整 RGBA 取 (x,y) 处 tile×tile 区域；不足处用边缘像素 replicate 补齐。 */

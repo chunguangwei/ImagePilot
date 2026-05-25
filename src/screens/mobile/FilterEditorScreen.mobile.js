@@ -8,8 +8,11 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Alert, ActivityIndicator } from 'react-native';
-import { RNFS, getLocalPath } from '../../adapters/WebAdapters';
+import { RNFS, getLocalPath, ModelPathAdapter } from '../../adapters/WebAdapters';
 import { JIMP_FILTERS, JIMP_FILTER_IDS, hasIntensity, applyJimpFilterToBase64 } from '../../services/enhance/jimpFilters.js';
+
+const SR_MODEL = 'real_esrgan_general_x4v3.onnx';
+const SR_DATA = 'real_esrgan_general_x4v3.data';
 
 const INTENSITY_LEVELS = [
   { label: '弱', value: 0.33 },
@@ -25,6 +28,8 @@ export default function FilterEditorScreen({ route, navigation }) {
   const [intensity, setIntensity] = useState(1.0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiProgress, setAiProgress] = useState(0);
 
   const win = Dimensions.get('window');
   const size = Math.min(win.width, win.height - 220);
@@ -61,8 +66,11 @@ export default function FilterEditorScreen({ route, navigation }) {
 
   useEffect(() => { reprocess(filterId, intensity); }, [filterId, intensity, reprocess]);
 
+  // 有处理后的 data: 结果即可保存（滤镜或 AI 增强）
+  const canSave = !!resultUri && String(resultUri).startsWith('data:');
+
   const onSave = async () => {
-    if (!resultUri || filterId === 'none') return;
+    if (!canSave) return;
     setBusy(true);
     try {
       const base64 = String(resultUri).split(',')[1] || '';
@@ -78,6 +86,30 @@ export default function FilterEditorScreen({ route, navigation }) {
     }
   };
 
+  // AI 增强（超分）：onnxruntime + Real-ESRGAN，较慢，分块进度
+  const aiEnhance = async () => {
+    if (!srcBase64 || aiBusy) return;
+    setAiBusy(true);
+    setAiProgress(0);
+    setError(null);
+    try {
+      await ModelPathAdapter.ensureModelExists(SR_MODEL);
+      await ModelPathAdapter.ensureModelExists(SR_DATA);
+      const modelPath = ModelPathAdapter.getModelPath(SR_MODEL);
+      const { createSuperResRunner } = await import('../../services/enhance/superResRunner.js');
+      const runner = createSuperResRunner({ modelPath });
+      const out = await runner.enhance(srcBase64, ({ done, total }) =>
+        setAiProgress(Math.round((done / total) * 100)),
+      );
+      setResultUri(out);
+      setFilterId('none');
+    } catch (e) {
+      setError('AI 增强失败：' + (e?.message || String(e)));
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -85,23 +117,34 @@ export default function FilterEditorScreen({ route, navigation }) {
           <Text style={styles.headerBtn}>← 返回</Text>
         </TouchableOpacity>
         <Text style={styles.title}>滤镜修图</Text>
-        <TouchableOpacity onPress={onSave} disabled={busy || filterId === 'none'}>
-          <Text style={[styles.headerBtn, (busy || filterId === 'none') && styles.disabled]}>保存</Text>
+        <TouchableOpacity onPress={onSave} disabled={busy || aiBusy || !canSave}>
+          <Text style={[styles.headerBtn, (busy || aiBusy || !canSave) && styles.disabled]}>保存</Text>
         </TouchableOpacity>
       </View>
 
       <View style={[styles.preview, { height: size }]}>
         {error ? (
-          <Text style={styles.err}>处理失败：{error}</Text>
+          <Text style={styles.err}>{error}</Text>
         ) : (
           <>
             <Image source={{ uri: resultUri }} style={{ width: size, height: size, resizeMode: 'contain' }} />
-            {busy && (
-              <View style={styles.overlay}><ActivityIndicator color="#fff" /><Text style={styles.overlayText}>处理中…</Text></View>
+            {(busy || aiBusy) && (
+              <View style={styles.overlay}>
+                <ActivityIndicator color="#fff" />
+                <Text style={styles.overlayText}>{aiBusy ? `AI 增强中… ${aiProgress}%（较慢，请稍候）` : '处理中…'}</Text>
+              </View>
             )}
           </>
         )}
       </View>
+
+      {/* AI 增强（超分）按钮 */}
+      <TouchableOpacity
+        style={[styles.aiBtn, aiBusy && styles.disabledBtn]}
+        disabled={aiBusy || !srcBase64}
+        onPress={aiEnhance}>
+        <Text style={styles.aiBtnText}>✨ AI 增强（超分修复，较慢）</Text>
+      </TouchableOpacity>
 
       {hasIntensity(filterId) && (
         <View style={styles.row}>
@@ -153,4 +196,7 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: '#fff' },
   filterChipText: { color: '#ddd' },
   filterChipTextActive: { color: '#000', fontWeight: '600' },
+  aiBtn: { marginHorizontal: 14, marginVertical: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: '#6C2BD9', alignItems: 'center' },
+  disabledBtn: { opacity: 0.5 },
+  aiBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 });
