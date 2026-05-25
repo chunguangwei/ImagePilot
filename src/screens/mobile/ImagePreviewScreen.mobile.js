@@ -1651,15 +1651,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           <Text style={styles.actionIcon}>✨</Text>
           <Text style={styles.actionLabel}>{t('imagePreview.enhance')}</Text>
         </TouchableOpacity>
-
-        {/* 🆕 滤镜修图（本地 gl-react 滤镜/美颜，离线） */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => displayUri && navigation.navigate('FilterEditor', { imageUri: displayUri })}>
-          <Text style={styles.actionIcon}>🎨</Text>
-          <Text style={styles.actionLabel}>滤镜</Text>
-        </TouchableOpacity>
-
+        
         {/* 分类按钮 */}
         <TouchableOpacity style={styles.actionButton} onPress={openCategoryModal}>
           <Text style={styles.actionIcon}>🏷️</Text>
