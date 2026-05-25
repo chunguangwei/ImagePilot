@@ -105,7 +105,6 @@ export default function FilterEditorScreen({ route, navigation }) {
     setError(null);
     try {
       await ModelPathAdapter.ensureModelExists(SR_MODEL);
-      await ModelPathAdapter.ensureModelExists(SR_DATA);
       const modelPath = ModelPathAdapter.getModelPath(SR_MODEL);
       const { createSuperResRunner } = await import('../../services/enhance/superResRunner.js');
       const runner = createSuperResRunner({ modelPath });
