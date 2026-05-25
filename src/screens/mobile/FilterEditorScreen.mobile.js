@@ -115,6 +115,8 @@ export default function FilterEditorScreen({ route, navigation }) {
       setResultUri(out);
       setFilterId('none');
     } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[AI增强] 失败:', e?.message || String(e), e?.stack || '');
       setError('AI 增强失败：' + (e?.message || String(e)));
     } finally {
       setAiBusy(false);

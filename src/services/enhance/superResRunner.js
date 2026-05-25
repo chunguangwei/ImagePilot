@@ -75,6 +75,8 @@ export function createSuperResRunner(cfg = {}) {
   async function getSession() {
     if (_session) return _session;
     _session = await InferenceSession.create(config.modelPath);
+    // eslint-disable-next-line no-console
+    console.log('[superRes] inputNames=', JSON.stringify(_session.inputNames), 'outputNames=', JSON.stringify(_session.outputNames));
     // 若未指定输入名，用模型第一个输入名
     if (!_inputName && _session.inputNames && _session.inputNames.length) {
       _inputName = _session.inputNames[0];
@@ -118,7 +120,16 @@ export function createSuperResRunner(cfg = {}) {
       const chw = rgbaToCHW(tileRGBA, inTile, inTile);
       const input = new Tensor('float32', chw, [1, 3, inTile, inTile]);
       const result = await session.run({ [_inputName]: input });
-      const outT = result[outName];
+      // 健壮取输出：优先配置名，其次模型首个输出名，再次结果里第一个
+      const outT =
+        result[outName] ||
+        (session.outputNames && result[session.outputNames[0]]) ||
+        result[Object.keys(result)[0]];
+      if (!outT || !outT.data) {
+        throw new Error(
+          `模型输出为空 outName=${outName} inputName=${_inputName} keys=${JSON.stringify(Object.keys(result))}`,
+        );
+      }
       const od = outT.data; // Float32Array, dims [1,3,inTile*scale,inTile*scale]
       const outTile = inTile * scale;
       const outTileRGBA = chwToRGBA(od, outTile, outTile);
