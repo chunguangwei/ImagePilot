@@ -73,7 +73,7 @@ let Ionicons = null;
 try { Ionicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { Ionicons = null; }
 const TAB_ICONS = {
   Home: { on: 'home', off: 'home-outline', emoji: '🏠' },
-  StagingBox: { on: 'file-tray-full', off: 'file-tray-full-outline', emoji: '📦' },
+  StagingBox: { on: 'create', off: 'create-outline', emoji: '✏️' },
   Settings: { on: 'settings', off: 'settings-outline', emoji: '⚙️' },
 };
 
@@ -152,8 +152,8 @@ const MainTabNavigator = ({ stagingBoxCount }) => {
     <Tab.Screen 
       name="StagingBox" 
       options={{ 
-        title: t('category.stagingBox'),
-        tabBarLabel: t('category.stagingBox'),
+        title: t('common.edit'),
+        tabBarLabel: t('common.edit'),
         tabBarStyle: { display: 'none' }, // 隐藏底部导航栏
       }}
     >

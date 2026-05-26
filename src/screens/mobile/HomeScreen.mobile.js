@@ -106,6 +106,10 @@ const TimeCard = ({ timeKey, label, count, recentImages, onPress }) => {
   );
 };
 
+// iOS 风格图标（字体已打包）；异常时回退 emoji
+let HomeIonicons = null;
+try { HomeIonicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { HomeIonicons = null; }
+
 // 每个 app 会话只在启动时静默检查一次更新（避免重复弹窗）
 let _launchUpdateChecked = false;
 
@@ -1555,7 +1559,7 @@ const HomeScreen = ({ navigation }) => {
           />
         ) : (
           <View style={[styles.thumbnail, { backgroundColor: category.color }]}>
-            <Text style={styles.emptyThumbnailText}>📷</Text>
+            <Text style={styles.emptyThumbnailText}>📸</Text>
           </View>
         )}
         
@@ -2243,6 +2247,8 @@ const HomeScreen = ({ navigation }) => {
       >
         {isScanning ? (
           <ActivityIndicator color="#FFFFFF" />
+        ) : HomeIonicons ? (
+          <HomeIonicons name="sync" size={28} color="#FFFFFF" />
         ) : (
           <Text style={styles.fabIcon}>🔄</Text>
         )}
@@ -2516,8 +2522,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',      // 水平居中
   },
   emptyThumbnailText: {
-    fontSize: 32,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 40,
+    color: 'rgba(255, 255, 255, 0.85)',
   },
   categoryOverlay: {
     position: 'absolute',
