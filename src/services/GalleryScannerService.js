@@ -2063,6 +2063,82 @@ class GalleryScannerService {
    * @param {string} scanStartTime - 扫描开始时间
    * @returns {Promise<Object>} 处理结果
    */
+  /**
+   * 设备端 ONNX（MobileNetV3）本地分类一批 NA 图片并落库。
+   * 本地推理吃 imageUri（非 base64），故不复用云端 base64 管线，直接逐张推理 + 批量保存，
+   * 复用与云端一致的持久化（UnifiedDataService.batchUpdateClassification）。
+   * @param {Array<object>} naImages
+   * @returns {Promise<{processedCount:number, failedCount:number}>}
+   */
+  async classifyImagesByLocalOnnx(naImages, scanStartTime) {
+    let processedCount = 0;
+    let failedCount = 0;
+    if (!naImages || naImages.length === 0) {
+      return { processedCount, failedCount };
+    }
+    logger.info(`📱 本地 ONNX 分类：处理 ${naImages.length} 张待分类图片`);
+
+    const BATCH = 20;
+    for (let i = 0; i < naImages.length; i += BATCH) {
+      const batch = naImages.slice(i, i + BATCH);
+      const classificationDataArray = [];
+      for (const image of batch) {
+        try {
+          const imageUri = getUri(image);
+          if (!imageUri) { failedCount++; continue; }
+          const r = await this.imageClassifier.classifyImageWithMobileNetV3(imageUri);
+          const top = r && r.success ? r.topPrediction : null;
+          const category =
+            top && typeof this.imageClassifier.mapMobileNetV3ToAppCategory === 'function'
+              ? (this.imageClassifier.mapMobileNetV3ToAppCategory(top.class) || 'other')
+              : 'other';
+          classificationDataArray.push({
+            uri: extractOriginalUri(image),
+            id: image.id,
+            category,
+            confidence: (r && r.confidence) || 0.5,
+            idCardDetections: [],
+            generalDetections: [],
+            mobileNetV3Detections: null,
+            message: null,
+            background_color: null,
+          });
+        } catch (e) {
+          logger.warn(`⚠️ 本地分类失败: ${e?.message || e}`);
+          failedCount++;
+        }
+      }
+      if (classificationDataArray.length > 0) {
+        try {
+          const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, false);
+          if (updateResult && updateResult.success) {
+            processedCount += updateResult.updatedCount;
+            this.imagesClassified += updateResult.updatedCount;
+          } else {
+            failedCount += classificationDataArray.length;
+          }
+        } catch (saveError) {
+          logger.error(`❌ 本地分类批量保存异常: ${saveError.message}`);
+          failedCount += classificationDataArray.length;
+        }
+      }
+      // 进度：直接经 onProgress 推 simpleMessage（避免 processProgressData 对未知 stage 的处理差异）
+      const done = Math.min(i + BATCH, naImages.length);
+      if (this.onProgress) {
+        try {
+          this.onProgress({
+            simpleMessage: i18n.t('home.localClassificationInProgress', { done, total: naImages.length }),
+            filesProcessed: done,
+            filesFound: naImages.length,
+            shouldRefresh: true,
+          });
+        } catch (_) { /* 进度失败不阻断分类 */ }
+      }
+    }
+    logger.info(`✅ 本地 ONNX 分类完成：成功 ${processedCount}，失败 ${failedCount}`);
+    return { processedCount, failedCount };
+  }
+
   async classifyImagesbyLLM(remainingImages, scanStartTime) {
     if (remainingImages.length === 0) {
       return { remainingImages: [], processedCount: 0, failedCount: 0 };
@@ -2367,10 +2443,13 @@ class GalleryScannerService {
    * @param {Array} imagesToClassify - 可选，指定需要分类的照片数组。如果未指定，则读取所有NA分类的照片
    * @returns {Promise<Object>} 处理结果 { processedCount, failedCount, similarityCandidates }
    */
-  async aiImageClassifyByContent(scanStartTime, imagesToClassify = null) {
+  async aiImageClassifyByContent(scanStartTime, imagesToClassify = null, opts = {}) {
     let totalProcessed = 0;
     let totalFailed = 0;
-    
+    // forceLocal=true：忽略云端配置，强制走设备端 ONNX。
+    // 用于「未配置大模型的默认离线分类」与「大模型分类失败的兜底」两种场景。
+    const forceLocal = !!opts.forceLocal;
+
     // 是否走云端 LLM 分类：完全由用户配置的 aiProvider.active 决定，
     // 不再探测/依赖原作者后端（api.aifuture.net.cn 相关逻辑已移除）。
     // active 为云端 Provider（openai/azure/claude/gemini/kimi/custom…）→ 走 LLM；
@@ -2387,7 +2466,10 @@ class GalleryScannerService {
       logger.debug('读取 aiProvider 配置失败，跳过云端分类:', error.message);
       this.useRemoteInference = false;
     }
-    
+    if (forceLocal) {
+      this.useRemoteInference = false; // 强制离线：无论是否配置云端，都走设备端 ONNX
+    }
+
     // 提取需要分类的图片
     let naImages = [];
     
@@ -2433,6 +2515,17 @@ class GalleryScannerService {
       return { processedCount: totalProcessed, failedCount: totalFailed, similarityCandidates: [] };
     }
     
+    // 强制本地：用设备端 ONNX 对 NA 图片分类并落库
+    //（未配大模型时的默认离线分类 / 大模型分类失败后的兜底）
+    if (forceLocal) {
+      const { processedCount: localCount, failedCount: localFailed } =
+        await this.classifyImagesByLocalOnnx(naImages, scanStartTime);
+      totalProcessed += localCount;
+      totalFailed += localFailed;
+      this.sendProgressMessage('completed', totalProcessed, totalProcessed, totalProcessed, this.totalImagesToBeClassified);
+      return { processedCount: totalProcessed, failedCount: totalFailed, similarityCandidates: naImages };
+    }
+
     // 云端 LLM 分类（已移除原作者后端的远程缓存查询层）
     if (this.useRemoteInference) {
       // 批量云端推理：处理全部 NA 图片（不再有后端缓存预筛）

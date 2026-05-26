@@ -32,6 +32,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import UnifiedDataService from '../../services/UnifiedDataService';
 import GlobalImageCache from '../../services/GlobalImageCache';
 import configService from '../../services/ConfigService';
+import aiProviderConfigService from '../../services/llm/adapters/UnifiedDataConfigService';
 import GalleryScannerService from '../../services/GalleryScannerService';
 import WakeLockService from '../../services/WakeLockService';
 import cityLocationService from '../../services/CityLocationService';
@@ -1038,7 +1039,7 @@ const HomeScreen = ({ navigation }) => {
   /**
    * 处理NA分类的AI分类（长按待分类卡片时触发）
    */
-  const handleAIClassifyNA = () => {
+  const handleAIClassifyNA = async () => {
     // 检查是否正在扫描中
     if (isScanning) {
       Alert.alert(t('common.tip'), t('home.scanAlreadyInProgress'));
@@ -1050,34 +1051,63 @@ const HomeScreen = ({ navigation }) => {
     const categoryCounts = cache.categoryCounts || {};
     const naCount = categoryCounts['NA'] || categoryCounts.NA || 0;
 
-    // 显示确认对话框（与PC端保持一致）
-    Alert.alert(
-      t('home.aiClassifyConfirmTitle'),
-      t('home.aiClassifyConfirmMessage', { count: naCount }),
-      [
-        {
-          text: t('common.cancel'),
-          style: 'cancel',
-          onPress: () => {
-            logger.debug('用户取消 AI 分类');
-          }
-        },
-        {
-          text: t('common.confirm'),
-          style: 'default',
-          onPress: async () => {
-            logger.debug('用户确认开始 AI 分类');
-            await executeAIClassify();
-          }
-        }
-      ]
-    );
+    // 判断是否已配置在线大模型（active 非 local-onnx 即视为已配置）
+    let isLLMConfigured = false;
+    try {
+      const aiCfg = await aiProviderConfigService.getAIProviderConfig();
+      isLLMConfigured = !!(aiCfg && aiCfg.active && aiCfg.active !== 'local-onnx');
+    } catch (e) {
+      logger.debug('读取 AI 模型配置失败，按未配置处理:', e?.message || e);
+      isLLMConfigured = false;
+    }
+
+    const confirmButtons = (forceLocal) => [
+      { text: t('common.cancel'), style: 'cancel', onPress: () => logger.debug('用户取消分类') },
+      {
+        text: t('common.confirm'),
+        style: 'default',
+        onPress: async () => { await executeAIClassify({ forceLocal, naCount }); },
+      },
+    ];
+
+    if (isLLMConfigured) {
+      // 已配置大模型 → 原有 AI 智能分类提示
+      Alert.alert(
+        t('home.aiClassifyConfirmTitle'),
+        t('home.aiClassifyConfirmMessage', { count: naCount }),
+        confirmButtons(false),
+      );
+    } else {
+      // 未配置大模型 → 默认启用离线模型分类，请用户确认
+      Alert.alert(
+        t('home.aiClassifyOfflineTitle'),
+        t('home.aiClassifyOfflineMessage', { count: naCount }),
+        confirmButtons(true),
+      );
+    }
   };
 
   /**
    * 执行AI分类（确认后执行）
    */
-  const executeAIClassify = async () => {
+  // 弹出"大模型失败→改用离线模型"兜底确认框
+  const promptLocalFallback = (message) => {
+    Alert.alert(
+      t('home.aiClassifyLLMFailTitle'),
+      message,
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.confirm'),
+          style: 'default',
+          onPress: async () => { await executeAIClassify({ forceLocal: true }); },
+        },
+      ],
+    );
+  };
+
+  const executeAIClassify = async (opts = {}) => {
+    const forceLocal = !!opts.forceLocal; // true=离线模型；false=配置的在线大模型
     try {
       // 先检查并请求权限
       const hasPermission = await checkAndRequestPermissions();
@@ -1118,12 +1148,12 @@ const HomeScreen = ({ navigation }) => {
         }
       };
       
-      // 启动AI分类（按内容分类）
-      await galleryScannerService.aiImageClassifyByContent(new Date(), null);
-      
+      // 启动分类（按内容）。forceLocal=true 走设备端离线模型，否则走配置的在线大模型
+      const result = await galleryScannerService.aiImageClassifyByContent(new Date(), null, { forceLocal });
+
       logger.debug('✅ AI分类完成');
       setGlobalMessage(t('home.aiClassificationComplete'));
-      
+
       // 分类完成后，清除防抖定时器并立即刷新数据（避免与进度回调中的刷新重复）
       if (loadDataDebounceTimerRef.current) {
         clearTimeout(loadDataDebounceTimerRef.current);
@@ -1133,10 +1163,22 @@ const HomeScreen = ({ navigation }) => {
       await new Promise(resolve => setTimeout(resolve, 600));
       // 执行最终刷新
       await loadAllData();
+
+      // 兜底：在线大模型分类有失败（仍有图片待分类）→ 提示改用离线模型
+      const failedCount = result && typeof result.failedCount === 'number' ? result.failedCount : 0;
+      if (!forceLocal && failedCount > 0) {
+        logger.warn(`⚠️ 大模型分类仍有 ${failedCount} 张失败，提示离线兜底`);
+        promptLocalFallback(t('home.aiClassifyLLMFailMessage', { count: failedCount }));
+      }
     } catch (error) {
       logger.error('❌ AI分类失败:', error);
       setGlobalMessage(t('home.aiClassificationFailed', { error: error.message }));
-      Alert.alert(t('home.aiClassificationFailed', { error: '' }), error.message);
+      if (!forceLocal) {
+        // 在线大模型分类整体出错 → 提示改用离线模型兜底
+        promptLocalFallback(t('home.aiClassifyLLMFailMessageGeneric', { error: error.message || '' }));
+      } else {
+        Alert.alert(t('home.aiClassificationFailed', { error: '' }), error.message);
+      }
     } finally {
       // 释放唤醒锁
       await WakeLockService.release();

@@ -302,7 +302,13 @@
       "TB": "TB"
     },
     "aiClassifyConfirmTitle": "AI 智能分类",
-    "aiClassifyConfirmMessage": "确定要对 {{count}} 张待分类照片进行 AI 分类吗？\n\n⚠️ 重要提示：\n1. 照片将被上传到服务器进行AI分类，服务器采用无痕处理机制，不会保存或泄露您的照片，确保隐私安全\n2. 处理时间取决于照片数量，您可以在首页顶部实时查看分类进度",
+    "aiClassifyConfirmMessage": "将使用您配置的在线大模型，对 {{count}} 张待分类照片进行 AI 智能分类。\n\n说明：\n1. 分类请求会发送到您在「设置 → AI 模型设置」中配置的服务商（不经任何第三方/作者服务器）\n2. 处理时间取决于照片数量，可在首页顶部实时查看进度\n\n是否继续？",
+    "aiClassifyOfflineTitle": "离线模型分类",
+    "aiClassifyOfflineMessage": "您尚未配置在线大模型，将默认使用设备端离线模型（MobileNetV3）对 {{count}} 张待分类照片进行分类。\n\n离线分类不联网、不上传，完全在本地完成。\n\n是否继续？",
+    "aiClassifyLLMFailTitle": "大模型分类遇到问题",
+    "aiClassifyLLMFailMessage": "在线大模型分类未能完成，仍有 {{count}} 张照片待分类。\n\n是否改用设备端离线模型（MobileNetV3）对这些照片进行分类？",
+    "aiClassifyLLMFailMessageGeneric": "在线大模型分类出错：{{error}}\n\n是否改用设备端离线模型（MobileNetV3）进行分类？",
+    "localClassificationInProgress": "离线分类中… {{done}}/{{total}}",
     "naCategoryRightClickHint": "右键启动AI分类",
     "naCategoryRightClickGuide": "💡 提示：右键点击此卡片可启动AI智能分类",
     "naCategoryLongPressHint": "长按启动AI分类",
@@ -492,6 +498,8 @@
   },
   "settings": {
     "title": "设置",
+    "aiModelConfig": "AI 模型设置（在线分类）",
+    "aiModelConfigDesc": "配置 OpenAI / Kimi / Claude / Gemini 等大模型 API Key，启用云端在线分类",
     "language": "语言",
     "selectLanguage": "选择语言",
     "smartClassification": "智能分类",
