@@ -11,8 +11,13 @@
  * onnxruntime-react-native 已在工程链接（分类也用它），故不引入新原生依赖。
  */
 
-import { InferenceSession, Tensor } from 'onnxruntime-react-native';
+import * as ortNS from 'onnxruntime-react-native';
 import Jimp from 'jimp';
+
+// onnxruntime-react-native 在 CJS 下需经 default 取（与 ImageClassifierService 一致），
+// 命名导入 { InferenceSession, Tensor } 可能为 undefined → 调用报 "undefined is not a function"。
+const ort = ortNS.default || ortNS;
+const { InferenceSession, Tensor } = ort;
 import { rgbaToCHW, chwToRGBA, planTiles } from './superResTensor.js';
 
 /** 默认配置：对应 Qualcomm Real-ESRGAN-General-x4v3（固定 128 输入、x4）。换模型改这里。 */
