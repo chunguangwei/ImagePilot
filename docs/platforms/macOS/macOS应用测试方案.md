@@ -205,7 +205,7 @@ https://aws.amazon.com/ec2/instance-types/mac/
 给朋友提供测试清单：
 
 ```markdown
-# 芯图相册 macOS版本测试清单
+# ImagePilot macOS版本测试清单
 
 ## 1. 安装测试
 - [ ] 下载DMG文件

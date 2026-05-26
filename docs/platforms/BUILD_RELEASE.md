@@ -1,4 +1,4 @@
-# 芯图相册 - 发布版本构建指南
+# ImagePilot - 发布版本构建指南
 
 ## 一、构建目录说明
 
@@ -146,7 +146,7 @@ npm run electron:build-all
 - 若提示“无法打开，因为无法验证开发者”：**右键** 应用 → 选 **“打开”** → 再点“打开”确认（未签名包首次需这样）。
 
 **3. 运行与测试**  
-- 在启动台或应用程序里打开 **芯图相册（XinTuAlbum）**。  
+- 在启动台或应用程序里打开 **ImagePilot（XinTuAlbum）**。  
 - 建议验证：选择照片目录、扫描、分类/截图识别、设置、暂存箱等主要流程。  
 - 若异常：查看 **六、日志位置** 中的 `~/Library/Logs/XinTuAlbum/main.log` 或 `/tmp/xintualbum-bootstrap.log`。
 

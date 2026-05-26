@@ -39,7 +39,7 @@ const HomeScreen = () => {
 
 | 翻译键 | 中文 | 英文 | 使用位置 |
 |--------|------|------|----------|
-| `app.name` | 芯图相册 | Xintu Album | 标题栏 |
+| `app.name` | ImagePilot | ImagePilot | 标题栏 |
 
 ### 2.2 首页状态信息
 
@@ -62,7 +62,7 @@ const HomeScreen = () => {
 
 | 翻译键 | 中文 | 英文 | 使用位置 |
 |--------|------|------|----------|
-| `home.welcome` | 欢迎使用芯图相册 | Welcome to Xintu Album | 欢迎文本 |
+| `home.welcome` | 欢迎使用ImagePilot | Welcome to ImagePilot | 欢迎文本 |
 | `home.goToSettings` | 进入设置 → | Go to Settings → | 设置入口 |
 
 ### 2.4 分类区域标题
