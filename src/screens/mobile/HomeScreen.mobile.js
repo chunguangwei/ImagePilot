@@ -2363,10 +2363,10 @@ const styles = StyleSheet.create({
     paddingBottom: 100, // 为FAB留出空间
   },
   
-  // 区块样式
+  // 区块样式（iOS 分组：白底全宽 + 组间留白；保持全宽以兼容网格宽度计算）
   section: {
     backgroundColor: '#FFFFFF',
-    marginTop: 4, // 减小顶部间距，让内容更紧凑
+    marginTop: 12,
     paddingVertical: 16,
   },
   sectionHeader: {
@@ -2504,10 +2504,10 @@ const styles = StyleSheet.create({
   categoryCard: {
     width: (SCREEN_WIDTH - 16 - 12) / 4, // 4列: 总宽度 - 左右padding(8*2) - gap(4*3)
     aspectRatio: 1, // 正方形
-    borderRadius: 6,
+    borderRadius: 12, // iOS 风格更圆润
     overflow: 'hidden',
     position: 'relative',
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#E9E9EE',
   },
   thumbnail: {
     width: '100%',
