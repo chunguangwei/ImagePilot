@@ -18,6 +18,7 @@ import { createLocalOnnxRunner, localMapper } from './adapters/localOnnxRunner.j
 import { LocalClassifierService } from '../LocalClassifierService.js';
 import keyStore from './keyStoreSingleton.js';
 import { mapSchemaCategoryToApp } from './adapters/categoryMapper.js';
+import { buildClassificationPrompt, resolveAppCategory } from './customCategories.js';
 
 // 中/英分类提示词（与 prompts/classification.*.txt 保持一致；内联以避开 .txt 打包差异）
 const PROMPT_ZH = `你是一个专业的照片分类助手。请仔细分析这张图片，并严格按照下面的 JSON 格式输出结果。
@@ -76,7 +77,11 @@ function getLLM(imageClassifier, platform) {
  */
 export async function classifyCloudBatch({ imageClassifier, platform, inputs, validResults, aiCfg }) {
   const llm = getLLM(imageClassifier, platform);
-  const prompt = aiCfg.promptOverride || loadPrompt(aiCfg.promptLang || 'zh');
+  const lang = aiCfg.promptLang || 'zh';
+  const customCats = aiCfg.customCategories || [];
+  // 基础提示词 + 用户自定义分类规则段（A 方案：让大模型按规则归入自定义分类）
+  const base = aiCfg.promptOverride || loadPrompt(lang);
+  const prompt = buildClassificationPrompt(base, customCats, lang);
   const out = await llm.classifyBatch(inputs, prompt, { concurrent: aiCfg.concurrent });
 
   const items = validResults.map((vr, i) => {
@@ -89,7 +94,7 @@ export async function classifyCloudBatch({ imageClassifier, platform, inputs, va
       imageData: vr.imageData,
       success: true,
       data: {
-        category: mapSchemaCategoryToApp(res.contentCategory),
+        category: resolveAppCategory(res.contentCategory, customCats),
         confidence: typeof res.confidence === 'number' ? res.confidence : 0.9,
         description: res.description || res.rawText || null,
         background_color: res.colorTheme || null,

@@ -19,6 +19,8 @@ import { OpenAIProvider } from './providers/OpenAIProvider.js';
 import { KimiProvider } from './providers/KimiProvider.js';
 import { CustomProvider } from './providers/CustomProvider.js';
 import { OllamaProvider } from './providers/OllamaProvider.js';
+import { AnthropicProvider } from './providers/AnthropicProvider.js';
+import { GeminiProvider } from './providers/GeminiProvider.js';
 import { LLMProviderError, LLMErrorCode } from './providers/BaseProvider.js';
 import { ResponseValidator } from './ResponseValidator.js';
 
@@ -27,6 +29,8 @@ const PROVIDER_REGISTRY = {
   kimi: KimiProvider,
   custom: CustomProvider,
   ollama: OllamaProvider,
+  anthropic: AnthropicProvider,
+  gemini: GeminiProvider,
   // 'local-onnx' 不在此注册——它由 LocalClassifierService 处理
 };
 

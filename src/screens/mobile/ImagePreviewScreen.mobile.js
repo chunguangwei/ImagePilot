@@ -970,61 +970,11 @@ const ImagePreviewScreen = ({ route, navigation }) => {
    */
   const handleEnhancePresetPress = async (presetId) => {
     try {
-      const count = 1; // 单张图片
-
-      // 额度检查
-      const credits = await WeChatAuthService.getCredits();
-      if (!credits || typeof credits.remaining !== 'number') {
-        Alert.alert(t('common.error'), t('imagePreview.cannotCheckCredits') || t('common.retry'));
-        return;
-      }
-
-      // 如果用户未关注公众号，跳过额度检查，直接执行增强
-      if (credits.isFollowed === false) {
-        try {
-          closeEnhanceModal();
-          const preset = enhancePresets?.[presetId];
-          const presetName = preset?.name || presetId;
-          await performEnhance(presetId, presetName);
-        } catch (e) {
-          logger.error('提交增强失败:', e);
-          Alert.alert(t('common.error'), e.message || t('category.submitFailed'));
-        }
-        return;
-      }
-
-      // 已关注公众号，进行额度检查
-      if (credits.remaining < count) {
-        Alert.alert(
-          t('common.tip') || t('common.confirm'),
-          t('category.insufficientCreditsMessageFollowWeChat', { remaining: credits.remaining, count })
-        );
-        return;
-      }
-
-      // 弹出二次确认：显示剩余额度与本次消耗额度
-      Alert.alert(
-        t('imagePreview.confirmTitle') || t('common.confirm'),
-        t('imagePreview.enhanceConfirmMessage', { count, remaining: credits.remaining }),
-        [
-          { text: t('common.cancel'), style: 'cancel' },
-          {
-            text: t('common.confirm'),
-            style: 'default',
-            onPress: async () => {
-              try {
-                closeEnhanceModal();
-                const preset = enhancePresets?.[presetId];
-                const presetName = preset?.name || presetId;
-                await performEnhance(presetId, presetName);
-              } catch (e) {
-                logger.error('提交增强失败:', e);
-                Alert.alert(t('common.error'), e.message || t('category.submitFailed'));
-              }
-            }
-          }
-        ]
-      );
+      // 额度限制已停用：不再做额度检查 / 二次确认，直接执行增强
+      closeEnhanceModal();
+      const preset = enhancePresets?.[presetId];
+      const presetName = preset?.name || presetId;
+      await performEnhance(presetId, presetName);
     } catch (error) {
       logger.error('增强检查失败:', error);
       Alert.alert(t('common.error'), error.message || t('settings.operationFailed'));
@@ -1650,6 +1600,14 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         <TouchableOpacity style={styles.actionButton} onPress={openEnhanceModal}>
           <Text style={styles.actionIcon}>✨</Text>
           <Text style={styles.actionLabel}>{t('imagePreview.enhance')}</Text>
+        </TouchableOpacity>
+
+        {/* 🆕 滤镜修图（jimp 本地处理，离线） */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => displayUri && navigation.navigate('FilterEditor', { imageUri: displayUri })}>
+          <Text style={styles.actionIcon}>🎨</Text>
+          <Text style={styles.actionLabel}>滤镜</Text>
         </TouchableOpacity>
         
         {/* 分类按钮 */}

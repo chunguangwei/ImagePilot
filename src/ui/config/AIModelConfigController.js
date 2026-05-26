@@ -28,7 +28,7 @@ const PROVIDER_CLASSES = {
 };
 
 /** 这些 Provider 需要 API Key（ollama 本地无需） */
-const NEEDS_KEY = new Set(['openai', 'kimi', 'custom']);
+const NEEDS_KEY = new Set(['openai', 'kimi', 'anthropic', 'gemini', 'custom']);
 
 export class AIModelConfigController {
   constructor({ configService, keyStore, llmService }) {

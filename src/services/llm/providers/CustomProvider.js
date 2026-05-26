@@ -42,7 +42,12 @@ export class CustomProvider extends OpenAIProvider {
       ...this.config.headersExtra,
     };
     if (this.config.apiKey) {
-      headers.Authorization = `Bearer ${this.config.apiKey}`;
+      // Azure 端点用 api-key 头（继承自 OpenAIProvider._isAzure），否则 Bearer
+      if (this._isAzure()) {
+        headers['api-key'] = this.config.apiKey;
+      } else {
+        headers.Authorization = `Bearer ${this.config.apiKey}`;
+      }
     }
     return headers;
   }

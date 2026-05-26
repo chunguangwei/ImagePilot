@@ -1960,299 +1960,6 @@ class GalleryScannerService {
   }
 
 
-  /**
-   * 阶段3b: 批量缓存查询
-   * 处理传入的NA分类图片，查询缓存并立即保存命中的结果
-   * @param {Array} naImages - NA分类的图片列表（从外部传入）
-   * @param {Date} scanStartTime - 扫描开始时间
-   */
-  async ImagesClassificationCachCheck(naImages, scanStartTime) {
-    if (!naImages || naImages.length === 0) {
-      logger.info('✅ 第2层：没有未分类图片，跳过缓存查询');
-      return { remainingImages: [], processedCount: 0, failedCount: 0 };
-    }
-    
-    logger.info(`🔍 第2层：智能分类查询，处理 ${naImages.length} 张未分类图片（NA）`);
-    this.sendProgressMessage('cache_checking', 0, naImages.length);
-    
-    let totalProcessedCount = 0;
-    let totalFailedCount = 0;
-    const allUncachedImages = [];
-    
-    try {
-      const clientId = await UnifiedDataService.getClientId();
-      const batchSize = 100; // 每批处理100张图片
-      const totalBatches = Math.ceil(naImages.length / batchSize);
-      const maxConcurrentRequests = 1; // 限制同时进行的HTTP请求数量（避免内存压力）
-      logger.info(`🚀 开始流水线并发处理: ${naImages.length} 张图片，批次大小: ${batchSize}，共 ${totalBatches} 批，最大并发请求: ${maxConcurrentRequests}`);
-      
-      // 并发控制：使用信号量模式限制同时进行的HTTP请求数量
-      let runningCount = 0;
-      const waitingQueue = [];
-      
-      const executeWithConcurrencyLimit = async (taskFn) => {
-        return new Promise((resolve, reject) => {
-          const execute = async () => {
-            runningCount++;
-            try {
-              const result = await taskFn();
-              resolve(result);
-            } catch (error) {
-              reject(error);
-            } finally {
-              runningCount--;
-              // 从队列中取出下一个任务执行
-              if (waitingQueue.length > 0) {
-                const nextTask = waitingQueue.shift();
-                nextTask();
-              }
-            }
-          };
-          
-          if (runningCount < maxConcurrentRequests) {
-            execute();
-          } else {
-            waitingQueue.push(execute);
-          }
-        });
-      };
-      
-      // 存储所有任务的Promise（用于最后等待和统计）
-      const allTasks = [];
-      
-      // 遍历每个批次
-      for (let i = 0; i < naImages.length; i += batchSize) {
-        const batch = naImages.slice(i, i + batchSize);
-        const batchNumber = Math.floor(i / batchSize) + 1;
-        
-        // ========== 流水线任务 ==========
-        const pipelineTask = executeWithConcurrencyLimit(async () => {
-          let batchProcessedCount = 0;
-          let batchFailedCount = 0;
-          const batchUncachedImages = [];
-          
-          try {
-            // ========== 节点1: 计算Hash ==========
-            logger.debug(`🔄 批次 ${batchNumber}: 开始计算Hash ${batch.length} 张图片`);
-            
-            const hashResults = await this.parallelHashCalculator.calculateHashesParallel(
-              batch,
-              (processed, total) => {
-                // Hash计算阶段不发送进度更新，因为时间很短且不是分类操作
-              }
-            );
-            
-            // 处理哈希计算结果
-            const imageHashMap = new Map();
-            let hashCalculationFailures = 0;
-            
-            for (const result of hashResults) {
-              if (result.hash) {
-                // 为每个文件生成唯一键，即使哈希相同也保留
-                const uniqueKey = `${result.hash}_${result.uri}`;
-                imageHashMap.set(uniqueKey, result);
-              } else {
-                // 哈希计算失败
-                hashCalculationFailures++;
-                if (hashCalculationFailures <= 5) {
-                  logger.warn(`❌ 批次 ${batchNumber}: 计算哈希失败 (${hashCalculationFailures}/${batch.length}):`, {
-                    fileName: result.fileName,
-                    uri: result.uri,
-                    error: result.hashError || '未知错误'
-                  });
-                }
-                batchUncachedImages.push(result);
-              }
-            }
-            
-            const imageEntries = Array.from(imageHashMap.entries());
-            // 传递包含 hash 和 uri 的对象数组，而不是只传递 hash 字符串数组
-            const hashItems = imageEntries.map(([key, data]) => ({
-              hash: data.hash,
-              uri: data.uri
-            }));
-            // 提取 hash 数组，用于后续的缺失检查
-            const hashes = hashItems.map(item => item.hash);
-            
-            if (hashCalculationFailures > 0) {
-              logger.warn(`⚠️ 批次 ${batchNumber}: 哈希计算失败统计: ${hashCalculationFailures}/${batch.length} 张图片哈希计算失败，将直接进入远程推理`);
-            }
-            
-            logger.debug(`✅ 批次 ${batchNumber}: Hash计算完成 ${hashItems.length} 张`);
-            
-            if (hashItems.length === 0) {
-              return {
-                processedCount: 0,
-                failedCount: hashCalculationFailures,
-                uncachedImages: batchUncachedImages
-              };
-            }
-            
-            // ========== 节点2: 缓存查询 ==========
-            logger.debug(`🔍 批次 ${batchNumber}: 开始缓存查询 ${hashItems.length} 个哈希`);
-            
-            const cacheResult = await this.imageClassifier.batchCheckCache(hashItems, clientId);
-            
-            logger.debug(`✅ 批次 ${batchNumber}: 缓存查询完成，返回 ${cacheResult.items.length} 个结果`);
-            
-            // ========== 节点3: 处理结果并保存 ==========
-            const batchSaveResults = [];
-            const processedHashes = new Set();
-            
-            for (const [key, imageData] of imageEntries) {
-              // 查找对应的缓存结果
-              const cacheItem = cacheResult.items.find(item => item.image_hash === imageData.hash);
-              
-              if (cacheItem && cacheItem.cached && cacheItem.data) {
-                // 缓存命中，收集数据准备批量保存
-                const classification = {
-                  categoryId: cacheItem.data.category,
-                  confidence: cacheItem.data.confidence || 0.9,
-                  idCardDetections: [],
-                  generalDetections: [],
-                  mobileNetV3Detections: null,
-                  message: cacheItem.data.description || cacheItem.data.message || null,
-                  background_color: cacheItem.data.background_color || null
-                };
-                
-                batchSaveResults.push({
-                  imageData,
-                  classification,
-                  exifData: null
-                });
-              } else {
-                // 缓存未命中，保存哈希供后续使用
-                batchUncachedImages.push({
-                  ...imageData,
-                  hash: imageData.hash
-                });
-              }
-              processedHashes.add(imageData.hash);
-            }
-            
-            // 处理缓存查询结果中缺失的哈希值
-            const missingHashes = hashes.filter(hash => !processedHashes.has(hash));
-            if (missingHashes.length > 0) {
-              logger.warn(`⚠️ 批次 ${batchNumber}: 缓存查询结果不完整: ${missingHashes.length} 个哈希值在结果中未找到，将进入远程推理`);
-              for (const hash of missingHashes) {
-                const matchingImages = imageEntries
-                  .filter(([key, data]) => data.hash === hash)
-                  .map(([key, data]) => data);
-                for (const image of matchingImages) {
-                  batchUncachedImages.push({
-                    ...image,
-                    hash: hash
-                  });
-                }
-              }
-            }
-            
-            // ========== 节点4: 批量保存 ==========
-            if (batchSaveResults.length > 0) {
-              logger.debug(`💾 批次 ${batchNumber}: 开始批量保存 ${batchSaveResults.length} 张图片到数据库`);
-              
-              try {
-                const classificationDataArray = batchSaveResults.map(result => ({
-                  uri: result.imageData.uri,
-                  id: result.imageData.id,
-                  category: result.classification.categoryId || result.classification.category,
-                  confidence: result.classification.confidence,
-                  idCardDetections: result.classification.idCardDetections,
-                  generalDetections: result.classification.generalDetections,
-                  mobileNetV3Detections: result.classification.mobileNetV3Detections,
-                  message: result.classification.message,
-                  background_color: result.classification.background_color || null
-                }));
-                
-                const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, false);
-                if (updateResult.success) {
-                  batchProcessedCount = updateResult.updatedCount;
-                  this.imagesClassified += updateResult.updatedCount;
-                  logger.debug(`✅ 批次 ${batchNumber}: 批量保存成功 ${batchProcessedCount} 张`);
-                } else {
-                  batchFailedCount += batchSaveResults.length;
-                  logger.error(`❌ 批次 ${batchNumber}: 批量保存失败`);
-                }
-              } catch (saveError) {
-                logger.error(`❌ 批次 ${batchNumber}: 批量保存异常: ${saveError.message}`);
-                batchFailedCount += batchSaveResults.length;
-              }
-            }
-            
-            // 更新进度（每批次完成后）
-            const currentProcessed = Math.min(i + batchSize, naImages.length);
-            this.sendProgressMessage(
-              'cache_checking',
-              currentProcessed,
-              naImages.length
-            );
-            
-            // 🔥 批次处理完成，释放内存并给GC时间
-            const result = {
-              processedCount: batchProcessedCount,
-              failedCount: batchFailedCount + hashCalculationFailures,
-              uncachedImages: batchUncachedImages
-            };
-            
-            // 添加短暂延迟，给GC时间回收内存
-            // 注意：hashResults、imageHashMap、batchSaveResults 在函数作用域内，
-            // 函数执行完毕后会自动被垃圾回收，不需要手动设置为 null
-            if (batchNumber % 5 === 0) {
-              // 每5批添加稍长延迟
-              await new Promise(resolve => setTimeout(resolve, 200));
-            } else {
-              await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            
-            return result;
-            
-          } catch (batchError) {
-            logger.error(`❌ 批次 ${batchNumber}: 流水线处理异常:`, batchError);
-            // 异常情况下也添加延迟
-            await new Promise(resolve => setTimeout(resolve, 100));
-            return {
-              processedCount: 0,
-              failedCount: batch.length,
-              uncachedImages: batch
-            };
-          }
-        });
-        
-        // 将任务添加到数组（受并发限制控制）
-        allTasks.push(pipelineTask);
-      }
-      
-      logger.info('⏳ 等待所有批次处理完成（流水线并发执行）...');
-      
-      // 等待所有批次完成
-      const batchResults = await Promise.all(allTasks);
-      
-      // 汇总所有批次的结果
-      for (const batchResult of batchResults) {
-        totalProcessedCount += batchResult.processedCount || 0;
-        totalFailedCount += batchResult.failedCount || 0;
-        if (batchResult.uncachedImages && batchResult.uncachedImages.length > 0) {
-          allUncachedImages.push(...batchResult.uncachedImages);
-        }
-      }
-      
-      // 更新最终进度
-      this.sendProgressMessage(
-        'cache_checking',
-        totalProcessedCount,
-        naImages.length
-      );
-      
-    } catch (error) {
-      logger.error('❌ 智能分类查询失败:', error);
-      // 失败时，所有图片都需要继续处理（返回从数据库读取的所有NA图片）
-      return { remainingImages: naImages, processedCount: 0, failedCount: 0 };
-    }
-    
-    logger.info(`✅ 第2层完成：缓存命中 ${totalProcessedCount} 张，${allUncachedImages.length} 张继续处理`);
-    
-    return { remainingImages: allUncachedImages, processedCount: totalProcessedCount, failedCount: totalFailedCount };
-  }
 
   /**
    * 远程推理预处理：将图片数组转换为推理所需的格式
@@ -2435,20 +2142,15 @@ class GalleryScannerService {
               };
             }
             
-            // ========== 节点2: 远程推理（按 aiProvider.active 路由）==========
-            logger.debug(`✅ 批次 ${batchNumber}: 数据准备完成，开始远程推理 ${validResults.length} 张图片`);
+            // ========== 节点2: 云端 LLM 推理 ==========
+            // 本方法仅在 active 为云端 Provider 时被调用（见 aiImageClassifyByContent），
+            // 故直接走用户配置的 LLM；不再调用原作者后端 batchClassifyRemote。
+            logger.debug(`✅ 批次 ${batchNumber}: 数据准备完成，开始云端 LLM 推理 ${validResults.length} 张图片`);
 
-            // 默认/local-onnx：沿用原私有后端流程（行为完全不变）；
-            // 配置了云端 Provider 时：走用户配置的 LLM（失败自动回退本流程）。
             const aiCfg = await this._getAIProviderConfigSafe();
-            let batchResult;
-            if (!aiCfg || !aiCfg.active || aiCfg.active === 'local-onnx') {
-              batchResult = await this.imageClassifier.batchClassifyRemote(validResults, { userId: clientId });
-            } else {
-              batchResult = await this._classifyBatchWithLLM(validResults, aiCfg, clientId);
-            }
+            const batchResult = await this._classifyBatchWithLLM(validResults, aiCfg, clientId);
 
-            logger.debug(`✅ 批次 ${batchNumber}: 远程推理完成`);
+            logger.debug(`✅ 批次 ${batchNumber}: 云端 LLM 推理完成`);
             
             // ========== 节点3: 处理结果并保存 ==========
             const classificationDataArray = [];
@@ -2669,18 +2371,20 @@ class GalleryScannerService {
     let totalProcessed = 0;
     let totalFailed = 0;
     
-    // 健康检查：判断是否使用远程推理服务
+    // 是否走云端 LLM 分类：完全由用户配置的 aiProvider.active 决定，
+    // 不再探测/依赖原作者后端（api.aifuture.net.cn 相关逻辑已移除）。
+    // active 为云端 Provider（openai/azure/claude/gemini/kimi/custom…）→ 走 LLM；
+    // active=local-onnx（或未配置）→ 仅靠扫描阶段的设备端 MobileNetV3，跳过云端。
     try {
-      const health = await this.imageClassifier.checkHealthv2();
-      this.useRemoteInference = health.status === 'healthy' && health.modelApi === 'available';
-      
+      const aiCfg = await this._getAIProviderConfigSafe();
+      this.useRemoteInference = !!(aiCfg && aiCfg.active && aiCfg.active !== 'local-onnx');
       if (this.useRemoteInference) {
-        logger.info('✅ 远程服务可用，将使用远程推理');
+        logger.info(`✅ 将使用云端 LLM 分类（${aiCfg.active}）`);
       } else {
-        logger.debug('⚠️ 远程服务不可用，将在需要时使用本地推理');
+        logger.debug('⚠️ 未配置云端模型（local-onnx），跳过云端分类，依赖设备端 MobileNetV3');
       }
     } catch (error) {
-      logger.debug('⚠️ 健康检查失败，将在需要时使用本地推理:', error.message);
+      logger.debug('读取 aiProvider 配置失败，跳过云端分类:', error.message);
       this.useRemoteInference = false;
     }
     
@@ -2729,24 +2433,11 @@ class GalleryScannerService {
       return { processedCount: totalProcessed, failedCount: totalFailed, similarityCandidates: [] };
     }
     
-    // 第2层和第3层：根据远程服务是否可用，决定执行缓存查询和远程推理
+    // 云端 LLM 分类（已移除原作者后端的远程缓存查询层）
     if (this.useRemoteInference) {
-      // 第2层：远程缓存查询（处理NA分类图片，查询远程缓存）
-      const { remainingImages: afterCache, processedCount: cacheCount, failedCount: cacheFailed } = 
-        await this.ImagesClassificationCachCheck(naImages, scanStartTime);
-      totalProcessed += cacheCount;
-      totalFailed += cacheFailed;
-      
-      if (afterCache.length === 0) {
-        logger.info(`✅ 漏斗处理完成：缓存已覆盖，已处理 ${totalProcessed} 张`);
-        // 发送完成消息
-        this.sendProgressMessage('completed', totalProcessed, totalProcessed, totalProcessed, this.totalImagesToBeClassified);
-        return { processedCount: totalProcessed, failedCount: totalFailed, similarityCandidates: naImages };
-      }
-      
-      // 第3层：批量远程推理（处理缓存未命中的图片）
-      const { remainingImages: afterRemote, processedCount: remoteCount, failedCount: remoteFailed } = 
-        await this.classifyImagesbyLLM(afterCache, scanStartTime);
+      // 批量云端推理：处理全部 NA 图片（不再有后端缓存预筛）
+      const { remainingImages: afterRemote, processedCount: remoteCount, failedCount: remoteFailed } =
+        await this.classifyImagesbyLLM(naImages, scanStartTime);
       totalProcessed += remoteCount;
       totalFailed += remoteFailed;
       
@@ -3356,7 +3047,8 @@ class GalleryScannerService {
 
   /**
    * 云端 LLM 批量分类。把 validResults 转 base64 后交给 wireLLMRouting，
-   * 结果形状与原 batchClassifyRemote 一致。任何失败 → 回退原私有后端流程。
+   * 返回 { success,total,success_count,fail_count,items } 形状供下游落库。
+   * 任何失败 → 相关图片标记未成功，保持 NA（不再回退原作者后端）。
    */
   async _classifyBatchWithLLM(validResults, aiCfg, clientId) {
     try {
@@ -3376,8 +3068,19 @@ class GalleryScannerService {
         aiCfg,
       });
     } catch (error) {
-      logger.warn('云端 LLM 分类失败，回退原远程流程:', error?.message || error);
-      return this.imageClassifier.batchClassifyRemote(validResults, { userId: clientId });
+      // 不再回退原作者后端：失败的图片标记为未成功，保持 NA 由后续/下次处理。
+      logger.warn('云端 LLM 分类失败，相关图片保持待分类(NA):', error?.message || error);
+      return {
+        success: false,
+        total: validResults.length,
+        success_count: 0,
+        fail_count: validResults.length,
+        items: validResults.map((v) => ({
+          imageData: v.imageData,
+          success: false,
+          error: error?.message || 'LLM classify failed',
+        })),
+      };
     }
   }
 

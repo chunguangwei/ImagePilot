@@ -5,7 +5,7 @@ import './polyfills';
 import './i18n';
 import { loadSavedLanguage } from './i18n';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { View, Text, StyleSheet, StatusBar, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
@@ -37,8 +37,28 @@ console.log('📦 App.js: ImagePreviewScreen 导入成功');
 import SettingsScreen from './screens/mobile/SettingsScreen.mobile';
 console.log('📦 App.js: SettingsScreen 导入成功');
 import EnhanceResultScreen from './screens/mobile/EnhanceResultScreen.mobile';
+import CustomCategoriesScreen from './screens/mobile/CustomCategoriesScreen.mobile';
 import { AIModelConfigScreen } from './ui/config/AIModelConfigScreen.mobile.jsx';
 import { makeAIModelConfigDeps } from './ui/config/aiModelConfigDeps.js';
+
+// 🆕 滤镜修图屏（jimp 纯 JS）：懒加载，仅在进入该屏时才加载 jimp
+const FilterEditorScreen = React.lazy(() => import('./screens/mobile/FilterEditorScreen.mobile'));
+
+// 滤镜屏错误边界：万一加载/处理出错，只在该屏显示提示，不崩 App
+class FilterErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { err: null }; }
+  static getDerivedStateFromError(err) { return { err }; }
+  render() {
+    if (this.state.err) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Text style={{ color: '#fff', textAlign: 'center' }}>滤镜功能加载失败：{String(this.state.err?.message || this.state.err)}</Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // 静态导入服务模块（避免 release 构建时的 require undefined 问题）
 import UnifiedDataService from './services/UnifiedDataService';
@@ -398,6 +418,16 @@ export default function App() {
           <Stack.Screen name="Category" component={CategoryScreen} />
           <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} />
           <Stack.Screen name="EnhanceResult" component={EnhanceResultScreen} options={{ presentation: 'modal' }} />
+          <Stack.Screen name="CustomCategories" component={CustomCategoriesScreen} />
+          <Stack.Screen name="FilterEditor">
+            {(props) => (
+              <FilterErrorBoundary>
+                <Suspense fallback={<View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: '#fff' }}>加载滤镜…</Text></View>}>
+                  <FilterEditorScreen {...props} />
+                </Suspense>
+              </FilterErrorBoundary>
+            )}
+          </Stack.Screen>
           <Stack.Screen name="AIModelConfig" options={{ headerShown: true, title: 'AI 模型设置' }}>
             {() => <AIModelConfigScreen deps={makeAIModelConfigDeps()} />}
           </Stack.Screen>
