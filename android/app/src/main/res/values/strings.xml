@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">芯图相册</string>
+    <string name="app_name">ImagePilot</string>
     <!-- 通知渠道和标题需要国际化，保留在资源文件中 -->
     <string name="scan_notification_channel_name">照片扫描服务</string>
     <string name="scan_notification_channel_description">显示照片扫描进度</string>
