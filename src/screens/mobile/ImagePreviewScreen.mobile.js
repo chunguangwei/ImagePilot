@@ -1,5 +1,5 @@
 /**
- * 芯图相册 - 移动端图片预览页
+ * ImagePilot - 移动端图片预览页
  * 
  * 功能：
  * 1. 全屏显示图片
@@ -895,7 +895,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         logger.debug('✅ 原生模块分享成功');
       } else {
         // 原生模块不可用，使用React Native Share
-        // 添加 title 参数，让微信等分享目标显示"来自：芯图相册"
+        // 添加 title 参数，让微信等分享目标显示"来自：ImagePilot"
         const result = await Share.share({
           url: shareUri,
           title: t('app.name'),

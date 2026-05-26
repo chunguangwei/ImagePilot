@@ -1,5 +1,5 @@
 /**
- * 芯图相册 - 移动端首页
+ * ImagePilot - 移动端首页
  * 
  * 功能（与PC端保持一致）：
  * 1. 消息提示区（显示扫描进度或最近扫描信息）
@@ -1291,7 +1291,7 @@ const HomeScreen = ({ navigation }) => {
 
       // 合并日志内容
       const allLogs = [
-        '=== 芯图相册日志导出 ===',
+        '=== ImagePilot日志导出 ===',
         `导出时间: ${new Date().toLocaleString('zh-CN')}`,
         `JS日志条数: ${jsLogCount}`,
         `原生日志条数: ${nativeLogCount}`,
@@ -1371,7 +1371,7 @@ const HomeScreen = ({ navigation }) => {
         const { MultiImageShareModule } = NativeModules;
         if (MultiImageShareModule && MultiImageShareModule.shareFile) {
           // 使用原生模块分享文件（使用 FileProvider URI）
-          await MultiImageShareModule.shareFile(filePath, 'text/plain', '芯图相册日志');
+          await MultiImageShareModule.shareFile(filePath, 'text/plain', 'ImagePilot日志');
           logger.info('✅ 日志文件分享成功');
           
           // 提示文件位置
@@ -1387,7 +1387,7 @@ const HomeScreen = ({ navigation }) => {
             message: appInfo.length > 10000 
               ? appInfo.substring(0, 10000) + '\n\n... (日志过长，已截断，完整日志已保存到文件)'
               : appInfo,
-            title: '芯图相册日志',
+            title: 'ImagePilot日志',
           });
           
           setTimeout(() => {
