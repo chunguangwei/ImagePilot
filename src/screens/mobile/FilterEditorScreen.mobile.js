@@ -8,7 +8,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Alert, ActivityIndicator } from 'react-native';
-import { RNFS, getLocalPath, ModelPathAdapter } from '../../adapters/WebAdapters';
+import { RNFS, getLocalPath, ModelPathAdapter, logger } from '../../adapters/WebAdapters';
 import ImageProcessor from '../../services/ImageProcessor';
 import { JIMP_FILTERS, JIMP_FILTER_IDS, hasIntensity, applyJimpFilterToBase64 } from '../../services/enhance/jimpFilters.js';
 
@@ -113,8 +113,7 @@ export default function FilterEditorScreen({ route, navigation }) {
       setResultUri(out);
       setFilterId('none');
     } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error('[AI增强] 失败:', e?.message || String(e), e?.stack || '');
+      logger.error('[AI增强] 失败:', e?.message || String(e), e?.stack || '');
       setError('AI 增强失败：' + (e?.message || String(e)));
     } finally {
       setAiBusy(false);
