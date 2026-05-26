@@ -1,13 +1,15 @@
-# ImagePilot - AI智能照片分类管理工具
+# ImagePilot - AI 智能照片分类管理工具
 
-[![Website](https://img.shields.io/badge/website-https://www.xintuxiangce.top-blue.svg)](https://www.xintuxiangce.top)
+[![Repo](https://img.shields.io/badge/GitHub-chunguangwei%2FImagePilot-blue.svg)](https://github.com/chunguangwei/ImagePilot)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Android-lightgrey.svg)](https://www.xintuxiangce.top)
-[![AI](https://img.shields.io/badge/AI-Local%20ONNX%20%7C%20Optional%20LLM-brightgreen.svg)](https://www.xintuxiangce.top)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Android-lightgrey.svg)](https://github.com/chunguangwei/ImagePilot)
+[![AI](https://img.shields.io/badge/AI-Local%20ONNX%20%7C%20Optional%20LLM-brightgreen.svg)](https://github.com/chunguangwei/ImagePilot)
 
 ## 📖 项目简介
 
-**ImagePilot**（fork 自 ImageClassifier）是一款智能照片分类管理工具，能够自动识别和分类您的照片，帮助用户高效整理海量照片，释放存储空间。支持 Android（React Native）与 PC 桌面（Electron / react-native-web），已验证平台为 Android 与 PC。
+**ImagePilot** 是一款隐私优先的智能照片分类管理工具：默认全程本地离线分类（设备端 ONNX），可选配置你自己的大模型做在线增强；并内置从 GitHub 一键升级的能力。支持 Android（React Native）与 PC 桌面（Electron / react-native-web），已验证平台为 Android 与 PC。
+
+> 本项目以 MIT 许可证开源，早期基于上游 ImageClassifier 起步，现已作为独立产品演进（移除原作者公网后端、统一走用户自配大模型、自建 GitHub 升级通道等）。上游致谢见文末「致谢」。
 
 ### 核心优势
 
@@ -97,6 +99,17 @@ ImagePilot支持**8大分类维度**，从多个角度智能管理您的照片�
 - id 仅限字母/数字/下划线（便于大模型稳定输出），且不能与内置类别冲突。
 - 该功能依赖在线大模型；仅使用本地 ONNX 模型时不会应用自定义规则。
 
+### 🔄 应用内更新
+
+直接从本项目的 GitHub Releases 升级，无需第三方应用商店：
+
+- **启动自动检查**：每次启动静默检查 [chunguangwei/ImagePilot](https://github.com/chunguangwei/ImagePilot/releases) 的最新发布；有新版才弹窗提示。
+- **手动检查**：「设置 → 检查更新」随时查看当前版本与最新版本。
+- **一键下载**：检测到新版后点击「前往下载」，浏览器下载最新 APK，由系统安装器完成安装。
+- **网络容灾**：`api.github.com` 不可达时自动回退 `releases.atom`，仍不可达则引导打开发布页手动下载。
+
+> 发布方式：在 `chunguangwei/ImagePilot` 打 Release、tag 用语义化版本（如 `v1.2.0`）、并把 APK 作为 Release 资产上传，客户端即可检测并引导下载。
+
 ## 🚀 快速开始
 
 ### 系统要求
@@ -118,16 +131,14 @@ ImagePilot支持**8大分类维度**，从多个角度智能管理您的照片�
 
 ### 下载安装
 
-**方式1：官网下载（推荐）**
-1. 访问官网：https://www.xintuxiangce.top
-2. 点击下载按钮，选择对应平台版本
-3. 运行安装程序
-4. 按照提示完成安装
+**Android：从 GitHub Releases 下载（推荐）**
+1. 打开 [chunguangwei/ImagePilot Releases](https://github.com/chunguangwei/ImagePilot/releases/latest)
+2. 下载最新版 `app-release.apk`
+3. 在手机上点击安装（首次需允许「安装未知来源应用」）
+4. 装好后，应用会在启动时自动检查更新，后续升级一键完成
 
-**方式2：GitHub Release**
-1. 访问 [Releases](https://github.com/xiawenyong1977-netizen/ImageClassifier/releases)
-2. 下载最新版本
-3. 安装并运行
+**PC（桌面版）**
+- 从源码构建（见下方「开发指南」）；Electron 打包产物用于 Windows / macOS。
 
 ### 使用步骤
 
@@ -310,22 +321,13 @@ npx react-native run-ios        # RN 通用命令，iOS 未做验证
 
 ## 📱 界面预览
 
-### PC桌面版
-
-![主界面](https://www.xintuxiangce.top/images/首页-1.jpg)
-*主界面 - 查看分类统计和最近照片*
-
-![分类详情](https://www.xintuxiangce.top/images/分类进展和统计信息.jpg)
-*分类详情 - 查看各个类别的照片*
-
-![暂存箱](https://www.xintuxiangce.top/images/暂存.jpg)
-*暂存箱 - 批量处理照片*
+> 截图待补充（iOS 风格 UI 重构进行中）。可参考首页（分类统计 + 最近照片）、分类详情、暂存箱与设置等界面。
 
 ## 🤝 贡献指南
 
 我们欢迎各种形式的贡献：
 
-- 🐛 **报告Bug** - 在[Issues](https://github.com/xiawenyong1977-netizen/ImageClassifier/issues)中提交问题
+- 🐛 **报告Bug** - 在 [Issues](https://github.com/chunguangwei/ImagePilot/issues) 中提交问题
 - 💡 **功能建议** - 提出新功能想法和改进建议
 - 📝 **文档改进** - 完善使用说明和开发文档
 - 🔧 **提交代码** - 修复Bug或添加新功能
@@ -341,11 +343,9 @@ npx react-native run-ios        # RN 通用命令，iOS 未做验证
 
 ## 📚 相关资源
 
-- 🌐 [官方网站](https://www.xintuxiangce.top) - 软件下载和使用指南
-- 📖 [使用教程](https://www.xintuxiangce.top/blog.html) - 详细的使用教程
-- 💡 [技术博客](https://www.xintuxiangce.top/blog.html) - AI照片分类技术解析
-- ❓ [常见问题](https://www.xintuxiangce.top/#faq) - FAQ解答
-- 📦 [更新日志](https://github.com/xiawenyong1977-netizen/ImageClassifier/releases) - 版本更新记录
+- 📦 [Releases](https://github.com/chunguangwei/ImagePilot/releases) - 下载最新版本与更新日志
+- 🐛 [Issues](https://github.com/chunguangwei/ImagePilot/issues) - 反馈问题与功能建议
+- 📖 [使用指南](docs/User) - `docs/User` 下的使用与功能文档
 
 ## 🔐 权限说明
 
@@ -453,12 +453,10 @@ cd android
 
 本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
 
-## 📞 联系我们
+## 📞 联系与反馈
 
-- 🌐 **官网**：https://www.xintuxiangce.top
-- 📧 **邮箱**：xiawenyong@xintuxiangce.top
-- 💬 **问题反馈**：[GitHub Issues](https://github.com/xiawenyong1977-netizen/ImageClassifier/issues)
-- 📱 **技术支持**：通过官网联系表单获取帮助
+- 💬 **问题反馈 / 功能建议**：[GitHub Issues](https://github.com/chunguangwei/ImagePilot/issues)
+- 📦 **下载 / 更新**：[Releases](https://github.com/chunguangwei/ImagePilot/releases)
 
 ## 🙏 致谢
 
@@ -467,7 +465,7 @@ cd android
 特别感谢：
 - ONNX Runtime 团队提供的高性能推理引擎
 - MobileNetV3 与 Real-ESRGAN 模型的作者与社区
-- 上游项目 ImageClassifier
+- 上游项目 [ImageClassifier](https://github.com/xiawenyong1977-netizen/ImageClassifier)（MIT，ImagePilot 早期基于其起步）
 - React Native 社区的优秀框架
 - 所有开源项目的贡献者
 
