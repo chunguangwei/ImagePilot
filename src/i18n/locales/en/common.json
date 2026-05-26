@@ -302,7 +302,13 @@
       "TB": "TB"
     },
     "aiClassifyConfirmTitle": "AI Smart Classification",
-    "aiClassifyConfirmMessage": "Are you sure you want to classify {{count}} uncategorized photos using AI?\n\n⚠️ Important Notes:\n1. Photos will be uploaded to the server for AI classification. The server uses a privacy-preserving processing mechanism that does not save or leak your photos, ensuring privacy security\n2. Processing time depends on the number of photos. You can view the classification progress in real-time at the top of the home page",
+    "aiClassifyConfirmMessage": "This will use your configured online LLM to classify {{count}} uncategorized photos.\n\nNotes:\n1. Classification requests are sent to the provider you configured in Settings → AI Model Settings (no third-party/author server involved)\n2. Processing time depends on the number of photos; you can track progress at the top of the home page\n\nContinue?",
+    "aiClassifyOfflineTitle": "Offline Model Classification",
+    "aiClassifyOfflineMessage": "You haven't configured an online LLM. The on-device offline model (MobileNetV3) will be used by default to classify {{count}} uncategorized photos.\n\nOffline classification runs fully on-device — no network, no upload.\n\nContinue?",
+    "aiClassifyLLMFailTitle": "LLM Classification Problem",
+    "aiClassifyLLMFailMessage": "Online LLM classification didn't finish; {{count}} photos remain uncategorized.\n\nUse the on-device offline model (MobileNetV3) to classify them instead?",
+    "aiClassifyLLMFailMessageGeneric": "Online LLM classification failed: {{error}}\n\nUse the on-device offline model (MobileNetV3) instead?",
+    "localClassificationInProgress": "Offline classifying… {{done}}/{{total}}",
     "naCategoryRightClickHint": "Right-click to start AI classification",
     "naCategoryRightClickGuide": "💡 Tip: Right-click this card to start AI smart classification",
     "naCategoryLongPressHint": "Long press to start AI classification",
@@ -492,6 +498,8 @@
   },
   "settings": {
     "title": "Settings",
+    "aiModelConfig": "AI Model Settings (Online)",
+    "aiModelConfigDesc": "Configure OpenAI / Kimi / Claude / Gemini API keys to enable online classification",
     "language": "Language",
     "selectLanguage": "Select Language",
     "smartClassification": "Smart Classification",
