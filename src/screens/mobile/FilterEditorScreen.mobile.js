@@ -103,10 +103,16 @@ export default function FilterEditorScreen({ route, navigation }) {
     setAiProgress(0);
     setError(null);
     try {
+      logger.error('[ai] step1 ensureModelExists, ModelPathAdapter=', typeof ModelPathAdapter, 'ensureModelExists=', typeof ModelPathAdapter?.ensureModelExists);
       await ModelPathAdapter.ensureModelExists(SR_MODEL);
+      logger.error('[ai] step2 getModelPath=', typeof ModelPathAdapter?.getModelPath);
       const modelPath = ModelPathAdapter.getModelPath(SR_MODEL);
-      const { createSuperResRunner } = await import('../../services/enhance/superResRunner.js');
+      logger.error('[ai] step3 import runner, modelPath=', String(modelPath));
+      const mod = await import('../../services/enhance/superResRunner.js');
+      logger.error('[ai] step4 模块 keys=', JSON.stringify(Object.keys(mod)), 'createSuperResRunner=', typeof mod.createSuperResRunner);
+      const createSuperResRunner = mod.createSuperResRunner || mod.default;
       const runner = createSuperResRunner({ modelPath });
+      logger.error('[ai] step5 runner=', typeof runner, 'enhance=', typeof runner?.enhance);
       const out = await runner.enhance(srcBase64, ({ done, total }) =>
         setAiProgress(Math.round((done / total) * 100)),
       );
