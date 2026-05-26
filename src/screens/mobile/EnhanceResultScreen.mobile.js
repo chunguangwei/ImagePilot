@@ -193,7 +193,7 @@ export default function EnhanceResultScreen({ route, navigation }) {
       // 移动端：拼装 URI 格式为 contentUri||path（如果有 path）
       // res.uri 是 MediaStore 返回的 content:// URI（例如：content://media/external/images/media/12345）
       // res.path 是文件系统路径，可能是：
-      // - Android 9及以下：绝对路径（如 /storage/emulated/0/Pictures/芯图相册/image.jpg）
+      // - Android 9及以下：绝对路径（如 /storage/emulated/0/Pictures/ImagePilot/image.jpg）
       // - Android 10+：可能为 null（因为使用 MediaStore API，不直接暴露文件路径）
       // 如果有 path，拼装成 contentUri||path 格式；如果没有 path，只使用 contentUri
       const contentUri = res.uri || '';

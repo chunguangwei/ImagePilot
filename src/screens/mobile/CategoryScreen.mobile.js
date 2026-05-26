@@ -1,5 +1,5 @@
 /**
- * 芯图相册 - 移动端分类详情页（通用）
+ * ImagePilot - 移动端分类详情页（通用）
  * 
  * 支持4种形态：
  * 1. 普通分类页 (category参数)
@@ -1198,7 +1198,7 @@ const CategoryScreen = ({ route, navigation }) => {
           // 原生模块不可用，使用React Native Share
           if (urls.length === 1) {
             // 单张图片：只传url，不传message（避免被当作文本分享）
-            // 添加 title 参数，让微信等分享目标显示"来自：芯图相册"
+            // 添加 title 参数，让微信等分享目标显示"来自：ImagePilot"
             const result = await Share.share({
               url: urls[0],
               title: t('app.name'),
@@ -1209,7 +1209,7 @@ const CategoryScreen = ({ route, navigation }) => {
             }
           } else {
             // 多张图片：使用urls参数（不传message）
-            // 添加 title 参数，让微信等分享目标显示"来自：芯图相册"
+            // 添加 title 参数，让微信等分享目标显示"来自：ImagePilot"
             const result = await Share.share({
               urls: urls,
               title: t('app.name'),

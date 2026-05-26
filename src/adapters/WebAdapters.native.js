@@ -1053,7 +1053,7 @@ export const PermissionAdapter = {
             PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
             {
               title: '需要访问相册权限',
-              message: '芯图相册需要访问您的照片以进行智能分类',
+              message: 'ImagePilot需要访问您的照片以进行智能分类',
               buttonNeutral: '稍后询问',
               buttonNegative: '拒绝',
               buttonPositive: '允许',
@@ -1080,7 +1080,7 @@ export const PermissionAdapter = {
             PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
             {
               title: '需要访问存储权限',
-              message: '芯图相册需要访问存储以读取照片',
+              message: 'ImagePilot需要访问存储以读取照片',
               buttonNeutral: '稍后询问',
               buttonNegative: '拒绝',
               buttonPositive: '允许',
