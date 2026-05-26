@@ -180,6 +180,33 @@ export function createRNKeychainAdapter(Keychain) {
 }
 
 /**
+ * AsyncStorage 平台 adapter（React Native）—— 持久化，存于应用私有沙盒。
+ * 依赖：@react-native-async-storage/async-storage（本仓库已链接）。
+ *
+ * 说明：相比 react-native-keychain 的硬件加密，这里是「应用私有但明文」存储
+ * （/data/data/<pkg> 沙盒，其他应用无法读取，未 root 情况下安全）。选它是因为
+ * keychain 未做原生链接，而 AsyncStorage 已可用——优先保证「重启后 Key 不丢」。
+ * 如需硬件级加密，后续把 react-native-keychain 原生链接后改用 createRNKeychainAdapter。
+ *
+ * @param {object} AsyncStorage - @react-native-async-storage/async-storage 默认导出
+ */
+export function createAsyncStorageAdapter(AsyncStorage) {
+  const keyOf = (service, account) => `secure-key:${service}.${account}`;
+  return {
+    async get(service, account) {
+      const v = await AsyncStorage.getItem(keyOf(service, account));
+      return v == null ? null : v;
+    },
+    async set(service, account, value) {
+      await AsyncStorage.setItem(keyOf(service, account), value);
+    },
+    async remove(service, account) {
+      await AsyncStorage.removeItem(keyOf(service, account));
+    },
+  };
+}
+
+/**
  * 内存 Adapter（仅用于单元测试，绝不要在生产中使用）
  */
 export function createMemoryAdapter() {
