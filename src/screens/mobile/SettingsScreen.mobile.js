@@ -967,12 +967,17 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     <TouchableOpacity
       style={styles.actionButton}
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.6}
     >
-      <Text style={[styles.actionButtonText, danger && styles.dangerText]}>
-        {icon} {title}
-      </Text>
-      <Text style={styles.actionButtonDescription}>{description}</Text>
+      <View style={styles.actionButtonRow}>
+        <View style={styles.actionButtonMain}>
+          <Text style={[styles.actionButtonText, danger && styles.dangerText]}>
+            {icon} {title}
+          </Text>
+          <Text style={styles.actionButtonDescription}>{description}</Text>
+        </View>
+        {!danger ? <Text style={styles.actionChevron}>›</Text> : null}
+      </View>
     </TouchableOpacity>
   );
 
@@ -1632,27 +1637,37 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   
-  // 操作按钮
+  // 操作按钮（iOS 风格：纯白圆角单元格 + 右侧箭头）
   actionButton: {
-    margin: 16,
-    marginTop: 8,
-    marginBottom: 8,
-    padding: 16,
-    backgroundColor: '#F9F9F9',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
+    marginHorizontal: 16,
+    marginVertical: 5,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+  },
+  actionButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionButtonMain: {
+    flex: 1,
+  },
+  actionChevron: {
+    color: '#C4C4C6',
+    fontSize: 22,
+    marginLeft: 8,
   },
   actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#000000',
-    marginBottom: 4,
   },
   actionButtonDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#8E8E93',
-    marginTop: 4,
+    marginTop: 3,
+    lineHeight: 18,
   },
   dangerText: {
     color: '#FF3B30',
