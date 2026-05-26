@@ -12,8 +12,7 @@
  */
 
 import * as ortNS from 'onnxruntime-react-native';
-import Jimp from 'jimp';
-import { logger } from '../../adapters/WebAdapters';
+import Jimp from './jimpCustom.js'; // RN/Hermes 下可用、带 .read 的定制 Jimp（见该文件说明）
 
 // onnxruntime-react-native 在 CJS 下需经 default 取（与 ImageClassifierService 一致），
 // 命名导入 { InferenceSession, Tensor } 可能为 undefined → 调用报 "undefined is not a function"。
@@ -80,9 +79,7 @@ export function createSuperResRunner(cfg = {}) {
 
   async function getSession() {
     if (_session) return _session;
-    logger.error('[sr] ort 取得:', 'InferenceSession=' + typeof InferenceSession, 'Tensor=' + typeof Tensor, 'create=' + typeof (InferenceSession && InferenceSession.create), 'path=' + String(config.modelPath));
     _session = await InferenceSession.create(config.modelPath);
-    logger.error('[sr] session 创建完成', 'inputNames=' + JSON.stringify(_session.inputNames), 'outputNames=' + JSON.stringify(_session.outputNames), 'run=' + typeof _session.run);
     if (!_inputName && _session.inputNames && _session.inputNames.length) {
       _inputName = _session.inputNames[0];
     }
@@ -95,14 +92,18 @@ export function createSuperResRunner(cfg = {}) {
    * @param {(p:{done:number,total:number})=>void} [onProgress]
    */
   async function enhance(base64, onProgress) {
-    logger.error('[sr] enhance 开始');
+    // 出错时把所处阶段拼进错误消息（该机 logcat 限流，靠屏幕错误定位）。
+    let stage = 'init';
+    try {
+    stage = '创建会话';
     const session = await getSession();
     const outName = config.outputName || (session.outputNames && session.outputNames[0]);
-    logger.error('[sr] outName=', String(outName), 'inputName=', String(_inputName));
 
     const clean = base64.startsWith('data:') ? base64.split(',')[1] : base64;
-    const img = await Jimp.read(Buffer.from(clean, 'base64'));
-    logger.error('[sr] 解码完成', img.bitmap.width + 'x' + img.bitmap.height);
+    const buf = Buffer.from(clean, 'base64');
+    stage = '解码';
+    const img = await Jimp.read(buf);
+    stage = '解码完成 ' + img.bitmap.width + 'x' + img.bitmap.height;
     // 限尺寸控制耗时
     if (Math.max(img.bitmap.width, img.bitmap.height) > config.maxInputEdge) {
       img.scaleToFit(config.maxInputEdge, config.maxInputEdge);
@@ -126,10 +127,9 @@ export function createSuperResRunner(cfg = {}) {
         : extractTilePadded(rgba, W, H, t.x, t.y, Math.max(t.w, t.h));
       const inTile = config.fixedInput ? tile : Math.max(t.w, t.h);
       const chw = rgbaToCHW(tileRGBA, inTile, inTile);
-      if (done === 0) logger.error('[sr] 首块张量已建, 调 run...', 'Tensor=' + typeof Tensor);
+      stage = `推理块 ${done + 1}/${tiles.length}`;
       const input = new Tensor('float32', chw, [1, 3, inTile, inTile]);
       const result = await session.run({ [_inputName]: input });
-      if (done === 0) logger.error('[sr] 首块 run 完成', 'keys=' + JSON.stringify(Object.keys(result)));
       // 健壮取输出：优先配置名，其次模型首个输出名，再次结果里第一个
       const outT =
         result[outName] ||
@@ -149,15 +149,18 @@ export function createSuperResRunner(cfg = {}) {
       if (onProgress) onProgress({ done, total: tiles.length });
     }
 
-    logger.error('[sr] 全部分块完成，开始拼图', outW + 'x' + outH);
+    stage = '拼图 ' + outW + 'x' + outH;
     // 用 jimp 把输出 RGBA 包成图片 → base64
     const outImg = await new Promise((res, rej) =>
       new Jimp({ data: Buffer.from(outRGBA), width: outW, height: outH }, (e, im) => (e ? rej(e) : res(im))),
     );
-    logger.error('[sr] 拼图完成，转 base64');
+    stage = '转base64';
     const ret = await outImg.getBase64Async(Jimp.MIME_JPEG);
-    logger.error('[sr] 完成');
     return ret;
+    } catch (e) {
+      const m = e && e.message ? e.message : String(e);
+      throw new Error(`${m} @stage=[${stage}]`);
+    }
   }
 
   return { enhance, getSession };

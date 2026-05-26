@@ -6,7 +6,7 @@
  * 仅使用已实测可用的方法：greyscale/sepia/invert/blur/brightness/contrast。
  */
 
-import Jimp from 'jimp';
+import Jimp from './jimpCustom.js'; // RN/Hermes 下可用、带 .read 的定制 Jimp（见该文件说明）
 
 /** 滤镜注册表：id → { name, apply(jimpImage, intensity) } */
 export const JIMP_FILTERS = Object.freeze({

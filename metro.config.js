@@ -1,4 +1,9 @@
 const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
+const path = require('path');
+
+// @jimp/core 在 RN 下 require('fs')/require('path')（仅文件读写分支用到，我们不触发），
+// 用空模块兜底，避免 "Unable to resolve module fs/path"。
+const EMPTY_SHIM = path.resolve(__dirname, 'src/services/enhance/metro-shims/empty.js');
 
 /**
  * Metro configuration
@@ -17,6 +22,13 @@ const config = {
     blockList: [
       /backup_.*\/.*/, // 排除所有备份目录
     ],
+    // 见 EMPTY_SHIM 说明：把裸 fs/path 解析到空模块（仅 @jimp/core 用到且不触发）。
+    resolveRequest: (context, moduleName, platform) => {
+      if (moduleName === 'fs' || moduleName === 'path') {
+        return {type: 'sourceFile', filePath: EMPTY_SHIM};
+      }
+      return context.resolveRequest(context, moduleName, platform);
+    },
   },
   transformer: {
     getTransformOptions: async () => ({
