@@ -2030,7 +2030,7 @@ const CategoryScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#F2F2F7',
   },
   loadingContainer: {
     flex: 1,
@@ -2039,7 +2039,7 @@ const styles = StyleSheet.create({
   },
   header: {
     height: 56,
-    backgroundColor: '#1C1C1E',
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
@@ -2059,7 +2059,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#000000',
     textAlign: 'center',
   },
   headerRight: {
@@ -2069,13 +2069,13 @@ const styles = StyleSheet.create({
   // 选择栏
   selectionBar: {
     height: 44,
-    backgroundColor: '#1C1C1E',
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#3A3A3C',
+    borderBottomColor: '#C6C6C8',
   },
   selectionCancel: {
     fontSize: 16,
@@ -2083,7 +2083,7 @@ const styles = StyleSheet.create({
   },
   selectionCount: {
      fontSize: 16,
-    color: '#FFFFFF',
+    color: '#000000',
      fontWeight: '600',
   },
   selectionAll: {
@@ -2130,12 +2130,12 @@ const styles = StyleSheet.create({
   // 操作栏
   actionBar: {
     flexDirection: 'row',
-    backgroundColor: '#1C1C1E',
+    backgroundColor: '#FFFFFF',
     paddingVertical: 12,
     paddingHorizontal: 16,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: '#3A3A3C',
+    borderTopColor: '#C6C6C8',
   },
   actionButton: {
     flex: 1,
@@ -2159,10 +2159,10 @@ const styles = StyleSheet.create({
     left: 8,
     right: 8,
     bottom: 80, // 覆盖在底部操作按钮上方
-    backgroundColor: 'rgba(28,28,30,0.96)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#3A3A3C',
+    borderColor: '#C6C6C8',
     paddingHorizontal: 8,
     paddingVertical: 10,
     zIndex: 1000, // 确保在底部操作按钮上方
@@ -2178,11 +2178,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#2C2C2E',
+    borderBottomColor: '#E5E5EA',
   },
   enhanceTitle: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: '#000000',
     fontWeight: '600',
   },
   enhanceClose: {
@@ -2201,7 +2201,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2C2C2E',
+    borderBottomColor: '#E5E5EA',
   },
   enhancePresetIcon: {
     fontSize: 24,
@@ -2209,7 +2209,7 @@ const styles = StyleSheet.create({
   },
   enhancePresetName: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#000000',
     flex: 1,
   },
   presetInfo: {
@@ -2274,7 +2274,7 @@ const styles = StyleSheet.create({
   timelineDate: {
     fontSize: 15,
      fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#000000',
   },
   timelineCount: {
     fontSize: 13,
@@ -2372,7 +2372,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#1C1C1E',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '70%',
@@ -2380,12 +2380,12 @@ const styles = StyleSheet.create({
   modalHeader: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#3A3A3C',
+    borderBottomColor: '#C6C6C8',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#000000',
     marginBottom: 8,
   },
   modalSubtitle: {
@@ -2400,7 +2400,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2C2C2E',
+    borderBottomColor: '#E5E5EA',
   },
   categoryIcon: {
     fontSize: 24,
@@ -2408,14 +2408,14 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#000000',
     flex: 1,
   },
   modalCancelButton: {
     padding: 16,
      alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#3A3A3C',
+    borderTopColor: '#C6C6C8',
   },
   modalCancelText: {
     fontSize: 16,
@@ -2431,7 +2431,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   progressModalContent: {
-    backgroundColor: '#1C1C1E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 24,
     minWidth: 280,
@@ -2440,12 +2440,12 @@ const styles = StyleSheet.create({
   progressModalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#000000',
     marginBottom: 12,
   },
   progressModalText: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#000000',
     marginBottom: 8,
   },
   progressModalError: {
@@ -2456,7 +2456,7 @@ const styles = StyleSheet.create({
   progressBar: {
     width: '100%',
     height: 4,
-    backgroundColor: '#3A3A3C',
+    backgroundColor: '#C6C6C8',
     borderRadius: 2,
     overflow: 'hidden',
   },
