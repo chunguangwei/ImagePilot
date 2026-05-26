@@ -592,7 +592,7 @@
     "generateQrCode": "🔲 生成二维码",
     "qrCodeHint": "微信扫码关注\"ImagePilot\"，开通会员",
     "clearPhotoInfo": "清空照片信息",
-    "confirmClearPhotoInfo": "确定要清空所有照片的分类和位置信息吗？此操作不可撤销。",
+    "confirmClearPhotoInfo": "确定要清空所有照片的分类和位置信息吗？此操作不可撤销。\n\n注意：仅清除应用内的分类/位置信息，不会删除手机里的本地图片。",
     "confirmClear": "确定清空",
     "photoInfoCleared": "照片信息已清空！",
     "operationTip": "操作提示",
