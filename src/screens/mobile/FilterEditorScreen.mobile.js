@@ -12,8 +12,7 @@ import { RNFS, getLocalPath, ModelPathAdapter } from '../../adapters/WebAdapters
 import ImageProcessor from '../../services/ImageProcessor';
 import { JIMP_FILTERS, JIMP_FILTER_IDS, hasIntensity, applyJimpFilterToBase64 } from '../../services/enhance/jimpFilters.js';
 
-const SR_MODEL = 'real_esrgan_general_x4v3.onnx';
-const SR_DATA = 'real_esrgan_general_x4v3.data';
+const SR_MODEL = 'real_esrgan_x4v3_merged.onnx'; // 单文件（权重内嵌）；改名以绕过旧外部权重版的缓存
 
 const INTENSITY_LEVELS = [
   { label: '弱', value: 0.33 },
