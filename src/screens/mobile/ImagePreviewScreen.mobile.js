@@ -1961,23 +1961,27 @@ const styles = StyleSheet.create({
   actionsBar: {
     position: 'relative',
     flexDirection: 'row',
-    backgroundColor: 'rgba(28, 28, 30, 0.9)',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#C6C6C8',
+    paddingTop: 10,
+    paddingBottom: 16,
+    paddingHorizontal: 8,
     justifyContent: 'space-around',
   },
   actionButton: {
     flex: 1,
     alignItems: 'center',
-    padding: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
   },
   actionIcon: {
-    fontSize: 24,
-    marginBottom: 4,
+    fontSize: 23,
+    marginBottom: 3,
   },
   actionLabel: {
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: 11,
+    color: '#1C1C1E',
   },
   
   // Modal 样式
