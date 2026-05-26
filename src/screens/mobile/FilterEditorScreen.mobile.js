@@ -8,7 +8,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Alert, ActivityIndicator } from 'react-native';
-import { RNFS, getLocalPath, ModelPathAdapter, logger } from '../../adapters/WebAdapters';
+import { RNFS, getLocalPath, ModelPathAdapter } from '../../adapters/WebAdapters';
 import ImageProcessor from '../../services/ImageProcessor';
 import { JIMP_FILTERS, JIMP_FILTER_IDS, hasIntensity, applyJimpFilterToBase64 } from '../../services/enhance/jimpFilters.js';
 
@@ -30,6 +30,7 @@ export default function FilterEditorScreen({ route, navigation }) {
   const [error, setError] = useState(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiProgress, setAiProgress] = useState(0);
+  const [comparing, setComparing] = useState(false); // 按住对比原图时为 true
 
   const win = Dimensions.get('window');
   const size = Math.min(win.width, win.height - 220);
@@ -76,8 +77,11 @@ export default function FilterEditorScreen({ route, navigation }) {
 
   useEffect(() => { reprocess(filterId, intensity); }, [filterId, intensity, reprocess]);
 
-  // 有处理后的 data: 结果即可保存（滤镜或 AI 增强）
+  // 有处理后的 data: 结果即可保存（滤镜或 AI 增强）；也即可与原图对比
   const canSave = !!resultUri && String(resultUri).startsWith('data:');
+  const hasResult = canSave;
+  // 对比时显示原图，否则显示处理结果
+  const previewUri = comparing && hasResult ? imageUri : resultUri;
 
   const onSave = async () => {
     if (!canSave) return;
@@ -103,23 +107,17 @@ export default function FilterEditorScreen({ route, navigation }) {
     setAiProgress(0);
     setError(null);
     try {
-      logger.error('[ai] step1 ensureModelExists, ModelPathAdapter=', typeof ModelPathAdapter, 'ensureModelExists=', typeof ModelPathAdapter?.ensureModelExists);
       await ModelPathAdapter.ensureModelExists(SR_MODEL);
-      logger.error('[ai] step2 getModelPath=', typeof ModelPathAdapter?.getModelPath);
       const modelPath = ModelPathAdapter.getModelPath(SR_MODEL);
-      logger.error('[ai] step3 import runner, modelPath=', String(modelPath));
       const mod = await import('../../services/enhance/superResRunner.js');
-      logger.error('[ai] step4 模块 keys=', JSON.stringify(Object.keys(mod)), 'createSuperResRunner=', typeof mod.createSuperResRunner);
       const createSuperResRunner = mod.createSuperResRunner || mod.default;
       const runner = createSuperResRunner({ modelPath });
-      logger.error('[ai] step5 runner=', typeof runner, 'enhance=', typeof runner?.enhance);
       const out = await runner.enhance(srcBase64, ({ done, total }) =>
         setAiProgress(Math.round((done / total) * 100)),
       );
       setResultUri(out);
       setFilterId('none');
     } catch (e) {
-      logger.error('[AI增强] 失败:', e?.message || String(e), e?.stack || '');
       setError('AI 增强失败：' + (e?.message || String(e)));
     } finally {
       setAiBusy(false);
@@ -143,7 +141,23 @@ export default function FilterEditorScreen({ route, navigation }) {
           <Text style={styles.err}>{error}</Text>
         ) : (
           <>
-            <Image source={{ uri: resultUri }} style={{ width: size, height: size, resizeMode: 'contain' }} />
+            <Image source={{ uri: previewUri }} style={{ width: size, height: size, resizeMode: 'contain' }} />
+            {/* 角标：当前在看原图还是效果 */}
+            {hasResult && !busy && !aiBusy && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{comparing ? '原图' : '效果'}</Text>
+              </View>
+            )}
+            {/* 按住对比原图 */}
+            {hasResult && !busy && !aiBusy && (
+              <TouchableOpacity
+                style={[styles.compareBtn, comparing && styles.compareBtnActive]}
+                activeOpacity={1}
+                onPressIn={() => setComparing(true)}
+                onPressOut={() => setComparing(false)}>
+                <Text style={styles.compareBtnText}>👁 按住看原图</Text>
+              </TouchableOpacity>
+            )}
             {(busy || aiBusy) && (
               <View style={styles.overlay}>
                 <ActivityIndicator color="#fff" />
@@ -215,4 +229,9 @@ const styles = StyleSheet.create({
   aiBtn: { marginHorizontal: 14, marginVertical: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: '#6C2BD9', alignItems: 'center' },
   disabledBtn: { opacity: 0.5 },
   aiBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  badge: { position: 'absolute', top: 10, left: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.55)' },
+  badgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  compareBtn: { position: 'absolute', bottom: 12, alignSelf: 'center', paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' },
+  compareBtnActive: { backgroundColor: 'rgba(108,43,217,0.85)' },
+  compareBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });
