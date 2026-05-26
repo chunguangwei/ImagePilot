@@ -592,7 +592,7 @@
     "generateQrCode": "🔲 Generate QR Code",
     "qrCodeHint": "Scan QR code with WeChat to follow \"ImagePilot\" and activate membership",
     "clearPhotoInfo": "Clear Photo Info",
-    "confirmClearPhotoInfo": "Are you sure you want to clear all photo classification and location information? This operation cannot be undone.",
+    "confirmClearPhotoInfo": "Are you sure you want to clear all photo classification and location information? This operation cannot be undone.\n\nNote: This only clears the classification/location info inside the app — it will NOT delete the local photos on your phone.",
     "confirmClear": "Confirm Clear",
     "photoInfoCleared": "Photo information cleared!",
     "operationTip": "Operation Tip",
