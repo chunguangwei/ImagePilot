@@ -68,6 +68,15 @@ import { ModelPathAdapter } from './adapters/WebAdapters';
 console.log('📦 App.js: 创建 Navigator...');
 const Stack = createStackNavigator();
 console.log('📦 App.js: Stack Navigator 创建成功');
+// iOS 风格 tab 图标用 Ionicons（字体已打包在 res/font）；web/异常时回退 emoji。
+let Ionicons = null;
+try { Ionicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { Ionicons = null; }
+const TAB_ICONS = {
+  Home: { on: 'home', off: 'home-outline', emoji: '🏠' },
+  StagingBox: { on: 'file-tray-full', off: 'file-tray-full-outline', emoji: '📦' },
+  Settings: { on: 'settings', off: 'settings-outline', emoji: '⚙️' },
+};
+
 const Tab = createBottomTabNavigator();
 console.log('📦 App.js: Tab Navigator 创建成功');
 
@@ -78,64 +87,56 @@ const MainTabNavigator = ({ stagingBoxCount }) => {
   return (
   <Tab.Navigator
     screenOptions={({ route }) => ({
-      tabBarIcon: ({ focused, color, size }) => {
-        let iconName;
+      tabBarIcon: ({ focused, color }) => {
+        const cfg = TAB_ICONS[route.name] || {};
+        // iOS 风格：选中填充、未选中描边，单色随 color 着色；无 Ionicons 时回退 emoji
+        const iconNode = Ionicons
+          ? <Ionicons name={focused ? cfg.on : cfg.off} size={26} color={color} />
+          : <Text style={{ fontSize: 24, color }}>{cfg.emoji}</Text>;
 
-        if (route.name === 'Home') {
-          iconName = '🏠';
-        } else if (route.name === 'StagingBox') {
-          iconName = '📦';
-        } else if (route.name === 'Settings') {
-          iconName = '⚙️';
-        }
-
-        // 如果是暂存箱且有数量，显示带 badge 的图标
+        // 暂存箱有数量时叠加红点徽标
         if (route.name === 'StagingBox' && stagingBoxCount > 0) {
           return (
             <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 24, color: color }}>{iconName}</Text>
+              {iconNode}
               <View style={{
                 position: 'absolute',
-                top: -4,
-                right: -8,
+                top: -5,
+                right: -10,
                 backgroundColor: '#FF3B30',
                 borderRadius: 10,
-                minWidth: 20,
-                height: 20,
-                paddingHorizontal: 6,
+                minWidth: 18,
+                height: 18,
+                paddingHorizontal: 5,
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderWidth: 2,
                 borderColor: '#FFFFFF',
               }}>
-                <Text style={{
-                  color: '#FFFFFF',
-                  fontSize: 11,
-                  fontWeight: 'bold',
-                }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>
                   {stagingBoxCount > 99 ? '99+' : stagingBoxCount}
                 </Text>
               </View>
             </View>
           );
         }
-
-        return <Text style={{ fontSize: 24, color: color }}>{iconName}</Text>;
+        return iconNode;
       },
       tabBarActiveTintColor: '#007AFF',
       tabBarInactiveTintColor: '#8E8E93',
       tabBarStyle: {
         backgroundColor: '#FFFFFF',
-        borderTopWidth: 1,
-        borderTopColor: '#E5E5EA',
-        height: 60,
-        paddingBottom: 8,
-        paddingTop: 8,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: '#C6C6C8',
+        height: 58,
+        paddingBottom: 6,
+        paddingTop: 6,
       },
       tabBarShowLabel: true,
       tabBarLabelStyle: {
-        fontSize: 12,
-        marginTop: -4,
+        fontSize: 11,
+        fontWeight: '500',
+        marginTop: 0,
       },
       headerShown: false,
     })}
