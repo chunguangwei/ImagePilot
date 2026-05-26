@@ -27,6 +27,7 @@ import UnifiedDataService from '../../services/UnifiedDataService';
 import GalleryScannerService from '../../services/GalleryScannerService';
 import ImageStorageService from '../../services/ImageStorageService';
 import WeChatAuthService from '../../services/WeChatAuthService';
+import * as UpdateService from '../../services/UpdateService';
 import DirectoryPicker from '../../components/DirectoryPicker.mobile';
 import { logger } from '../../adapters/WebAdapters';
 import { BUILD_DATE, BUILD_VERSION, BUILD_VERSION_CODE } from '../../config/BuildInfo';
@@ -885,6 +886,38 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   // ==================== 分类操作 ====================
 
   /**
+   * 检查更新（手动）：查 GitHub Releases，有新版引导下载
+   */
+  const handleCheckUpdate = async () => {
+    try {
+      const info = await UpdateService.checkForUpdate();
+      if (info.hasUpdate) {
+        const notes = info.notes ? `\n\n${String(info.notes).slice(0, 280)}` : '';
+        Alert.alert(
+          t('settings.updateFoundTitle', { version: info.latestVersion }),
+          t('settings.updateFoundMessage', { version: info.latestVersion }) + notes,
+          [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('settings.updateNow'), style: 'default', onPress: () => UpdateService.openDownload(info) },
+          ],
+        );
+      } else {
+        Alert.alert(t('settings.alreadyLatest'), t('settings.currentVersionTip', { version: info.currentVersion }));
+      }
+    } catch (e) {
+      // API 不可达（如网络/限流）→ 兜底：引导去 GitHub 发布页手动查看下载
+      Alert.alert(
+        t('settings.checkUpdateFailed'),
+        t('settings.checkUpdateFailedMessage', { error: e?.message || String(e) }),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('settings.openReleasesPage'), style: 'default', onPress: () => UpdateService.openReleasesPage() },
+        ],
+      );
+    }
+  };
+
+  /**
    * 清空相册信息
    */
   const handleClearData = () => {
@@ -1062,6 +1095,15 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             '自定义分类',
             '定义你自己的分类规则，云端大模型按规则把图片归入',
             () => navigation.navigate('CustomCategories'),
+            false
+          )}
+
+          {/* 🆕 检查更新：从 GitHub Releases 升级到客户端 */}
+          {renderActionButton(
+            '🔄',
+            t('settings.checkUpdate'),
+            t('settings.checkUpdateDesc', { version: UpdateService.CURRENT_VERSION }),
+            handleCheckUpdate,
             false
           )}
 

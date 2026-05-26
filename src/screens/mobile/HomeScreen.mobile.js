@@ -35,6 +35,7 @@ import configService from '../../services/ConfigService';
 import aiProviderConfigService from '../../services/llm/adapters/UnifiedDataConfigService';
 import GalleryScannerService from '../../services/GalleryScannerService';
 import WakeLockService from '../../services/WakeLockService';
+import * as UpdateService from '../../services/UpdateService';
 import cityLocationService from '../../services/CityLocationService';
 import { logger, getUri, getLocalPath } from '../../adapters/WebAdapters';
 import { getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
@@ -105,6 +106,9 @@ const TimeCard = ({ timeKey, label, count, recentImages, onPress }) => {
   );
 };
 
+// 每个 app 会话只在启动时静默检查一次更新（避免重复弹窗）
+let _launchUpdateChecked = false;
+
 const HomeScreen = ({ navigation }) => {
   const { t, i18n } = useTranslation('common');
   
@@ -169,7 +173,26 @@ const HomeScreen = ({ navigation }) => {
     
     // 调试：检查当前权限状态
     checkCurrentPermissionStatus();
-    
+
+    // 启动时静默检查 GitHub 更新（每会话一次；失败不打扰，有新版才弹一次）
+    if (!_launchUpdateChecked) {
+      _launchUpdateChecked = true;
+      UpdateService.checkForUpdate()
+        .then((info) => {
+          if (info && info.hasUpdate) {
+            Alert.alert(
+              t('settings.updateFoundTitle', { version: info.latestVersion }),
+              t('settings.updateFoundMessage', { version: info.latestVersion }),
+              [
+                { text: t('common.cancel'), style: 'cancel' },
+                { text: t('settings.updateNow'), style: 'default', onPress: () => UpdateService.openDownload(info) },
+              ],
+            );
+          }
+        })
+        .catch(() => {});
+    }
+
     // 监听语言变化，重新加载分类数据（城市名称由 CityCard 根据 i18n.language 自行获取）
     const handleLanguageChange = () => {
       logger.debug('🌐 语言已切换，重新加载分类数据...');
