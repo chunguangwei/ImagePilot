@@ -44,6 +44,7 @@ import { makeAIModelConfigDeps } from './ui/config/aiModelConfigDeps.js';
 // 🆕 滤镜修图屏（jimp 纯 JS）：懒加载，仅在进入该屏时才加载 jimp
 const FilterEditorScreen = React.lazy(() => import('./screens/mobile/FilterEditorScreen.mobile'));
 const InpaintScreen = React.lazy(() => import('./screens/mobile/InpaintScreen.mobile'));
+const DocScanScreen = React.lazy(() => import('./screens/mobile/DocScanScreen.mobile'));
 
 // 滤镜屏错误边界：万一加载/处理出错，只在该屏显示提示，不崩 App
 class FilterErrorBoundary extends React.Component {
@@ -435,6 +436,15 @@ export default function App() {
               <FilterErrorBoundary>
                 <Suspense fallback={<View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: '#fff' }}>加载消除…</Text></View>}>
                   <InpaintScreen {...props} />
+                </Suspense>
+              </FilterErrorBoundary>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="DocScan">
+            {(props) => (
+              <FilterErrorBoundary>
+                <Suspense fallback={<View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: '#fff' }}>加载证件矫正…</Text></View>}>
+                  <DocScanScreen {...props} />
                 </Suspense>
               </FilterErrorBoundary>
             )}

@@ -983,14 +983,16 @@ const ImagePreviewScreen = ({ route, navigation }) => {
       closeEnhanceModal();
       const preset = enhancePresets?.[presetId];
       const presetName = preset?.name || presetId;
-      // 物体消除需先涂抹 → 走独立界面，不进 EnhanceResult 自动流程
-      if (preset?.screen === 'Inpaint') {
+      // 需交互的本地能力走独立界面，不进 EnhanceResult 自动流程：
+      //  - 物体消除(inpaint)：先涂抹蒙版；证件处理(document)：调四角做透视矫正
+      const interactiveScreen = preset?.screen || (presetId === 'document' ? 'DocScan' : null);
+      if (interactiveScreen) {
         const uri = resolveImageUri(currentImage);
         if (!currentImage || !currentImage.id || !uri) {
           Alert.alert(t('common.error'), t('imagePreview.imageInfoIncomplete'));
           return;
         }
-        navigation.navigate('Inpaint', { imageUri: uri });
+        navigation.navigate(interactiveScreen, { imageUri: uri });
         return;
       }
       await performEnhance(presetId, presetName);
