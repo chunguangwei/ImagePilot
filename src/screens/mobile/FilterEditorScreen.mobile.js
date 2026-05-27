@@ -110,8 +110,10 @@ export default function FilterEditorScreen({ route, navigation }) {
     setAiProgress(0);
     setError(null);
     try {
-      await ModelPathAdapter.ensureModelExists(SR_MODEL);
-      const modelPath = ModelPathAdapter.getModelPath(SR_MODEL);
+      // 选超分模型(小/大/自定义)并按需下载（APK 不再打包）
+      const { ensureModel, resolveSuperRes } = await import('../../services/enhance/modelSource');
+      const { filename, url } = await resolveSuperRes();
+      const modelPath = await ensureModel(filename, url, (p) => setAiProgress(Math.round(p * 100)));
       const mod = await import('../../services/enhance/superResRunner.js');
       const createSuperResRunner = mod.createSuperResRunner || mod.default;
       const runner = createSuperResRunner({ modelPath });
