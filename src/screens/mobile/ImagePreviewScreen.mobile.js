@@ -17,6 +17,7 @@ import {
   Image,
   StyleSheet,
   Dimensions,
+  useWindowDimensions,
   FlatList,
   ScrollView,
   Modal,
@@ -50,7 +51,9 @@ const getTouchDistance = (touches) => {
 
 const ImagePreviewScreen = ({ route, navigation }) => {
   const { t, i18n } = useTranslation('common');
-  
+  // 实时视口宽度（折叠屏/旋转/分屏会变，不能用模块级静态 SCREEN_WIDTH，否则分页宽度与屏幕不符→图片只显示一半/不居中）
+  const { width: viewportW } = useWindowDimensions();
+
   // ==================== 路由参数 ====================
   // 统一使用 filterType 和 filterValue
   const {
@@ -1733,18 +1736,19 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         <FlatList
           ref={flatListRef}
           data={allImagesState}
+          extraData={viewportW}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item, index) => item.id || `image-${index}`}
           getItemLayout={(data, index) => ({
-            length: SCREEN_WIDTH,
-            offset: SCREEN_WIDTH * index,
+            length: viewportW,
+            offset: viewportW * index,
             index,
           })}
           onMomentumScrollEnd={(e) => {
             const offsetX = e.nativeEvent.contentOffset.x;
-            const index = Math.round(offsetX / SCREEN_WIDTH);
+            const index = Math.round(offsetX / viewportW);
             if (index !== currentImageIndex) {
               setCurrentImageIndex(index);
             }
@@ -1754,15 +1758,15 @@ const ImagePreviewScreen = ({ route, navigation }) => {
             const isCurrentPage = index === currentImageIndex;
             const showZoomable = isCurrentPage && !!itemUri;
             return (
-              <View style={styles.imagePage}>
-                <View style={styles.imagePageClip}>
+              <View style={[styles.imagePage, { width: viewportW }]}>
+                <View style={[styles.imagePageClip, { width: viewportW }]}>
                 {itemUri ? (
                   showZoomable ? (
-                    <View style={styles.imageWrap} {...panResponder.panHandlers}>
-                      <Animated.View style={[styles.imageWrap, zoomableStyle]}>
+                    <View style={[styles.imageWrap, { width: viewportW }]} {...panResponder.panHandlers}>
+                      <Animated.View style={[styles.imageWrap, { width: viewportW }, zoomableStyle]}>
                         <Image
                           source={{ uri: itemUri }}
-                          style={styles.image}
+                          style={[styles.image, { width: viewportW }]}
                           resizeMode="contain"
                           onError={(e) => {
                             logger.error(`❌ 图片[${index}]加载失败: ${e.nativeEvent.error}`);
@@ -1773,7 +1777,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   ) : (
                     <Image
                       source={{ uri: itemUri }}
-                      style={styles.image}
+                      style={[styles.image, { width: viewportW }]}
                       resizeMode="contain"
                       onError={(e) => {
                         logger.error(`❌ 图片[${index}]加载失败: ${e.nativeEvent.error}`);
@@ -1781,7 +1785,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                     />
                   )
                 ) : (
-                  <View style={[styles.image, styles.imagePlaceholder]}>
+                  <View style={[styles.image, styles.imagePlaceholder, { width: viewportW }]}>
                     <Text style={styles.placeholderText}>{t('imagePreview.imageNotFound')}</Text>
                   </View>
                 )}
