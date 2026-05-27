@@ -980,6 +980,16 @@ const ImagePreviewScreen = ({ route, navigation }) => {
       closeEnhanceModal();
       const preset = enhancePresets?.[presetId];
       const presetName = preset?.name || presetId;
+      // 物体消除需先涂抹 → 走独立界面，不进 EnhanceResult 自动流程
+      if (preset?.screen === 'Inpaint') {
+        const uri = resolveImageUri(currentImage);
+        if (!currentImage || !currentImage.id || !uri) {
+          Alert.alert(t('common.error'), t('imagePreview.imageInfoIncomplete'));
+          return;
+        }
+        navigation.navigate('Inpaint', { imageUri: uri });
+        return;
+      }
       await performEnhance(presetId, presetName);
     } catch (error) {
       logger.error('增强检查失败:', error);
@@ -2018,18 +2028,19 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
   },
   categoryList: {
-    maxHeight: 560,
+    flexShrink: 1, // 在 modal 高度内自适应并可滚动，保证"取消"始终在列表下方不重叠
   },
   categoryItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E5E5EA',
   },
   categoryIcon: {
-    fontSize: 24,
-    marginRight: 12,
+    fontSize: 22,
+    marginRight: 10,
   },
   categoryName: {
     fontSize: 16,

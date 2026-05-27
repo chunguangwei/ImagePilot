@@ -479,7 +479,8 @@
     "localFile": "本地文件",
     "noPreviewAvailable": "无预览可用",
     "localPresets": {
-      "cutout": "背景移除"
+      "cutout": "背景移除",
+      "inpaint": "物体消除"
     }
   },
   "enhanceResult": {

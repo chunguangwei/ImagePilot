@@ -479,7 +479,8 @@
     "localFile": "Local file",
     "noPreviewAvailable": "No preview available",
     "localPresets": {
-      "cutout": "Remove BG"
+      "cutout": "Remove BG",
+      "inpaint": "Erase"
     }
   },
   "enhanceResult": {

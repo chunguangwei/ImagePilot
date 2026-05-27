@@ -14,6 +14,7 @@ import ImageProcessor from '../ImageProcessor';
 // 单文件 Real-ESRGAN x4（权重内嵌）；与 FilterEditor 的 AI 增强同一模型。
 const SR_MODEL = 'real_esrgan_x4v3_merged.onnx';
 const MATTING_MODEL = 'u2netp.onnx'; // 轻量抠图（显著性分割），打包在 public/models
+const INPAINT_MODEL = 'migan_pipeline_v2.onnx'; // MI-GAN 物体消除（自带预/后处理），打包在 public/models
 
 // 预设 id → 本地处理器标识。未列出者 isLocalPreset=false，调用方回退云端/占位。
 const LOCAL_PRESET_HANDLERS = Object.freeze({
@@ -28,6 +29,8 @@ const LOCAL_PRESET_HANDLERS = Object.freeze({
  */
 export const LOCAL_EXTRA_PRESETS = Object.freeze({
   cutout: { icon: '✂️', prompt: '', enabled: true, sortOrder: 10 },
+  // 物体消除走独立涂抹界面（screen 字段告诉调用方导航到该屏，而非 EnhanceResult）
+  inpaint: { icon: '🩹', prompt: '', enabled: true, sortOrder: 11, screen: 'Inpaint' },
 });
 
 /** 该预设是否已支持本地（离线）处理 */
@@ -90,6 +93,25 @@ async function runBeauty(imageUri, onProgress) {
   if (onProgress) onProgress({ done: 1, total: 1 });
   logger.debug('🟦 本地美颜完成', { imageUri });
   return out;
+}
+
+/**
+ * 物体消除/inpaint（MI-GAN）：与上面预设流程不同——需要调用方先在图上涂抹得到 mask，
+ * 故单独导出，由 InpaintScreen 直接调用。maskSpec 见 inpaintRunner.inpaint。
+ * @param {string} imageUri
+ * @param {object} maskSpec { strokes, displayW, displayH, brushRadius }
+ * @param {(p:{done:number,total:number})=>void} [onProgress]
+ * @returns {Promise<string>} data URL（image/jpeg）
+ */
+export async function inpaintLocally(imageUri, maskSpec, onProgress) {
+  const base64 = await readResizedBase64(imageUri, 1024);
+  await ModelPathAdapter.ensureModelExists(INPAINT_MODEL);
+  const modelPath = ModelPathAdapter.getModelPath(INPAINT_MODEL);
+  const mod = await import('./inpaintRunner.js');
+  const createInpaintRunner = mod.createInpaintRunner || mod.default;
+  const runner = createInpaintRunner({ modelPath });
+  logger.debug('🟦 本地物体消除开始', { imageUri });
+  return runner.inpaint(base64, maskSpec, onProgress);
 }
 
 /** U2Net 抠图：读 base64→分割→前景合成纯色底→data URL */
