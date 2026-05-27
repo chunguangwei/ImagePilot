@@ -138,8 +138,29 @@
     "cannotCheckCredits": "Cannot check usage credits, please try again",
     "processFailed": "Processing failed: {{error}}",
     "allImagesFailed": "All images failed to process, please retry",
-    "monthNames": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-    "weekdayNames": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    "monthNames": [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ],
+    "weekdayNames": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ],
     "dateFormat": "{{month}} {{day}}, {{year}} {{weekday}}",
     "tip": "Tip",
     "operation": "Operation",
@@ -456,7 +477,10 @@
     "unknownSource": "Unknown",
     "imagePreviewPlaceholder": "Image Preview",
     "localFile": "Local file",
-    "noPreviewAvailable": "No preview available"
+    "noPreviewAvailable": "No preview available",
+    "localPresets": {
+      "cutout": "Remove BG"
+    }
   },
   "enhanceResult": {
     "defaultPresetName": "Photo Enhancement",

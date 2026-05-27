@@ -13,10 +13,20 @@ import ImageProcessor from '../ImageProcessor';
 
 // 单文件 Real-ESRGAN x4（权重内嵌）；与 FilterEditor 的 AI 增强同一模型。
 const SR_MODEL = 'real_esrgan_x4v3_merged.onnx';
+const MATTING_MODEL = 'u2netp.onnx'; // 轻量抠图（显著性分割），打包在 public/models
 
 // 预设 id → 本地处理器标识。未列出者 isLocalPreset=false，调用方回退云端/占位。
 const LOCAL_PRESET_HANDLERS = Object.freeze({
   enhance: 'superres', // 清晰增强 → 超分修复
+  cutout: 'matting',   // 背景移除/抠图 → U2Net 显著性分割
+});
+
+/**
+ * 注入到「AI 修图」菜单的本地能力预设（不依赖云端、不写入 settings）。
+ * 调用方（ImagePreview）加载预设后合并这些，name 用 i18n 覆盖。
+ */
+export const LOCAL_EXTRA_PRESETS = Object.freeze({
+  cutout: { icon: '✂️', prompt: '', enabled: true, sortOrder: 10 },
 });
 
 /** 该预设是否已支持本地（离线）处理 */
@@ -35,23 +45,30 @@ export function isLocalPreset(presetId) {
 export async function enhanceImageLocally(imageUri, presetId, onProgress) {
   const handler = LOCAL_PRESET_HANDLERS[presetId];
   if (handler === 'superres') return runSuperRes(imageUri, onProgress);
+  if (handler === 'matting') return runMatting(imageUri, onProgress);
   throw new Error('该预设暂不支持本地处理');
 }
 
-/** Real-ESRGAN 超分：预处理→读 base64→分块推理→data URL */
-async function runSuperRes(imageUri, onProgress) {
-  // content:// / 组合路径不可靠，先用 ImageProcessor 产出干净 file:// 再读字节
-  // （与 FilterEditorScreen 的读图方式一致，避免 getLocalPath 给出无效路径）。
-  const resized = await ImageProcessor.resizeImage(imageUri, 1024, 1024, {
+/**
+ * 读图为干净 file:// 后取 base64（限长边）。content:// / 组合路径不可靠，
+ * 统一用 ImageProcessor 产出干净 file:// 再读（与 FilterEditorScreen 一致，
+ * 避免 getLocalPath 给出无效路径）。
+ */
+async function readResizedBase64(imageUri, maxEdge) {
+  const resized = await ImageProcessor.resizeImage(imageUri, maxEdge, maxEdge, {
     maintainAspectRatio: true,
     outputFormat: 'jpeg',
-    quality: 90,
+    quality: 92,
   });
   const uri = resized?.uri;
   if (!uri) throw new Error('图片预处理失败');
   const path = uri.startsWith('file://') ? uri.replace(/^file:\/\//, '') : uri;
-  const base64 = await RNFS.readFile(path, 'base64');
+  return RNFS.readFile(path, 'base64');
+}
 
+/** Real-ESRGAN 超分：读 base64→分块推理→data URL */
+async function runSuperRes(imageUri, onProgress) {
+  const base64 = await readResizedBase64(imageUri, 1024);
   await ModelPathAdapter.ensureModelExists(SR_MODEL);
   const modelPath = ModelPathAdapter.getModelPath(SR_MODEL);
   // 懒加载推理引擎（仅在实际增强时才载入 onnxruntime/jimp）
@@ -62,4 +79,16 @@ async function runSuperRes(imageUri, onProgress) {
   return runner.enhance(base64, onProgress); // data URL（image/jpeg）
 }
 
-export default { isLocalPreset, enhanceImageLocally };
+/** U2Net 抠图：读 base64→分割→前景合成纯色底→data URL */
+async function runMatting(imageUri, onProgress) {
+  const base64 = await readResizedBase64(imageUri, 1280);
+  await ModelPathAdapter.ensureModelExists(MATTING_MODEL);
+  const modelPath = ModelPathAdapter.getModelPath(MATTING_MODEL);
+  const mod = await import('./mattingRunner.js');
+  const createMattingRunner = mod.createMattingRunner || mod.default;
+  const runner = createMattingRunner({ modelPath });
+  logger.debug('🟦 本地抠图开始', { imageUri });
+  return runner.cutout(base64, onProgress); // data URL（image/jpeg）
+}
+
+export default { isLocalPreset, enhanceImageLocally, LOCAL_EXTRA_PRESETS };

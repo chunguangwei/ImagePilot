@@ -138,8 +138,29 @@
     "cannotCheckCredits": "无法检查使用额度，请重试",
     "processFailed": "处理失败: {{error}}",
     "allImagesFailed": "所有图片处理失败，请重试",
-    "monthNames": ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"],
-    "weekdayNames": ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"],
+    "monthNames": [
+      "一月",
+      "二月",
+      "三月",
+      "四月",
+      "五月",
+      "六月",
+      "七月",
+      "八月",
+      "九月",
+      "十月",
+      "十一月",
+      "十二月"
+    ],
+    "weekdayNames": [
+      "星期日",
+      "星期一",
+      "星期二",
+      "星期三",
+      "星期四",
+      "星期五",
+      "星期六"
+    ],
     "dateFormat": "{{year}}年{{month}}月{{day}}日 {{weekday}}",
     "tip": "提示",
     "operation": "操作",
@@ -456,7 +477,10 @@
     "unknownSource": "未知",
     "imagePreviewPlaceholder": "图片预览",
     "localFile": "本地文件",
-    "noPreviewAvailable": "无预览可用"
+    "noPreviewAvailable": "无预览可用",
+    "localPresets": {
+      "cutout": "背景移除"
+    }
   },
   "enhanceResult": {
     "defaultPresetName": "照片创玩",

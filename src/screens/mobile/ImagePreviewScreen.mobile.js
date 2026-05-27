@@ -27,6 +27,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { getDefaultPresets, getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
+import { LOCAL_EXTRA_PRESETS } from '../../services/enhance/localEnhance';
 import { SafeAreaView, Alert } from '../../adapters/WebAdapters';
 import Toast from '../../components/shared/Toast';
 import UnifiedDataService from '../../services/UnifiedDataService';
@@ -950,6 +951,11 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         };
       });
       
+      // 注入本地能力预设（离线、不依赖云端，不写入 settings）：背景移除/抠图等
+      Object.entries(LOCAL_EXTRA_PRESETS).forEach(([id, meta]) => {
+        processedPresets[id] = { ...meta, name: t(`imagePreview.localPresets.${id}`) };
+      });
+
       setEnhancePresets(processedPresets);
       setShowEnhancePresets(true);
     } catch (error) {
@@ -1994,7 +2000,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '70%',
+    maxHeight: '85%',
   },
   modalHeader: {
     padding: 20,
@@ -2012,7 +2018,7 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
   },
   categoryList: {
-    maxHeight: 400,
+    maxHeight: 560,
   },
   categoryItem: {
     flexDirection: 'row',
