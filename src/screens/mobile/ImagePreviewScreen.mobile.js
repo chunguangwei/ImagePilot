@@ -17,6 +17,7 @@ import {
   Image,
   StyleSheet,
   Dimensions,
+  useWindowDimensions,
   FlatList,
   ScrollView,
   Modal,
@@ -27,6 +28,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { getDefaultPresets, getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
+import { LOCAL_EXTRA_PRESETS } from '../../services/enhance/localEnhance';
 import { SafeAreaView, Alert } from '../../adapters/WebAdapters';
 import Toast from '../../components/shared/Toast';
 import UnifiedDataService from '../../services/UnifiedDataService';
@@ -49,7 +51,9 @@ const getTouchDistance = (touches) => {
 
 const ImagePreviewScreen = ({ route, navigation }) => {
   const { t, i18n } = useTranslation('common');
-  
+  // 实时视口宽度（折叠屏/旋转/分屏会变，不能用模块级静态 SCREEN_WIDTH，否则分页宽度与屏幕不符→图片只显示一半/不居中）
+  const { width: viewportW } = useWindowDimensions();
+
   // ==================== 路由参数 ====================
   // 统一使用 filterType 和 filterValue
   const {
@@ -950,6 +954,11 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         };
       });
       
+      // 注入本地能力预设（离线、不依赖云端，不写入 settings）：背景移除/抠图等
+      Object.entries(LOCAL_EXTRA_PRESETS).forEach(([id, meta]) => {
+        processedPresets[id] = { ...meta, name: t(`imagePreview.localPresets.${id}`) };
+      });
+
       setEnhancePresets(processedPresets);
       setShowEnhancePresets(true);
     } catch (error) {
@@ -974,6 +983,16 @@ const ImagePreviewScreen = ({ route, navigation }) => {
       closeEnhanceModal();
       const preset = enhancePresets?.[presetId];
       const presetName = preset?.name || presetId;
+      // 物体消除需先涂抹 → 走独立界面，不进 EnhanceResult 自动流程
+      if (preset?.screen === 'Inpaint') {
+        const uri = resolveImageUri(currentImage);
+        if (!currentImage || !currentImage.id || !uri) {
+          Alert.alert(t('common.error'), t('imagePreview.imageInfoIncomplete'));
+          return;
+        }
+        navigation.navigate('Inpaint', { imageUri: uri });
+        return;
+      }
       await performEnhance(presetId, presetName);
     } catch (error) {
       logger.error('增强检查失败:', error);
@@ -1717,18 +1736,19 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         <FlatList
           ref={flatListRef}
           data={allImagesState}
+          extraData={viewportW}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item, index) => item.id || `image-${index}`}
           getItemLayout={(data, index) => ({
-            length: SCREEN_WIDTH,
-            offset: SCREEN_WIDTH * index,
+            length: viewportW,
+            offset: viewportW * index,
             index,
           })}
           onMomentumScrollEnd={(e) => {
             const offsetX = e.nativeEvent.contentOffset.x;
-            const index = Math.round(offsetX / SCREEN_WIDTH);
+            const index = Math.round(offsetX / viewportW);
             if (index !== currentImageIndex) {
               setCurrentImageIndex(index);
             }
@@ -1738,15 +1758,15 @@ const ImagePreviewScreen = ({ route, navigation }) => {
             const isCurrentPage = index === currentImageIndex;
             const showZoomable = isCurrentPage && !!itemUri;
             return (
-              <View style={styles.imagePage}>
-                <View style={styles.imagePageClip}>
+              <View style={[styles.imagePage, { width: viewportW }]}>
+                <View style={[styles.imagePageClip, { width: viewportW }]}>
                 {itemUri ? (
                   showZoomable ? (
-                    <View style={styles.imageWrap} {...panResponder.panHandlers}>
-                      <Animated.View style={[styles.imageWrap, zoomableStyle]}>
+                    <View style={[styles.imageWrap, { width: viewportW }]} {...panResponder.panHandlers}>
+                      <Animated.View style={[styles.imageWrap, { width: viewportW }, zoomableStyle]}>
                         <Image
                           source={{ uri: itemUri }}
-                          style={styles.image}
+                          style={[styles.image, { width: viewportW }]}
                           resizeMode="contain"
                           onError={(e) => {
                             logger.error(`❌ 图片[${index}]加载失败: ${e.nativeEvent.error}`);
@@ -1757,7 +1777,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   ) : (
                     <Image
                       source={{ uri: itemUri }}
-                      style={styles.image}
+                      style={[styles.image, { width: viewportW }]}
                       resizeMode="contain"
                       onError={(e) => {
                         logger.error(`❌ 图片[${index}]加载失败: ${e.nativeEvent.error}`);
@@ -1765,7 +1785,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                     />
                   )
                 ) : (
-                  <View style={[styles.image, styles.imagePlaceholder]}>
+                  <View style={[styles.image, styles.imagePlaceholder, { width: viewportW }]}>
                     <Text style={styles.placeholderText}>{t('imagePreview.imageNotFound')}</Text>
                   </View>
                 )}
@@ -1994,7 +2014,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '70%',
+    maxHeight: '85%',
   },
   modalHeader: {
     padding: 20,
@@ -2012,18 +2032,19 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
   },
   categoryList: {
-    maxHeight: 400,
+    flexShrink: 1, // 在 modal 高度内自适应并可滚动，保证"取消"始终在列表下方不重叠
   },
   categoryItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E5E5EA',
   },
   categoryIcon: {
-    fontSize: 24,
-    marginRight: 12,
+    fontSize: 22,
+    marginRight: 10,
   },
   categoryName: {
     fontSize: 16,
