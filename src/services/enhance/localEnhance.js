@@ -21,6 +21,7 @@ const LOCAL_PRESET_HANDLERS = Object.freeze({
   enhance: 'superres', // 清晰增强 → 超分修复
   cutout: 'matting',   // 背景移除/抠图 → U2Net 显著性分割
   portrait: 'beauty',  // 人像美颜 → 全局磨皮（一期，纯 jimp，免模型）
+  document: 'docscan', // 证件处理 → 扫描增强（A 期：光照归一+对比，纯 jimp，免模型）
 });
 
 /**
@@ -51,6 +52,7 @@ export async function enhanceImageLocally(imageUri, presetId, onProgress) {
   if (handler === 'superres') return runSuperRes(imageUri, onProgress);
   if (handler === 'matting') return runMatting(imageUri, onProgress);
   if (handler === 'beauty') return runBeauty(imageUri, onProgress);
+  if (handler === 'docscan') return runDocScan(imageUri, onProgress);
   throw new Error('该预设暂不支持本地处理');
 }
 
@@ -92,6 +94,17 @@ async function runBeauty(imageUri, onProgress) {
   const out = await mod.applyBeautyToBase64(base64, 0.8);
   if (onProgress) onProgress({ done: 1, total: 1 });
   logger.debug('🟦 本地美颜完成', { imageUri });
+  return out;
+}
+
+/** 证件处理（A 期·扫描增强，纯 jimp，免模型）：读 base64→光照归一+对比→data URL */
+async function runDocScan(imageUri, onProgress) {
+  const base64 = await readResizedBase64(imageUri, 1280);
+  const mod = await import('./jimpFilters.js');
+  if (onProgress) onProgress({ done: 0, total: 1 });
+  const out = await mod.applyDocumentScanToBase64(base64, 0.9);
+  if (onProgress) onProgress({ done: 1, total: 1 });
+  logger.debug('🟦 本地证件扫描完成', { imageUri });
   return out;
 }
 
