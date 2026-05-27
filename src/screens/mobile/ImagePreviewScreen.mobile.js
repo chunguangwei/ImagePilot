@@ -1171,7 +1171,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           )}
         </View>
         <TouchableOpacity onPress={() => setShowInfo(!showInfo)} style={styles.headerButton}>
-          <Text style={styles.headerIcon}>ℹ️</Text>
+          {PvIonicons ? <PvIonicons name="information-circle-outline" size={26} color="#FFFFFF" /> : <Text style={styles.headerIcon}>ℹ️</Text>}
         </TouchableOpacity>
       </View>
     );
