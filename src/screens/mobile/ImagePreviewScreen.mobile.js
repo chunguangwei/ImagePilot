@@ -29,6 +29,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { getDefaultPresets, getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
 import { LOCAL_EXTRA_PRESETS } from '../../services/enhance/localEnhance';
+import { presetIcon, ACTION_ICONS } from '../../ui/ios/presetIcons';
 import { SafeAreaView, Alert } from '../../adapters/WebAdapters';
 import Toast from '../../components/shared/Toast';
 import UnifiedDataService from '../../services/UnifiedDataService';
@@ -38,6 +39,9 @@ import cityLocationService from '../../services/CityLocationService';
 import { logger, getUri, getLocalPath } from '../../adapters/WebAdapters';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+// iOS 单色图标（字体已打包）；异常时回退 emoji。
+let PvIonicons = null;
+try { PvIonicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { PvIonicons = null; }
 /** 最小缩放 = 刚开始显示的比例，缩小到此为止 */
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
@@ -1068,7 +1072,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
             </Text>
           </View>
           <TouchableOpacity onPress={() => setShowInfo(!showInfo)} style={styles.headerButton}>
-            <Text style={styles.headerIcon}>ℹ️</Text>
+            {PvIonicons ? <PvIonicons name="information-circle-outline" size={26} color="#FFFFFF" /> : <Text style={styles.headerIcon}>ℹ️</Text>}
           </TouchableOpacity>
         </View>
       );
@@ -1167,7 +1171,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           )}
         </View>
         <TouchableOpacity onPress={() => setShowInfo(!showInfo)} style={styles.headerButton}>
-          <Text style={styles.headerIcon}>ℹ️</Text>
+          {PvIonicons ? <PvIonicons name="information-circle-outline" size={26} color="#FFFFFF" /> : <Text style={styles.headerIcon}>ℹ️</Text>}
         </TouchableOpacity>
       </View>
     );
@@ -1572,7 +1576,9 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                         closeEnhanceModal();
                       }}
                     >
-                      <Text style={styles.categoryIcon}>{preset.icon || '✨'}</Text>
+                      {PvIonicons
+                        ? <PvIonicons name={presetIcon(presetId)} size={22} color="#007AFF" style={styles.categoryIcon} />
+                        : <Text style={styles.categoryIcon}>{preset.icon || '✨'}</Text>}
                       <Text style={styles.categoryName}>{displayName}</Text>
                     </TouchableOpacity>
                   );
@@ -1595,31 +1601,36 @@ const ImagePreviewScreen = ({ route, navigation }) => {
   /**
    * 渲染底部操作栏
    */
+  // 操作栏图标：优先 Ionicons（iOS 单色），回退 emoji
+  const actIcon = (key, emoji) => (PvIonicons
+    ? <PvIonicons name={ACTION_ICONS[key]} size={24} color="#1C1C1E" style={styles.actionIcon} />
+    : <Text style={styles.actionIcon}>{emoji}</Text>);
+
   const renderActions = () => {
     return (
       <View style={styles.actionsBar}>
         {/* 暂存/移出按钮 */}
         {!isInStagingBox ? (
           <TouchableOpacity style={styles.actionButton} onPress={handleStaging}>
-            <Text style={styles.actionIcon}>📦</Text>
+            {actIcon('stage', '📦')}
             <Text style={styles.actionLabel}>{t('imagePreview.stage')}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity style={styles.actionButton} onPress={handleRemoveFromStagingBox}>
-            <Text style={styles.actionIcon}>📤</Text>
+            {actIcon('remove', '📤')}
             <Text style={styles.actionLabel}>{t('imagePreview.remove')}</Text>
           </TouchableOpacity>
         )}
-        
+
         {/* 删除按钮（所有分类都显示） */}
         <TouchableOpacity style={styles.actionButton} onPress={handleDelete}>
-          <Text style={styles.actionIcon}>🗑️</Text>
+          {actIcon('delete', '🗑️')}
           <Text style={styles.actionLabel}>{t('common.delete')}</Text>
         </TouchableOpacity>
-        
+
         {/* 照片创玩按钮（所有分类都显示） */}
         <TouchableOpacity style={styles.actionButton} onPress={openEnhanceModal}>
-          <Text style={styles.actionIcon}>✨</Text>
+          {actIcon('enhance', '✨')}
           <Text style={styles.actionLabel}>{t('imagePreview.enhance')}</Text>
         </TouchableOpacity>
 
@@ -1627,19 +1638,19 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => displayUri && navigation.navigate('FilterEditor', { imageUri: displayUri })}>
-          <Text style={styles.actionIcon}>🎨</Text>
+          {actIcon('filter', '🎨')}
           <Text style={styles.actionLabel}>滤镜</Text>
         </TouchableOpacity>
-        
+
         {/* 分类按钮 */}
         <TouchableOpacity style={styles.actionButton} onPress={openCategoryModal}>
-          <Text style={styles.actionIcon}>🏷️</Text>
+          {actIcon('category', '🏷️')}
           <Text style={styles.actionLabel}>{t('imagePreview.category')}</Text>
         </TouchableOpacity>
-        
+
         {/* 分享按钮 */}
         <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-          <Text style={styles.actionIcon}>📤</Text>
+          {actIcon('share', '📤')}
           <Text style={styles.actionLabel}>{t('category.share')}</Text>
         </TouchableOpacity>
       </View>

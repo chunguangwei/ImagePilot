@@ -89,7 +89,9 @@ export default function DocScanScreen({ route, navigation }) {
       setResultUri(out);
     } catch (e) {
       logger.error('❌ 证件矫正失败:', e);
-      setError('矫正失败：' + (e?.message || String(e)));
+      const raw = e?.message || String(e);
+      const msg = /E_TIMEOUT/.test(raw) ? raw.replace('E_TIMEOUT', '').trim() : `矫正失败：${raw}`;
+      Alert.alert('证件矫正', msg); // 仅弹窗提示，保留四角界面可重试
     } finally {
       setBusy(false);
     }

@@ -30,7 +30,12 @@ import WeChatAuthService from '../../services/WeChatAuthService';
 import * as UpdateService from '../../services/UpdateService';
 import DirectoryPicker from '../../components/DirectoryPicker.mobile';
 import { logger } from '../../adapters/WebAdapters';
+import { presetIcon } from '../../ui/ios/presetIcons';
 import { BUILD_DATE, BUILD_VERSION, BUILD_VERSION_CODE } from '../../config/BuildInfo';
+
+// iOS 单色图标（字体已打包）；异常时回退 emoji
+let SetIonicons = null;
+try { SetIonicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { SetIonicons = null; }
 import { changeLanguage, getCurrentLanguage, getDefaultPresets } from '../../i18n';
 
 const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
@@ -1000,7 +1005,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
       <View style={styles.actionButtonRow}>
         <View style={styles.actionButtonMain}>
           <Text style={[styles.actionButtonText, danger && styles.dangerText]}>
-            {icon} {title}
+            {SetIonicons ? <SetIonicons name={icon} size={17} color={danger ? '#FF3B30' : '#007AFF'} /> : null} {title}
           </Text>
           <Text style={styles.actionButtonDescription}>{description}</Text>
         </View>
@@ -1101,12 +1106,12 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.titleRow}>
-              <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">🤖 {t('settings.smartClassification')}</Text>
+              <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">{SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color="#007AFF" /> : null} {t('settings.smartClassification')}</Text>
             </View>
           </View>
           
           {renderActionButton(
-            '🗑️',
+            'trash-outline',
             t('settings.clearAlbumInfo'),
             t('settings.clearAlbumInfoDesc'),
             handleClearData,
@@ -1115,7 +1120,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
           {/* 🆕 AI 模型设置：配置个人 LLM API Key，启用云端在线分类 */}
           {renderActionButton(
-            '☁️',
+            'cloud-outline',
             t('settings.aiModelConfig') || 'AI 模型设置（在线分类）',
             t('settings.aiModelConfigDesc') || '配置 OpenAI / Kimi 等大模型 API Key，启用云端在线分类',
             () => navigation.navigate('AIModelConfig'),
@@ -1124,7 +1129,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
           {/* 🆕 自定义分类：定义规则，云端大模型按规则归类 */}
           {renderActionButton(
-            '🏷️',
+            'pricetag-outline',
             '自定义分类',
             '定义你自己的分类规则，云端大模型按规则把图片归入',
             () => navigation.navigate('CustomCategories'),
@@ -1133,7 +1138,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
           {/* 🆕 检查更新：从 GitHub Releases 升级到客户端 */}
           {renderActionButton(
-            '🔄',
+            'cloud-download-outline',
             t('settings.checkUpdate'),
             t('settings.checkUpdateDesc', { version: UpdateService.CURRENT_VERSION }),
             handleCheckUpdate,
@@ -1142,12 +1147,12 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
           {/* 本地分类设置 - 与目录设置平级，使用actionButton样式 */}
           <View style={styles.actionButton}>
-            <Text style={styles.actionButtonText}>🔍 {t('settings.localClassification')}</Text>
+            <Text style={styles.actionButtonText}>{SetIonicons ? <SetIonicons name="phone-portrait-outline" size={17} color="#007AFF" /> : null} {t('settings.localClassification')}</Text>
             
             {/* 使用MobileNetV3分类 - 子区块 */}
             <View style={styles.switchItemCompact}>
               <View style={styles.switchItemCompactLeft}>
-                <Text style={styles.switchLabelCompact} numberOfLines={1}>📱 {t('settings.enableMobileNetV3')}</Text>
+                <Text style={styles.switchLabelCompact} numberOfLines={1}>{SetIonicons ? <SetIonicons name="cube-outline" size={15} color="#007AFF" /> : null} {t('settings.enableMobileNetV3')}</Text>
                 <Switch
                   value={settings.enableMobileNetV3Classification === true}
                   onValueChange={(value) => updateSetting('enableMobileNetV3Classification', value)}
@@ -1310,7 +1315,9 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
               return (
                 <View key={presetId} style={styles.presetItem}>
                   <View style={styles.presetLeft}>
-                    <Text style={styles.presetIcon}>{preset.icon}</Text>
+                    {SetIonicons
+                      ? <SetIonicons name={presetIcon(presetId)} size={24} color="#007AFF" style={styles.presetIcon} />
+                      : <Text style={styles.presetIcon}>{preset.icon}</Text>}
                     <View style={styles.presetInfo}>
                       <Text style={styles.presetName}>{displayName}</Text>
                       <Text style={styles.presetPrompt} numberOfLines={2}>
@@ -1477,7 +1484,9 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
               {editingPreset && (
                 <>
                   <View style={styles.presetInfoDisplay}>
-                    <Text style={styles.presetIconLarge}>{editingPreset.icon}</Text>
+                    {SetIonicons
+                      ? <SetIonicons name={presetIcon(editingPreset.id)} size={40} color="#007AFF" style={styles.presetIconLarge} />
+                      : <Text style={styles.presetIconLarge}>{editingPreset.icon}</Text>}
                     <View>
                       <Text style={styles.presetNameLarge}>{editingPreset.name}</Text>
                       <Text style={styles.presetDescriptionSmall}>
