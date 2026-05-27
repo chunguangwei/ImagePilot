@@ -17,6 +17,7 @@ import { getDefaultPresets } from '../../i18n';
 import { Alert, RNFS, logger, getUri } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../../services/UnifiedDataService';
 import ImageEnhanceService from '../../services/ImageEnhanceService';
+import { isLocalPreset, enhanceImageLocally } from '../../services/enhance/localEnhance';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -298,7 +299,46 @@ export default function EnhanceResultScreen({ route, navigation }) {
       return;
     }
 
+    // 本地（离线）预设：用设备端模型逐张处理，不走云端 submit/poll。
+    const runLocal = async () => {
+      const initial = {};
+      selected.forEach((it) => { initial[it.id] = { status: 'processing', progress: 0 }; });
+      setLocalResults(initial);
+      setTaskProcessing(true);
+      for (const img of selected) {
+        const uri = getUri(img) || img.uri;
+        if (!uri) {
+          setLocalResults((prev) => ({ ...prev, [img.id]: { ...(prev[img.id] || {}), status: 'failed', error: t('enhanceResult.noValidImages') } }));
+          continue;
+        }
+        try {
+          const dataUrl = await enhanceImageLocally(uri, presetId, ({ done, total }) => {
+            setLocalResults((prev) => ({
+              ...prev,
+              [img.id]: { ...(prev[img.id] || {}), status: 'processing', progress: total ? done / total : 0 },
+            }));
+          });
+          setLocalResults((prev) => ({
+            ...prev,
+            [img.id]: { ...(prev[img.id] || {}), status: 'done', enhancedUri: dataUrl },
+          }));
+        } catch (e) {
+          logger.error('❌ 本地增强失败:', e);
+          setLocalResults((prev) => ({
+            ...prev,
+            [img.id]: { ...(prev[img.id] || {}), status: 'failed', error: e?.message || String(e) },
+          }));
+        }
+      }
+      setTaskProcessing(false);
+    };
+
     const submitAndPoll = async () => {
+      // 本地预设走设备端处理；其余预设保持原云端/占位流程
+      if (isLocalPreset(presetId)) {
+        await runLocal();
+        return;
+      }
       try {
         logger.debug('开始提交增强任务', { presetId, count: selected.length });
         
@@ -604,7 +644,13 @@ export default function EnhanceResultScreen({ route, navigation }) {
         {(processing || loadingEnhanced || failed) && (
           <View style={styles.processingOverlay}>
             <Text style={styles.processingText}>
-              {failed ? t('enhanceResult.failed') : loadingEnhanced ? t('enhanceResult.loadingEnhancedResult') : t('enhanceResult.processing')}
+              {failed
+                ? t('enhanceResult.failed')
+                : loadingEnhanced
+                  ? t('enhanceResult.loadingEnhancedResult')
+                  : (typeof currentResult?.progress === 'number' && currentResult.progress > 0
+                      ? `${t('enhanceResult.processing')} ${Math.round(currentResult.progress * 100)}%`
+                      : t('enhanceResult.processing'))}
             </Text>
           </View>
         )}
