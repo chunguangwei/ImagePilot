@@ -21,7 +21,8 @@ const LOCAL_PRESET_HANDLERS = Object.freeze({
   enhance: 'superres', // 清晰增强 → 超分修复
   cutout: 'matting',   // 背景移除/抠图 → U2Net 显著性分割
   portrait: 'beauty',  // 人像美颜 → 全局磨皮（一期，纯 jimp，免模型）
-  document: 'docscan', // 证件处理 → 扫描增强（A 期：光照归一+对比，纯 jimp，免模型）
+  // 证件处理(document) B 期改为交互式：走独立 DocScan 界面（自动找边+可调四角+透视矫正+扫描增强），
+  // 不再在 EnhanceResult 里自动跑，故不列入此表（见 ImagePreview 的 document 特例 + DocScanScreen）。
 });
 
 /**
@@ -52,7 +53,6 @@ export async function enhanceImageLocally(imageUri, presetId, onProgress) {
   if (handler === 'superres') return runSuperRes(imageUri, onProgress);
   if (handler === 'matting') return runMatting(imageUri, onProgress);
   if (handler === 'beauty') return runBeauty(imageUri, onProgress);
-  if (handler === 'docscan') return runDocScan(imageUri, onProgress);
   throw new Error('该预设暂不支持本地处理');
 }
 
@@ -97,15 +97,26 @@ async function runBeauty(imageUri, onProgress) {
   return out;
 }
 
-/** 证件处理（A 期·扫描增强，纯 jimp，免模型）：读 base64→光照归一+对比→data URL */
-async function runDocScan(imageUri, onProgress) {
+/**
+ * 证件处理 B 期：自动检测文档四角（复用 u2netp），返回归一坐标 [TL,TR,BR,BL] 或 null。
+ * 由 DocScanScreen 在进入时调用，用于预填可拖动的四角手柄。
+ */
+export async function detectDocCorners(imageUri) {
+  const base64 = await readResizedBase64(imageUri, 1024);
+  await ModelPathAdapter.ensureModelExists(MATTING_MODEL); // 复用 u2netp
+  const modelPath = ModelPathAdapter.getModelPath(MATTING_MODEL);
+  const mod = await import('./docDewarpRunner.js');
+  return mod.detectCorners(base64, modelPath);
+}
+
+/**
+ * 证件处理 B 期：按四角(归一坐标)做透视矫正 + 扫描增强，返回 data URL。
+ * 纯 jimp（不需模型）。由 DocScanScreen 在「矫正」时调用。
+ */
+export async function dewarpDocument(imageUri, quadFrac, onProgress) {
   const base64 = await readResizedBase64(imageUri, 1280);
-  const mod = await import('./jimpFilters.js');
-  if (onProgress) onProgress({ done: 0, total: 1 });
-  const out = await mod.applyDocumentScanToBase64(base64, 0.9);
-  if (onProgress) onProgress({ done: 1, total: 1 });
-  logger.debug('🟦 本地证件扫描完成', { imageUri });
-  return out;
+  const mod = await import('./docDewarpRunner.js');
+  return mod.dewarp(base64, quadFrac, onProgress);
 }
 
 /**
