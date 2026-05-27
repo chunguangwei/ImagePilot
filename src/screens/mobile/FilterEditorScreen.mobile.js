@@ -8,6 +8,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Alert, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RNFS, getLocalPath, ModelPathAdapter } from '../../adapters/WebAdapters';
 import ImageProcessor from '../../services/ImageProcessor';
 import { JIMP_FILTERS, JIMP_FILTER_IDS, hasIntensity, applyJimpFilterToBase64 } from '../../services/enhance/jimpFilters.js';
@@ -21,6 +22,7 @@ const INTENSITY_LEVELS = [
 ];
 
 export default function FilterEditorScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   const imageUri = route?.params?.imageUri;
   const [srcBase64, setSrcBase64] = useState(null); // 原图 base64（一次性读入）
   const [resultUri, setResultUri] = useState(imageUri); // 预览 data URL
@@ -33,7 +35,8 @@ export default function FilterEditorScreen({ route, navigation }) {
   const [comparing, setComparing] = useState(false); // 按住对比原图时为 true
 
   const win = Dimensions.get('window');
-  const size = Math.min(win.width, win.height - 220);
+  // 预留底部 chrome（AI 增强按钮+强度行+滤镜条）与安全区，避免滤镜条被挤到屏幕外/被手势条遮挡
+  const size = Math.min(win.width, win.height - 300 - insets.bottom);
 
   // 一次性读入原图字节。content:// / 组合路径都不可靠，统一用 ImageProcessor.resizeImage
   // 产出一个可读的 file 临时文件再读（与分类/增强流程一致，避免 getLocalPath 给出不存在的路径）。
@@ -190,7 +193,7 @@ export default function FilterEditorScreen({ route, navigation }) {
         </View>
       )}
 
-      <ScrollView horizontal style={styles.filterBar} showsHorizontalScrollIndicator={false}>
+      <ScrollView horizontal style={[styles.filterBar, { marginBottom: insets.bottom }]} showsHorizontalScrollIndicator={false}>
         {JIMP_FILTER_IDS.map((id) => (
           <TouchableOpacity
             key={id}
@@ -209,29 +212,29 @@ export default function FilterEditorScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, paddingTop: 44 },
-  headerBtn: { color: '#fff', fontSize: 16 },
-  disabled: { color: '#777' },
+  headerBtn: { color: '#0A84FF', fontSize: 16, fontWeight: '500' },
+  disabled: { color: '#8E8E93' },
   title: { color: '#fff', fontSize: 17, fontWeight: '600' },
   preview: { justifyContent: 'center', alignItems: 'center' },
-  err: { color: '#ff6b6b', padding: 20, textAlign: 'center' },
+  err: { color: '#FF453A', padding: 20, textAlign: 'center' },
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)' },
   overlayText: { color: '#fff', marginTop: 8 },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8 },
-  rowLabel: { color: '#ccc', marginRight: 12 },
-  chip: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, backgroundColor: '#333', marginRight: 8 },
+  rowLabel: { color: '#EBEBF5', marginRight: 12 },
+  chip: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, backgroundColor: '#2C2C2E', marginRight: 8 },
   chipActive: { backgroundColor: '#007AFF' },
   chipText: { color: '#fff' },
   filterBar: { maxHeight: 64, paddingHorizontal: 8, paddingVertical: 10 },
-  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 18, backgroundColor: '#222', marginHorizontal: 5 },
-  filterChipActive: { backgroundColor: '#fff' },
-  filterChipText: { color: '#ddd' },
-  filterChipTextActive: { color: '#000', fontWeight: '600' },
-  aiBtn: { marginHorizontal: 14, marginVertical: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: '#6C2BD9', alignItems: 'center' },
+  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 18, backgroundColor: '#2C2C2E', marginHorizontal: 5 },
+  filterChipActive: { backgroundColor: '#007AFF' },
+  filterChipText: { color: '#EBEBF5' },
+  filterChipTextActive: { color: '#fff', fontWeight: '600' },
+  aiBtn: { marginHorizontal: 14, marginVertical: 6, paddingVertical: 13, borderRadius: 12, backgroundColor: '#007AFF', alignItems: 'center' },
   disabledBtn: { opacity: 0.5 },
   aiBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   badge: { position: 'absolute', top: 10, left: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.55)' },
   badgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   compareBtn: { position: 'absolute', bottom: 12, alignSelf: 'center', paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' },
-  compareBtnActive: { backgroundColor: 'rgba(108,43,217,0.85)' },
+  compareBtnActive: { backgroundColor: 'rgba(0,122,255,0.85)' },
   compareBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });

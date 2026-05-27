@@ -8,6 +8,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from '../../adapters/WebAdapters';
 import configService from '../../services/llm/adapters/UnifiedDataConfigService';
 
 // 内置分类 id（自定义 id 不应与之冲突）
@@ -69,13 +70,13 @@ export default function CustomCategoriesScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.headerBtn}>← 返回</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>自定义分类</Text>
-        <View style={{ width: 48 }} />
+        <Text style={styles.headerTitle}>自定义分类</Text>
+        <View style={styles.headerRight} />
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
@@ -86,9 +87,9 @@ export default function CustomCategoriesScreen({ navigation }) {
         {/* 新增表单 */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>新增分类</Text>
-          <TextInput style={styles.input} placeholder="id（英文，如 work_screenshot）" placeholderTextColor="#999" value={id} onChangeText={setId} autoCapitalize="none" />
-          <TextInput style={styles.input} placeholder="名称（如 工作截图）" placeholderTextColor="#999" value={name} onChangeText={setName} />
-          <TextInput style={[styles.input, styles.multiline]} placeholder="规则：什么样的图片归入此类（如 含代码/表格/聊天记录的截图）" placeholderTextColor="#999" value={rule} onChangeText={setRule} multiline />
+          <TextInput style={styles.input} placeholder="id（英文，如 work_screenshot）" placeholderTextColor="#8E8E93" value={id} onChangeText={setId} autoCapitalize="none" />
+          <TextInput style={styles.input} placeholder="名称（如 工作截图）" placeholderTextColor="#8E8E93" value={name} onChangeText={setName} />
+          <TextInput style={[styles.input, styles.multiline]} placeholder="规则：什么样的图片归入此类（如 含代码/表格/聊天记录的截图）" placeholderTextColor="#8E8E93" value={rule} onChangeText={setRule} multiline />
           <TouchableOpacity style={styles.addBtn} onPress={onAdd}>
             <Text style={styles.addBtnText}>添加</Text>
           </TouchableOpacity>
@@ -114,26 +115,30 @@ export default function CustomCategoriesScreen({ navigation }) {
           ))
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F7' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, paddingTop: 44, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E5EA' },
-  headerBtn: { color: '#007AFF', fontSize: 16, width: 48 },
-  title: { fontSize: 17, fontWeight: '600' },
-  tip: { color: '#666', fontSize: 13, lineHeight: 19, marginBottom: 14 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 20 },
-  cardTitle: { fontSize: 15, fontWeight: '600', marginBottom: 10 },
-  input: { borderWidth: 1, borderColor: '#E5E5EA', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10, fontSize: 14, color: '#000' },
+  container: { flex: 1, backgroundColor: '#F2F2F7' },
+  // 统一页头：白色 56 高，‹ 返回，居中标题
+  header: { height: 56, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
+  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  backIcon: { fontSize: 32, color: '#007AFF', fontWeight: 'bold' },
+  headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', color: '#000000', textAlign: 'center' },
+  headerRight: { width: 40 },
+
+  tip: { color: '#6C6C70', fontSize: 13, lineHeight: 19, marginBottom: 14 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 20 },
+  cardTitle: { fontSize: 15, fontWeight: '600', color: '#000000', marginBottom: 10 },
+  input: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#C6C6C8', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, marginBottom: 10, fontSize: 15, color: '#000000', backgroundColor: '#F2F2F7' },
   multiline: { height: 70, textAlignVertical: 'top' },
-  addBtn: { backgroundColor: '#007AFF', borderRadius: 8, paddingVertical: 11, alignItems: 'center' },
-  addBtnText: { color: '#fff', fontWeight: '600' },
-  empty: { color: '#999', marginTop: 12 },
-  item: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 10 },
-  itemName: { fontSize: 15, fontWeight: '500' },
-  itemId: { fontSize: 12, color: '#999' },
-  itemRule: { fontSize: 13, color: '#666', marginTop: 4 },
-  del: { color: '#FF3B30', marginLeft: 12 },
+  addBtn: { backgroundColor: '#007AFF', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+  addBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 17 },
+  empty: { color: '#8E8E93', marginTop: 12, fontSize: 15 },
+  item: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 10 },
+  itemName: { fontSize: 15, fontWeight: '500', color: '#000000' },
+  itemId: { fontSize: 12, color: '#8E8E93' },
+  itemRule: { fontSize: 13, color: '#6C6C70', marginTop: 4, lineHeight: 18 },
+  del: { color: '#FF3B30', marginLeft: 12, fontSize: 15 },
 });

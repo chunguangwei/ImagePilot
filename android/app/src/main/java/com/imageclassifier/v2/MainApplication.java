@@ -56,7 +56,8 @@ public class MainApplication extends Application implements ReactApplication {
             new SharePackage(),  // 添加Share原生模块
             new ScanServicePackage(),  // 添加扫描服务原生模块
             new GalleryScanPackage(),  // 添加相册扫描原生模块
-            new NativeLogExportPackage()  // 添加原生日志导出模块
+            new NativeLogExportPackage(),  // 添加原生日志导出模块
+            new ApkInstallerPackage()  // App 内更新安装（方案2）
           );
         }
 

@@ -671,11 +671,11 @@ const styles = StyleSheet.create({
   },
   back: { color: '#fff', fontSize: 20 },
   title: { color: '#fff', fontSize: 16, fontWeight: '600', flex: 1, textAlign: 'center' },
-  progress: { color: '#9aa0a6', fontSize: 14, width: 64, textAlign: 'right' },
+  progress: { color: '#8E8E93', fontSize: 14, width: 64, textAlign: 'right' },
   imageContainer: { flex: 1, position: 'relative', justifyContent: 'center', alignItems: 'center' },
   image: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.7 },
   imagePlaceholder: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.7, justifyContent: 'center', alignItems: 'center' },
-  placeholderText: { color: '#999' },
+  placeholderText: { color: '#8E8E93' },
   processingOverlay: {
     position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.35)',
@@ -709,7 +709,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.35)',
-    borderRadius: 10,
+    borderRadius: 12,
     height: 40,
     paddingHorizontal: 16,
     paddingVertical: 0,
@@ -718,8 +718,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   toggleFooterText: { color: '#fff', fontSize: 14 },
-  saveButton: { backgroundColor: '#007AFF', borderRadius: 10, height: 40, paddingHorizontal: 16, paddingVertical: 0, alignItems: 'center', justifyContent: 'center' },
-  saveButtonDisabled: { backgroundColor: '#3a3a3c' },
+  saveButton: { backgroundColor: '#007AFF', borderRadius: 12, height: 40, paddingHorizontal: 16, paddingVertical: 0, alignItems: 'center', justifyContent: 'center' },
+  saveButtonDisabled: { backgroundColor: '#2C2C2E' },
   saveText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });
 

@@ -1888,7 +1888,7 @@ const styles = StyleSheet.create({
     bottom: 80,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(28, 28, 30, 0.95)',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     maxHeight: SCREEN_HEIGHT * 0.6,
@@ -1898,13 +1898,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#3A3A3C',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#C6C6C8',
   },
   infoPanelTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#000000',
   },
   infoPanelClose: {
     fontSize: 20,
@@ -1916,8 +1916,8 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#3A3A3C',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
   },
   infoLabel: {
     width: 80,
@@ -1927,16 +1927,16 @@ const styles = StyleSheet.create({
   infoValue: {
     flex: 1,
     fontSize: 14,
-    color: '#FFFFFF',
+    color: '#000000',
   },
-  
+
   // 检测结果样式
   detectionSection: {
     marginTop: 8,
     paddingLeft: 80,
     paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#3A3A3C',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
   },
   detectionTitle: {
     fontSize: 13,
@@ -1948,7 +1948,7 @@ const styles = StyleSheet.create({
   },
   detectionText: {
     fontSize: 13,
-    color: '#FFFFFF',
+    color: '#000000',
   },
   detectionMore: {
     fontSize: 12,
@@ -1991,20 +1991,20 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#1C1C1E',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '70%',
   },
   modalHeader: {
     padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#3A3A3C',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#C6C6C8',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#000000',
     marginBottom: 8,
   },
   modalSubtitle: {
@@ -2018,8 +2018,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2C2C2E',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
   },
   categoryIcon: {
     fontSize: 24,
@@ -2027,7 +2027,7 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#000000',
     flex: 1,
   },
   selectedCategoryText: {
@@ -2037,8 +2037,8 @@ const styles = StyleSheet.create({
   modalCancelButton: {
     padding: 16,
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#3A3A3C',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#C6C6C8',
   },
   modalCancelText: {
     fontSize: 16,

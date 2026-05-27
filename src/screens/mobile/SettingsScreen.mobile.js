@@ -886,6 +886,34 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   // ==================== 分类操作 ====================
 
   /**
+   * 方案2：App 内下载并安装；无直链或失败时兜底浏览器。
+   */
+  const startUpdate = async (info) => {
+    if (!info || !info.apkUrl) {
+      UpdateService.openDownload(info);
+      return;
+    }
+    Alert.alert(t('settings.downloadingTitle'), t('settings.downloadingMessage'));
+    try {
+      await UpdateService.downloadAndInstall(info.apkUrl, () => {});
+      // 成功后系统安装器会自动弹出
+    } catch (e) {
+      if (e && e.code === 'E_NEED_PERMISSION') {
+        Alert.alert(t('settings.installPermTitle'), t('settings.installPermMessage'));
+      } else {
+        Alert.alert(
+          t('settings.updateFailedTitle'),
+          t('settings.updateFailedMessage', { error: e?.message || String(e) }),
+          [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('settings.openReleasesPage'), style: 'default', onPress: () => UpdateService.openReleasesPage() },
+          ],
+        );
+      }
+    }
+  };
+
+  /**
    * 检查更新（手动）：查 GitHub Releases，有新版引导下载
    */
   const handleCheckUpdate = async () => {
@@ -898,7 +926,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           t('settings.updateFoundMessage', { version: info.latestVersion }) + notes,
           [
             { text: t('common.cancel'), style: 'cancel' },
-            { text: t('settings.updateNow'), style: 'default', onPress: () => UpdateService.openDownload(info) },
+            { text: t('settings.updateNow'), style: 'default', onPress: () => startUpdate(info) },
           ],
         );
       } else {

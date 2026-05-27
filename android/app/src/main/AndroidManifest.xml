@@ -11,6 +11,8 @@
 
     <!-- 基础网络权限 - 用于远程推理API -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 应用内更新：安装下载的 APK（方案2） -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
     <!-- 存储权限 - Android 12 及以下版本 -->

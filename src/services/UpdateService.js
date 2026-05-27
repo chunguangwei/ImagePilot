@@ -98,7 +98,8 @@ async function checkViaAtom() {
     latestVersion,
     currentVersion: BUILD_VERSION,
     notes: '',
-    apkUrl: null,
+    // atom 拿不到资产列表，按约定拼出 APK 直链（资产名固定 app-release.apk，走 github.com 下载域）
+    apkUrl: `https://github.com/${UPDATE_REPO}/releases/download/${latestVersion}/app-release.apk`,
     pageUrl: RELEASES_PAGE,
   };
 }
@@ -114,4 +115,75 @@ export async function openReleasesPage() {
   await Linking.openURL(RELEASES_PAGE);
 }
 
-export default { checkForUpdate, openDownload, openReleasesPage, isNewer, CURRENT_VERSION, UPDATE_REPO, RELEASES_PAGE };
+/**
+ * 方案2：App 内下载 APK 并拉起系统安装器（不开浏览器）。
+ * 下载到缓存目录 → 调原生 ApkInstaller 安装。
+ * @param {string} apkUrl
+ * @param {(progress:number)=>void} [onProgress] 0~1
+ * @throws E_NEED_PERMISSION（未授予安装未知应用权限，原生已引导去设置）/ 其它下载或安装错误
+ * @returns {Promise<string>} 下载到的本地路径
+ */
+export async function downloadAndInstall(apkUrl, onProgress) {
+  // 原生依赖懒加载（仅 Android 走这条路；web/异常由调用方兜底到浏览器）
+  // eslint-disable-next-line global-require
+  const RNFS = require('react-native-fs');
+  // eslint-disable-next-line global-require
+  const { NativeModules } = require('react-native');
+  const ApkInstaller = NativeModules && NativeModules.ApkInstaller;
+  if (!ApkInstaller || typeof ApkInstaller.install !== 'function') {
+    throw new Error('ApkInstaller 原生模块不可用');
+  }
+  const dest = `${RNFS.CachesDirectoryPath}/imagepilot-update.apk`;
+  try {
+    if (await RNFS.exists(dest)) await RNFS.unlink(dest);
+  } catch (_) { /* 忽略旧文件清理失败 */ }
+
+  // 记录服务端声明的总大小，下载完成后用于校验是否被中途截断
+  let expectedTotal = 0;
+  const { promise } = RNFS.downloadFile({
+    fromUrl: apkUrl,
+    toFile: dest,
+    progressInterval: 300,
+    begin: (res) => {
+      if (res && res.contentLength > 0) expectedTotal = res.contentLength;
+    },
+    progress: (res) => {
+      if (res && res.contentLength > 0) expectedTotal = res.contentLength;
+      if (onProgress && res.contentLength > 0) {
+        onProgress(Math.min(1, res.bytesWritten / res.contentLength));
+      }
+    },
+  });
+  const result = await promise;
+  if (result && result.statusCode && result.statusCode >= 400) {
+    throw new Error('下载失败 HTTP ' + result.statusCode);
+  }
+
+  // 完整性校验：RNFS 在连接中断时仍可能以 200 resolve，得到截断文件
+  // （安装时即报「解析软件包失败」）。这里主动验大小 + APK(ZIP) 魔数。
+  let actualSize = 0;
+  try {
+    const stat = await RNFS.stat(dest);
+    actualSize = Number(stat.size) || 0;
+  } catch (_) { /* stat 失败按 0 处理，下方会判定为损坏 */ }
+
+  const tooSmall = actualSize < 1024 * 1024; // APK 不可能 < 1MB
+  const truncated = expectedTotal > 0 && actualSize < expectedTotal;
+  let badMagic = false;
+  try {
+    const head = await RNFS.read(dest, 4, 0, 'ascii'); // ZIP/APK 魔数 'PK\x03\x04'
+    badMagic = !(head && head.charCodeAt(0) === 0x50 && head.charCodeAt(1) === 0x4b);
+  } catch (_) { badMagic = true; }
+
+  if (tooSmall || truncated || badMagic) {
+    try { await RNFS.unlink(dest); } catch (_) {}
+    const got = (actualSize / 1048576).toFixed(1);
+    const exp = expectedTotal > 0 ? (expectedTotal / 1048576).toFixed(1) : '?';
+    throw new Error(`E_CORRUPT 安装包下载不完整（${got}MB/${exp}MB），请重试或用浏览器下载`);
+  }
+
+  await ApkInstaller.install(dest); // 未授权会 reject E_NEED_PERMISSION（已引导去设置）
+  return dest;
+}
+
+export default { checkForUpdate, openDownload, openReleasesPage, downloadAndInstall, isNewer, CURRENT_VERSION, UPDATE_REPO, RELEASES_PAGE };
