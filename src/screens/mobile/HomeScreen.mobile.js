@@ -37,6 +37,7 @@ import GalleryScannerService from '../../services/GalleryScannerService';
 import WakeLockService from '../../services/WakeLockService';
 import * as UpdateService from '../../services/UpdateService';
 import cityLocationService from '../../services/CityLocationService';
+import SkeuomorphicCamera from '../../ui/ios/SkeuomorphicCamera';
 import { logger, getUri, getLocalPath } from '../../adapters/WebAdapters';
 import { getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
 
@@ -189,7 +190,27 @@ const HomeScreen = ({ navigation }) => {
               t('settings.updateFoundMessage', { version: info.latestVersion }),
               [
                 { text: t('common.cancel'), style: 'cancel' },
-                { text: t('settings.updateNow'), style: 'default', onPress: () => UpdateService.openDownload(info) },
+                {
+                  text: t('settings.updateNow'),
+                  style: 'default',
+                  onPress: async () => {
+                    if (!info.apkUrl) { UpdateService.openDownload(info); return; }
+                    try {
+                      setGlobalMessage(t('home.updateDownloading', { pct: 0 }));
+                      await UpdateService.downloadAndInstall(info.apkUrl, (p) =>
+                        setGlobalMessage(t('home.updateDownloading', { pct: Math.round(p * 100) })),
+                      );
+                      setGlobalMessage('');
+                    } catch (e) {
+                      setGlobalMessage('');
+                      if (e && e.code === 'E_NEED_PERMISSION') {
+                        Alert.alert(t('settings.installPermTitle'), t('settings.installPermMessage'));
+                      } else {
+                        UpdateService.openDownload(info); // 下载/安装失败 → 兜底浏览器
+                      }
+                    }
+                  },
+                },
               ],
             );
           }
@@ -1558,8 +1579,8 @@ const HomeScreen = ({ navigation }) => {
             resizeMode="cover"
           />
         ) : (
-          <View style={[styles.thumbnail, { backgroundColor: category.color }]}>
-            <Text style={styles.emptyThumbnailText}>📸</Text>
+          <View style={[styles.thumbnail, { backgroundColor: category.color, alignItems: 'center', justifyContent: 'center' }]}>
+            <SkeuomorphicCamera size={Math.round((SCREEN_WIDTH - 28) / 4 * 0.52)} tint="rgba(255,255,255,0.92)" />
           </View>
         )}
         
