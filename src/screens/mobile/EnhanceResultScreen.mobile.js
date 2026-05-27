@@ -324,10 +324,18 @@ export default function EnhanceResultScreen({ route, navigation }) {
           }));
         } catch (e) {
           logger.error('❌ 本地增强失败:', e);
+          const raw = e?.message || String(e);
+          // 把内部错误码转成友好提示；其余直接透传原始报错
+          const msg = /E_TIMEOUT/.test(raw)
+            ? raw.replace('E_TIMEOUT', '').trim()
+            : /未检测|no face|未找到/.test(raw)
+              ? raw
+              : `处理失败：${raw}`;
           setLocalResults((prev) => ({
             ...prev,
-            [img.id]: { ...(prev[img.id] || {}), status: 'failed', error: e?.message || String(e) },
+            [img.id]: { ...(prev[img.id] || {}), status: 'failed', error: msg },
           }));
+          Alert.alert(t('enhanceResult.failed') || '处理失败', msg);
         }
       }
       setTaskProcessing(false);

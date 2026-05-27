@@ -1677,7 +1677,7 @@ const HomeScreen = ({ navigation }) => {
         
         {!hasContent ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateIcon}>📷</Text>
+            <View style={{ marginBottom: 10 }}><SkeuomorphicCamera size={60} scheme="onLight" /></View>
             <Text style={styles.emptyStateText}>{t('home.noCategoryImages')}</Text>
             <Text style={styles.emptyStateSubtext}>{t('home.scanOrAdjustSettings')}</Text>
           </View>
@@ -2221,7 +2221,7 @@ const HomeScreen = ({ navigation }) => {
         
         {recentImages.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateIcon}>📷</Text>
+            <View style={{ marginBottom: 10 }}><SkeuomorphicCamera size={60} scheme="onLight" /></View>
             <Text style={styles.emptyStateText}>{t('home.noNewPhotos')}</Text>
             <Text style={styles.emptyStateSubtext}>{t('home.clickScanButtonToStart')}</Text>
           </View>

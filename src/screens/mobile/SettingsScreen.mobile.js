@@ -30,7 +30,12 @@ import WeChatAuthService from '../../services/WeChatAuthService';
 import * as UpdateService from '../../services/UpdateService';
 import DirectoryPicker from '../../components/DirectoryPicker.mobile';
 import { logger } from '../../adapters/WebAdapters';
+import { presetIcon } from '../../ui/ios/presetIcons';
 import { BUILD_DATE, BUILD_VERSION, BUILD_VERSION_CODE } from '../../config/BuildInfo';
+
+// iOS 单色图标（字体已打包）；异常时回退 emoji
+let SetIonicons = null;
+try { SetIonicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { SetIonicons = null; }
 import { changeLanguage, getCurrentLanguage, getDefaultPresets } from '../../i18n';
 
 const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
@@ -1310,7 +1315,9 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
               return (
                 <View key={presetId} style={styles.presetItem}>
                   <View style={styles.presetLeft}>
-                    <Text style={styles.presetIcon}>{preset.icon}</Text>
+                    {SetIonicons
+                      ? <SetIonicons name={presetIcon(presetId)} size={24} color="#007AFF" style={styles.presetIcon} />
+                      : <Text style={styles.presetIcon}>{preset.icon}</Text>}
                     <View style={styles.presetInfo}>
                       <Text style={styles.presetName}>{displayName}</Text>
                       <Text style={styles.presetPrompt} numberOfLines={2}>
@@ -1477,7 +1484,9 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
               {editingPreset && (
                 <>
                   <View style={styles.presetInfoDisplay}>
-                    <Text style={styles.presetIconLarge}>{editingPreset.icon}</Text>
+                    {SetIonicons
+                      ? <SetIonicons name={presetIcon(editingPreset.id)} size={40} color="#007AFF" style={styles.presetIconLarge} />
+                      : <Text style={styles.presetIconLarge}>{editingPreset.icon}</Text>}
                     <View>
                       <Text style={styles.presetNameLarge}>{editingPreset.name}</Text>
                       <Text style={styles.presetDescriptionSmall}>

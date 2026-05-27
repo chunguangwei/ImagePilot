@@ -41,6 +41,19 @@ export function isLocalPreset(presetId) {
 }
 
 /**
+ * 给本地处理加超时兜底：CPU/推理在 Hermes 下可能很慢，若卡住超过 ms 就抛错，
+ * 避免界面永远停在「处理中」。失败/超时由调用方提示用户。
+ */
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`E_TIMEOUT ${label || '处理'}超时（图片过大或设备繁忙），请重试或换张图片`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+const LOCAL_TIMEOUT_MS = 60000;
+
+/**
  * 本地增强单张图片，返回 data URL（image/jpeg）。
  * data URL 可直接用于 <Image> 预览，并被 RNFS.saveImageToGallery 接受（其原生侧支持 data:image）。
  * @param {string} imageUri 原图 URI（file:// / content://）
@@ -50,10 +63,12 @@ export function isLocalPreset(presetId) {
  */
 export async function enhanceImageLocally(imageUri, presetId, onProgress) {
   const handler = LOCAL_PRESET_HANDLERS[presetId];
-  if (handler === 'superres') return runSuperRes(imageUri, onProgress);
-  if (handler === 'matting') return runMatting(imageUri, onProgress);
-  if (handler === 'beauty') return runBeauty(imageUri, onProgress);
-  throw new Error('该预设暂不支持本地处理');
+  let p;
+  if (handler === 'superres') p = runSuperRes(imageUri, onProgress);
+  else if (handler === 'matting') p = runMatting(imageUri, onProgress);
+  else if (handler === 'beauty') p = runBeauty(imageUri, onProgress);
+  else throw new Error('该预设暂不支持本地处理');
+  return withTimeout(p, LOCAL_TIMEOUT_MS, '增强');
 }
 
 /**
@@ -102,11 +117,15 @@ async function runBeauty(imageUri, onProgress) {
  * 由 DocScanScreen 在进入时调用，用于预填可拖动的四角手柄。
  */
 export async function detectDocCorners(imageUri) {
-  const base64 = await readResizedBase64(imageUri, 1024);
-  await ModelPathAdapter.ensureModelExists(MATTING_MODEL); // 复用 u2netp
-  const modelPath = ModelPathAdapter.getModelPath(MATTING_MODEL);
-  const mod = await import('./docDewarpRunner.js');
-  return mod.detectCorners(base64, modelPath);
+  const run = async () => {
+    const base64 = await readResizedBase64(imageUri, 1024);
+    await ModelPathAdapter.ensureModelExists(MATTING_MODEL); // 复用 u2netp
+    const modelPath = ModelPathAdapter.getModelPath(MATTING_MODEL);
+    const mod = await import('./docDewarpRunner.js');
+    return mod.detectCorners(base64, modelPath);
+  };
+  // 自动找边失败/超时都不应阻断（调用方用默认框兜底），故吞错返回 null
+  try { return await withTimeout(run(), 30000, '检测边缘'); } catch (_) { return null; }
 }
 
 /**
@@ -114,9 +133,12 @@ export async function detectDocCorners(imageUri) {
  * 纯 jimp（不需模型）。由 DocScanScreen 在「矫正」时调用。
  */
 export async function dewarpDocument(imageUri, quadFrac, onProgress) {
-  const base64 = await readResizedBase64(imageUri, 1280);
-  const mod = await import('./docDewarpRunner.js');
-  return mod.dewarp(base64, quadFrac, onProgress);
+  const run = async () => {
+    const base64 = await readResizedBase64(imageUri, 1280);
+    const mod = await import('./docDewarpRunner.js');
+    return mod.dewarp(base64, quadFrac, onProgress);
+  };
+  return withTimeout(run(), LOCAL_TIMEOUT_MS, '矫正');
 }
 
 /**
