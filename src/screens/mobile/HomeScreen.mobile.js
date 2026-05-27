@@ -110,6 +110,10 @@ const TimeCard = ({ timeKey, label, count, recentImages, onPress }) => {
 // iOS 风格图标（字体已打包）；异常时回退 emoji
 let HomeIonicons = null;
 try { HomeIonicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { HomeIonicons = null; }
+// 区块标题前缀图标：iOS 单色线性（蓝），无 Ionicons 时回退 emoji。可内嵌于 <Text>。
+const SectionIcon = ({ name, emoji }) => (HomeIonicons
+  ? <HomeIonicons name={name} size={16} color="#007AFF" />
+  : <Text>{emoji}</Text>);
 
 // 每个 app 会话只在启动时静默检查一次更新（避免重复弹窗）
 let _launchUpdateChecked = false;
@@ -1616,7 +1620,7 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleContainer}>
-            <Text style={styles.sectionTitle}>📅 {t('home.byTime')}</Text>
+            <Text style={styles.sectionTitle}><SectionIcon name="calendar-outline" emoji="📅" /> {t('home.byTime')}</Text>
           </View>
         </View>
         <View style={styles.categoriesGrid}>
@@ -1660,7 +1664,7 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleColumn}>
-            <Text style={styles.sectionTitle}>🏷️ {t('home.byContent')}</Text>
+            <Text style={styles.sectionTitle}><SectionIcon name="pricetags-outline" emoji="🏷️" /> {t('home.byContent')}</Text>
             {hasUnclassifiedPhotos && (
               <Text style={styles.sectionHint}>{t('home.longPressUnclassifiedHint')}</Text>
             )}
@@ -1787,7 +1791,7 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleContainer}>
-            <Text style={styles.sectionTitle}>🔗 {t('home.similarPhotos')}</Text>
+            <Text style={styles.sectionTitle}><SectionIcon name="copy-outline" emoji="🔗" /> {t('home.similarPhotos')}</Text>
           </View>
           {similarityGroups && similarityGroups.length > 0 && (
             <View style={styles.headerButtonsContainer}>
@@ -1847,7 +1851,7 @@ const HomeScreen = ({ navigation }) => {
           )
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateIcon}>🔗</Text>
+            {HomeIonicons ? <HomeIonicons name="copy-outline" size={48} color="#C7C7CC" style={{ marginBottom: 12 }} /> : <Text style={styles.emptyStateIcon}>🔗</Text>}
             <Text style={styles.emptyStateText}>
               {isSimilarityDetecting ? t('home.similarityDetectionInProgress') : t('home.noSimilarityGroups')}
             </Text>
@@ -1961,7 +1965,7 @@ const HomeScreen = ({ navigation }) => {
 
     return (
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { marginBottom: 12, paddingHorizontal: 16 }]}>📋 {t('home.byAttributes')}</Text>
+        <Text style={[styles.sectionTitle, { marginBottom: 12, paddingHorizontal: 16 }]}><SectionIcon name="list-outline" emoji="📋" /> {t('home.byAttributes')}</Text>
         <View style={styles.attributesContainer}>
           {hasDir && (
             <View style={styles.attributeSubBlock}>
@@ -2051,7 +2055,7 @@ const HomeScreen = ({ navigation }) => {
 
     return (
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { marginBottom: 12, paddingHorizontal: 16 }]}>📸 {t('home.byShootingParams')}</Text>
+        <Text style={[styles.sectionTitle, { marginBottom: 12, paddingHorizontal: 16 }]}><SectionIcon name="aperture-outline" emoji="📸" /> {t('home.byShootingParams')}</Text>
         <View style={styles.attributesContainer}>
           {hasISO && (
             <View style={styles.attributeSubBlock}>
@@ -2104,7 +2108,7 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleContainer}>
-            <Text style={styles.sectionTitle}>🏙️ {t('home.byCity')}</Text>
+            <Text style={styles.sectionTitle}><SectionIcon name="location-outline" emoji="🏙️" /> {t('home.byCity')}</Text>
           </View>
           {cities && cities.length > 0 && (
             <View style={styles.headerButtonsContainer}>
@@ -2149,7 +2153,7 @@ const HomeScreen = ({ navigation }) => {
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateIcon}>🏙️</Text>
+            {HomeIonicons ? <HomeIonicons name="location-outline" size={48} color="#C7C7CC" style={{ marginBottom: 12 }} /> : <Text style={styles.emptyStateIcon}>🏙️</Text>}
             <Text style={styles.emptyStateText}>{t('home.noCityData')}</Text>
             <Text style={styles.emptyStateSubtext}>{t('home.startLocationEnrichmentHint')}</Text>
             <TouchableOpacity
@@ -2204,7 +2208,7 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleContainer}>
-            <Text style={styles.sectionTitle}>📸 {t('home.recentDiscoveredPhotos')}</Text>
+            <Text style={styles.sectionTitle}><SectionIcon name="images-outline" emoji="📸" /> {t('home.recentDiscoveredPhotos')}</Text>
             {recentImagesTotal > 0 && (
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>{recentImagesTotal}</Text>

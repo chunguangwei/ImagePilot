@@ -32,6 +32,10 @@ import GlobalImageCache from '../../services/GlobalImageCache';
 import configService from '../../services/ConfigService';
 import cityLocationService from '../../services/CityLocationService';
 import { logger, getUri } from '../../adapters/WebAdapters';
+
+// iOS 单色图标（字体已打包）；异常时回退 emoji
+let CatIonicons = null;
+try { CatIonicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { CatIonicons = null; }
 import { getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation, getDefaultPresets } from '../../i18n';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -1666,7 +1670,7 @@ const CategoryScreen = ({ route, navigation }) => {
    */
   const renderEmpty = () => (
         <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>📭</Text>
+      {CatIonicons ? <CatIonicons name="file-tray-outline" size={64} color="#C7C7CC" style={{ marginBottom: 16 }} /> : <Text style={styles.emptyIcon}>📭</Text>}
       <Text style={styles.emptyText}>{t('category.noImages')}</Text>
         </View>
       );
