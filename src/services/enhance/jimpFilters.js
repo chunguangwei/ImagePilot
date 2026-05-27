@@ -89,4 +89,55 @@ export async function applyJimpFilterToBase64(base64, filterId, intensity = 1) {
   return img.getBase64Async(Jimp.MIME_JPEG);
 }
 
+/**
+ * #证件处理（A 期·扫描增强，纯 jimp，免模型）：光照归一(去阴影) + 提对比 + 提饱和。
+ *
+ * 行业文档扫描管线的"增强"环节（不含透视矫正，B 期再加）。做法：用大尺度模糊估计
+ * 背景光照，按"目标均值/局部光照"算逐像素增益（限幅 0.6~1.8，避免把证件照片/彩色块洗白），
+ * 抹平不均匀阴影；再提对比、轻提饱和让文字更清楚、底色更干净。对纸质文档与含照片的
+ * 证件都适用（不用会洗白照片的"除法二值化"）。
+ * @param {string} base64 含/不含 data: 前缀
+ * @param {number} intensity 0..1（去阴影强度）
+ */
+export async function applyDocumentScanToBase64(base64, intensity = 0.9) {
+  const clean = base64.startsWith('data:') ? base64.split(',')[1] : base64;
+  const img = await Jimp.read(Buffer.from(clean, 'base64'));
+  const W = img.bitmap.width;
+  const H = img.bitmap.height;
+
+  // 光照估计：缩小 → 模糊 → 放大（廉价的大尺度模糊近似）
+  const bg = img.clone();
+  bg.resize(Math.max(1, Math.round(W / 4)), Math.max(1, Math.round(H / 4)));
+  bg.blur(8);
+  bg.resize(W, H);
+  const bd = bg.bitmap.data;
+
+  // 背景目标均值（亮度）
+  let sum = 0;
+  const n = W * H;
+  for (let i = 0; i < n; i++) {
+    const k = i * 4;
+    sum += 0.299 * bd[k] + 0.587 * bd[k + 1] + 0.114 * bd[k + 2];
+  }
+  const meanBg = sum / n || 1;
+
+  // 逐像素增益：把局部光照拉到目标均值；限幅避免洗白内容
+  const od = img.bitmap.data;
+  for (let i = 0; i < n; i++) {
+    const k = i * 4;
+    const lumBg = 0.299 * bd[k] + 0.587 * bd[k + 1] + 0.114 * bd[k + 2] || 1;
+    let gain = meanBg / lumBg;
+    if (gain < 0.6) gain = 0.6; else if (gain > 1.8) gain = 1.8;
+    gain = 1 + (gain - 1) * intensity; // 用强度在"原图"和"全归一"之间插值
+    for (let c = 0; c < 3; c++) {
+      const v = od[k + c] * gain;
+      od[k + c] = v > 255 ? 255 : v < 0 ? 0 : v;
+    }
+  }
+
+  img.contrast(0.18 * intensity);                 // 文字更分明
+  img.color([{ apply: 'saturate', params: [10 * intensity] }]); // 彩色证件更鲜
+  return img.getBase64Async(Jimp.MIME_JPEG);
+}
+
 export default JIMP_FILTERS;
