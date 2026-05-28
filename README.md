@@ -73,14 +73,20 @@ ImagePilot支持**8大分类维度**，从多个角度智能管理您的照片�
 
 所有分类维度都可以独立开启或关闭，让首页更加简洁和个性化。
 
-### ✨ 修图（本地滤镜 + 本地 AI 超分）
+### ✨ 修图（全设备端 · 一键预设 + 可调滤镜）
 
-修图功能全程在设备端本地完成，不联网、不上传，移动端与 PC 均可用：
+修图功能全部在设备端本地完成，不联网、不上传，移动端与 PC 均可用：
 
-- 🎨 **本地滤镜** - 基于 jimp 的纯 JS 离线滤镜，无原生依赖：黑白、复古、提亮、增强、柔化、反色，可调强度
-- 🔍 **AI 增强（超分）** - Real-ESRGAN x4 超分修复，由 onnxruntime 在设备端本地推理，离线、分块处理（大图较慢）
+- 🔍 **AI 清晰增强（超分）** - Real-ESRGAN x4，onnxruntime 设备端推理，分块处理大图
+- ✂️ **AI 抠图** - U²-Net 显著性分割，自动剥离主体并铺白底
+- 🩹 **物体消除（涂抹）** - MI-GAN 修复，手指涂抹要去除的区域即可
+- 💄 **人像美颜** - 保边平滑 + 提亮 + 暖肤气色，免模型（纯 jimp，秒级）
+- 🌈 **色彩优化** - 单次像素扫描（饱和/对比/亮度），约 10× 快于链式滤镜
+- 📄 **证件矫正** - 自动找四角 + 可调手柄 + 透视矫正 + 扫描增强
+- 🎨 **滤镜编辑器** - jimp 纯 JS：黑白 / 复古 / 鲜艳 / 淡雅 / 暖冷色 / 胶片 / 柔化 / 反色，可调强度
 - 👀 **前后对比** - 预览支持「按住看原图」，松手回到处理后效果
-- 💾 **灵活保存** - 处理结果保存到本地
+
+> 大尺寸 AI 模型（超分大/抠图/消除）首次使用时按需从 GitHub Release 下载，安装包瘦身至 ≈192MB；下载与推理进度在处理蒙层实时显示，← 可随时退出。
 
 ### 🔧 手动配置 LLM 大模型（可选）
 
@@ -172,7 +178,9 @@ ImagePilot支持**8大分类维度**，从多个角度智能管理您的照片�
 
 - **ONNX Runtime** - 设备端高性能 AI 推理引擎（本地、离线）
 - **MobileNetV3** - 设备端图像分类模型，内容/场景识别（默认本地分类核心）
-- **Real-ESRGAN x4** - 设备端超分增强模型（修图 AI 增强）
+- **Real-ESRGAN x4**（v3 小/plus 大可选）- 设备端超分增强（修图 AI 清晰增强）
+- **U²-Net** - 设备端显著性分割（修图 AI 抠图 + 证件文档边缘检测）
+- **MI-GAN** - 设备端图像修复（修图 物体消除）
 - **可选在线大模型** - OpenAI / Kimi / Claude / Gemini / Azure / Ollama，用户自行配置，分类请求发往用户指定服务商
 
 ### 数据存储
@@ -193,45 +201,39 @@ ImagePilot支持**8大分类维度**，从多个角度智能管理您的照片�
 ## 📁 项目结构
 
 ```
-ImageClassifierApp/
+ImagePilot/
 ├── src/
 │   ├── components/             # 可复用组件
-│   │   ├── CategoryCard.js     # 分类卡片组件
-│   │   └── shared/             # 共享组件
-│   ├── screens/                # 页面组件
+│   ├── screens/
 │   │   ├── desktop/            # 桌面端页面
-│   │   └── mobile/             # 移动端页面
+│   │   └── mobile/             # 移动端页面（iOS 风格）
 │   ├── services/               # 业务服务
-│   │   ├── ImageClassifierService.js    # 图片分类核心服务
-│   │   ├── ImageSimilarityService.js    # 相似度检测服务
-│   │   ├── ImageStorageService.js       # 存储服务
-│   │   ├── GalleryScannerService.js     # 相册扫描服务
-│   │   ├── CityLocationService.js       # 城市定位服务
-│   │   ├── UnifiedDataService.js        # 统一数据服务
-│   │   ├── ConfigService.js             # 配置服务
-│   │   ├── ImageEnhanceService.js        # 修图服务（本地滤镜 + 本地 AI 超分）
-│   │   ├── MediaStoreService.js          # MediaStore服务（Android）
-│   │   ├── ParallelHashCalculator.js    # 并行哈希计算服务
-│   │   ├── ImageProcessor.js             # 图像处理服务
-│   │   ├── ColorHistogramExtractor.js    # 颜色直方图提取服务
-│   │   ├── WakeLockService.js            # 唤醒锁服务
-│   │   └── WeChatAuthService.js          # 微信认证服务
-│   ├── adapters/               # 平台适配器
-│   │   └── WebAdapters.js      # Web平台适配
-│   └── workers/                # Web Worker
-│       └── hashWorker.js       # 哈希计算Worker
-├── public/                     # 公共资源
-│   ├── models/                 # 设备端 ONNX 模型文件
-│   │   ├── mobilenetv3_rw_Opset17.onnx   # MobileNetV3 内容分类模型
-│   │   └── real_esrgan_x4v3_merged.onnx  # Real-ESRGAN x4 超分模型
-│   └── index.html              # 入口HTML
-├── pc-version-final/           # PC桌面版本
-│   ├── src/                    # PC版源码
-│   ├── build/                  # 构建输出
-│   └── dist/                   # 打包文件
-├── android/                    # Android原生代码
-└── package.json                # 项目配置
+│   │   ├── enhance/            # 修图：超分/抠图/消除/美颜/色彩/证件矫正/滤镜 + 模型按需下载
+│   │   ├── ImageClassifierService.js    # 图片分类核心
+│   │   ├── ImageSimilarityService.js    # 相似度检测（时间窗 ≥2 张）
+│   │   ├── ImageStorageService.js       # 存储
+│   │   ├── GalleryScannerService.js     # 相册扫描
+│   │   ├── CityLocationService.js       # 离线反向地理编码
+│   │   ├── UnifiedDataService.js        # 统一数据
+│   │   ├── ConfigService.js             # 配置
+│   │   ├── ImageEnhanceService.js       # 修图入口
+│   │   ├── UpdateService.js             # 应用内更新（GitHub Releases）
+│   │   ├── ParallelHashCalculator.js    # 并行哈希
+│   │   └── …
+│   ├── ui/ios/                 # iOS 风格 UI（Ionicons / 蓝色 i 图标 / 蒙层 spinner）
+│   ├── adapters/               # 平台适配（WebAdapters / RNFS）
+│   ├── i18n/                   # 中英文案
+│   └── workers/                # Web Worker（PC 端哈希）
+├── android/                    # Android 原生
+│   └── app/src/main/java/com/imageclassifier/v2/
+│       ├── MediaStoreModule.java        # 含 Android 11+ 删除授权（IntentSender）
+│       └── …
+├── pc-version-final/           # PC 桌面（Electron + react-native-web）
+├── scripts/generate-build-info.js       # 构建时自动写 BuildInfo.js
+└── package.json
 ```
+
+> 设备端 ONNX 模型（超分大/抠图/消除）首次使用时按需从 GitHub Release 下载并缓存到 `files/models/`，不打入 APK——这也是 APK 从 234MB 瘦身至 ≈192MB 的核心改动。
 
 ## 🔐 隐私保护
 
@@ -321,7 +323,7 @@ npx react-native run-ios        # RN 通用命令，iOS 未做验证
 
 ## 📱 界面预览
 
-> 截图待补充（iOS 风格 UI 重构进行中）。可参考首页（分类统计 + 最近照片）、分类详情、暂存箱与设置等界面。
+> 当前 iOS 风格 UI（Ionicons 单色线性 + SF 字号/色板）已全面落地：首页分类网格、单图 AI 识别胶囊、设置页、修图蒙层 都已统一主题。截图待补充。
 
 ## 🤝 贡献指南
 
@@ -382,11 +384,13 @@ AI 内容/颜色分类（由 aiProvider.active 决定）
 
 ### AI模型
 
-| 模型 | 用途 | 推理位置 | 备注 |
-|------|------|---------|--------|
-| MobileNetV3 | 内容/场景分类 | 设备端 ONNX（本地） | 默认本地分类核心 |
-| Real-ESRGAN x4 | 超分增强（修图） | 设备端 ONNX（本地） | 固定 128 输入、x4、分块处理 |
-| 用户配置的在线大模型 | 内容/颜色分类（可选） | 用户指定服务商 | OpenAI/Kimi/Claude/Gemini/Azure/Ollama |
+| 模型 | 用途 | 推理位置 | 加载方式 | 备注 |
+|------|------|---------|---------|------|
+| MobileNetV3 | 内容/场景分类 | 设备端 ONNX | 内置 | 默认本地分类核心 |
+| Real-ESRGAN x4v3 / x4plus | 超分增强（修图） | 设备端 ONNX | 按需下载 | 小模型 5MB / 大模型 64MB，可在设置切换 |
+| U²-Netp | 抠图 + 证件边缘检测 | 设备端 ONNX | 按需下载 | 复用同一模型 |
+| MI-GAN | 物体消除 | 设备端 ONNX | 按需下载 | 涂抹蒙版 → 修复 |
+| 用户配置的在线大模型 | 内容/颜色分类（可选） | 用户指定服务商 | API | OpenAI/Kimi/Claude/Gemini/Azure/Ollama |
 
 ### 性能优化
 
@@ -431,15 +435,9 @@ cd android
 
 ## 🐛 已知问题
 
-### Android 10+ 文件删除限制
+### Android 11+ 文件删除（已解决）
 
-由于Android 10+的Scoped Storage限制，某些目录下的文件可能无法直接删除。应用会尝试多种删除策略：
-
-1. 使用Android MediaStore API
-2. 使用react-native-fs
-3. 复制到临时目录后删除
-
-如果删除失败，建议用户手动删除文件。
+Scoped Storage 下，删除其他应用拍/截的图需要用户授权。v1.2.1 起接入 `MediaStore.createDeleteRequest`：删除时弹出系统授权对话框，同意即正常删除，拒绝则保留原图。本应用拍/截或自有目录下的图仍可直接删除，不会弹窗。
 
 ### EXIF位置信息
 
@@ -469,14 +467,8 @@ cd android
 - React Native 社区的优秀框架
 - 所有开源项目的贡献者
 
-## 🌟 Star History
-
-如果这个项目对您有帮助，请给我们一个Star！⭐
-
 ---
 
-**© 2025 ImagePilot. 保留所有权利.**
+**© 2026 ImagePilot. 保留所有权利.**
 
 *让照片管理更智能，让隐私更安全*
-
-# Test build trigger
