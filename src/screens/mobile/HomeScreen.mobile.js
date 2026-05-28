@@ -127,6 +127,8 @@ const HomeScreen = ({ navigation }) => {
   
   // 分类数据
   const [categories, setCategories] = useState([]);
+  // 用户自定义分类（settings.aiProvider.customCategories；云端 LLM 才会真正归类到此）
+  const [customCategoryList, setCustomCategoryList] = useState([]);
   
   // 按时间数据（时间桶数量 + 各桶代表图）
   const [timeCounts, setTimeCounts] = useState({});
@@ -431,10 +433,10 @@ const HomeScreen = ({ navigation }) => {
       // 注意：过滤逻辑在渲染时进行，使用 hideEmptyCategories 状态
       const categoryList = allCategories.map(categoryConfig => {
         // 根据当前语言动态选择分类名称（与PC端保持一致）
-        const categoryName = currentLang === 'en' 
+        const categoryName = currentLang === 'en'
           ? (categoryConfig.english || categoryConfig.chinese || categoryConfig.id)
           : (categoryConfig.chinese || categoryConfig.english || categoryConfig.id);
-        
+
         return {
           id: categoryConfig.id,
           name: categoryName,
@@ -443,6 +445,27 @@ const HomeScreen = ({ navigation }) => {
           recentImages: [], // 稍后加载
         };
       });
+
+      // 追加用户自定义分类（A 方案：仅云端 LLM 会真正归类到此；
+      // 即使 count=0 也展示，便于用户确认配置已生效——空态由 hideEmptyCategories 控制）
+      let customList = [];
+      try {
+        const settings = (await UnifiedDataService.readSettings()) || {};
+        const raw = settings?.aiProvider?.customCategories;
+        customList = Array.isArray(raw) ? raw.filter((c) => c && c.id && c.name) : [];
+      } catch (e) {
+        logger.warn('读取自定义分类失败:', e?.message || e);
+      }
+      setCustomCategoryList(customList);
+      for (const c of customList) {
+        categoryList.push({
+          id: c.id,
+          name: c.name,
+          count: categoryCounts[c.id] || 0,
+          color: '#5856D6', // iOS purple，与内置色系区分
+          recentImages: [],
+        });
+      }
       
       // 并行加载每个分类的最近一张照片（只加载有照片的分类）
       const categoryWithImagesPromises = categoryList.map(async (category) => {
@@ -1113,28 +1136,39 @@ const HomeScreen = ({ navigation }) => {
       isLLMConfigured = false;
     }
 
-    const confirmButtons = (forceLocal) => [
-      { text: t('common.cancel'), style: 'cancel', onPress: () => logger.debug('用户取消分类') },
-      {
-        text: t('common.confirm'),
-        style: 'default',
-        onPress: async () => { await executeAIClassify({ forceLocal, naCount }); },
-      },
-    ];
-
     if (isLLMConfigured) {
-      // 已配置大模型 → 原有 AI 智能分类提示
+      // 已配置云端：同时提供「云端」与「离线」两个执行按钮——
+      // 飞行模式/网差时，用户可直接走离线，不必先等云端 60s 超时再触发兜底。
       Alert.alert(
         t('home.aiClassifyConfirmTitle'),
         t('home.aiClassifyConfirmMessage', { count: naCount }),
-        confirmButtons(false),
+        [
+          { text: t('common.cancel'), style: 'cancel', onPress: () => logger.debug('用户取消分类') },
+          {
+            text: t('home.aiClassifyUseLocal'),
+            style: 'default',
+            onPress: async () => { await executeAIClassify({ forceLocal: true, naCount }); },
+          },
+          {
+            text: t('home.aiClassifyUseCloud'),
+            style: 'default',
+            onPress: async () => { await executeAIClassify({ forceLocal: false, naCount }); },
+          },
+        ],
       );
     } else {
-      // 未配置大模型 → 默认启用离线模型分类，请用户确认
+      // 未配置云端 → 直接走离线
       Alert.alert(
         t('home.aiClassifyOfflineTitle'),
         t('home.aiClassifyOfflineMessage', { count: naCount }),
-        confirmButtons(true),
+        [
+          { text: t('common.cancel'), style: 'cancel', onPress: () => logger.debug('用户取消分类') },
+          {
+            text: t('common.confirm'),
+            style: 'default',
+            onPress: async () => { await executeAIClassify({ forceLocal: true, naCount }); },
+          },
+        ],
       );
     }
   };
@@ -1512,19 +1546,23 @@ const HomeScreen = ({ navigation }) => {
    * 获取分类显示名称（根据当前语言动态获取）
    */
   const getCategoryDisplayName = useCallback((categoryId) => {
+    // 优先匹配用户自定义分类（自定义只有一个 name 字段，无中英区分）
+    const custom = customCategoryList.find((c) => c.id === categoryId);
+    if (custom) return custom.name;
+
     if (!configService || !configService.isConfigLoaded()) {
       return categoryId;
     }
-    
+
     const currentLang = i18n.language || 'zh';
     const categoryConfig = configService.getAllCategoriesWithUI().find(cat => cat.id === categoryId);
-    
+
     if (categoryConfig) {
-      return currentLang === 'en' 
+      return currentLang === 'en'
         ? (categoryConfig.english || categoryConfig.chinese || categoryId)
         : (categoryConfig.chinese || categoryConfig.english || categoryId);
     }
-    
+
     // 如果找不到配置，尝试使用 configService 的方法
     try {
       const language = currentLang === 'en' ? 'english' : 'chinese';
@@ -1532,7 +1570,7 @@ const HomeScreen = ({ navigation }) => {
     } catch (e) {
       return categoryId;
     }
-  }, [i18n.language]);
+  }, [i18n.language, customCategoryList]);
 
   /**
    * 渲染分类卡片（与PC端一致的设计）

@@ -24,8 +24,7 @@ import { Alert } from './adapters/WebAdapters';
 
 console.log('📦 App.js: WebAdapters 导入成功');
 
-// 导入隐私政策确认组件
-import PrivacyPolicyModal, { PRIVACY_AGREED_KEY } from './components/PrivacyPolicyModal.mobile';
+// 隐私政策弹窗已下线（fork 不联第三方后端，无需弹）。组件文件保留备用。
 
 // 导入所有屏�?
 import HomeScreen from './screens/mobile/HomeScreen.mobile';
@@ -226,81 +225,10 @@ export default function App() {
   
   const [isServiceReady, setIsServiceReady] = React.useState(false);
   const [stagingBoxCount, setStagingBoxCount] = React.useState(0);
-  const [privacyAgreed, setPrivacyAgreed] = React.useState(false);
-  const [showPrivacyModal, setShowPrivacyModal] = React.useState(false);
-  const [checkingPrivacy, setCheckingPrivacy] = React.useState(true);
-  
-  // 检查隐私政策是否已同意
-  useEffect(() => {
-    const checkPrivacyAgreement = async () => {
-      try {
-        const agreed = await AsyncStorage.getItem(PRIVACY_AGREED_KEY);
-        console.log('🔍 检查隐私政策同意状态:', { key: PRIVACY_AGREED_KEY, value: agreed, type: typeof agreed });
-        
-        // 支持多种格式：'true'、true、'"true"'（JSON字符串）
-        // 注意：typeof null === 'object' 是 JavaScript 的已知 bug，所以需要显式检查 null
-        const isAgreed = agreed !== null && (agreed === 'true' || agreed === true || agreed === '"true"');
-        
-        if (isAgreed) {
-          console.log('✅ 用户已同意隐私政策');
-          setPrivacyAgreed(true);
-          setShowPrivacyModal(false);
-        } else {
-          console.log('📋 用户未同意隐私政策，显示确认弹窗');
-          setShowPrivacyModal(true);
-        }
-      } catch (error) {
-        console.error('❌ 检查隐私政策同意状态失败:', error);
-        // 出错时显示隐私政策弹窗
-        setShowPrivacyModal(true);
-      } finally {
-        setCheckingPrivacy(false);
-      }
-    };
-    
-    checkPrivacyAgreement();
-  }, []);
-  
-  // 处理隐私政策同意
-  const handlePrivacyAgree = async () => {
-    try {
-      // 存储为字符串 'true'，确保能被正确读取
-      await AsyncStorage.setItem(PRIVACY_AGREED_KEY, 'true');
-      
-      // 立即验证存储是否成功
-      const verify = await AsyncStorage.getItem(PRIVACY_AGREED_KEY);
-      console.log('✅ 隐私政策同意状态已保存，验证值:', { key: PRIVACY_AGREED_KEY, value: verify, type: typeof verify });
-      
-      // 如果验证失败，再次尝试保存
-      if (verify !== 'true' && verify !== true && verify !== '"true"') {
-        console.warn('⚠️ 验证失败，重新保存隐私政策同意状态');
-        await AsyncStorage.setItem(PRIVACY_AGREED_KEY, 'true');
-      }
-      
-      setPrivacyAgreed(true);
-      setShowPrivacyModal(false);
-    } catch (error) {
-      console.error('❌ 保存隐私政策同意状态失败:', error);
-      // 即使保存失败，也允许继续使用应用
-      setPrivacyAgreed(true);
-      setShowPrivacyModal(false);
-    }
-  };
-  
-  // 处理隐私政策不同意（不允许使用应用）
-  const handlePrivacyDisagree = () => {
-    // 华为应用市场要求必须同意才能使用
-    // 用户不同意时，直接退出应用
-    console.log('⚠️ 用户未同意隐私政策，退出应用');
-    
-    // 直接退出应用
-    if (BackHandler && BackHandler.exitApp) {
-      BackHandler.exitApp();
-    } else {
-      // 如果 BackHandler 不可用，记录错误
-      console.error('无法退出应用，BackHandler 不可用');
-    }
-  };
+  // 隐私政策预同意：fork（ImagePilot）已彻底剥离原作者第三方后端，所有 AI 分类/增强
+  // 仅在设备端或用户自配 Provider 上发生，无需在首次安装弹隐私政策确认页。
+  // 直接当"已同意"，跳过 modal。
+  const privacyAgreed = true;
   
   useEffect(() => {
     // 只有在隐私政策已同意且服务未就绪时，才初始化应用
@@ -368,32 +296,6 @@ export default function App() {
   };
 
   console.log('📦 App.js: 返回 JSX');
-  
-  // 如果正在检查隐私政策，显示加载界面
-  if (checkingPrivacy) {
-    return (
-      <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>🚀 {t('common.initializing')}</Text>
-        </View>
-      </View>
-    );
-  }
-  
-  // 显示隐私政策确认弹窗
-  if (showPrivacyModal) {
-    return (
-      <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-        <PrivacyPolicyModal
-          visible={showPrivacyModal}
-          onAgree={handlePrivacyAgree}
-          onDisagree={handlePrivacyDisagree}
-        />
-      </View>
-    );
-  }
   
   // 如果服务还未就绪，显示加载界面
   if (!isServiceReady) {

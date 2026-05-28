@@ -11,10 +11,11 @@
  *    - 相似度检测
  */
 
-import { NativeModules, NativeEventEmitter } from 'react-native';
-import { logger, getUri } from '../adapters/WebAdapters';
+import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
+import { logger, getUri, RNFS, getLocalPath } from '../adapters/WebAdapters';
 import UnifiedDataService from './UnifiedDataService';
 import ImageClassifierService from './ImageClassifierService';
+import ImageProcessor from './ImageProcessor';
 import cityLocationService from './CityLocationService';
 import ImageSimilarityService from './ImageSimilarityService';
 import { ScanService } from '../adapters/ScanServiceAdapter';
@@ -482,7 +483,242 @@ class GalleryScannerService {
    * @param {Array} imagesToClassify - 可选，指定需要分类的照片数组。如果未指定，则读取所有NA分类的照片
    * @returns {Promise<Object>} 处理结果 { processedCount, failedCount }
    */
-  async aiImageClassifyByContent(scanStartTime = null, imagesToClassify = null) {
+  /**
+   * 纯 JS 离线分类：bypass 原生 scanner，用 ImageClassifierService.classifyImageWithMobileNetV3
+   * 直接遍历 NA 图，结果走 UnifiedDataService.batchUpdateClassification 落库。完全离线，飞行模式可用。
+   * @param {Date|null} scanStartTime
+   * @param {Array|null} imagesToClassify - null 则取所有 NA 分类图片
+   */
+  async _classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify) {
+    logger.info('🚀 启动 JS 端离线 AI 分类（MobileNetV3，绕过 native scanner）');
+    this.isScanning = true;
+    this.scanStartTimestamp = scanStartTime || new Date();
+
+    try {
+      // 取待分类图片列表
+      let naImages = [];
+      if (imagesToClassify && Array.isArray(imagesToClassify) && imagesToClassify.length > 0) {
+        naImages = imagesToClassify;
+      } else {
+        await UnifiedDataService.imageCache.buildCache();
+        try {
+          naImages = await UnifiedDataService.readImagesByCategory('NA');
+        } catch (e) {
+          logger.error('❌ 读取 NA 图片失败:', e);
+          naImages = [];
+        }
+      }
+      this.totalImagesToBeClassified = naImages.length;
+      this.imagesClassified = 0;
+      logger.info(`📊 JS 离线分类目标：${naImages.length} 张 NA 图片`);
+
+      await this.sendProgressMessage('initializing', 0, naImages.length, 0, naImages.length);
+
+      if (naImages.length === 0) {
+        await this.sendProgressMessage('completed', 0, 0, 0, 0);
+        return { success: true, processedCount: 0, failedCount: 0 };
+      }
+
+      // 初始化分类器（首次会从配置加载模型表 + ONNX runtime + 加载 mobilenetv3 模型；幂等）
+      try {
+        await this.imageClassifier.initialize();
+        logger.info('✅ ImageClassifierService 初始化完成');
+      } catch (e) {
+        logger.error('❌ ImageClassifierService 初始化失败:', e);
+        await this.sendProgressMessage('error', 0, naImages.length);
+        throw new Error(`离线模型加载失败：${e?.message || e}`);
+      }
+
+      let processedCount = 0;
+      let failedCount = 0;
+      const BATCH = 20;
+      for (let i = 0; i < naImages.length; i += BATCH) {
+        const batch = naImages.slice(i, i + BATCH);
+        const classificationDataArray = [];
+        for (const image of batch) {
+          try {
+            const imageUri = getUri(image) || image?.uri;
+            if (!imageUri) { failedCount++; continue; }
+            const r = await this.imageClassifier.classifyImageWithMobileNetV3(imageUri);
+            const top = r && r.success ? r.topPrediction : null;
+            const category =
+              top && typeof this.imageClassifier.mapMobileNetV3ToAppCategory === 'function'
+                ? (this.imageClassifier.mapMobileNetV3ToAppCategory(top.class) || 'other')
+                : 'other';
+            classificationDataArray.push({
+              uri: image?.uri || imageUri,
+              id: image.id,
+              category,
+              confidence: (r && r.confidence) || 0.5,
+              idCardDetections: [],
+              generalDetections: [],
+              mobileNetV3Detections: null,
+              message: null,
+              background_color: null,
+            });
+          } catch (e) {
+            logger.warn(`⚠️ 离线分类单张失败: ${e?.message || e}`);
+            failedCount++;
+          }
+        }
+        if (classificationDataArray.length > 0) {
+          try {
+            const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, false);
+            if (updateResult && updateResult.success) {
+              processedCount += updateResult.updatedCount;
+              this.imagesClassified += updateResult.updatedCount;
+            } else {
+              failedCount += classificationDataArray.length;
+            }
+          } catch (e) {
+            logger.error(`❌ 离线分类批量落库失败: ${e?.message || e}`);
+            failedCount += classificationDataArray.length;
+          }
+        }
+        const done = Math.min(i + BATCH, naImages.length);
+        await this.sendProgressMessage('remote_inference', done, naImages.length, this.imagesClassified, naImages.length);
+      }
+
+      logger.info(`✅ JS 离线分类完成：成功 ${processedCount}，失败 ${failedCount}`);
+      await this.sendProgressMessage('completed', processedCount, naImages.length, this.imagesClassified, naImages.length);
+      return { success: true, processedCount, failedCount };
+    } catch (error) {
+      logger.error('❌ JS 离线分类失败:', error);
+      throw error;
+    } finally {
+      this.isScanning = false;
+      this._cleanupScanState && this._cleanupScanState();
+    }
+  }
+
+  /**
+   * JS 端云端分类：bypass 原生 scanner，调用用户配置的 LLM Provider（wireLLMRouting.classifyCloudBatch）。
+   * 图片 1024 长边压成 jpeg → base64 → 走 user 配的 baseURL（OpenAI/Kimi/Anthropic/Gemini/Ollama/Custom）。
+   * 绝不会连接 api.aifuture.net.cn。结果落 batchUpdateClassification。
+   * @param {Date|null} scanStartTime
+   * @param {Array|null} imagesToClassify
+   * @param {object} aiCfg - getAIProviderConfig() 结果（已确认 active != 'local-onnx'）
+   */
+  async _classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg) {
+    logger.info(`🚀 启动 JS 端云端 AI 分类（${aiCfg.active}，绕过 native scanner / 不连 aifuture.net.cn）`);
+    this.isScanning = true;
+    this.scanStartTimestamp = scanStartTime || new Date();
+    try {
+      let naImages = [];
+      if (imagesToClassify && Array.isArray(imagesToClassify) && imagesToClassify.length > 0) {
+        naImages = imagesToClassify;
+      } else {
+        await UnifiedDataService.imageCache.buildCache();
+        try { naImages = await UnifiedDataService.readImagesByCategory('NA'); }
+        catch (e) { logger.error('❌ 读取 NA 图片失败:', e); naImages = []; }
+      }
+      this.totalImagesToBeClassified = naImages.length;
+      this.imagesClassified = 0;
+      logger.info(`📊 JS 云端分类目标：${naImages.length} 张 NA 图片`);
+      await this.sendProgressMessage('initializing', 0, naImages.length, 0, naImages.length);
+
+      if (naImages.length === 0) {
+        await this.sendProgressMessage('completed', 0, 0, 0, 0);
+        return { success: true, processedCount: 0, failedCount: 0 };
+      }
+
+      // 新一代云端分类（LLMClassifyOrchestrator，最佳实践）：
+      // 用用户分类清单驱动 prompt，返回富语义 tags/shortLabel/description，落到 message 字段。
+      // 旧的 wireLLMRouting 保留给 PC/iOS 兼容，不再被 Android 调用。
+      const { classifyCloudBatchV2 } = await import('./llm/llmClassifyOrchestrator.js');
+      const classifyCloudBatch = classifyCloudBatchV2;
+
+      let processedCount = 0;
+      let failedCount = 0;
+      const BATCH = 10; // 串行小批，控内存；并发由 aiCfg.concurrent 控制
+      for (let i = 0; i < naImages.length; i += BATCH) {
+        const batch = naImages.slice(i, i + BATCH);
+        // 1) 每张图压成 1024 jpeg → base64
+        const inputs = [];
+        const validResults = [];
+        for (const image of batch) {
+          try {
+            const sourceUri = getUri(image) || image?.uri;
+            if (!sourceUri) { failedCount++; continue; }
+            const resized = await ImageProcessor.resizeImage(sourceUri, 1024, 1024, {
+              maintainAspectRatio: true, outputFormat: 'jpeg', quality: 90,
+            });
+            const resizedUri = resized?.uri;
+            if (!resizedUri) { failedCount++; continue; }
+            // 注意：getLocalPath() 内部的 normalizeFilePath 会把 `file:///data/...` 错切成 `data/...`
+            // （三个斜杠全替换 → 丢前导 /），导致 RNFS 打开失败 ENOENT。这里直接安全地去掉 `file://`，保留前导 `/`。
+            const localPath = resizedUri.startsWith('file://') ? resizedUri.replace(/^file:\/\//, '') : resizedUri;
+            const base64 = await RNFS.readFile(localPath, 'base64');
+            inputs.push({ id: image.id || image.hash || sourceUri, imageBase64: base64 });
+            validResults.push({ imageData: image, hash: image.hash || image.id });
+          } catch (e) {
+            logger.warn(`⚠️ 云端分类预处理失败: ${e?.message || e}`);
+            failedCount++;
+          }
+        }
+        if (inputs.length === 0) continue;
+
+        // 2) 调 wireLLMRouting（用户自配 provider）
+        let batchOut;
+        try {
+          batchOut = await classifyCloudBatch({
+            imageClassifier: this.imageClassifier,
+            platform: Platform.OS,
+            inputs, validResults, aiCfg,
+          });
+        } catch (e) {
+          logger.error(`❌ 云端 LLM 调用失败: ${e?.message || e}`);
+          failedCount += inputs.length;
+          continue;
+        }
+
+        // 3) 落库
+        const classificationDataArray = [];
+        for (const item of (batchOut?.items || [])) {
+          if (!item.success || !item.data) { failedCount++; continue; }
+          classificationDataArray.push({
+            uri: item.imageData?.uri,
+            id: item.imageData?.id,
+            category: item.data.category,
+            confidence: item.data.confidence || 0.9,
+            idCardDetections: [],
+            generalDetections: [],
+            mobileNetV3Detections: null,
+            message: item.data.description || null,
+            background_color: item.data.background_color || null,
+          });
+        }
+        if (classificationDataArray.length > 0) {
+          try {
+            const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, false);
+            if (updateResult && updateResult.success) {
+              processedCount += updateResult.updatedCount;
+              this.imagesClassified += updateResult.updatedCount;
+            } else {
+              failedCount += classificationDataArray.length;
+            }
+          } catch (e) {
+            logger.error(`❌ 云端分类落库失败: ${e?.message || e}`);
+            failedCount += classificationDataArray.length;
+          }
+        }
+        const done = Math.min(i + BATCH, naImages.length);
+        await this.sendProgressMessage('remote_inference', done, naImages.length, this.imagesClassified, naImages.length);
+      }
+
+      logger.info(`✅ JS 云端分类完成：成功 ${processedCount}，失败 ${failedCount}`);
+      await this.sendProgressMessage('completed', processedCount, naImages.length, this.imagesClassified, naImages.length);
+      return { success: true, processedCount, failedCount };
+    } catch (error) {
+      logger.error('❌ JS 云端分类失败:', error);
+      throw error;
+    } finally {
+      this.isScanning = false;
+      this._cleanupScanState && this._cleanupScanState();
+    }
+  }
+
+  async aiImageClassifyByContent(scanStartTime = null, imagesToClassify = null, opts = {}) {
     // 检查是否已经在扫描中
     if (this.isScanning) {
       const errorMsg = i18n.t('home.scanAlreadyInProgress');
@@ -490,12 +726,36 @@ class GalleryScannerService {
       throw new Error(errorMsg);
     }
 
+    // ⚠️ 关键安全/隐私决策：始终绕开 native scanner（GalleryScanService.java）做"AI 分类"。
+    // 原作者 Java 层硬编码了 https://api.aifuture.net.cn/api/v2/classify/batch* 的免费缓存/推理端点，
+    // 用户即使未配置 LLM 也会"分类成功"——图片实际上传给了第三方。本仓库（fork ImagePilot）的
+    // 隐私承诺是：仅设备端 ONNX 或用户自配 Provider，绝不联第三方/作者服务器。
+    // 因此 Android 端的"分类阶段"全部走 JS 路径：
+    //   - forceLocal=true 或 active='local-onnx' → 设备端 MobileNetV3
+    //   - active=云端 Provider                    → JS 端 wireLLMRouting（用户自配）
+    if (opts && opts.forceLocal === true) {
+      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify);
+    }
+    let aiCfg = null;
+    try {
+      const cfgSvc = (await import('./llm/adapters/UnifiedDataConfigService.js')).default;
+      aiCfg = await cfgSvc.getAIProviderConfig();
+    } catch (e) {
+      logger.warn('读取 aiProvider 配置失败，按 local-onnx 处理:', e?.message || e);
+    }
+    const isCloud = !!(aiCfg && aiCfg.active && aiCfg.active !== 'local-onnx');
+    if (!isCloud) {
+      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify);
+    }
+    return await this._classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg);
+
     // 检查原生模块是否可用
+    /* eslint-disable no-unreachable */
     if (!GalleryScanModule) {
       logger.error('❌ GalleryScanModule 不可用，无法使用原生AI分类');
       throw new Error(i18n.t('home.galleryScanModuleUnavailable'));
     }
-    
+
     logger.info('🚀 启动AI分类服务 (Native Android AI Classification)');
 
     // 设置扫描状态和回调

@@ -323,7 +323,9 @@
       "TB": "TB"
     },
     "aiClassifyConfirmTitle": "AI Smart Classification",
-    "aiClassifyConfirmMessage": "This will use your configured online LLM to classify {{count}} uncategorized photos.\n\nNotes:\n1. Classification requests are sent to the provider you configured in Settings → AI Model Settings (no third-party/author server involved)\n2. Processing time depends on the number of photos; you can track progress at the top of the home page\n\nContinue?",
+    "aiClassifyConfirmMessage": "Classify {{count}} uncategorized photos with AI.\n\n• Cloud: send to the provider configured in Settings → AI Model Settings (no third-party/author server), classify by semantics.\n• Offline: run on-device with MobileNetV3 — no network, no upload.\n\nChoose:",
+    "aiClassifyUseCloud": "Cloud",
+    "aiClassifyUseLocal": "Offline",
     "aiClassifyOfflineTitle": "Offline Model Classification",
     "aiClassifyOfflineMessage": "You haven't configured an online LLM. The on-device offline model (MobileNetV3) will be used by default to classify {{count}} uncategorized photos.\n\nOffline classification runs fully on-device — no network, no upload.\n\nContinue?",
     "aiClassifyLLMFailTitle": "LLM Classification Problem",

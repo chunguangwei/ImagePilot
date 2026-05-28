@@ -57,9 +57,15 @@ export const DEFAULT_SCHEMA = {
       maximum: 1,
       default: 0.5,
     },
+    semanticLabel: {
+      type: 'string',
+      description: '语意短标签（4~12 汉字 / 2~5 英文词），LLM 看图后产出的可见标签',
+      maxLength: 60,
+      default: '',
+    },
     description: {
       type: 'string',
-      description: '简短自然语言描述（建议 < 30 字）',
+      description: '简短自然语言描述（建议 < 24 字）',
       maxLength: 200,
       default: '',
     },
