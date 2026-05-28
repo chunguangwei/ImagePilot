@@ -7,8 +7,13 @@
  * 分类模型 mobilenetv3 仍随 APK 打包（核心、扫描即用），不在此下载。
  */
 
-import { RNFS, logger } from '../../adapters/WebAdapters';
+import { logger } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../UnifiedDataService';
+
+// 注意：adapters 的 RNFS 是裁剪过的子集，没有 downloadFile/moveFile 等；
+// 这里直接用原生 react-native-fs（与 UpdateService 一致），否则会 "undefined is not a function"。
+// eslint-disable-next-line global-require
+const RNFS = require('react-native-fs');
 
 const BASE = 'https://github.com/chunguangwei/ImagePilot/releases/download/models-v1';
 
