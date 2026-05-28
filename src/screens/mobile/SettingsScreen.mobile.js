@@ -31,6 +31,7 @@ import * as UpdateService from '../../services/UpdateService';
 import DirectoryPicker from '../../components/DirectoryPicker.mobile';
 import { logger } from '../../adapters/WebAdapters';
 import { presetIcon } from '../../ui/ios/presetIcons';
+import { SUPERRES_VARIANTS, ensureModel, isModelDownloaded, resolveSuperRes, deleteModel } from '../../services/enhance/modelSource';
 import { BUILD_DATE, BUILD_VERSION, BUILD_VERSION_CODE } from '../../config/BuildInfo';
 
 // iOS 单色图标（字体已打包）；异常时回退 emoji
@@ -56,6 +57,13 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   const [showDirectoryPicker, setShowDirectoryPicker] = useState(false);
   const [detectingDirectory, setDetectingDirectory] = useState(null);
   
+  // 超分(AI增强)模型：小/大/自定义 + 按需下载
+  const [srVariant, setSrVariant] = useState('small');
+  const [srCustomUrl, setSrCustomUrl] = useState('');
+  const [srDownloaded, setSrDownloaded] = useState(false);
+  const [srDownloading, setSrDownloading] = useState(false);
+  const [srProgress, setSrProgress] = useState(0);
+
   // AI增强预设相关状态
   const [aiEnhancePresets, setAiEnhancePresets] = useState({});
   const [editingPreset, setEditingPreset] = useState(null); // 当前编辑的预设
@@ -128,6 +136,12 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
       if (savedSettings.aiEnhancePresets) {
         setAiEnhancePresets(savedSettings.aiEnhancePresets);
       }
+
+      // 超分模型选择
+      const sr = savedSettings.superResModel || {};
+      setSrVariant(sr.variant || 'small');
+      setSrCustomUrl(sr.customUrl || '');
+      try { const r = await resolveSuperRes(); setSrDownloaded(await isModelDownloaded(r.filename)); } catch (_) {}
       
       logger.debug('设置加载完成:', savedSettings);
     } catch (error) {
@@ -1014,6 +1028,83 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     </TouchableOpacity>
   );
 
+  // ===== 超分(AI增强)模型：小/大/自定义 + 按需下载 =====
+  const refreshSrStatus = async () => {
+    try { const r = await resolveSuperRes(); setSrDownloaded(await isModelDownloaded(r.filename)); } catch (_) {}
+  };
+  const selectSrVariant = async (v) => {
+    setSrVariant(v);
+    await updateSetting('superResModel', { variant: v, customUrl: srCustomUrl });
+    await refreshSrStatus();
+  };
+  const saveSrCustomUrl = async () => {
+    const u = (srCustomUrl || '').trim();
+    await updateSetting('superResModel', { variant: 'custom', customUrl: u });
+    setSrVariant('custom');
+    await refreshSrStatus();
+  };
+  const downloadSrModel = async () => {
+    setSrDownloading(true); setSrProgress(0);
+    try {
+      const r = await resolveSuperRes();
+      if (!r.url) { Alert.alert(t('common.tip') || '提示', '请先填写自定义模型链接'); return; }
+      await deleteModel(r.filename).catch(() => {}); // 重新下载：先删旧
+      await ensureModel(r.filename, r.url, (p) => setSrProgress(p));
+      setSrDownloaded(true);
+      Alert.alert(t('common.success') || '完成', '模型已下载，可用于 AI 增强');
+    } catch (e) {
+      Alert.alert('下载失败', (e?.message || String(e)).replace(/^E_\w+\s*/, ''));
+    } finally { setSrDownloading(false); }
+  };
+
+  const renderSuperResModel = () => {
+    const opts = [
+      { key: 'small', label: SUPERRES_VARIANTS.small.label },
+      { key: 'large', label: SUPERRES_VARIANTS.large.label },
+      { key: 'custom', label: '自定义链接（.onnx）' },
+    ];
+    return (
+      <View style={styles.actionButton}>
+        <Text style={styles.actionButtonText}>
+          {SetIonicons ? <SetIonicons name="color-wand-outline" size={17} color="#007AFF" /> : null} AI 增强模型（超分）
+        </Text>
+        <Text style={styles.actionButtonDescription}>模型按需下载（不占安装包）。大模型更清晰但更慢更大。</Text>
+        {opts.map((o) => (
+          <TouchableOpacity key={o.key} style={styles.srOptionRow} onPress={() => selectSrVariant(o.key)} activeOpacity={0.6}>
+            {SetIonicons
+              ? <SetIonicons name={srVariant === o.key ? 'radio-button-on' : 'radio-button-off'} size={20} color={srVariant === o.key ? '#007AFF' : '#C6C6C8'} />
+              : <Text>{srVariant === o.key ? '●' : '○'}</Text>}
+            <Text style={styles.srOptionLabel}>{o.label}</Text>
+          </TouchableOpacity>
+        ))}
+        {srVariant === 'custom' && (
+          <View style={styles.srCustomRow}>
+            <TextInput
+              style={styles.srInput}
+              placeholder="https://.../model.onnx（输入/输出须与 Real-ESRGAN 一致）"
+              placeholderTextColor="#8E8E93"
+              value={srCustomUrl}
+              onChangeText={setSrCustomUrl}
+              autoCapitalize="none"
+              onBlur={saveSrCustomUrl}
+            />
+          </View>
+        )}
+        <View style={styles.srStatusRow}>
+          <Text style={styles.srStatusText}>{srDownloaded ? '✓ 已下载' : '未下载'}</Text>
+          <TouchableOpacity
+            style={[styles.srDownloadBtn, srDownloading && { opacity: 0.5 }]}
+            disabled={srDownloading}
+            onPress={downloadSrModel}>
+            <Text style={styles.srDownloadBtnText}>
+              {srDownloading ? `下载中 ${Math.round(srProgress * 100)}%` : (srDownloaded ? '重新下载' : '下载模型')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   /**
    * 渲染信息项
    */
@@ -1144,6 +1235,9 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             handleCheckUpdate,
             false
           )}
+
+          {/* 超分(AI增强)模型：小/大/自定义 + 按需下载 */}
+          {renderSuperResModel()}
 
           {/* 本地分类设置 - 与目录设置平级，使用actionButton样式 */}
           <View style={styles.actionButton}>
@@ -1706,6 +1800,15 @@ const styles = StyleSheet.create({
     marginTop: 3,
     lineHeight: 18,
   },
+  // 超分模型选择
+  srOptionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 9 },
+  srOptionLabel: { fontSize: 15, color: '#000000', marginLeft: 10 },
+  srCustomRow: { marginTop: 4, marginBottom: 4 },
+  srInput: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#C6C6C8', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 13, color: '#000000', backgroundColor: '#F2F2F7' },
+  srStatusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
+  srStatusText: { fontSize: 13, color: '#8E8E93' },
+  srDownloadBtn: { backgroundColor: '#007AFF', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
+  srDownloadBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
   dangerText: {
     color: '#FF3B30',
   },

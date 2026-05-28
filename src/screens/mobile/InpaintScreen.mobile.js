@@ -29,6 +29,7 @@ export default function InpaintScreen({ route, navigation }) {
   const [brush, setBrush] = useState(26);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [phase, setPhase] = useState('process'); // 'download' | 'process'
   const [resultUri, setResultUri] = useState(null);
   const [error, setError] = useState(null);
   const [comparing, setComparing] = useState(false);
@@ -84,7 +85,7 @@ export default function InpaintScreen({ route, navigation }) {
       const out = await inpaintLocally(
         imageUri,
         { strokes, displayW: disp.w, displayH: disp.h, brushRadius: brush },
-        ({ done, total }) => setProgress(total ? done / total : 0),
+        ({ done, total, phase: ph }) => { setPhase(ph || 'process'); setProgress(total ? done / total : 0); },
       );
       setResultUri(out);
     } catch (e) {
@@ -147,7 +148,7 @@ export default function InpaintScreen({ route, navigation }) {
             {busy && (
               <View style={styles.overlay}>
                 <ActivityIndicator color="#fff" />
-                <Text style={styles.overlayText}>消除中… {Math.round(progress * 100)}%</Text>
+                <Text style={styles.overlayText}>{phase === 'download' ? '下载模型' : '消除中'}… {Math.round(progress * 100)}%</Text>
               </View>
             )}
           </View>

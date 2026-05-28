@@ -8,13 +8,12 @@
  * 后续阶段（抠图/消除/美颜）按同样模式逐步加入：新增 handler + 模型名即可。
  */
 
-import { RNFS, ModelPathAdapter, logger } from '../../adapters/WebAdapters';
+import { RNFS, logger } from '../../adapters/WebAdapters';
 import ImageProcessor from '../ImageProcessor';
+import { ensureModel, resolveSuperRes, FIXED_MODELS } from './modelSource';
 
-// 单文件 Real-ESRGAN x4（权重内嵌）；与 FilterEditor 的 AI 增强同一模型。
-const SR_MODEL = 'real_esrgan_x4v3_merged.onnx';
-const MATTING_MODEL = 'u2netp.onnx'; // 轻量抠图（显著性分割），打包在 public/models
-const INPAINT_MODEL = 'migan_pipeline_v2.onnx'; // MI-GAN 物体消除（自带预/后处理），打包在 public/models
+// 模型不再随 APK 打包（瘦身），改为按需从 GitHub Release 下载（见 modelSource.js）。
+// 下载进度通过 onProgress 以 { phase:'download', done, total } 传出，与推理阶段区分。
 
 // 预设 id → 本地处理器标识。未列出者 isLocalPreset=false，调用方回退云端/占位。
 const LOCAL_PRESET_HANDLERS = Object.freeze({
@@ -88,16 +87,16 @@ async function readResizedBase64(imageUri, maxEdge) {
   return RNFS.readFile(path, 'base64');
 }
 
-/** Real-ESRGAN 超分：读 base64→分块推理→data URL */
+/** Real-ESRGAN 超分：选模型(小/大/自定义)→按需下载→读 base64→分块推理→data URL */
 async function runSuperRes(imageUri, onProgress) {
   const base64 = await readResizedBase64(imageUri, 1024);
-  await ModelPathAdapter.ensureModelExists(SR_MODEL);
-  const modelPath = ModelPathAdapter.getModelPath(SR_MODEL);
+  const { filename, url } = await resolveSuperRes();
+  const modelPath = await ensureModel(filename, url, (p) => onProgress && onProgress({ phase: 'download', done: p, total: 1 }));
   // 懒加载推理引擎（仅在实际增强时才载入 onnxruntime/jimp）
   const mod = await import('./superResRunner.js');
   const createSuperResRunner = mod.createSuperResRunner || mod.default;
   const runner = createSuperResRunner({ modelPath });
-  logger.debug('🟦 本地超分开始', { imageUri });
+  logger.debug('🟦 本地超分开始', { imageUri, filename });
   return runner.enhance(base64, onProgress); // data URL（image/jpeg）
 }
 
@@ -119,8 +118,7 @@ async function runBeauty(imageUri, onProgress) {
 export async function detectDocCorners(imageUri) {
   const run = async () => {
     const base64 = await readResizedBase64(imageUri, 1024);
-    await ModelPathAdapter.ensureModelExists(MATTING_MODEL); // 复用 u2netp
-    const modelPath = ModelPathAdapter.getModelPath(MATTING_MODEL);
+    const modelPath = await ensureModel(FIXED_MODELS.matting.filename, FIXED_MODELS.matting.url); // 复用 u2netp
     const mod = await import('./docDewarpRunner.js');
     return mod.detectCorners(base64, modelPath);
   };
@@ -151,8 +149,7 @@ export async function dewarpDocument(imageUri, quadFrac, onProgress) {
  */
 export async function inpaintLocally(imageUri, maskSpec, onProgress) {
   const base64 = await readResizedBase64(imageUri, 1024);
-  await ModelPathAdapter.ensureModelExists(INPAINT_MODEL);
-  const modelPath = ModelPathAdapter.getModelPath(INPAINT_MODEL);
+  const modelPath = await ensureModel(FIXED_MODELS.inpaint.filename, FIXED_MODELS.inpaint.url, (p) => onProgress && onProgress({ phase: 'download', done: p, total: 1 }));
   const mod = await import('./inpaintRunner.js');
   const createInpaintRunner = mod.createInpaintRunner || mod.default;
   const runner = createInpaintRunner({ modelPath });
@@ -160,11 +157,10 @@ export async function inpaintLocally(imageUri, maskSpec, onProgress) {
   return runner.inpaint(base64, maskSpec, onProgress);
 }
 
-/** U2Net 抠图：读 base64→分割→前景合成纯色底→data URL */
+/** U2Net 抠图：按需下载→读 base64→分割→前景合成纯色底→data URL */
 async function runMatting(imageUri, onProgress) {
   const base64 = await readResizedBase64(imageUri, 1280);
-  await ModelPathAdapter.ensureModelExists(MATTING_MODEL);
-  const modelPath = ModelPathAdapter.getModelPath(MATTING_MODEL);
+  const modelPath = await ensureModel(FIXED_MODELS.matting.filename, FIXED_MODELS.matting.url, (p) => onProgress && onProgress({ phase: 'download', done: p, total: 1 }));
   const mod = await import('./mattingRunner.js');
   const createMattingRunner = mod.createMattingRunner || mod.default;
   const runner = createMattingRunner({ modelPath });

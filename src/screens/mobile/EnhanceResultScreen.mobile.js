@@ -312,10 +312,10 @@ export default function EnhanceResultScreen({ route, navigation }) {
           continue;
         }
         try {
-          const dataUrl = await enhanceImageLocally(uri, presetId, ({ done, total }) => {
+          const dataUrl = await enhanceImageLocally(uri, presetId, ({ done, total, phase }) => {
             setLocalResults((prev) => ({
               ...prev,
-              [img.id]: { ...(prev[img.id] || {}), status: 'processing', progress: total ? done / total : 0 },
+              [img.id]: { ...(prev[img.id] || {}), status: 'processing', progress: total ? done / total : 0, phase: phase || 'process' },
             }));
           });
           setLocalResults((prev) => ({
@@ -656,9 +656,11 @@ export default function EnhanceResultScreen({ route, navigation }) {
                 ? t('enhanceResult.failed')
                 : loadingEnhanced
                   ? t('enhanceResult.loadingEnhancedResult')
-                  : (typeof currentResult?.progress === 'number' && currentResult.progress > 0
-                      ? `${t('enhanceResult.processing')} ${Math.round(currentResult.progress * 100)}%`
-                      : t('enhanceResult.processing'))}
+                  : (() => {
+                      const pct = typeof currentResult?.progress === 'number' ? Math.round(currentResult.progress * 100) : 0;
+                      const label = currentResult?.phase === 'download' ? '下载模型' : t('enhanceResult.processing');
+                      return pct > 0 ? `${label} ${pct}%` : label;
+                    })()}
             </Text>
           </View>
         )}
