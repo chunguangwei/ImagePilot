@@ -20,6 +20,7 @@ const LOCAL_PRESET_HANDLERS = Object.freeze({
   enhance: 'superres', // 清晰增强 → 超分修复
   cutout: 'matting',   // 背景移除/抠图 → U2Net 显著性分割
   portrait: 'beauty',  // 人像美颜 → 全局磨皮（一期，纯 jimp，免模型）
+  color: 'colorize',   // 色彩优化 → 饱和度/对比/亮度增强（纯 jimp，免模型）
   // 证件处理(document) B 期改为交互式：走独立 DocScan 界面（自动找边+可调四角+透视矫正+扫描增强），
   // 不再在 EnhanceResult 里自动跑，故不列入此表（见 ImagePreview 的 document 特例 + DocScanScreen）。
 });
@@ -66,6 +67,7 @@ export async function enhanceImageLocally(imageUri, presetId, onProgress) {
   if (handler === 'superres') p = runSuperRes(imageUri, onProgress);
   else if (handler === 'matting') p = runMatting(imageUri, onProgress);
   else if (handler === 'beauty') p = runBeauty(imageUri, onProgress);
+  else if (handler === 'colorize') p = runColor(imageUri, onProgress);
   else throw new Error('该预设暂不支持本地处理');
   return withTimeout(p, LOCAL_TIMEOUT_MS, '增强');
 }
@@ -108,6 +110,22 @@ async function runBeauty(imageUri, onProgress) {
   const out = await mod.applyBeautyToBase64(base64, 0.8);
   if (onProgress) onProgress({ done: 1, total: 1 });
   logger.debug('🟦 本地美颜完成', { imageUri });
+  return out;
+}
+
+/**
+ * 色彩优化（纯 jimp，免模型）：饱和度/对比/亮度增强→data URL。
+ * 限 1024 长边：色调操作要逐像素做 RGB↔HSL 转换，Hermes 下处理 1536px(~7MP)
+ * 容易跑满 CPU 而被 60s 超时打断；1024 与 runBeauty 对齐，~1MP 内能在 <30s 完成。
+ */
+async function runColor(imageUri, onProgress) {
+  const base64 = await readResizedBase64(imageUri, 1024);
+  const mod = await import('./jimpFilters.js');
+  if (onProgress) onProgress({ done: 0, total: 1 });
+  logger.debug('🟦 本地色彩优化：开始 jimp 处理');
+  const out = await mod.applyColorEnhanceToBase64(base64, 0.85);
+  if (onProgress) onProgress({ done: 1, total: 1 });
+  logger.debug('🟦 本地色彩优化完成', { imageUri });
   return out;
 }
 

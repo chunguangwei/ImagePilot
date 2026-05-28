@@ -1529,12 +1529,11 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.titleRow}>
-              <Text style={styles.sectionTitle}>ℹ️ {t('settings.appInfo')}</Text>
+              <Text style={styles.sectionTitle}>{SetIonicons ? <SetIonicons name="information-circle-outline" size={17} color="#007AFF" /> : null} {t('settings.appInfo')}</Text>
             </View>
           </View>
-          {renderInfoItem(t('settings.version'), BUILD_VERSION)}
-          {renderInfoItem(t('settings.buildVersion'), `${BUILD_VERSION_CODE} (${BUILD_DATE})`)}
-          {renderInfoItem(t('settings.platform'), t('settings.mobile'))}
+          {/* 版本与构建版本合并：大版本(构建版本)，去掉日期时间；移除"平台"项 */}
+          {renderInfoItem(t('settings.version'), `${BUILD_VERSION} (${BUILD_VERSION_CODE})`)}
           {renderInfoItem(t('settings.storageType'), storageType)}
           {renderInfoItem(t('settings.storageSize'), storageSize)}
           {renderLanguageItem()}
