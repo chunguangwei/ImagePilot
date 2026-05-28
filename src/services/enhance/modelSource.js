@@ -50,7 +50,10 @@ export async function isModelDownloaded(filename) {
  */
 export async function ensureModel(filename, url, onProgress) {
   const dest = modelLocalPath(filename);
-  if (await isModelDownloaded(filename)) return dest;
+  // onnxruntime-react-native 在 Android 需要 file:// 前缀，否则报 "no content provider"。
+  // RNFS 文件操作用裸路径(dest)，交给推理引擎的是 file:// URI。
+  const asUri = (p) => (p.startsWith('file://') ? p : `file://${p}`);
+  if (await isModelDownloaded(filename)) return asUri(dest);
   if (!url) throw new Error('E_NO_MODEL 未配置模型下载地址，请在设置里填写');
   await RNFS.mkdir(modelsDir()).catch(() => {});
   const tmp = `${dest}.part`;
@@ -74,7 +77,7 @@ export async function ensureModel(filename, url, onProgress) {
   }
   await RNFS.moveFile(tmp, dest);
   logger.debug('✅ 模型下载完成', { filename, size: st.size });
-  return dest;
+  return asUri(dest);
 }
 
 /** 读取设置里激活的超分模型变体 → { filename, url, variant } */
