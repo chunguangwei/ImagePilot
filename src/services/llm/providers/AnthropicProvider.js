@@ -104,6 +104,7 @@ export class AnthropicProvider extends BaseProvider {
       isScreenshot: !!parsed.isScreenshot,
       isIDCard: !!parsed.isIDCard,
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
+      semanticLabel: typeof parsed.semanticLabel === 'string' ? parsed.semanticLabel : '',
       description: parsed.description || '',
       rawText: content,
       costMs: Date.now() - start,

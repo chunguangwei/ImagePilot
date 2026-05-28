@@ -323,7 +323,9 @@
       "TB": "TB"
     },
     "aiClassifyConfirmTitle": "AI 智能分类",
-    "aiClassifyConfirmMessage": "将使用您配置的在线大模型，对 {{count}} 张待分类照片进行 AI 智能分类。\n\n说明：\n1. 分类请求会发送到您在「设置 → AI 模型设置」中配置的服务商（不经任何第三方/作者服务器）\n2. 处理时间取决于照片数量，可在首页顶部实时查看进度\n\n是否继续？",
+    "aiClassifyConfirmMessage": "对 {{count}} 张待分类照片进行 AI 智能分类。\n\n• 云端：发送到「设置 → AI 模型设置」中配置的服务商（不经第三方/作者服务器），结果按语意分类。\n• 离线：在本设备 MobileNetV3 上运行，不联网、不上传。\n\n请选择：",
+    "aiClassifyUseCloud": "用云端",
+    "aiClassifyUseLocal": "用离线",
     "aiClassifyOfflineTitle": "离线模型分类",
     "aiClassifyOfflineMessage": "您尚未配置在线大模型，将默认使用设备端离线模型（MobileNetV3）对 {{count}} 张待分类照片进行分类。\n\n离线分类不联网、不上传，完全在本地完成。\n\n是否继续？",
     "aiClassifyLLMFailTitle": "大模型分类遇到问题",

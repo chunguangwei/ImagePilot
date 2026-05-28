@@ -1066,7 +1066,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     return (
       <View style={styles.actionButton}>
         <Text style={styles.actionButtonText}>
-          {SetIonicons ? <SetIonicons name="color-wand-outline" size={17} color="#007AFF" /> : null} AI 增强模型（超分）
+          {SetIonicons ? <SetIonicons name="color-wand-outline" size={17} color="#007AFF" /> : null} AI 增强模型
         </Text>
         <Text style={styles.actionButtonDescription}>模型按需下载（不占安装包）。大模型更清晰但更慢更大。</Text>
         {opts.map((o) => (

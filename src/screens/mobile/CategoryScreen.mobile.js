@@ -142,6 +142,21 @@ const CategoryScreen = ({ route, navigation }) => {
   
   // 暂存箱图片ID集合（用于快速检查图片是否在暂存箱中）
   const [stagingBoxImageIds, setStagingBoxImageIds] = useState(new Set());
+  // 用户自定义分类（settings.aiProvider.customCategories，[{id,name,rule}]）
+  // 标题显示与"改分类"选择器都需要合并自定义分类（configService 只含内置）
+  const [customCategoryList, setCustomCategoryList] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const settings = (await UnifiedDataService.readSettings()) || {};
+        const raw = settings?.aiProvider?.customCategories;
+        const list = Array.isArray(raw) ? raw.filter((c) => c && c.id && c.name) : [];
+        if (alive) setCustomCategoryList(list);
+      } catch (_) { /* 读不到就当无自定义分类 */ }
+    })();
+    return () => { alive = false; };
+  }, []);
   
   // 照片创玩任务相关（任务提交已移到结果页，不再需要状态跟踪）
   
@@ -273,9 +288,11 @@ const CategoryScreen = ({ route, navigation }) => {
         return t('category.imageList');
       case 'category':
         if (filterValue) {
-          // 使用 configService 获取对应语言的分类名称（与 PC 端一致）
-          const categoryName = configService?.getCategoryDisplayName(filterValue, language) || 
-                               UnifiedDataService.getCategoryDisplayName(filterValue) || 
+          // 先匹配自定义分类（configService 仅含内置）
+          const custom = customCategoryList.find((c) => c.id === filterValue);
+          const categoryName = custom?.name ||
+                               configService?.getCategoryDisplayName(filterValue, language) ||
+                               UnifiedDataService.getCategoryDisplayName(filterValue) ||
                                filterValue;
           return t('category.categoryWithCount', { category: categoryName, count });
         }
@@ -1864,6 +1881,11 @@ const CategoryScreen = ({ route, navigation }) => {
       // 注意：暂存箱不是分类，不会出现在 getAllCategoriesWithUI() 返回的列表中，所以不需要过滤
       return true;
     });
+    // 把用户自定义分类合并到选择器末尾（chinese/english 都用 name，icon 用默认）
+    for (const c of customCategoryList) {
+      if (availableCategories.some((x) => x.id === c.id)) continue;
+      availableCategories.push({ id: c.id, chinese: c.name, english: c.name, icon: '🏷️' });
+    }
 
     return (
       <Modal
