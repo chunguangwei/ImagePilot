@@ -670,7 +670,42 @@ const ImagePreviewScreen = ({ route, navigation }) => {
       Alert.alert(t('common.error'), t('imagePreview.imageInfoIncomplete'));
       return;
     }
-    
+
+    // 当 writeDeleteImages 失败（Android 11+ 删除别人应用的媒体需要系统授权）时，
+    // 拉起 MediaStore.createDeleteRequest 的原生确认对话框；用户同意后系统直接删除，
+    // 我们走和成功一致的 UI 收尾（列表刷新/返回上一页）。
+    const tryRequestDeleteThenFinalize = async () => {
+      try {
+        const { MediaStoreModule } = NativeModules;
+        if (!MediaStoreModule || typeof MediaStoreModule.requestDeleteByPath !== 'function') {
+          Alert.alert(t('category.deleteFailedTitle') || t('common.error'), t('category.deleteFailedMessage') || t('category.deleteFailed'));
+          return;
+        }
+        // 从图片 URI 取真实文件路径（项目里的 URI 通常是 contentUri||filePath 形式）
+        const rawUri = currentImage.uri || '';
+        let filePath = (currentImage.path || rawUri.split('||')[1] || getLocalPath(rawUri) || '').replace(/^file:\/\//, '');
+        if (!filePath) {
+          Alert.alert(t('category.deleteFailedTitle') || t('common.error'), t('category.deleteFailedMessage') || t('category.deleteFailed'));
+          return;
+        }
+        await MediaStoreModule.requestDeleteByPath(filePath);
+        // 系统已经删除文件；同步收尾 UI（数据库残留会在下次扫描时自然清理）。
+        if (fromScreen === 'Home') {
+          Alert.alert(t('common.success'), t('imagePreview.deleteSuccess') || t('category.deleteSuccess', { count: 1 }), [
+            { text: t('common.confirm'), onPress: goBack },
+          ]);
+          return;
+        }
+        const reloadSuccess = await reloadImageListWithIndexAdjustment('删除');
+        if (reloadSuccess) Alert.alert(t('common.success'), t('imagePreview.deleteSuccess') || t('category.deleteSuccess', { count: 1 }));
+      } catch (e) {
+        const code = e && e.code;
+        if (code === 'E_DENIED') return; // 用户主动拒绝，不再提示
+        logger.debug('授权删除失败:', e);
+        Alert.alert(t('category.deleteFailedTitle') || t('common.error'), e?.message || (t('category.deleteFailedMessage') || t('category.deleteFailed')));
+      }
+    };
+
     // 所有分类都执行真正的删除
     logger.debug('执行删除操作...');
     Alert.alert(
@@ -716,14 +751,13 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   logger.debug('列表已空，已返回上一页');
                 }
               } else {
-                // 删除失败通常是权限问题，属于正常情况，使用 debug 级别
-                logger.debug('删除失败（可能是权限问题）:', result);
-                Alert.alert(t('category.deleteFailedTitle') || t('common.error'), t('category.deleteFailedMessage') || t('category.deleteFailed'));
+                // Android 11+ 删除别的应用创建的媒体需系统授权；走 MediaStore.createDeleteRequest 弹原生确认。
+                logger.debug('删除失败，尝试系统授权流程:', result);
+                await tryRequestDeleteThenFinalize();
               }
             } catch (error) {
-              // 删除失败通常是权限问题，属于正常情况，使用 debug 级别
-              logger.debug('删除图片失败（可能是权限问题）:', error);
-              Alert.alert(t('common.error'), t('category.deleteError') || t('common.retry'));
+              logger.debug('删除图片失败，尝试系统授权流程:', error);
+              await tryRequestDeleteThenFinalize();
             }
           },
         },
@@ -1963,30 +1997,45 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
 
-  // 检测结果样式
+  // 检测结果样式（iOS 风格：每条标签做成 system-blue 浅色胶囊，
+  // 标题/「更多」用 width:100% 占满整行做换行，items 自然 flex-wrap）。
   detectionSection: {
     marginTop: 8,
     paddingLeft: 80,
-    paddingBottom: 8,
+    paddingRight: 16,
+    paddingBottom: 10,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E5E5EA',
   },
   detectionTitle: {
+    width: '100%',
     fontSize: 13,
     color: '#8E8E93',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   detectionItem: {
-    paddingVertical: 2,
+    backgroundColor: 'rgba(0, 122, 255, 0.10)',
+    borderRadius: 11,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    marginRight: 6,
+    marginBottom: 6,
   },
   detectionText: {
-    fontSize: 13,
-    color: '#000000',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#007AFF',
+    letterSpacing: -0.1,
+    fontVariant: ['tabular-nums'],
   },
   detectionMore: {
+    width: '100%',
     fontSize: 12,
     color: '#8E8E93',
-    marginTop: 4,
+    marginTop: 2,
     fontStyle: 'italic',
   },
   

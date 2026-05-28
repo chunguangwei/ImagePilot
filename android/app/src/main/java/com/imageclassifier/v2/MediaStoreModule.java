@@ -1,9 +1,13 @@
 package com.imageclassifier.v2;
 
+import android.app.Activity;
+import android.app.PendingIntent;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
@@ -14,7 +18,9 @@ import android.Manifest;
 
 import androidx.exifinterface.media.ExifInterface;
 
+import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.BaseActivityEventListener;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -22,6 +28,7 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
+import java.util.Collections;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -44,14 +51,72 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
     private static final String TAG = "MediaStoreModule";
     private final ReactApplicationContext reactContext;
 
+    // 系统授权删除（Android 11+ createDeleteRequest）的状态
+    private static final int REQUEST_DELETE = 0x44EE;
+    private Promise pendingDeletePromise;
+    private final ActivityEventListener deleteActivityListener = new BaseActivityEventListener() {
+        @Override
+        public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
+            if (requestCode != REQUEST_DELETE || pendingDeletePromise == null) return;
+            Promise p = pendingDeletePromise;
+            pendingDeletePromise = null;
+            if (resultCode == Activity.RESULT_OK) p.resolve(true);
+            else p.reject("E_DENIED", "用户拒绝授权删除");
+        }
+    };
+
     public MediaStoreModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
+        reactContext.addActivityEventListener(deleteActivityListener);
     }
 
     @Override
     public String getName() {
         return "MediaStoreModule";
+    }
+
+    /**
+     * Android 11+ 删除别的应用创建的媒体需要系统授权对话框；用 MediaStore.createDeleteRequest
+     * 弹出原生确认 → 用户同意则系统直接删除。在 JS 端"删除失败"时作为兜底调用。
+     */
+    @ReactMethod
+    public void requestDeleteByPath(String filePath, Promise promise) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            promise.reject("E_UNSUPPORTED", "需要 Android 11+");
+            return;
+        }
+        try {
+            ContentResolver cr = reactContext.getContentResolver();
+            Cursor cursor = cr.query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                new String[]{ MediaStore.Images.Media._ID },
+                MediaStore.Images.Media.DATA + "=?",
+                new String[]{ filePath },
+                null
+            );
+            if (cursor == null || !cursor.moveToFirst()) {
+                if (cursor != null) cursor.close();
+                promise.reject("E_NOT_FOUND", "媒体库未找到该文件");
+                return;
+            }
+            long id = cursor.getLong(cursor.getColumnIndex(MediaStore.Images.Media._ID));
+            cursor.close();
+            Uri uri = Uri.withAppendedPath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, String.valueOf(id));
+
+            Activity act = getCurrentActivity();
+            if (act == null) { promise.reject("E_NO_ACTIVITY", "当前无 Activity"); return; }
+
+            PendingIntent pi = MediaStore.createDeleteRequest(cr, Collections.singletonList(uri));
+            if (pendingDeletePromise != null) {
+                try { pendingDeletePromise.reject("E_REPLACED", "请求被新请求替换"); } catch (Exception ignored) {}
+            }
+            pendingDeletePromise = promise;
+            act.startIntentSenderForResult(pi.getIntentSender(), REQUEST_DELETE, null, 0, 0, 0);
+        } catch (Exception e) {
+            pendingDeletePromise = null;
+            promise.reject("E_REQUEST", "请求删除授权失败: " + e.getMessage());
+        }
     }
 
     @ReactMethod

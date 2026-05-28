@@ -140,4 +140,44 @@ export async function applyDocumentScanToBase64(base64, intensity = 0.9) {
   return img.getBase64Async(Jimp.MIME_JPEG);
 }
 
+/**
+ * 色彩优化（纯 jimp，免模型）：单次像素扫描完成 饱和/对比/亮度。
+ *
+ * 之前用 `img.color([{apply:'saturate'}]).contrast().brightness()` 链式调用，
+ * 每个滤镜内部都做一遍 RGB↔HSL 转换 + 整图遍历——Hermes 下 1024x768 三遍下来要
+ * 30~60s，常被 60s 超时打断（用户看到"卡很久"）。这里改成一次性遍历，
+ * 用"亮度差"近似饱和度提升（向像素亮度反方向拉色彩），数学量级减少近 10 倍。
+ *
+ * 公式（每像素）：
+ *   L = 0.299R + 0.587G + 0.114B
+ *   c' = clamp(L + (c - L) * sat) for c in {R,G,B}     // 饱和度
+ *   c'' = clamp((c' - 128) * (1 + con) + 128)         // 对比度
+ *   c''' = clamp(c'' + bri * 255)                     // 亮度
+ *
+ * @param {string} base64 含/不含 data: 前缀
+ * @param {number} intensity 0..1
+ */
+export async function applyColorEnhanceToBase64(base64, intensity = 0.85) {
+  const clean = base64.startsWith('data:') ? base64.split(',')[1] : base64;
+  const img = await Jimp.read(Buffer.from(clean, 'base64'));
+  const sat = 1 + 0.35 * intensity;     // 饱和度增益（中等）
+  const con = 0.12 * intensity;         // 对比度增益（温和）
+  const bri = 0.03 * intensity;         // 亮度增益（轻微）
+  const d = img.bitmap.data;
+  for (let k = 0; k < d.length; k += 4) {
+    const r = d[k], g = d[k + 1], b = d[k + 2];
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    let nr = lum + (r - lum) * sat;
+    let ng = lum + (g - lum) * sat;
+    let nb = lum + (b - lum) * sat;
+    nr = (nr - 128) * (1 + con) + 128 + bri * 255;
+    ng = (ng - 128) * (1 + con) + 128 + bri * 255;
+    nb = (nb - 128) * (1 + con) + 128 + bri * 255;
+    d[k]     = nr < 0 ? 0 : nr > 255 ? 255 : nr;
+    d[k + 1] = ng < 0 ? 0 : ng > 255 ? 255 : ng;
+    d[k + 2] = nb < 0 ? 0 : nb > 255 ? 255 : nb;
+  }
+  return img.getBase64Async(Jimp.MIME_JPEG);
+}
+
 export default JIMP_FILTERS;

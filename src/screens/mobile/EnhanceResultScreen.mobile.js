@@ -11,6 +11,7 @@ import {
   DeviceEventEmitter,
   PanResponder,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { getDefaultPresets } from '../../i18n';
@@ -20,6 +21,42 @@ import ImageEnhanceService from '../../services/ImageEnhanceService';
 import { isLocalPreset, enhanceImageLocally } from '../../services/enhance/localEnhance';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+/**
+ * 处理中遮罩：spinner + 进度文案 + 经过秒数；让用户清晰看到"还在跑"，
+ * 同时顶栏的 ← 保持可用，可随时退出。仅处理中显示秒计时；失败/加载结果分支不计时。
+ */
+function ProcessingOverlay({ processing, failed, loadingEnhanced, currentResult, t, lang }) {
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef(0);
+  useEffect(() => {
+    if (!processing) { setElapsed(0); startRef.current = 0; return; }
+    startRef.current = Date.now();
+    setElapsed(0);
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - startRef.current) / 1000)), 500);
+    return () => clearInterval(id);
+  }, [processing]);
+
+  const pct = typeof currentResult?.progress === 'number' ? Math.round(currentResult.progress * 100) : 0;
+  const phaseLabel = currentResult?.phase === 'download' ? '下载模型' : t('enhanceResult.processing');
+  let primary;
+  if (failed) primary = t('enhanceResult.failed');
+  else if (loadingEnhanced) primary = t('enhanceResult.loadingEnhancedResult');
+  else primary = pct > 0 ? `${phaseLabel} ${pct}%` : phaseLabel;
+
+  return (
+    <View style={styles.processingOverlay} pointerEvents="box-none">
+      {!failed && <ActivityIndicator size="large" color="#FFFFFF" style={{ marginBottom: 12 }} />}
+      <Text style={styles.processingText}>{primary}</Text>
+      {processing && !failed && (
+        <>
+          <Text style={styles.processingSub}>{`${elapsed}s`}</Text>
+          <Text style={styles.processingHint}>{lang === 'en' ? 'Tap ← to cancel' : '← 可随时返回'}</Text>
+        </>
+      )}
+    </View>
+  );
+}
 
 /**
  * EnhanceResultScreen - 导航模态页（展示增强结果）
@@ -648,21 +685,16 @@ export default function EnhanceResultScreen({ route, navigation }) {
           <View style={styles.imagePlaceholder}><Text style={styles.placeholderText}>{t('enhanceResult.noImage')}</Text></View>
         )}
 
-        {/* 处理中/加载中/失败蒙层 */}
+        {/* 处理中/加载中/失败蒙层：spinner + 文案 + 经过秒数，← 始终可退出 */}
         {(processing || loadingEnhanced || failed) && (
-          <View style={styles.processingOverlay}>
-            <Text style={styles.processingText}>
-              {failed
-                ? t('enhanceResult.failed')
-                : loadingEnhanced
-                  ? t('enhanceResult.loadingEnhancedResult')
-                  : (() => {
-                      const pct = typeof currentResult?.progress === 'number' ? Math.round(currentResult.progress * 100) : 0;
-                      const label = currentResult?.phase === 'download' ? '下载模型' : t('enhanceResult.processing');
-                      return pct > 0 ? `${label} ${pct}%` : label;
-                    })()}
-            </Text>
-          </View>
+          <ProcessingOverlay
+            processing={processing}
+            failed={failed}
+            loadingEnhanced={loadingEnhanced}
+            currentResult={currentResult}
+            t={t}
+            lang={i18n.language}
+          />
         )}
 
         {/* 左右切换区域（简化实现：点击左右区域）*/}
@@ -737,7 +769,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center', alignItems: 'center',
   },
-  processingText: { color: '#fff', fontSize: 16 },
+  processingText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  processingSub: { color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 4, fontVariant: ['tabular-nums'] },
+  processingHint: { color: 'rgba(255,255,255,0.55)', fontSize: 12, marginTop: 10 },
   toggleButton: {
     position: 'absolute', right: 12, bottom: 12,
     backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 8,
