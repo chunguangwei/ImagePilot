@@ -1,25 +1,28 @@
 /**
- * GalleryScannerService.ios.js — iOS 端相册扫描
+ * GalleryScannerService.ios.js — iOS 端相册扫描 + AI 分类
  *
  * 对应 Android 的 GalleryScannerService.android.js（同 API、同输出形状）；
- * 区别在于：iOS 数据源是 PhotoKit（PHAsset），通过原生模块 PhotoKitModule 暴露给 JS。
+ * 区别在于数据源：iOS 走 PhotoKit（PHAsset），通过原生 PhotoKitModule 暴露给 JS。
  *
- * M2 范围：
- *   - 系统授权（首次自动弹原生对话框）
- *   - 一次性把所有照片元数据拉回来
- *   - 转成 Android 通用的 image 记录形状（uri = "ph://<localIdentifier>"）
- *   - 批量落 SQLite + 刷新 GlobalImageCache
- *   - 进度回调（仅"扫描"和"完成"两阶段，PhotoKit 太快没必要分段）
+ * 范围
+ *   - M2：authorize → fetchAllPhotos → 落 SQLite → 刷 GlobalImageCache
+ *   - M3：aiImageClassifyByContent 路由（同 Android）：
+ *     · forceLocal=true / active='local-onnx'  → 设备端 MobileNetV3
+ *     · active=云端 Provider                    → 自配 LLM（wireLLMRouting / orchestrator）
+ *     图像数据流：ph:// URI → react-native-image-resizer（iOS 原生支持 PhotoKit）
+ *                  → JPEG → ONNX tensor / base64
  *
- * 不在 M2 范围（M3 / 后续）：
- *   - AI 分类（需要从 ph:// 拉 base64/tensor 给 ONNX，单独工作量）
- *   - 增量扫描（PHPhotoLibraryChangeObserver 订阅）
- *   - 相似组检测、EXIF 富化、城市反解
+ * 不在 M3 范围（后续）：增量扫描（PHPhotoLibraryChangeObserver）、相似组、EXIF 富化、城市反解
+ *
+ * 隐私承诺与 Android 一致：分类阶段绝不调任何第三方/作者服务器，仅本地 ONNX 或用户自配 Provider。
  */
 
-import { NativeModules } from 'react-native';
-import { logger } from '../adapters/WebAdapters';
+import { NativeModules, Platform } from 'react-native';
+import { logger, RNFS } from '../adapters/WebAdapters';
 import UnifiedDataService from './UnifiedDataService';
+import ImageClassifierService from './ImageClassifierService';
+import ImageProcessor from './ImageProcessor';
+import { getUri } from '../adapters/WebAdapters';
 
 const { PhotoKitModule } = NativeModules;
 
@@ -28,25 +31,19 @@ const IS_NATIVE_AVAILABLE = !!(PhotoKitModule && PhotoKitModule.fetchAllPhotos);
 /** PHAsset → 业务层 image 记录（与 Android 形状对齐，category 默认 'NA'）*/
 function toImageRecord(asset) {
   return {
-    // 业务层主键：直接复用 PHAsset.localIdentifier（稳定、且后续删除/拉数据都靠它）
     id: asset.id,
-    // RN <Image> 在 iOS 端能直接消费 ph:// URI；统一存这个，预览/缩略都不需要再绕
-    uri: asset.uri, // "ph://<localIdentifier>"
+    uri: asset.uri, // "ph://<localIdentifier>" —— RN <Image> 与 react-native-image-resizer 都能消费
     fileName: asset.fileName,
     size: asset.size || 0,
-    // takenAt 是 ms；timestamp 也用同一个时间做兜底（很多查询按 timestamp 排序）
     takenAt: asset.takenAt || 0,
     timestamp: asset.takenAt || 0,
     width: asset.width || 0,
     height: asset.height || 0,
     mimeType: asset.mimeType || 'image/jpeg',
-    // 截图直接打上 'screenshot' 分类，跳过 AI（与 Android 同款规则）；其它先留待分类
     category: asset.isScreenshot ? 'screenshot' : 'NA',
     confidence: asset.isScreenshot ? 'system' : null,
-    // 业务期望的标签 / 颜色等字段在 M2 阶段都留空，等 M3 真扫起 AI 再补
     message: null,
     background_color: null,
-    // 位置 / EXIF 在 M3 补
     latitude: null, longitude: null, altitude: null, accuracy: null,
     address: null, city: null, country: null, province: null, district: null, street: null,
     locationSource: null, cityDistance: null,
@@ -63,6 +60,8 @@ class GalleryScannerService {
     this.onProgress = null;
     this.imagesClassified = 0;
     this.totalImagesToBeClassified = 0;
+    // 共享分类器实例，避免重复加载 ONNX 模型（initialize 是幂等的）
+    this.imageClassifier = new ImageClassifierService();
   }
 
   async initialize() {
@@ -70,20 +69,18 @@ class GalleryScannerService {
       logger.warn('[iOS] PhotoKitModule 不可用——可能是 Pods 没装好或原生模块未编进 app');
       return false;
     }
-    logger.debug('[iOS] GalleryScannerService.initialize OK（PhotoKitModule 已挂上）');
+    logger.debug('[iOS] GalleryScannerService.initialize OK');
     return true;
   }
 
   /** 内部：拿一次相册访问权限（弹系统对话框；用户拒绝直接抛错由上层提示）*/
   async _ensureAuthorization() {
-    if (!IS_NATIVE_AVAILABLE) {
-      throw new Error('PhotoKitModule 不可用');
-    }
+    if (!IS_NATIVE_AVAILABLE) throw new Error('PhotoKitModule 不可用');
     let current = 'notDetermined';
     try {
       const r = await PhotoKitModule.getAuthorizationStatus();
       current = (r && r.status) || 'notDetermined';
-    } catch (_) { /* getAuthorizationStatus 失败就视作未定 */ }
+    } catch (_) { /* 视作未定 */ }
 
     if (current === 'authorized' || current === 'limited') return current;
     if (current === 'denied' || current === 'restricted') {
@@ -91,7 +88,6 @@ class GalleryScannerService {
       e.code = 'E_PERMISSION_DENIED';
       throw e;
     }
-    // notDetermined → 弹对话框
     const granted = await PhotoKitModule.requestAuthorization();
     const status = (granted && granted.status) || 'denied';
     if (status === 'authorized' || status === 'limited') return status;
@@ -100,19 +96,39 @@ class GalleryScannerService {
     throw e;
   }
 
-  /**
-   * 全量扫描（M2 不做增量）。
-   * @param {(progress:object) => void} onProgress
-   */
-  async scanGalleryWithProgress(onProgress = null, _compareLimitOrOptions = null) {
-    const emit = (progress) => {
-      const cb = onProgress || this.onProgress;
-      if (cb) cb(progress);
-    };
+  /** 进度回调统一入口 */
+  _emit(progress, onProgress) {
+    const cb = onProgress || this.onProgress;
+    if (cb) cb(progress);
+  }
 
+  /** sendProgressMessage —— 对齐 Android 同名方法，让 HomeScreen.handleScan 复用既有处理逻辑 */
+  async sendProgressMessage(stage, processedThisPhase, totalFoundThisPhase, imagesClassified = this.imagesClassified, totalImagesToBeClassified = this.totalImagesToBeClassified) {
+    const cb = this.onProgress;
+    if (!cb) return;
+    cb({
+      stage,
+      processedThisPhase,
+      totalFoundThisPhase,
+      processed: processedThisPhase,
+      total: totalFoundThisPhase,
+      imagesClassified,
+      totalImagesToBeClassified,
+      message: `${stage}: ${processedThisPhase}/${totalFoundThisPhase}`,
+      simpleMessage: stage === 'completed'
+        ? `完成（已分类 ${imagesClassified}/${totalImagesToBeClassified}）`
+        : `${stage} ${processedThisPhase}/${totalFoundThisPhase}`,
+      shouldRefresh: stage === 'completed',
+    });
+  }
+
+  /** 全量扫描（M2 不做增量） */
+  async scanGalleryWithProgress(onProgress = null, _compareLimitOrOptions = null) {
+    const emit = (p) => this._emit(p, onProgress);
     try {
       this.isScanning = true;
       this.scanStartTimestamp = new Date();
+      this.onProgress = onProgress || this.onProgress;
 
       emit({ stage: 'authorizing', message: '请求相册访问授权…', processed: 0, total: 0 });
       const authStatus = await this._ensureAuthorization();
@@ -124,19 +140,16 @@ class GalleryScannerService {
       logger.debug(`[iOS] PhotoKit 返回 ${items.length} 张照片`);
 
       if (items.length === 0) {
-        emit({ stage: 'complete', message: '相册为空', processed: 0, total: 0 });
-        return { success: true, total: 0, images: [] };
+        emit({ stage: 'completed', message: '相册为空', processed: 0, total: 0, shouldRefresh: true });
+        return { success: true, total: 0 };
       }
 
-      // 1) 批量转 → image 记录
       const records = items.map(toImageRecord);
-
-      // 2) 批量写 SQLite + 刷新 GlobalImageCache（同 Android 路径）
       emit({ stage: 'saving', message: `落库 ${records.length} 张…`, processed: 0, total: records.length });
       await UnifiedDataService.writeImageDetailedInfo(records, true);
 
       const duration = Date.now() - this.scanStartTimestamp.getTime();
-      emit({ stage: 'complete', message: `完成（${duration}ms）`, processed: records.length, total: records.length });
+      emit({ stage: 'completed', message: `完成（${duration}ms）`, processed: records.length, total: records.length, shouldRefresh: true });
       logger.debug(`[iOS] 扫描 + 落库完成，共 ${records.length} 张，耗时 ${duration}ms`);
 
       return { success: true, total: records.length };
@@ -154,23 +167,255 @@ class GalleryScannerService {
     return this.scanGalleryWithProgress(onProgress);
   }
 
-  /** M2 不做相似检测；返回空组即可，让上层流程跑通 */
+  /** ============ M3：AI 分类 ============ */
+
+  /**
+   * 设备端 ONNX（MobileNetV3）—— 直接复用 Android 实现，区别只在数据源是 ph:// URI。
+   * react-native-image-resizer 在 iOS 上原生支持 ph:// → tmp jpeg 的转换，
+   * 所以 imageClassifier.classifyImageWithMobileNetV3(imageUri) 链路无需改动。
+   */
+  async _classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify) {
+    logger.info('🚀 [iOS] 启动 JS 端离线 AI 分类（MobileNetV3）');
+    this.isScanning = true;
+    this.scanStartTimestamp = scanStartTime || new Date();
+
+    try {
+      let naImages = [];
+      if (imagesToClassify && Array.isArray(imagesToClassify) && imagesToClassify.length > 0) {
+        naImages = imagesToClassify;
+      } else {
+        await UnifiedDataService.imageCache.buildCache();
+        try { naImages = await UnifiedDataService.readImagesByCategory('NA'); }
+        catch (e) { logger.error('❌ 读取 NA 图片失败:', e); naImages = []; }
+      }
+      this.totalImagesToBeClassified = naImages.length;
+      this.imagesClassified = 0;
+      logger.info(`📊 [iOS] 离线分类目标：${naImages.length} 张 NA 图片`);
+
+      await this.sendProgressMessage('initializing', 0, naImages.length, 0, naImages.length);
+      if (naImages.length === 0) {
+        await this.sendProgressMessage('completed', 0, 0, 0, 0);
+        return { success: true, processedCount: 0, failedCount: 0 };
+      }
+
+      try {
+        await this.imageClassifier.initialize();
+      } catch (e) {
+        logger.error('❌ ImageClassifierService 初始化失败:', e);
+        await this.sendProgressMessage('error', 0, naImages.length);
+        throw new Error(`离线模型加载失败：${e?.message || e}`);
+      }
+
+      let processedCount = 0;
+      let failedCount = 0;
+      const BATCH = 20;
+      for (let i = 0; i < naImages.length; i += BATCH) {
+        const batch = naImages.slice(i, i + BATCH);
+        const classificationDataArray = [];
+        for (const image of batch) {
+          try {
+            const imageUri = getUri(image) || image?.uri;
+            if (!imageUri) { failedCount++; continue; }
+            const r = await this.imageClassifier.classifyImageWithMobileNetV3(imageUri);
+            const top = r && r.success ? r.topPrediction : null;
+            const category =
+              top && typeof this.imageClassifier.mapMobileNetV3ToAppCategory === 'function'
+                ? (this.imageClassifier.mapMobileNetV3ToAppCategory(top.class) || 'other')
+                : 'other';
+            classificationDataArray.push({
+              uri: image?.uri || imageUri,
+              id: image.id,
+              category,
+              confidence: (r && r.confidence) || 0.5,
+              idCardDetections: [],
+              generalDetections: [],
+              mobileNetV3Detections: null,
+              message: null,
+              background_color: null,
+            });
+          } catch (e) {
+            logger.warn(`⚠️ [iOS] 离线分类单张失败: ${e?.message || e}`);
+            failedCount++;
+          }
+        }
+        if (classificationDataArray.length > 0) {
+          try {
+            const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, false);
+            if (updateResult && updateResult.success) {
+              processedCount += updateResult.updatedCount;
+              this.imagesClassified += updateResult.updatedCount;
+            } else {
+              failedCount += classificationDataArray.length;
+            }
+          } catch (e) {
+            logger.error(`❌ [iOS] 离线分类批量落库失败: ${e?.message || e}`);
+            failedCount += classificationDataArray.length;
+          }
+        }
+        const done = Math.min(i + BATCH, naImages.length);
+        await this.sendProgressMessage('classifying_local', done, naImages.length, this.imagesClassified, naImages.length);
+      }
+
+      logger.info(`✅ [iOS] 离线分类完成：成功 ${processedCount}，失败 ${failedCount}`);
+      await this.sendProgressMessage('completed', processedCount, naImages.length, this.imagesClassified, naImages.length);
+      return { success: true, processedCount, failedCount };
+    } catch (error) {
+      logger.error('❌ [iOS] 离线分类失败:', error);
+      throw error;
+    } finally {
+      this.isScanning = false;
+    }
+  }
+
+  /**
+   * 云端 LLM —— 同 Android：每张图压成 1024 长边 JPEG → base64 → 用户自配 Provider。
+   * 不会连接任何第三方/作者服务器。
+   */
+  async _classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg) {
+    logger.info(`🚀 [iOS] 启动 JS 端云端 AI 分类（${aiCfg.active}）`);
+    this.isScanning = true;
+    this.scanStartTimestamp = scanStartTime || new Date();
+    try {
+      let naImages = [];
+      if (imagesToClassify && Array.isArray(imagesToClassify) && imagesToClassify.length > 0) {
+        naImages = imagesToClassify;
+      } else {
+        await UnifiedDataService.imageCache.buildCache();
+        try { naImages = await UnifiedDataService.readImagesByCategory('NA'); }
+        catch (e) { logger.error('❌ 读取 NA 图片失败:', e); naImages = []; }
+      }
+      this.totalImagesToBeClassified = naImages.length;
+      this.imagesClassified = 0;
+      logger.info(`📊 [iOS] 云端分类目标：${naImages.length} 张 NA 图片`);
+      await this.sendProgressMessage('initializing', 0, naImages.length, 0, naImages.length);
+
+      if (naImages.length === 0) {
+        await this.sendProgressMessage('completed', 0, 0, 0, 0);
+        return { success: true, processedCount: 0, failedCount: 0 };
+      }
+
+      // 与 Android 一致，使用新一代 LLMClassifyOrchestrator
+      const { classifyCloudBatchV2 } = await import('./llm/llmClassifyOrchestrator.js');
+      const classifyCloudBatch = classifyCloudBatchV2;
+
+      let processedCount = 0;
+      let failedCount = 0;
+      const BATCH = 10;
+      for (let i = 0; i < naImages.length; i += BATCH) {
+        const batch = naImages.slice(i, i + BATCH);
+        const inputs = [];
+        const validResults = [];
+        for (const image of batch) {
+          try {
+            const sourceUri = getUri(image) || image?.uri;
+            if (!sourceUri) { failedCount++; continue; }
+            const resized = await ImageProcessor.resizeImage(sourceUri, 1024, 1024, {
+              maintainAspectRatio: true, outputFormat: 'jpeg', quality: 90,
+            });
+            const resizedUri = resized?.uri;
+            if (!resizedUri) { failedCount++; continue; }
+            const localPath = resizedUri.startsWith('file://') ? resizedUri.replace(/^file:\/\//, '') : resizedUri;
+            const base64 = await RNFS.readFile(localPath, 'base64');
+            inputs.push({ id: image.id || image.hash || sourceUri, imageBase64: base64 });
+            validResults.push({ imageData: image, hash: image.hash || image.id });
+          } catch (e) {
+            logger.warn(`⚠️ [iOS] 云端分类预处理失败: ${e?.message || e}`);
+            failedCount++;
+          }
+        }
+        if (inputs.length === 0) continue;
+
+        let batchOut;
+        try {
+          batchOut = await classifyCloudBatch({
+            imageClassifier: this.imageClassifier,
+            platform: Platform.OS,
+            inputs, validResults, aiCfg,
+          });
+        } catch (e) {
+          logger.error(`❌ [iOS] 云端 LLM 调用失败: ${e?.message || e}`);
+          failedCount += inputs.length;
+          continue;
+        }
+
+        const classificationDataArray = [];
+        for (const item of (batchOut?.items || [])) {
+          if (!item.success || !item.data) { failedCount++; continue; }
+          classificationDataArray.push({
+            uri: item.imageData?.uri,
+            id: item.imageData?.id,
+            category: item.data.category,
+            confidence: item.data.confidence || 0.9,
+            idCardDetections: [],
+            generalDetections: [],
+            mobileNetV3Detections: null,
+            message: item.data.description || null,
+            background_color: item.data.background_color || null,
+          });
+        }
+        if (classificationDataArray.length > 0) {
+          try {
+            const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, false);
+            if (updateResult && updateResult.success) {
+              processedCount += updateResult.updatedCount;
+              this.imagesClassified += updateResult.updatedCount;
+            } else {
+              failedCount += classificationDataArray.length;
+            }
+          } catch (e) {
+            logger.error(`❌ [iOS] 云端分类落库失败: ${e?.message || e}`);
+            failedCount += classificationDataArray.length;
+          }
+        }
+        const done = Math.min(i + BATCH, naImages.length);
+        await this.sendProgressMessage('classifying_cloud', done, naImages.length, this.imagesClassified, naImages.length);
+      }
+
+      logger.info(`✅ [iOS] 云端分类完成：成功 ${processedCount}，失败 ${failedCount}`);
+      await this.sendProgressMessage('completed', processedCount, naImages.length, this.imagesClassified, naImages.length);
+      return { success: true, processedCount, failedCount };
+    } catch (error) {
+      logger.error('❌ [iOS] 云端分类失败:', error);
+      throw error;
+    } finally {
+      this.isScanning = false;
+    }
+  }
+
+  /** 路由器（与 Android 一致）：forceLocal / active 决定走本地 ONNX 还是云端 LLM */
+  async aiImageClassifyByContent(scanStartTime = null, imagesToClassify = null, opts = {}) {
+    if (this.isScanning) {
+      throw new Error('已有扫描在进行中');
+    }
+    if (opts && opts.forceLocal === true) {
+      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify);
+    }
+    let aiCfg = null;
+    try {
+      const cfgSvc = (await import('./llm/adapters/UnifiedDataConfigService.js')).default;
+      aiCfg = await cfgSvc.getAIProviderConfig();
+    } catch (e) {
+      logger.warn('读取 aiProvider 配置失败，按 local-onnx 处理:', e?.message || e);
+    }
+    const isCloud = !!(aiCfg && aiCfg.active && aiCfg.active !== 'local-onnx');
+    if (!isCloud) {
+      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify);
+    }
+    return await this._classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg);
+  }
+
+  /** M2/M3 不做相似检测；返回空让上层流程跑通 */
   async similarityDetectionPhase() {
     return { success: true, groups: [] };
   }
 
-  /** M2 不做位置富化；M3 时用 EXIF + cityLocationService 补 */
+  /** M3 不做位置富化；后续接 EXIF + cityLocationService */
   async enrichLocationInfo() {
     return true;
   }
 
-  /** M2 不做 AI 分类；上层 HomeScreen.handleAIClassifyNA 看到 success:false 会平稳提示 */
-  async aiImageClassifyByContent(_scanStartTime = null, _imagesToClassify = null, _opts = {}) {
-    return { success: false, error: 'iOS 端 AI 分类功能开发中（M3）' };
-  }
-
   getScanVersion() {
-    return 'ios-m2-1.0.0';
+    return 'ios-m3-1.0.0';
   }
 
   isUsingNativeScan() {

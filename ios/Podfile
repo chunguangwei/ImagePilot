@@ -30,6 +30,10 @@ end
 target 'ImagePilot' do
   config = use_native_modules!
 
+  # 把 onnxruntime-c 钉到 1.17.x，与 onnxruntime-react-native@1.17.0 ABI 匹配
+  # —— 不钉默认会拿到 1.18，模型 InferenceSession.create 直接 "Can't load model"
+  pod 'onnxruntime-c', '~> 1.17.0'
+
   # Flags change depending on the env values.
   flags = get_default_flags()
 

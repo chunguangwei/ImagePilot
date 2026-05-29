@@ -196,9 +196,26 @@ class ImageClassifierService {
         };
         
         
-        modelConfig.model = await ort.InferenceSession.create(modelConfig.path, sessionOptions);
+        // 优先用默认 sessionOptions（iOS 上当前自定义里的某项会触发 "Can't load model"；
+        // 待发现具体冲突项后再精修）；默认失败再试自定义；都失败时 ArrayBuffer 兜底
+        try {
+          modelConfig.model = await ort.InferenceSession.create(modelConfig.path, {});
+        } catch (e0) {
+          try {
+            modelConfig.model = await ort.InferenceSession.create(modelConfig.path, sessionOptions);
+          } catch (e1) {
+            try {
+              const RNFS = require('react-native-fs');
+              const b64 = await RNFS.readFile(modelConfig.path, 'base64');
+              const Buf = require('buffer').Buffer;
+              const u8 = new Uint8Array(Buf.from(b64, 'base64'));
+              modelConfig.model = await ort.InferenceSession.create(u8, {});
+            } catch (e2) {
+              throw new Error(`default: ${e0?.message || e0}; custom: ${e1?.message || e1}; buf: ${e2?.message || e2}`);
+            }
+          }
+        }
 
-      
       return modelConfig.model;
     } catch (error) {
       console.error(`Failed to load ${modelName} model:`, error);
@@ -450,13 +467,13 @@ class ImageClassifierService {
       
       const successCount = Object.values(results).filter(r => r.success).length;
       const totalCount = targetModels.length;
-      
+      const errs = Object.entries(results).filter(([, r]) => !r.success).map(([k, r]) => `${k}: ${r.error}`).join(' | ');
         return {
         success: successCount === totalCount,
         totalModels: totalCount,
         loadedModels: successCount,
         results: results,
-        message: `成功加载 ${successCount}/${totalCount} 个模型`
+        message: errs ? `成功加载 ${successCount}/${totalCount} 个模型 — ${errs}` : `成功加载 ${successCount}/${totalCount} 个模型`
       };
     } catch (error) {
       console.error('加载模型失败:', error);
@@ -510,13 +527,25 @@ class ImageClassifierService {
         sessionLogVerbosityLevel: 0
       };
 
+      // iOS 诊断：路径存在性 / 大小（把信息塞进 path 字段以便错误时一并冒出来）
+      let diag = '';
+      try {
+        const RNFS = require('react-native-fs');
+        const exists = await RNFS.exists(modelConfig.path);
+        const stat = exists ? await RNFS.stat(modelConfig.path) : null;
+        diag = ` (exists=${exists}, size=${stat ? stat.size : '-'})`;
+      } catch (_) { /* 静默 */ }
+      modelConfig._lastDiag = diag;
       modelConfig.model = await ort.InferenceSession.create(modelConfig.path, sessionOptions);
       logger.debug('✅ MobileNetV3模型加载成功');
-      
+
       return modelConfig.model;
     } catch (error) {
-      console.error('❌ MobileNetV3模型加载失败:', error);
-      throw error;
+      const detail = `path=${modelConfig.path}${modelConfig._lastDiag || ''}; err=${error?.message || error}`;
+      console.error('❌ MobileNetV3模型加载失败:', detail);
+      const wrapped = new Error(detail);
+      wrapped.originalError = error;
+      throw wrapped;
     }
   }
 
