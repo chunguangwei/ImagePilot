@@ -5,7 +5,9 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
-platform :ios, min_ios_version_supported
+# iOS 14+：PhotoKit 的 .readWrite 授权 + 现代 PHFetchOptions 接口都从 14 起；
+# iOS 12/13 全网占比 < 0.5%，不值得为它们写降级路径。
+platform :ios, '14.0'
 prepare_react_native_project!
 
 # If you are using a `react-native-flipper` your iOS build will fail when `NO_FLIPPER=1` is set.
@@ -65,7 +67,7 @@ target 'ImagePilot' do
     # SDK 26 头文件升级带来的连锁错误。
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
-        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.4' unless config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f >= 13.4
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0' unless config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f >= 14.0
         extra_cflags = '-Wno-deprecated-literal-operator -Wno-nullability-completeness -Wno-non-modular-include-in-framework-module'
         config.build_settings['OTHER_CFLAGS']   = "$(inherited) #{extra_cflags}"
         config.build_settings['OTHER_CPLUSPLUSFLAGS'] = "$(inherited) #{extra_cflags}"
