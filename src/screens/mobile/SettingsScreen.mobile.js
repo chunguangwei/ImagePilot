@@ -75,6 +75,13 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   const [credits, setCredits] = useState({ total: 0, used: 0, remaining: 0 });
   const [checkingFollow, setCheckingFollow] = useState(false);
 
+  // 更新流程相关状态：
+  // updateInfoModal —— "发现新版本"弹窗，notes 用 ScrollView 展示清洗后的 markdown
+  // updateProgress —— 下载中的进度条弹窗，点"后台下载"即关 UI 但下载继续
+  const [updateInfoModal, setUpdateInfoModal] = useState(null); // {version, notesClean, info} | null
+  const [updateProgress, setUpdateProgress] = useState(null);
+  //   { percent:number 0..1, status:'downloading'|'installing'|'done'|'error', version, error? } | null
+
   const pollIntervalRef = useRef(null); // 保存轮询ID
 
   // ==================== 初始化 ====================
@@ -905,49 +912,82 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   // ==================== 分类操作 ====================
 
   /**
-   * 方案2：App 内下载并安装；无直链或失败时兜底浏览器。
+   * 清洗 GitHub release body（markdown）成 Alert/Text 里更易读的纯文本：
+   *  - 标题 `##/###` 行：去掉井号、加一个项目符号
+   *  - bullet `- ` / `* ` 行：换成 `· `
+   *  - `**bold**` / `*italic*` → 去掉星号
+   *  - `[text](url)` → 只留 text
+   *  - `> ` 引用块 → 去掉前缀
+   *  - 收敛多余空行
+   *  - 截长以免顶屏（默认 800 字）
+   */
+  const cleanReleaseNotes = (md, maxLen = 800) => {
+    if (!md || typeof md !== 'string') return '';
+    let s = md.replace(/\r\n/g, '\n');
+    s = s
+      .replace(/^#{1,6}\s+/gm, '◆ ')
+      .replace(/^\s*[-*]\s+/gm, '· ')
+      .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+      .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '$1')
+      .replace(/`([^`\n]+)`/g, '$1')
+      .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/^>\s?/gm, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    if (s.length > maxLen) s = s.slice(0, maxLen).trimEnd() + '…';
+    return s;
+  };
+
+  /**
+   * 启动下载：把 UI 切到进度条弹窗，downloadAndInstall 期间持续 onProgress
+   * 更新百分比。下载完成后系统安装器会自动弹出。
+   *
+   * 用户点"后台下载"只是 setUpdateProgress(null) 关 UI，下载 promise 不停；
+   * 等它走完一样会拉起安装器，并把状态置 'done'（哪怕 UI 已关，重开也能看到）。
    */
   const startUpdate = async (info) => {
+    setUpdateInfoModal(null);
     if (!info || !info.apkUrl) {
       UpdateService.openDownload(info);
       return;
     }
-    Alert.alert(t('settings.downloadingTitle'), t('settings.downloadingMessage'));
+    setUpdateProgress({ percent: 0, status: 'downloading', version: info.latestVersion });
     try {
-      await UpdateService.downloadAndInstall(info.apkUrl, () => {});
-      // 成功后系统安装器会自动弹出
+      await UpdateService.downloadAndInstall(info.apkUrl, (p) => {
+        // 用 functional update：用户可能已"后台下载"把 modal 关了；
+        // null 时不再渲染，但保留这次写入用于"复开 → 看进度"
+        setUpdateProgress((prev) => prev ? { ...prev, percent: p } : prev);
+      });
+      setUpdateProgress((prev) => prev ? { ...prev, percent: 1, status: 'installing' } : null);
     } catch (e) {
       if (e && e.code === 'E_NEED_PERMISSION') {
+        setUpdateProgress(null);
         Alert.alert(t('settings.installPermTitle'), t('settings.installPermMessage'));
-      } else {
-        Alert.alert(
-          t('settings.updateFailedTitle'),
-          t('settings.updateFailedMessage', { error: e?.message || String(e) }),
-          [
-            { text: t('common.cancel'), style: 'cancel' },
-            { text: t('settings.openReleasesPage'), style: 'default', onPress: () => UpdateService.openReleasesPage() },
-          ],
-        );
+        return;
       }
+      // 失败哪怕用户已"后台下载"也要重新弹出告知（沉默失败体验最差）
+      setUpdateProgress((prev) => ({
+        percent: prev?.percent || 0,
+        version: prev?.version || info?.latestVersion || '',
+        status: 'error',
+        error: e?.message || String(e),
+      }));
     }
   };
 
   /**
-   * 检查更新（手动）：查 GitHub Releases，有新版引导下载
+   * 检查更新（手动）：查 GitHub Releases，有新版打开自建 Modal（更好排版）
    */
   const handleCheckUpdate = async () => {
     try {
       const info = await UpdateService.checkForUpdate();
       if (info.hasUpdate) {
-        const notes = info.notes ? `\n\n${String(info.notes).slice(0, 280)}` : '';
-        Alert.alert(
-          t('settings.updateFoundTitle', { version: info.latestVersion }),
-          t('settings.updateFoundMessage', { version: info.latestVersion }) + notes,
-          [
-            { text: t('common.cancel'), style: 'cancel' },
-            { text: t('settings.updateNow'), style: 'default', onPress: () => startUpdate(info) },
-          ],
-        );
+        setUpdateInfoModal({
+          version: info.latestVersion,
+          notesClean: cleanReleaseNotes(info.notes),
+          info,
+        });
       } else {
         Alert.alert(t('settings.alreadyLatest'), t('settings.currentVersionTip', { version: info.currentVersion }));
       }
@@ -1663,6 +1703,107 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           </View>
         </View>
       </Modal>
+
+      {/* "发现新版本"弹窗 —— ScrollView 展示清洗后的 release notes，比 Alert 排版更好 */}
+      <Modal
+        visible={!!updateInfoModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setUpdateInfoModal(null)}
+      >
+        <View style={styles.updateOverlay}>
+          <View style={styles.updateCard}>
+            <Text style={styles.updateTitle}>
+              {t('settings.updateFoundTitle', { version: updateInfoModal?.version || '' })}
+            </Text>
+            <Text style={styles.updateSubtitle}>
+              {t('settings.updateFoundMessage', { version: updateInfoModal?.version || '' })}
+            </Text>
+            <ScrollView style={styles.updateNotesBox} contentContainerStyle={{ paddingVertical: 8 }}>
+              <Text style={styles.updateNotesText}>
+                {updateInfoModal?.notesClean || t('settings.updateNoNotes') || '（无更新说明）'}
+              </Text>
+            </ScrollView>
+            <View style={styles.updateFooter}>
+              <TouchableOpacity style={[styles.updateBtn, styles.updateBtnGhost]} onPress={() => setUpdateInfoModal(null)}>
+                <Text style={styles.updateBtnGhostText}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.updateBtn, styles.updateBtnPrimary]}
+                onPress={() => startUpdate(updateInfoModal?.info)}
+              >
+                <Text style={styles.updateBtnPrimaryText}>{t('settings.updateNow')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 下载进度弹窗 —— 显示百分比 + 进度条 + "后台下载/取消"按钮 */}
+      <Modal
+        visible={!!updateProgress}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View style={styles.updateOverlay}>
+          <View style={styles.updateCard}>
+            <Text style={styles.updateTitle}>
+              {updateProgress?.status === 'installing'
+                ? '下载完成，准备安装…'
+                : updateProgress?.status === 'error'
+                  ? '下载失败'
+                  : (t('settings.downloadingTitle') || '正在下载')}
+            </Text>
+            <Text style={styles.updateSubtitle}>
+              {updateProgress?.status === 'installing'
+                ? '请在系统弹窗中确认安装'
+                : updateProgress?.status === 'error'
+                  ? (updateProgress.error || '')
+                  : `${updateProgress?.version ? 'v' + updateProgress.version + ' · ' : ''}下载完成后会自动弹出安装窗口`}
+            </Text>
+            {updateProgress?.status !== 'error' && (
+              <View style={styles.progressWrap}>
+                <View style={styles.progressTrack}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { width: `${Math.round((updateProgress?.percent || 0) * 100)}%` },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.progressText}>
+                  {Math.round((updateProgress?.percent || 0) * 100)}%
+                </Text>
+              </View>
+            )}
+            <View style={styles.updateFooter}>
+              {updateProgress?.status === 'error' ? (
+                <>
+                  <TouchableOpacity style={[styles.updateBtn, styles.updateBtnGhost]} onPress={() => setUpdateProgress(null)}>
+                    <Text style={styles.updateBtnGhostText}>{t('common.cancel')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.updateBtn, styles.updateBtnPrimary]}
+                    onPress={() => { setUpdateProgress(null); UpdateService.openReleasesPage(); }}
+                  >
+                    <Text style={styles.updateBtnPrimaryText}>{t('settings.openReleasesPage')}</Text>
+                  </TouchableOpacity>
+                </>
+              ) : updateProgress?.status === 'installing' ? (
+                <TouchableOpacity style={[styles.updateBtn, styles.updateBtnPrimary, { flex: 1 }]} onPress={() => setUpdateProgress(null)}>
+                  <Text style={styles.updateBtnPrimaryText}>知道了</Text>
+                </TouchableOpacity>
+              ) : (
+                // "后台下载" 仅关 UI，下载 promise 不停；完成后系统安装器仍会弹
+                <TouchableOpacity style={[styles.updateBtn, styles.updateBtnPrimary, { flex: 1 }]} onPress={() => setUpdateProgress(null)}>
+                  <Text style={styles.updateBtnPrimaryText}>后台下载</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -1670,6 +1811,25 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 // ==================== 样式 ====================
 
 const styles = StyleSheet.create({
+  // 更新弹窗（自建 Modal，Alert 排版 markdown 太丑）
+  updateOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  updateCard: { width: '100%', maxWidth: 480, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 18, maxHeight: '85%' },
+  updateTitle: { fontSize: 17, fontWeight: '600', color: '#000000', marginBottom: 6 },
+  updateSubtitle: { fontSize: 13, color: '#6C6C70', marginBottom: 12 },
+  updateNotesBox: { maxHeight: 320, backgroundColor: '#F7F7FA', borderRadius: 10, paddingHorizontal: 12, marginBottom: 14 },
+  updateNotesText: { fontSize: 14, color: '#1C1C1E', lineHeight: 21 },
+  updateFooter: { flexDirection: 'row', justifyContent: 'flex-end' },
+  updateBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10, marginLeft: 8, alignItems: 'center', justifyContent: 'center' },
+  updateBtnGhost: { backgroundColor: '#F2F2F7' },
+  updateBtnGhostText: { color: '#3A3A3C', fontSize: 15 },
+  updateBtnPrimary: { backgroundColor: '#007AFF' },
+  updateBtnPrimaryText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  // 下载进度
+  progressWrap: { marginVertical: 6 },
+  progressTrack: { height: 8, backgroundColor: '#E5E5EA', borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#34C759' },
+  progressText: { textAlign: 'right', marginTop: 6, color: '#6C6C70', fontSize: 13 },
+
   container: {
     flex: 1,
     backgroundColor: '#F2F2F7',
