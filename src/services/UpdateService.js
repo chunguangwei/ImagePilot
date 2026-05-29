@@ -116,6 +116,36 @@ export async function openReleasesPage() {
 }
 
 /**
+ * 预解析重定向：用 fetch 把 url 的 302/301 跑完，返回最终直链。
+ * Why: 实测部分 Android（vivo 折叠屏、含 ROM 定制 OkHttp）下，RNFS.downloadFile
+ *      对 GitHub 的 releases/download → objects.githubusercontent.com 重定向会"伪成功"
+ *      —— 状态码 < 400 但落地 0 字节文件。先用 RN 的 fetch 把重定向跑完，把最终直链
+ *      交给 RNFS，可彻底绕开。
+ *
+ * 实现：发起 `Range: bytes=0-0` 的 GET（只拿 1 字节，省流量），fetch 默认 follow 重定向，
+ *      读 `res.url` 即最终落地 URL。AbortController 在拿到 url 后立刻 abort，
+ *      避免后台继续读那 1 字节。
+ */
+async function resolveRedirects(url) {
+  try {
+    // eslint-disable-next-line no-undef
+    const Ctor = typeof AbortController !== 'undefined' ? AbortController : null;
+    const ctrl = Ctor ? new Ctor() : null;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Range: 'bytes=0-0', 'User-Agent': 'ImagePilot-App', Accept: '*/*' },
+      signal: ctrl ? ctrl.signal : undefined,
+    });
+    const finalUrl = (res && res.url) || url;
+    try { ctrl && ctrl.abort(); } catch (_) { /* 忽略 abort 抛错 */ }
+    return finalUrl;
+  } catch (_) {
+    // 预解析失败就回退原 url —— RNFS 自己也可能跑通
+    return url;
+  }
+}
+
+/**
  * 方案2：App 内下载 APK 并拉起系统安装器（不开浏览器）。
  * 下载到缓存目录 → 调原生 ApkInstaller 安装。
  * @param {string} apkUrl
@@ -138,11 +168,16 @@ export async function downloadAndInstall(apkUrl, onProgress) {
     if (await RNFS.exists(dest)) await RNFS.unlink(dest);
   } catch (_) { /* 忽略旧文件清理失败 */ }
 
+  // 把 github.com/...download/<tag>/app-release.apk 的重定向跑掉，给 RNFS 一个最终直链
+  const directUrl = await resolveRedirects(apkUrl);
+
   // 记录服务端声明的总大小，下载完成后用于校验是否被中途截断
   let expectedTotal = 0;
   const { promise } = RNFS.downloadFile({
-    fromUrl: apkUrl,
+    fromUrl: directUrl,
     toFile: dest,
+    // 部分 Android ROM 对默认 OkHttp UA 不友好，显式带上自己的 UA + Accept
+    headers: { 'User-Agent': 'ImagePilot-App', Accept: '*/*' },
     progressInterval: 300,
     begin: (res) => {
       if (res && res.contentLength > 0) expectedTotal = res.contentLength;
