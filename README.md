@@ -445,6 +445,11 @@ Scoped Storage 下，删除其他应用拍/截的图需要用户授权。v1.2.1 
 
 ## 🔄 更新日志
 
+### v1.4.4（2026-05-29）
+
+- 🛠️ **修复"E_CORRUPT 下载 0MB"**：vivo 等机型上 RNFS 不跟 GitHub 302 重定向、伪成功落地 0 字节文件。现先用 fetch 把重定向跑完拿到 `objects.githubusercontent.com` 直链再交给 RNFS，进度条也跟着真能动了
+- 📡 显式带上 `User-Agent`/`Accept` 头，避免部分 CDN 对默认 OkHttp UA 冷处理
+
 ### v1.4.3（2026-05-29）
 
 - ⬇️ **更新弹窗大改造**：清洗 release notes 的 markdown 排版，再也不会乱码堆叠；下载进度条 + 百分比实时显示
