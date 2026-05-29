@@ -201,4 +201,23 @@ export async function applyBackup(payload) {
   return { customAdded, matched, applied, skipped };
 }
 
-export default { exportBackup, listBackups, readBackup, applyBackup };
+/**
+ * 删除指定备份文件（直接物理删除）。返回 { ok }。
+ * 仅允许删 BACKUP_DIR 下的 imagepilot-backup-*.json，防止误删别处文件。
+ */
+export async function deleteBackup(path) {
+  if (typeof path !== 'string' || !path) {
+    throw new Error('备份路径无效');
+  }
+  if (!path.startsWith(BACKUP_DIR)) {
+    throw new Error('仅允许删 Downloads 下的 ImagePilot 备份');
+  }
+  const base = path.split('/').pop() || '';
+  if (!base.startsWith(FILE_PREFIX) || !base.endsWith(FILE_SUFFIX)) {
+    throw new Error('文件名不是 ImagePilot 备份格式');
+  }
+  await RNFS.unlink(path);
+  return { ok: true };
+}
+
+export default { exportBackup, listBackups, readBackup, applyBackup, deleteBackup };

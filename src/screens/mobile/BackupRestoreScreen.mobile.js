@@ -71,6 +71,35 @@ export default function BackupRestoreScreen({ navigation }) {
     } catch (_) { /* 用户取消即可 */ }
   };
 
+  const onDelete = (file) => {
+    Alert.alert(
+      '删除备份',
+      `确认删除 ${file.name}？\n该操作不可恢复，但本地相册分类不受影响。`,
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '删除',
+          style: 'destructive',
+          onPress: async () => {
+            if (busy) return;
+            setBusy(true);
+            try {
+              await BackupService.deleteBackup(file.path);
+              if (lastExport && lastExport.path === file.path) {
+                setLastExport(null);
+              }
+              await reload();
+            } catch (e) {
+              Alert.alert('删除失败', e?.message || String(e));
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const onRestore = (file) => {
     Alert.alert(
       '还原备份',
@@ -175,6 +204,10 @@ export default function BackupRestoreScreen({ navigation }) {
                 <Icon name="restore" size={18} color={busy ? '#A8E0B5' : '#34C759'} />
                 <Text style={[styles.restoreTxt, busy && { opacity: 0.4 }]}>还原</Text>
               </TouchableOpacity>
+              <TouchableOpacity onPress={() => onDelete(file)} style={styles.actionBtn} activeOpacity={0.6} disabled={busy}>
+                <Icon name="delete-outline" size={18} color={busy ? '#F5B7B1' : '#FF3B30'} />
+                <Text style={[styles.deleteTxt, busy && { opacity: 0.4 }]}>删除</Text>
+              </TouchableOpacity>
             </View>
           ))
         )}
@@ -220,4 +253,5 @@ const styles = StyleSheet.create({
   actionBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 6, marginLeft: 4 },
   shareTxt: { color: '#007AFF', marginLeft: 4, fontSize: 14 },
   restoreTxt: { color: '#34C759', marginLeft: 4, fontSize: 14, fontWeight: '600' },
+  deleteTxt: { color: '#FF3B30', marginLeft: 4, fontSize: 14, fontWeight: '600' },
 });
