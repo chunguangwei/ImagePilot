@@ -62,14 +62,16 @@ android/.idea/modules.xml
 android/.idea/navEditor.xml
 
 # iOS
+# 注意：ios/*.xcodeproj 必须入库（含 project.pbxproj —— 项目结构 / 编译配置 / 资源引用全靠它）
+# 只忽略用户专属态（xcuserdata、xcuserstate）和构建产物（Pods、DerivedData、build）
 ios/build/
 ios/Pods/
 ios/Podfile.lock
-ios/*.xcworkspace
-ios/*.xcodeproj
 ios/DerivedData/
-ios/build/
-ios/Pods/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+**/*.xcuserstate
 
 # Temporary files
 *.tmp

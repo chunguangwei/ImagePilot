@@ -18,10 +18,14 @@
  */
 
 import RNFS from 'react-native-fs';
+import { Platform } from 'react-native';
 import UnifiedDataService from './UnifiedDataService';
 import configService from './llm/adapters/UnifiedDataConfigService';
 
-const BACKUP_DIR = RNFS.DownloadDirectoryPath;
+// iOS 没有公共 Downloads 概念；用 DocumentDirectoryPath（在「文件」App 里可见，
+// 也可 iTunes 文件共享/AirDrop 出去）。Android 仍走 DownloadDirectoryPath，便于
+// 系统文件管理器 / 电脑 USB 直接看到。
+const BACKUP_DIR = Platform.OS === 'ios' ? RNFS.DocumentDirectoryPath : RNFS.DownloadDirectoryPath;
 const FILE_PREFIX = 'imagepilot-backup-';
 const FILE_SUFFIX = '.json';
 const SCHEMA_VERSION = 1;

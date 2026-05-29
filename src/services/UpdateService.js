@@ -158,7 +158,13 @@ export async function downloadAndInstall(apkUrl, onProgress) {
   // eslint-disable-next-line global-require
   const RNFS = require('react-native-fs');
   // eslint-disable-next-line global-require
-  const { NativeModules } = require('react-native');
+  const { NativeModules, Platform } = require('react-native');
+  // iOS 不能 sideload APK；用户应走 TestFlight / Ad Hoc 安装链接，让调用方兜底到 openReleasesPage
+  if (Platform.OS === 'ios') {
+    const err = new Error('iOS 暂不支持 App 内升级，请前往发布页下载安装');
+    err.code = 'E_IOS_UNSUPPORTED';
+    throw err;
+  }
   const ApkInstaller = NativeModules && NativeModules.ApkInstaller;
   if (!ApkInstaller || typeof ApkInstaller.install !== 'function') {
     throw new Error('ApkInstaller 原生模块不可用');
