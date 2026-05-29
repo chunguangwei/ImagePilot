@@ -8,8 +8,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from '../../adapters/WebAdapters';
+import { SafeAreaView, Icon } from '../../adapters/WebAdapters';
 import configService from '../../services/llm/adapters/UnifiedDataConfigService';
+import { CUSTOM_ICON_PRESETS, getCategoryIconMeta } from '../../components/shared/categoryUI';
 
 // 内置分类 id（自定义 id 不应与之冲突）
 const BUILTIN_IDS = ['single_person', 'social_activities', 'travel_scenery', 'pets', 'foods', 'idcard', 'screenshot', 'qrcode', 'other', 'NA'];
@@ -20,6 +21,8 @@ export default function CustomCategoriesScreen({ navigation }) {
   const [id, setId] = useState('');
   const [name, setName] = useState('');
   const [rule, setRule] = useState('');
+  // 用户选定的图标 key（与 CUSTOM_ICON_PRESETS[i].key 对应；默认第一个）
+  const [iconKey, setIconKey] = useState(CUSTOM_ICON_PRESETS[0].key);
 
   useEffect(() => {
     (async () => {
@@ -58,8 +61,8 @@ export default function CustomCategoriesScreen({ navigation }) {
       Alert.alert('id 重复', '该 id 与内置或已有自定义分类冲突');
       return;
     }
-    await persist([...list, { id: cid, name: cname, rule: rule.trim() }]);
-    setId(''); setName(''); setRule('');
+    await persist([...list, { id: cid, name: cname, rule: rule.trim(), iconKey }]);
+    setId(''); setName(''); setRule(''); setIconKey(CUSTOM_ICON_PRESETS[0].key);
   };
 
   const onDelete = (cid) => {
@@ -90,6 +93,25 @@ export default function CustomCategoriesScreen({ navigation }) {
           <TextInput style={styles.input} placeholder="id（英文，如 work_screenshot）" placeholderTextColor="#8E8E93" value={id} onChangeText={setId} autoCapitalize="none" />
           <TextInput style={styles.input} placeholder="名称（如 工作截图）" placeholderTextColor="#8E8E93" value={name} onChangeText={setName} />
           <TextInput style={[styles.input, styles.multiline]} placeholder="规则：什么样的图片归入此类（如 含代码/表格/聊天记录的截图）" placeholderTextColor="#8E8E93" value={rule} onChangeText={setRule} multiline />
+
+          {/* 图标选择（统一主题：MaterialIcons + 圆形主题色背景） */}
+          <Text style={styles.iconPickerLabel}>选择图标</Text>
+          <View style={styles.iconGrid}>
+            {CUSTOM_ICON_PRESETS.map((p) => {
+              const selected = iconKey === p.key;
+              return (
+                <TouchableOpacity
+                  key={p.key}
+                  style={[styles.iconCell, { backgroundColor: p.color, opacity: selected ? 1 : 0.5 }, selected && styles.iconCellSelected]}
+                  onPress={() => setIconKey(p.key)}
+                  activeOpacity={0.8}
+                >
+                  <Icon name={p.icon} size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
           <TouchableOpacity style={styles.addBtn} onPress={onAdd}>
             <Text style={styles.addBtnText}>添加</Text>
           </TouchableOpacity>
@@ -102,17 +124,23 @@ export default function CustomCategoriesScreen({ navigation }) {
         ) : list.length === 0 ? (
           <Text style={styles.empty}>还没有自定义分类</Text>
         ) : (
-          list.map((c) => (
-            <View key={c.id} style={styles.item}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.itemName}>{c.name} <Text style={styles.itemId}>({c.id})</Text></Text>
-                {!!c.rule && <Text style={styles.itemRule}>{c.rule}</Text>}
+          list.map((c) => {
+            const meta = getCategoryIconMeta(c.id, list);
+            return (
+              <View key={c.id} style={styles.item}>
+                <View style={[styles.itemIconWrap, { backgroundColor: meta.color }]}>
+                  <Icon name={meta.iconName} size={18} color="#FFFFFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.itemName}>{c.name} <Text style={styles.itemId}>({c.id})</Text></Text>
+                  {!!c.rule && <Text style={styles.itemRule}>{c.rule}</Text>}
+                </View>
+                <TouchableOpacity onPress={() => onDelete(c.id)}>
+                  <Text style={styles.del}>删除</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={() => onDelete(c.id)}>
-                <Text style={styles.del}>删除</Text>
-              </TouchableOpacity>
-            </View>
-          ))
+            );
+          })
         )}
       </ScrollView>
     </SafeAreaView>
@@ -137,8 +165,18 @@ const styles = StyleSheet.create({
   addBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 17 },
   empty: { color: '#8E8E93', marginTop: 12, fontSize: 15 },
   item: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 10 },
+  itemIconWrap: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   itemName: { fontSize: 15, fontWeight: '500', color: '#000000' },
   itemId: { fontSize: 12, color: '#8E8E93' },
   itemRule: { fontSize: 13, color: '#6C6C70', marginTop: 4, lineHeight: 18 },
   del: { color: '#FF3B30', marginLeft: 12, fontSize: 15 },
+  // 图标选择面板
+  iconPickerLabel: { fontSize: 13, color: '#6C6C70', marginTop: 4, marginBottom: 8 },
+  iconGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 14 },
+  iconCell: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    marginRight: 10, marginBottom: 10,
+  },
+  iconCellSelected: { borderWidth: 2, borderColor: '#007AFF' },
 });

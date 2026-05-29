@@ -31,6 +31,8 @@ import WeChatAuthService from '../../services/WeChatAuthService';
 import GlobalImageCache from '../../services/GlobalImageCache';
 import configService from '../../services/ConfigService';
 import cityLocationService from '../../services/CityLocationService';
+import { sortCategoryList, getCategoryIconMeta } from '../../components/shared/categoryUI';
+import { Icon } from '../../adapters/WebAdapters';
 import { logger, getUri } from '../../adapters/WebAdapters';
 
 // iOS 单色图标（字体已打包）；异常时回退 emoji
@@ -1872,7 +1874,7 @@ const CategoryScreen = ({ route, navigation }) => {
       return null;
     }
     
-    const availableCategories = categories.filter(cat => {
+    const availableCategoriesRaw = categories.filter(cat => {
       // 🆕 添加空值检查
       if (!cat || typeof cat !== 'object') {
         console.warn('⚠️ 发现无效的分类对象:', cat);
@@ -1881,11 +1883,13 @@ const CategoryScreen = ({ route, navigation }) => {
       // 注意：暂存箱不是分类，不会出现在 getAllCategoriesWithUI() 返回的列表中，所以不需要过滤
       return true;
     });
-    // 把用户自定义分类合并到选择器末尾（chinese/english 都用 name，icon 用默认）
+    // 合并自定义分类（chinese/english 都用 name；图标由 getCategoryIconMeta 走 customCategoryList 解析）
     for (const c of customCategoryList) {
-      if (availableCategories.some((x) => x.id === c.id)) continue;
-      availableCategories.push({ id: c.id, chinese: c.name, english: c.name, icon: '🏷️' });
+      if (availableCategoriesRaw.some((x) => x.id === c.id)) continue;
+      availableCategoriesRaw.push({ id: c.id, chinese: c.name, english: c.name });
     }
+    // 终态排序：「其他」倒数第二、「待分类」末位
+    const availableCategories = sortCategoryList(availableCategoriesRaw);
 
     return (
       <Modal
@@ -1904,22 +1908,25 @@ const CategoryScreen = ({ route, navigation }) => {
               </Text>
           </View>
 
-            {/* 分类列表 */}
+            {/* 分类列表（统一图标主题：MaterialIcons + 圆形彩色背景） */}
             <ScrollView style={styles.categoryList}>
               {availableCategories.map((cat) => {
                 // 根据当前语言动态选择分类名称（与 PC 端一致）
                 const currentLang = i18n.language || 'zh';
-                const categoryName = currentLang === 'en' 
-                  ? (cat.english || cat.chinese) 
+                const categoryName = currentLang === 'en'
+                  ? (cat.english || cat.chinese)
                   : (cat.chinese || cat.english);
-                
+                const meta = getCategoryIconMeta(cat.id, customCategoryList);
+
                 return (
                   <TouchableOpacity
                     key={cat.id}
                     style={styles.categoryItem}
                     onPress={() => selectCategory(cat.id)}
                   >
-                    <Text style={styles.categoryIcon}>{cat.icon || '🏷️'}</Text>
+                    <View style={[styles.categoryIconWrap, { backgroundColor: meta.color }]}>
+                      <Icon name={meta.iconName} size={20} color="#FFFFFF" />
+                    </View>
                     <Text style={styles.categoryName}>{categoryName}</Text>
                   </TouchableOpacity>
                 );
@@ -2430,6 +2437,15 @@ const styles = StyleSheet.create({
   },
   categoryIcon: {
     fontSize: 24,
+    marginRight: 12,
+  },
+  // 统一图标容器：圆形 + 主题色背景 + 白色字体图标（视觉一致，不再是 emoji）
+  categoryIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
   categoryName: {
