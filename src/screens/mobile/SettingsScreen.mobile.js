@@ -1227,6 +1227,15 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             false
           )}
 
+          {/* 🆕 分类备份与还原：导出 JSON 到 Downloads / 从 Downloads 还原 */}
+          {renderActionButton(
+            'archive-outline',
+            '分类备份与还原',
+            '导出当前分类索引到本地，换机/重装/清数据后可一键还原，不必再走云端',
+            () => navigation.navigate('BackupRestore'),
+            false
+          )}
+
           {/* 🆕 检查更新：从 GitHub Releases 升级到客户端 */}
           {renderActionButton(
             'cloud-download-outline',
