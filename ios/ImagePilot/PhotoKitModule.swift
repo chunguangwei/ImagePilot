@@ -127,6 +127,68 @@ class PhotoKitModule: NSObject {
     }
   }
 
+  // MARK: - 请求图片为本地 file:// URL（绕过缺失的 ph:// 图片 loader）
+
+  /// 把 PHAsset 解码为缓存 jpg/heic，返回 file:// URL。
+  /// RN <Image source={{uri:"ph://..."}}/> 在无 cameraroll 时报 "no suitable URL loader"，
+  /// 走这条把原图导出到 NSTemporaryDirectory，给 <Image> 一个能直接渲染的本地 URL。
+  @objc(requestImageFileURL:resolver:rejecter:)
+  func requestImageFileURL(_ localIdentifier: String,
+                           resolver resolve: @escaping RCTPromiseResolveBlock,
+                           rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let fetch = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
+    guard let asset = fetch.firstObject else {
+      reject("E_NOT_FOUND", "asset not found for id \(localIdentifier)", nil)
+      return
+    }
+    let options = PHImageRequestOptions()
+    options.isSynchronous = false
+    options.deliveryMode = .highQualityFormat
+    options.isNetworkAccessAllowed = true
+    options.version = .current
+    PHImageManager.default().requestImageDataAndOrientation(for: asset, options: options) { data, uti, _, info in
+      DispatchQueue.global(qos: .userInitiated).async {
+        if let err = info?[PHImageErrorKey] as? NSError {
+          DispatchQueue.main.async { reject("E_FETCH_FAILED", err.localizedDescription, err) }
+          return
+        }
+        guard let data = data else {
+          DispatchQueue.main.async { reject("E_NO_DATA", "no image data returned", nil) }
+          return
+        }
+        // 缀名：HEIC → jpg（多数 <Image> 不解 HEIC 渲染会黑屏），其它按 UTI 简单映射
+        let utiStr = (uti ?? "") as String
+        let ext: String =
+          utiStr.contains("png") ? "png" :
+          utiStr.contains("gif") ? "gif" :
+          "jpg"
+        let safeId = localIdentifier.replacingOccurrences(of: "/", with: "_")
+        let tmpDir = NSTemporaryDirectory() as NSString
+        let path = tmpDir.appendingPathComponent("phasset_\(safeId).\(ext)")
+        // 已经存在就复用，省一次 IO
+        if !FileManager.default.fileExists(atPath: path) {
+          // HEIC → JPEG（用 ImageIO 转码）
+          var finalData = data
+          if utiStr.contains("heic") || utiStr.contains("heif") {
+            if let cg = UIImage(data: data)?.cgImage,
+               let jpeg = UIImage(cgImage: cg).jpegData(compressionQuality: 0.92) {
+              finalData = jpeg
+            }
+          }
+          do {
+            try finalData.write(to: URL(fileURLWithPath: path), options: .atomic)
+          } catch {
+            DispatchQueue.main.async { reject("E_WRITE_FAILED", error.localizedDescription, error) }
+            return
+          }
+        }
+        DispatchQueue.main.async {
+          resolve(["uri": "file://\(path)", "path": path])
+        }
+      }
+    }
+  }
+
   // MARK: - 删除（系统会自动弹原生授权对话框，用户同意即真删）
 
   @objc(deleteAssets:resolver:rejecter:)

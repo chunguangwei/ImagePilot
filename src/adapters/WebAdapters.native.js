@@ -500,10 +500,11 @@ const parseCombinedUri = (uri) => {
   const separatorIndex = uri.indexOf(URI_SEPARATOR);
   if (separatorIndex === -1) {
     // 没有分隔符，说明是普通URI
-    return { 
-      contentUri: uri.startsWith('content://') ? uri : null,
-      relativePath: null, 
-      isCombined: false 
+    const isOpaqueScheme = uri.startsWith('content://') || uri.startsWith('ph://');
+    return {
+      contentUri: isOpaqueScheme ? uri : null,
+      relativePath: null,
+      isCombined: false
     };
   }
   
@@ -570,7 +571,7 @@ export const getFileUri = (input) => {
     return null;
   }
 
-  if (originalUri.startsWith('content://')) {
+  if (originalUri.startsWith('content://') || originalUri.startsWith('ph://')) {
     return null;
   }
 
@@ -603,7 +604,7 @@ export const getContentUri = (input) => {
   }
   
   // 不是拼装格式，按原逻辑处理
-  if (originalUri.startsWith('content://')) {
+  if (originalUri.startsWith('content://') || originalUri.startsWith('ph://')) {
     return originalUri;
   }
 
@@ -625,6 +626,49 @@ export const getUri = (input) => {
   
   // 如果没有content:// URI，尝试获取file:// URI（PC端）
   return getFileUri(input);
+};
+
+// iOS ph:// → file:// 解析缓存（PhotoKit 把 PHAsset 导出到 NSTemporaryDirectory 后缓存路径）
+// 没有 cameraroll lib 时，RN <Image> 不识别 ph://，必须先导出再渲染。
+const _phUriCache = new Map();
+const _phUriInflight = new Map();
+
+const _extractPhLocalId = (uri) => {
+  if (typeof uri !== 'string' || !uri.startsWith('ph://')) return null;
+  return uri.slice('ph://'.length);
+};
+
+export const resolvePhAssetUri = async (input) => {
+  const originalUri = normalizePathParams(input);
+  const id = _extractPhLocalId(originalUri);
+  if (!id) return null;
+  if (_phUriCache.has(id)) return _phUriCache.get(id);
+  if (_phUriInflight.has(id)) return _phUriInflight.get(id);
+  const { NativeModules } = require('react-native');
+  const PhotoKitModule = NativeModules.PhotoKitModule;
+  if (!PhotoKitModule || typeof PhotoKitModule.requestImageFileURL !== 'function') {
+    return null;
+  }
+  const p = (async () => {
+    try {
+      const res = await PhotoKitModule.requestImageFileURL(id);
+      const fileUri = res?.uri || null;
+      if (fileUri) _phUriCache.set(id, fileUri);
+      return fileUri;
+    } catch (_e) {
+      return null;
+    } finally {
+      _phUriInflight.delete(id);
+    }
+  })();
+  _phUriInflight.set(id, p);
+  return p;
+};
+
+// 同步只读：用于已缓存场景
+export const getCachedPhAssetUri = (input) => {
+  const id = _extractPhLocalId(normalizePathParams(input));
+  return id ? (_phUriCache.get(id) || null) : null;
 };
 
 // 文件统计信息

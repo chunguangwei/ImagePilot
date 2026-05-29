@@ -225,6 +225,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
   }), [scaleAnim, translateXAnim, translateYAnim]);
 
   // 使用 getUri 统一获取图片 URI
+  // iOS ph:// 由原生 PhotoKitImageLoader 直接渲染（透明），无需 JS 侧再做转换
   const resolveImageUri = useCallback((image) => {
     if (!image) return null;
     return getUri(image);
