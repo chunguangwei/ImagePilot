@@ -1,15 +1,21 @@
 /**
  * CustomCategoriesScreen（移动版）— 自定义分类管理（A 方案）
  *
- * 增/删自定义分类 [{ id, name, rule }]，存入 settings.aiProvider.customCategories。
- * 云端大模型分类时会按这些规则把图片归入对应分类（见 wireLLMRouting / customCategories）。
- * 纯本地读写，无重依赖。入口：设置页「🏷️ 自定义分类」。
+ * 自定义分类项形状：[{ id, name, rule, iconKey }]
+ *   - id：英文，给云端大模型输出用（创建后不可改，避免历史归属图断链）
+ *   - name / rule / iconKey：可编辑
+ *
+ * 删除时：先把已落到该分类的图改回 'NA'（待分类），再从 settings.aiProvider.customCategories
+ * 移除——避免"删分类→图消失"的体感。
+ *
+ * 入口：设置页「🏷️ 自定义分类」。
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView, Icon } from '../../adapters/WebAdapters';
 import configService from '../../services/llm/adapters/UnifiedDataConfigService';
+import UnifiedDataService from '../../services/UnifiedDataService';
 import { CUSTOM_ICON_PRESETS, getCategoryIconMeta } from '../../components/shared/categoryUI';
 
 // 内置分类 id（自定义 id 不应与之冲突）
@@ -18,11 +24,13 @@ const BUILTIN_IDS = ['single_person', 'social_activities', 'travel_scenery', 'pe
 export default function CustomCategoriesScreen({ navigation }) {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
+  // 新增表单
   const [id, setId] = useState('');
   const [name, setName] = useState('');
   const [rule, setRule] = useState('');
-  // 用户选定的图标 key（与 CUSTOM_ICON_PRESETS[i].key 对应；默认第一个）
   const [iconKey, setIconKey] = useState(CUSTOM_ICON_PRESETS[0].key);
+  // 编辑弹窗（editing 为 { id, name, rule, iconKey } 时打开）
+  const [editing, setEditing] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -65,12 +73,77 @@ export default function CustomCategoriesScreen({ navigation }) {
     setId(''); setName(''); setRule(''); setIconKey(CUSTOM_ICON_PRESETS[0].key);
   };
 
-  const onDelete = (cid) => {
-    Alert.alert('删除', `删除自定义分类「${cid}」？`, [
-      { text: '取消', style: 'cancel' },
-      { text: '删除', style: 'destructive', onPress: () => persist(list.filter((c) => c.id !== cid)) },
-    ]);
+  // 打开编辑弹窗：拷贝一份编辑态，id 不可改（避免历史归属图断链）
+  const onOpenEdit = (c) => {
+    setEditing({
+      id: c.id,
+      name: c.name || '',
+      rule: c.rule || '',
+      iconKey: c.iconKey || CUSTOM_ICON_PRESETS[0].key,
+    });
   };
+
+  const onSaveEdit = async () => {
+    if (!editing) return;
+    const cname = editing.name.trim();
+    if (!cname) {
+      Alert.alert('请填写', '名称必填');
+      return;
+    }
+    const next = list.map((c) =>
+      c.id === editing.id ? { ...c, name: cname, rule: editing.rule.trim(), iconKey: editing.iconKey } : c
+    );
+    await persist(next);
+    setEditing(null);
+  };
+
+  // 删除：先把该自定义分类下的图改回「待分类(NA)」，再从列表移除。
+  // 避免"删分类→图消失"的体感——图仍在，只是回到待分类等用户/AI 重新归。
+  const onDelete = (cid) => {
+    Alert.alert(
+      '删除',
+      `删除自定义分类「${cid}」？\n该分类下的照片会回到「待分类」，不会丢失。`,
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '删除',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const inCat = await UnifiedDataService.readImagesByCategory(cid);
+              const ids = Array.isArray(inCat) ? inCat.map((img) => img && img.id).filter(Boolean) : [];
+              if (ids.length > 0) {
+                // 'manual' 表示是用户操作（与"改分类"一致），不会被后续 AI 再分类覆盖
+                await UnifiedDataService.updateImagesCategory(ids, 'NA', 'manual');
+              }
+              await persist(list.filter((c) => c.id !== cid));
+            } catch (e) {
+              Alert.alert('删除失败', e?.message || String(e));
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // 图标网格：受控选中态由 selectedKey + onSelect 决定，新增/编辑两处共用
+  const IconGrid = ({ selectedKey, onSelect }) => (
+    <View style={styles.iconGrid}>
+      {CUSTOM_ICON_PRESETS.map((p) => {
+        const selected = selectedKey === p.key;
+        return (
+          <TouchableOpacity
+            key={p.key}
+            style={[styles.iconCell, { backgroundColor: p.color, opacity: selected ? 1 : 0.5 }, selected && styles.iconCellSelected]}
+            onPress={() => onSelect(p.key)}
+            activeOpacity={0.8}
+          >
+            <Icon name={p.icon} size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -84,7 +157,7 @@ export default function CustomCategoriesScreen({ navigation }) {
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
         <Text style={styles.tip}>
-          配置后，使用云端大模型分类时，会按你的「规则」把图片归入对应自定义分类。id 用英文（大模型输出用）。
+          配置后，使用云端大模型分类时，会按你的「规则」把图片归入对应自定义分类。id 用英文（大模型输出用），创建后不可改。
         </Text>
 
         {/* 新增表单 */}
@@ -94,23 +167,8 @@ export default function CustomCategoriesScreen({ navigation }) {
           <TextInput style={styles.input} placeholder="名称（如 工作截图）" placeholderTextColor="#8E8E93" value={name} onChangeText={setName} />
           <TextInput style={[styles.input, styles.multiline]} placeholder="规则：什么样的图片归入此类（如 含代码/表格/聊天记录的截图）" placeholderTextColor="#8E8E93" value={rule} onChangeText={setRule} multiline />
 
-          {/* 图标选择（统一主题：MaterialIcons + 圆形主题色背景） */}
           <Text style={styles.iconPickerLabel}>选择图标</Text>
-          <View style={styles.iconGrid}>
-            {CUSTOM_ICON_PRESETS.map((p) => {
-              const selected = iconKey === p.key;
-              return (
-                <TouchableOpacity
-                  key={p.key}
-                  style={[styles.iconCell, { backgroundColor: p.color, opacity: selected ? 1 : 0.5 }, selected && styles.iconCellSelected]}
-                  onPress={() => setIconKey(p.key)}
-                  activeOpacity={0.8}
-                >
-                  <Icon name={p.icon} size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          <IconGrid selectedKey={iconKey} onSelect={setIconKey} />
 
           <TouchableOpacity style={styles.addBtn} onPress={onAdd}>
             <Text style={styles.addBtnText}>添加</Text>
@@ -135,7 +193,10 @@ export default function CustomCategoriesScreen({ navigation }) {
                   <Text style={styles.itemName}>{c.name} <Text style={styles.itemId}>({c.id})</Text></Text>
                   {!!c.rule && <Text style={styles.itemRule}>{c.rule}</Text>}
                 </View>
-                <TouchableOpacity onPress={() => onDelete(c.id)}>
+                <TouchableOpacity onPress={() => onOpenEdit(c)} style={styles.actionBtn}>
+                  <Text style={styles.edit}>编辑</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onDelete(c.id)} style={styles.actionBtn}>
                   <Text style={styles.del}>删除</Text>
                 </TouchableOpacity>
               </View>
@@ -143,13 +204,54 @@ export default function CustomCategoriesScreen({ navigation }) {
           })
         )}
       </ScrollView>
+
+      {/* 编辑弹窗：id 只读，其余可改 */}
+      <Modal visible={!!editing} animationType="slide" transparent onRequestClose={() => setEditing(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>编辑分类</Text>
+              <Text style={styles.modalSubtitle}>{editing?.id}</Text>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 16 }}>
+              <TextInput
+                style={styles.input}
+                placeholder="名称"
+                placeholderTextColor="#8E8E93"
+                value={editing?.name || ''}
+                onChangeText={(v) => setEditing((s) => ({ ...s, name: v }))}
+              />
+              <TextInput
+                style={[styles.input, styles.multiline]}
+                placeholder="规则"
+                placeholderTextColor="#8E8E93"
+                value={editing?.rule || ''}
+                onChangeText={(v) => setEditing((s) => ({ ...s, rule: v }))}
+                multiline
+              />
+              <Text style={styles.iconPickerLabel}>选择图标</Text>
+              <IconGrid
+                selectedKey={editing?.iconKey}
+                onSelect={(k) => setEditing((s) => ({ ...s, iconKey: k }))}
+              />
+            </ScrollView>
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnGhost]} onPress={() => setEditing(null)}>
+                <Text style={styles.modalBtnGhostText}>取消</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={onSaveEdit}>
+                <Text style={styles.modalBtnPrimaryText}>保存</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F2F2F7' },
-  // 统一页头：白色 56 高，‹ 返回，居中标题
   header: { height: 56, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
   backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   backIcon: { fontSize: 32, color: '#007AFF', fontWeight: 'bold' },
@@ -164,12 +266,16 @@ const styles = StyleSheet.create({
   addBtn: { backgroundColor: '#007AFF', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
   addBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 17 },
   empty: { color: '#8E8E93', marginTop: 12, fontSize: 15 },
+
   item: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 10 },
   itemIconWrap: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   itemName: { fontSize: 15, fontWeight: '500', color: '#000000' },
   itemId: { fontSize: 12, color: '#8E8E93' },
   itemRule: { fontSize: 13, color: '#6C6C70', marginTop: 4, lineHeight: 18 },
-  del: { color: '#FF3B30', marginLeft: 12, fontSize: 15 },
+  actionBtn: { paddingHorizontal: 6, paddingVertical: 4 },
+  edit: { color: '#007AFF', marginLeft: 8, fontSize: 15 },
+  del: { color: '#FF3B30', marginLeft: 8, fontSize: 15 },
+
   // 图标选择面板
   iconPickerLabel: { fontSize: 13, color: '#6C6C70', marginTop: 4, marginBottom: 8 },
   iconGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 14 },
@@ -179,4 +285,17 @@ const styles = StyleSheet.create({
     marginRight: 10, marginBottom: 10,
   },
   iconCellSelected: { borderWidth: 2, borderColor: '#007AFF' },
+
+  // 编辑弹窗
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85%' },
+  modalHeader: { padding: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5E5EA' },
+  modalTitle: { fontSize: 17, fontWeight: '600', color: '#000000' },
+  modalSubtitle: { fontSize: 13, color: '#8E8E93', marginTop: 2 },
+  modalFooter: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E5E5EA' },
+  modalBtn: { flex: 1, paddingVertical: 14, alignItems: 'center' },
+  modalBtnGhost: { borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: '#E5E5EA' },
+  modalBtnGhostText: { color: '#8E8E93', fontSize: 16 },
+  modalBtnPrimary: {},
+  modalBtnPrimaryText: { color: '#007AFF', fontSize: 16, fontWeight: '600' },
 });
