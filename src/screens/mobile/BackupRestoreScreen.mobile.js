@@ -153,21 +153,26 @@ export default function BackupRestoreScreen({ navigation }) {
         {loading ? (
           <ActivityIndicator style={{ marginTop: 20 }} />
         ) : list.length === 0 ? (
-          <Text style={styles.empty}>Downloads 目录下还没备份文件</Text>
+          <View style={styles.emptyBox}>
+            <Icon name="folder-open" size={36} color="#C7C7CC" />
+            <Text style={styles.empty}>Downloads 目录下还没备份文件</Text>
+          </View>
         ) : (
           list.map((file) => (
             <View key={file.path} style={styles.item}>
               <View style={styles.itemIconWrap}>
-                <Icon name="inventory-2" size={20} color="#FFFFFF" />
+                <Icon name="inventory-2" size={18} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemName} numberOfLines={1}>{file.name}</Text>
                 <Text style={styles.itemMeta}>{fmtBytes(file.size)} · {fmtTime(file.mtime)}</Text>
               </View>
-              <TouchableOpacity onPress={() => onShareFile(file)} style={styles.actionBtn}>
+              <TouchableOpacity onPress={() => onShareFile(file)} style={styles.actionBtn} activeOpacity={0.6}>
+                <Icon name="share" size={18} color="#007AFF" />
                 <Text style={styles.shareTxt}>分享</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => onRestore(file)} style={styles.actionBtn} disabled={busy}>
+              <TouchableOpacity onPress={() => onRestore(file)} style={styles.actionBtn} activeOpacity={0.6} disabled={busy}>
+                <Icon name="restore" size={18} color={busy ? '#A8E0B5' : '#34C759'} />
                 <Text style={[styles.restoreTxt, busy && { opacity: 0.4 }]}>还原</Text>
               </TouchableOpacity>
             </View>
@@ -202,16 +207,17 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 17 },
   btnDisabled: { opacity: 0.6 },
 
-  empty: { color: '#8E8E93', fontSize: 14, marginTop: 12 },
+  empty: { color: '#8E8E93', fontSize: 14, marginTop: 8 },
+  emptyBox: { backgroundColor: '#FFFFFF', borderRadius: 12, paddingVertical: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
 
   item: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, marginBottom: 10 },
   itemIconWrap: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: '#34495E',
+    width: 34, height: 34, borderRadius: 17, backgroundColor: '#5E5CE6',
     alignItems: 'center', justifyContent: 'center', marginRight: 12,
   },
   itemName: { fontSize: 14, fontWeight: '500', color: '#000000' },
   itemMeta: { fontSize: 12, color: '#8E8E93', marginTop: 3 },
-  actionBtn: { paddingHorizontal: 6, paddingVertical: 4 },
-  shareTxt: { color: '#007AFF', marginLeft: 8, fontSize: 15 },
-  restoreTxt: { color: '#34C759', marginLeft: 8, fontSize: 15, fontWeight: '600' },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 6, marginLeft: 4 },
+  shareTxt: { color: '#007AFF', marginLeft: 4, fontSize: 14 },
+  restoreTxt: { color: '#34C759', marginLeft: 4, fontSize: 14, fontWeight: '600' },
 });

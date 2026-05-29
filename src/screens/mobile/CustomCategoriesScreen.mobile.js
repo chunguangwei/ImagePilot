@@ -193,10 +193,12 @@ export default function CustomCategoriesScreen({ navigation }) {
                   <Text style={styles.itemName}>{c.name} <Text style={styles.itemId}>({c.id})</Text></Text>
                   {!!c.rule && <Text style={styles.itemRule}>{c.rule}</Text>}
                 </View>
-                <TouchableOpacity onPress={() => onOpenEdit(c)} style={styles.actionBtn}>
+                <TouchableOpacity onPress={() => onOpenEdit(c)} style={styles.actionBtn} activeOpacity={0.6}>
+                  <Icon name="edit" size={18} color="#007AFF" />
                   <Text style={styles.edit}>编辑</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => onDelete(c.id)} style={styles.actionBtn}>
+                <TouchableOpacity onPress={() => onDelete(c.id)} style={styles.actionBtn} activeOpacity={0.6}>
+                  <Icon name="delete-outline" size={18} color="#FF3B30" />
                   <Text style={styles.del}>删除</Text>
                 </TouchableOpacity>
               </View>
@@ -272,9 +274,9 @@ const styles = StyleSheet.create({
   itemName: { fontSize: 15, fontWeight: '500', color: '#000000' },
   itemId: { fontSize: 12, color: '#8E8E93' },
   itemRule: { fontSize: 13, color: '#6C6C70', marginTop: 4, lineHeight: 18 },
-  actionBtn: { paddingHorizontal: 6, paddingVertical: 4 },
-  edit: { color: '#007AFF', marginLeft: 8, fontSize: 15 },
-  del: { color: '#FF3B30', marginLeft: 8, fontSize: 15 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 6, marginLeft: 4 },
+  edit: { color: '#007AFF', marginLeft: 4, fontSize: 14 },
+  del: { color: '#FF3B30', marginLeft: 4, fontSize: 14 },
 
   // 图标选择面板
   iconPickerLabel: { fontSize: 13, color: '#6C6C70', marginTop: 4, marginBottom: 8 },
