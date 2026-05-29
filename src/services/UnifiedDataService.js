@@ -1192,135 +1192,127 @@ class UnifiedDataService {
     }
   }
 
-  
+
   /**
    * 批量删除图片
-   * 先写缓存，再写数据库
+   * 先删物理文件、验证文件真的不存在了，再删数据库记录。
+   *
+   * 关键不变量：
+   *  - successfulImageIds 仅包含**物理文件确认已消失**的 id；DB 也只删这些 id。
+   *  - 任何一张图删失败（无路径 / unlink 抛错 / unlink 后文件仍在）都计入 filesFailed，
+   *    使 result.success === false，上层据此走 MediaStore.createDeleteRequest 系统授权。
+   *
+   * 历史 bug：之前 RNFS.unlink "看起来成功"或 content:// 无路径就静默跳过，
+   * 把 success 当 true 报上去；用户看到「已删除」但相册里照片还在。
    */
     async writeDeleteImages(imageIds, onProgress) {
       try {
         logger.debug('批量删除图片:', imageIds.length);
-        
-        // 1. 先记录图片本地路径（在删除数据库记录之前）
-        const imagePaths = [];
+        const total = imageIds.length;
+
+        // 1. 收集 (id, 本地路径)。没有路径（content:// 或缓存里没此图）的直接计为失败，
+        //    交由上层（系统授权流程 / 错误提示）处理。
         const imageIdToPathMap = new Map();
+        const noPathFailedIds = [];
         for (const imageId of imageIds) {
           const image = this.imageCache._getImageById(imageId);
           if (!image) {
             logger.warn(`⚠️ 无法找到图片: ${imageId}`);
+            noPathFailedIds.push(imageId);
             continue;
           }
-          
-          // 使用 getLocalPath 获取本地路径（PC端：file:// URI转换为路径，移动端：content:// URI返回null）
           const localPath = getLocalPath(image);
           if (!localPath) {
-            // 移动端的 content:// URI 无法通过文件系统删除，跳过物理文件删除
-            logger.debug(`⚠️ 无法获取本地路径（可能是移动端content:// URI），跳过物理文件删除: ${imageId}`);
+            logger.debug(`⚠️ 无本地路径（content:// 等），交由系统授权流程处理: ${imageId}`);
+            noPathFailedIds.push(imageId);
             continue;
           }
-          
-          imagePaths.push(localPath);
           imageIdToPathMap.set(imageId, localPath);
         }
-        logger.debug(`记录到${imagePaths.length}个物理文件路径`);
-        
-        // 2. 先尝试删除物理文件
+
         let filesDeleted = 0;
-        let filesFailed = 0;
+        let filesFailed = noPathFailedIds.length;
         const successfulImageIds = [];
-        
-        // Initialize progress for physical file deletion
-        if (onProgress) {
-          onProgress({
-            filesDeleted: 0,
-            filesFailed: 0,
-            total: imagePaths.length
-          });
-        }
-        
-        // 遍历图片ID，使用映射获取对应的路径
-        for (const imageId of imageIdToPathMap.keys()) {
+        const failedImageIds = [...noPathFailedIds];
+
+        if (onProgress) onProgress({ filesDeleted, filesFailed, total });
+
+        // 2. 依次尝试 RNFS.unlink，并**在 unlink 后再验证一次** —— Android 11+ 沙盒下
+        //    unlink 对非本应用创建的媒体常常"看起来成功"但文件仍存在，必须复核。
+        for (const [imageId, filePath] of imageIdToPathMap.entries()) {
+          let ok = false;
           try {
-            const filePath = imageIdToPathMap.get(imageId);
-            
-            // 检查文件是否存在
             const exists = await RNFS.exists(filePath);
             if (!exists) {
-              logger.debug(`⚠️ 文件不存在，跳过删除: ${filePath}`);
-              filesDeleted++;
-              if (imageId) successfulImageIds.push(imageId); // 文件不存在也算成功
-              continue;
-            }
-            
-            // 统一使用RNFS删除文件
-            let deleteSuccess = false;
-            try {
-              await RNFS.unlink(filePath);
-              logger.debug(`🗑️ RNFS删除成功: ${filePath}`);
-              deleteSuccess = true;
-            } catch (rnfsError) {
-              // RNFS在某些情况下会抛出"File does not exist"异常，但这通常表示删除成功
-              if (rnfsError.message && rnfsError.message.includes('File does not exist')) {
-                logger.debug(`🗑️ RNFS删除成功（文件已不存在）: ${filePath}`);
-                deleteSuccess = true;
-              } else {
-                logger.debug(`🔍 RNFS删除失败: ${filePath}`, rnfsError);
-                deleteSuccess = false;
+              // 文件本就不在 —— 视为已删除（DB 残留记录走 successfulImageIds 一起清掉）
+              ok = true;
+            } else {
+              try {
+                await RNFS.unlink(filePath);
+              } catch (rnfsError) {
+                if (!(rnfsError && rnfsError.message && rnfsError.message.includes('File does not exist'))) {
+                  logger.debug(`🔍 RNFS 删除失败: ${filePath}`, rnfsError?.message || rnfsError);
+                }
+              }
+              // 复核：文件真的没了才算成功
+              const stillExists = await RNFS.exists(filePath).catch(() => true);
+              ok = !stillExists;
+              if (!ok) {
+                logger.debug(`🔍 RNFS unlink 后文件仍在（Scoped Storage 限制）: ${filePath}`);
               }
             }
-            
-            if (deleteSuccess) {
-              filesDeleted++;
-              if (imageId) successfulImageIds.push(imageId); // 记录成功删除的图片ID
-            } else {
-              filesFailed++;
-            }
-          } catch (fileError) {
+          } catch (e) {
+            logger.debug(`🔍 删除物理文件异常: ${filePath}`, e?.message || e);
+            ok = false;
+          }
+
+          if (ok) {
+            filesDeleted++;
+            successfulImageIds.push(imageId);
+          } else {
             filesFailed++;
-            logger.debug(`🔍 删除物理文件失败: ${filePath}`, fileError);
+            failedImageIds.push(imageId);
           }
-          
-          // Update progress for physical file deletion
-          if (onProgress) {
-            onProgress({
-              filesDeleted,
-              filesFailed,
-              total: imagePaths.length
-            });
-          }
+          if (onProgress) onProgress({ filesDeleted, filesFailed, total });
         }
-        
-        // 3. 只有物理文件删除成功的，才删除数据库记录
-        let result = { success: filesFailed === 0, processed: 0 };
+
+        // 3. 只对物理文件已消失的 id 删 DB 记录
         if (successfulImageIds.length > 0) {
-          const dbResult = await this.imageStorageService.deleteImages(successfulImageIds);
-          logger.debug('数据库批量删除完成');
-          
-          // 4. 重建缓存（简单可靠）
+          await this.imageStorageService.deleteImages(successfulImageIds);
           await this.imageCache.refreshCache();
-          logger.debug('缓存重建完成');
-          
-          // 合并数据库删除结果
-          result.processed = dbResult.filesDeleted;
+          logger.debug('数据库批量删除完成（仅物理删成功的）');
         }
-        
-        logger.debug('物理文件批量删除完成');
-        
-        // 返回删除结果，包含成功和失败的统计
+
         return {
-          ...result,
+          success: filesFailed === 0 && successfulImageIds.length === total && total > 0,
+          processed: successfulImageIds.length,
           filesDeleted,
           filesFailed,
           successfulImageIds,
-          failedImageIds: imageIds.filter(id => !successfulImageIds.includes(id))
+          failedImageIds,
         };
-        
       } catch (error) {
-        // 删除失败通常是权限问题，属于正常情况，使用 debug 级别而不是 error
         logger.debug('批量删除图片失败（可能是权限问题）:', error);
         throw error;
       }
     }
+
+  /**
+   * 仅清理 DB 记录（不动物理文件）——用于"系统授权对话框已经把文件删除"之后的收尾。
+   * Android 11+ MediaStore.createDeleteRequest 用户同意后系统已物理删除，但 app DB
+   * 还保留着该 id 的记录；不清的话列表/缓存会出现"删了还在"的鬼影直到下次扫描。
+   */
+  async purgeDeletedImageRecords(imageIds) {
+    if (!Array.isArray(imageIds) || imageIds.length === 0) return { success: true, processed: 0 };
+    try {
+      await this.imageStorageService.deleteImages(imageIds);
+      await this.imageCache.refreshCache();
+      return { success: true, processed: imageIds.length };
+    } catch (error) {
+      logger.warn('清理已系统删除图片的 DB 记录失败:', error?.message || error);
+      return { success: false, processed: 0, error };
+    }
+  }
 
   /**
    * 读取应用设置

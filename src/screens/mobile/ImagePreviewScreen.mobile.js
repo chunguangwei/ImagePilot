@@ -36,6 +36,8 @@ import UnifiedDataService from '../../services/UnifiedDataService';
 import WeChatAuthService from '../../services/WeChatAuthService';
 import configService from '../../services/ConfigService';
 import cityLocationService from '../../services/CityLocationService';
+import { sortCategoryList, getCategoryIconMeta } from '../../components/shared/categoryUI';
+import { Icon } from '../../adapters/WebAdapters';
 import { logger, getUri, getLocalPath } from '../../adapters/WebAdapters';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -117,6 +119,20 @@ const ImagePreviewScreen = ({ route, navigation }) => {
   const [toastMessage, setToastMessage] = useState(null);
   const isNavigatingBackRef = useRef(false); // 防止递归循环的标志
   const [locationDetail, setLocationDetail] = useState(null); // 位置详细信息
+  // 用户自定义分类（重新分类弹窗也需要展示自定义分类，并为其取主题图标）
+  const [customCategoryList, setCustomCategoryList] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const settings = (await UnifiedDataService.readSettings()) || {};
+        const raw = settings?.aiProvider?.customCategories;
+        const list = Array.isArray(raw) ? raw.filter((c) => c && c.id && c.name) : [];
+        if (alive) setCustomCategoryList(list);
+      } catch (_) { /* 读不到就当无自定义分类 */ }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   // 手势缩放/平移（RN Animated + PanResponder，不依赖 Reanimated 以兼容部分 Android 环境）
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -671,9 +687,10 @@ const ImagePreviewScreen = ({ route, navigation }) => {
       return;
     }
 
-    // 当 writeDeleteImages 失败（Android 11+ 删除别人应用的媒体需要系统授权）时，
-    // 拉起 MediaStore.createDeleteRequest 的原生确认对话框；用户同意后系统直接删除，
-    // 我们走和成功一致的 UI 收尾（列表刷新/返回上一页）。
+    // 当直接 unlink 失败（Android 11+ 删除别的应用创建的媒体需要系统授权）时，
+    // 拉起 MediaStore.createDeleteRequest 的原生确认对话框；用户同意后系统物理删除，
+    // 这里再把 app DB 里的残留记录清掉（不然列表会出现"删了还在"的鬼影直到下次扫描），
+    // 最后才提示"已删除"——只有 systemDelete + DB clean 都走通才算真成功。
     const tryRequestDeleteThenFinalize = async () => {
       try {
         const { MediaStoreModule } = NativeModules;
@@ -688,8 +705,10 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           Alert.alert(t('category.deleteFailedTitle') || t('common.error'), t('category.deleteFailedMessage') || t('category.deleteFailed'));
           return;
         }
+        // 用户同意 → resolve(true)；用户拒绝 → reject('E_DENIED')；找不到 → reject('E_NOT_FOUND')
         await MediaStoreModule.requestDeleteByPath(filePath);
-        // 系统已经删除文件；同步收尾 UI（数据库残留会在下次扫描时自然清理）。
+        // 系统已经物理删了文件 → 清 app DB 里的同 id 记录
+        await UnifiedDataService.purgeDeletedImageRecords([currentImage.id]);
         if (fromScreen === 'Home') {
           Alert.alert(t('common.success'), t('imagePreview.deleteSuccess') || t('category.deleteSuccess', { count: 1 }), [
             { text: t('common.confirm'), onPress: goBack },
@@ -700,7 +719,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         if (reloadSuccess) Alert.alert(t('common.success'), t('imagePreview.deleteSuccess') || t('category.deleteSuccess', { count: 1 }));
       } catch (e) {
         const code = e && e.code;
-        if (code === 'E_DENIED') return; // 用户主动拒绝，不再提示
+        if (code === 'E_DENIED') return; // 用户拒绝授权 → 不弹错误，也不提示"已删除"
         logger.debug('授权删除失败:', e);
         Alert.alert(t('category.deleteFailedTitle') || t('common.error'), e?.message || (t('category.deleteFailedMessage') || t('category.deleteFailed')));
       }
@@ -1699,13 +1718,20 @@ const ImagePreviewScreen = ({ route, navigation }) => {
       return null;
     }
     
-    const categories = configService.getAllCategoriesWithUI();
-    if (!Array.isArray(categories)) {
+    const builtIn = configService.getAllCategoriesWithUI();
+    if (!Array.isArray(builtIn)) {
       return null;
     }
-    
+
     const currentLang = i18n.language || 'zh';
     const language = currentLang === 'en' ? 'english' : 'chinese';
+    // 合入自定义分类、再做终态排序（其他倒数第二、待分类末位）
+    const merged = [...builtIn];
+    for (const c of customCategoryList) {
+      if (merged.some((x) => x.id === c.id)) continue;
+      merged.push({ id: c.id, chinese: c.name, english: c.name });
+    }
+    const categories = sortCategoryList(merged);
 
     return (
       <Modal
@@ -1724,21 +1750,24 @@ const ImagePreviewScreen = ({ route, navigation }) => {
               </Text>
             </View>
 
-            {/* 分类列表 */}
+            {/* 分类列表（统一图标主题：MaterialIcons + 圆形彩色背景） */}
             <ScrollView style={styles.categoryList}>
               {categories.map((cat) => {
-                const categoryName = configService.getCategoryDisplayName(cat.id, language) || 
+                const categoryName = configService.getCategoryDisplayName(cat.id, language) ||
                                    (currentLang === 'en' ? (cat.english || cat.chinese) : (cat.chinese || cat.english)) ||
                                    cat.id;
                 const isSelected = currentImage?.category === cat.id;
-                
+                const meta = getCategoryIconMeta(cat.id, customCategoryList);
+
                 return (
                   <TouchableOpacity
                     key={cat.id}
                     style={styles.categoryItem}
                     onPress={() => handleCategoryChange(cat.id)}
                   >
-                    <Text style={styles.categoryIcon}>{cat.icon || '🏷️'}</Text>
+                    <View style={[styles.categoryIconWrap, { backgroundColor: meta.color }]}>
+                      <Icon name={meta.iconName} size={20} color="#FFFFFF" />
+                    </View>
                     <Text style={[
                       styles.categoryName,
                       isSelected && styles.selectedCategoryText
@@ -2107,6 +2136,15 @@ const styles = StyleSheet.create({
   categoryIcon: {
     fontSize: 22,
     marginRight: 10,
+  },
+  // 统一图标容器：圆形 + 主题色背景 + 白色字体图标（视觉一致，不再是 emoji）
+  categoryIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   categoryName: {
     fontSize: 16,

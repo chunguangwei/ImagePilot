@@ -38,6 +38,7 @@ import WakeLockService from '../../services/WakeLockService';
 import * as UpdateService from '../../services/UpdateService';
 import cityLocationService from '../../services/CityLocationService';
 import SkeuomorphicCamera from '../../ui/ios/SkeuomorphicCamera';
+import { sortCategoryList } from '../../components/shared/categoryUI';
 import { logger, getUri, getLocalPath } from '../../adapters/WebAdapters';
 import { getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
 
@@ -490,8 +491,9 @@ const HomeScreen = ({ navigation }) => {
       });
       
       const categoryWithImages = await Promise.all(categoryWithImagesPromises);
-      
-      setCategories(categoryWithImages);
+
+      // 终态排序：「其他」倒数第二、「待分类」末位（自定义分类自然落在它们之前）
+      setCategories(sortCategoryList(categoryWithImages));
     } catch (error) {
       logger.error('❌ 加载分类列表失败:', error);
     }

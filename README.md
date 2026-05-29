@@ -437,7 +437,7 @@ cd android
 
 ### Android 11+ 文件删除（已解决）
 
-Scoped Storage 下，删除其他应用拍/截的图需要用户授权。v1.2.1 起接入 `MediaStore.createDeleteRequest`：删除时弹出系统授权对话框，同意即正常删除，拒绝则保留原图。本应用拍/截或自有目录下的图仍可直接删除，不会弹窗。
+Scoped Storage 下，删除其他应用拍/截的图需要用户授权。v1.2.1 起接入 `MediaStore.createDeleteRequest`：删除时弹出系统授权对话框，同意即正常删除，拒绝则保留原图。本应用拍/截或自有目录下的图仍可直接删除，不会弹窗。v1.4.0 进一步在 unlink 后复核文件确实消失（避免 Scoped Storage 假成功），且系统授权删除后同步清掉 app 内 DB 残留记录，杜绝"提示已删除但相册还在"的鬼影。
 
 ### EXIF位置信息
 
@@ -445,7 +445,16 @@ Scoped Storage 下，删除其他应用拍/截的图需要用户授权。v1.2.1 
 
 ## 🔄 更新日志
 
-查看 [CHANGELOG](CHANGELOG.md) 了解版本更新详情。
+### v1.4.0（2026-05-29）
+
+- 🗑️ **删除可靠性**：unlink 后复核 + 系统授权后清 DB —— 不再出现"已删除但其实没删"
+- 🧭 **分类排序**：「其它」恒定倒数第二、「待分类」恒定末位（首页 / 改分类弹窗 / 全部入口一致）
+- 🎨 **统一图标主题**：改分类弹窗与自定义分类管理改用 MaterialIcons + 圆形主题色背景，告别零散 emoji
+- 🏷️ **自定义分类带图标**：新建时可在 18 个预设里挑一个；删除分类时其图标也随之消失
+
+### v1.3.0 及更早
+
+查看 [CHANGELOG](CHANGELOG.md) 或 [Releases](https://github.com/chunguangwei/ImagePilot/releases) 了解早期版本详情。
 
 ## 📄 许可证
 
