@@ -1,5 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ImagePilot Privacy Manifest (Apple 2024 起 App Store 必交)
+
+  隐私承诺：
+  - 不收集任何用户数据（NSPrivacyCollectedDataTypes 为空）
+  - 不做用户追踪（NSPrivacyTracking=false, NSPrivacyTrackingDomains 为空）
+  - 不联第三方/作者服务器：分类全部在设备端 ONNX，或仅在用户主动配置在线大模型时
+    把图片发往其自配的服务商（OpenAI / Kimi / Claude / Gemini / Ollama / Custom）
+
+  Required Reason API 申报（按 Apple Required Reasons API 文档）：
+  - File Timestamp APIs（C617.1）：RNFS 读写本地数据库 / 备份文件的修改时间
+  - User Defaults APIs（CA92.1）：AsyncStorage 持久化用户设置 / 自定义分类
+  - System Boot Time APIs（35F9.1）：React Native 内核使用
+
+  注意：本文件由 CocoaPods 的 Privacy Manifest Aggregation 维护，pod install
+  时会把所安装 Pods 的 reason 自动并入。手工只在这里记隐私承诺与 ImagePilot
+  自身代码用到的 reason；不要手动删除被 CocoaPods 写入的条目。
+-->
 <plist version="1.0">
 <dict>
 	<key>NSPrivacyAccessedAPITypes</key>
@@ -33,5 +51,7 @@
 	<array/>
 	<key>NSPrivacyTracking</key>
 	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
 </dict>
 </plist>

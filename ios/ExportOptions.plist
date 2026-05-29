@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Ad Hoc 导出选项模板
+
+  使用前你需要：
+  1) Apple Developer 账号在 Xcode 已登录（Settings → Accounts）
+  2) 在 Apple Developer 后台为目标设备注册 UDID（每年 100 台上限）
+  3) 创建/下载一个 Ad Hoc 类型的 Provisioning Profile，含上述 UDID
+  4) 把下方 <YOUR_TEAM_ID> 替换为你 Apple Developer 后台的 Team ID（10 位字符）
+  5) 把 <YOUR_AD_HOC_PROFILE_NAME> 替换为 Provisioning Profile 的 Name
+     （不是文件名，是 Apple Developer 后台显示的 Profile Name）
+
+  之后 scripts/ios-archive-adhoc.sh 会读这份配置完成导出 .ipa
+-->
+<plist version="1.0">
+<dict>
+	<!-- 分发方式：ad-hoc 表示给特定 UDID 设备使用，不上 App Store -->
+	<key>method</key>
+	<string>ad-hoc</string>
+
+	<!-- 你 Apple Developer 后台的 10 位 Team ID（Membership 页可查） -->
+	<key>teamID</key>
+	<string>YOUR_TEAM_ID</string>
+
+	<!-- bundle id → Provisioning Profile name 映射 -->
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.chunguangwei.imagepilot</key>
+		<string>YOUR_AD_HOC_PROFILE_NAME</string>
+	</dict>
+
+	<!-- 签名方式：manual 等于自己指定 Profile，automatic 让 Xcode 自动挑（建议 manual） -->
+	<key>signingStyle</key>
+	<string>manual</string>
+
+	<!-- 把 dSYM 一起打包，崩溃符号化用 -->
+	<key>uploadSymbols</key>
+	<true/>
+
+	<!-- 不剥 bitcode，iOS 14+ 已不支持 bitcode -->
+	<key>compileBitcode</key>
+	<false/>
+	<key>stripSwiftSymbols</key>
+	<true/>
+
+	<!-- 不向 Apple 上传任何信息 -->
+	<key>uploadBitcode</key>
+	<false/>
+
+	<!-- IPv6 网络兼容（App Store 必检；Ad Hoc 也带上更安全） -->
+	<key>destination</key>
+	<string>export</string>
+</dict>
+</plist>
