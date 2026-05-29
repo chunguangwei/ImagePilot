@@ -7,8 +7,9 @@
 //
 
 #import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
 
-@interface RCT_EXTERN_MODULE(PhotoKitModule, NSObject)
+@interface RCT_EXTERN_MODULE(PhotoKitModule, RCTEventEmitter)
 
 RCT_EXTERN_METHOD(requestAuthorization:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)

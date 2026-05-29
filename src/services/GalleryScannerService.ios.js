@@ -17,7 +17,7 @@
  * 隐私承诺与 Android 一致：分类阶段绝不调任何第三方/作者服务器，仅本地 ONNX 或用户自配 Provider。
  */
 
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 import { logger, RNFS } from '../adapters/WebAdapters';
 import UnifiedDataService from './UnifiedDataService';
 import ImageClassifierService from './ImageClassifierService';
@@ -62,6 +62,10 @@ class GalleryScannerService {
     this.totalImagesToBeClassified = 0;
     // 共享分类器实例，避免重复加载 ONNX 模型（initialize 是幂等的）
     this.imageClassifier = new ImageClassifierService();
+    // 增量监听（PHPhotoLibraryChangeObserver）相关
+    this._changeEmitter = null;
+    this._changeSub = null;
+    this._onIncrementalRefresh = null;
   }
 
   async initialize() {
@@ -165,6 +169,88 @@ class GalleryScannerService {
 
   async startScan(_options = {}, onProgress = null) {
     return this.scanGalleryWithProgress(onProgress);
+  }
+
+  /** ============ 增量监听（PHPhotoLibraryChangeObserver）============
+   *
+   * 启动后只要 PhotoKit 有变化（新增/删除/编辑），native 会 emit 'PhotoLibraryDidChange'
+   * 事件，载荷形如 { inserted: [asset], changed: [asset], removed: [localId] }。
+   * 我们把 inserted/changed 走 toImageRecord 落库（INSERT OR REPLACE），removed 直接
+   * UnifiedDataService.deleteImagesByIds 清掉，最后回调让上层刷 GlobalImageCache。
+   *
+   * 启动时机：HomeScreen 完成首次全量扫描后调一次。RN 会基于"是否还有 JS 订阅者"
+   * 自动调原生 startObserving/stopObserving；这里幂等且只装一次。
+   */
+  startIncrementalSync(onRefresh = null) {
+    if (!IS_NATIVE_AVAILABLE) return false;
+    if (this._changeSub) {
+      // 已订阅；只更新回调
+      if (onRefresh) this._onIncrementalRefresh = onRefresh;
+      return true;
+    }
+    try {
+      this._onIncrementalRefresh = onRefresh || this._onIncrementalRefresh;
+      this._changeEmitter = new NativeEventEmitter(PhotoKitModule);
+      this._changeSub = this._changeEmitter.addListener(
+        'PhotoLibraryDidChange',
+        (payload) => this._handlePhotoLibraryChange(payload).catch((e) => {
+          logger.warn('[iOS] 增量变更处理失败:', e?.message || e);
+        })
+      );
+      logger.debug('[iOS] PhotoLibraryDidChange 订阅成功');
+      return true;
+    } catch (e) {
+      logger.warn('[iOS] 订阅 PhotoLibraryDidChange 失败:', e?.message || e);
+      this._changeEmitter = null;
+      this._changeSub = null;
+      return false;
+    }
+  }
+
+  stopIncrementalSync() {
+    try {
+      if (this._changeSub) {
+        this._changeSub.remove();
+      }
+    } catch (_) { /* 忽略 */ }
+    this._changeSub = null;
+    this._changeEmitter = null;
+    this._onIncrementalRefresh = null;
+  }
+
+  async _handlePhotoLibraryChange(payload) {
+    const inserted = Array.isArray(payload?.inserted) ? payload.inserted : [];
+    const changed  = Array.isArray(payload?.changed)  ? payload.changed  : [];
+    const removed  = Array.isArray(payload?.removed)  ? payload.removed  : [];
+    if (inserted.length === 0 && changed.length === 0 && removed.length === 0) return;
+
+    logger.debug(`[iOS] 增量变更 +${inserted.length} ~${changed.length} -${removed.length}`);
+
+    if (inserted.length || changed.length) {
+      const upserts = [...inserted, ...changed].map(toImageRecord);
+      // writeImageDetailedInfo 第二参 = isInitialScan/overwrite；这里走 false：单条 upsert 由
+      // UnifiedDataService 内部 INSERT OR REPLACE 处理，不能把全量字段清掉
+      await UnifiedDataService.writeImageDetailedInfo(upserts, false);
+    }
+    if (removed.length) {
+      try {
+        // 物理文件由 PhotoKit 那边已删；这里只清 DB 记录（同 Android 系统对话框删后收尾的路径）
+        await UnifiedDataService.purgeDeletedImageRecords(removed);
+      } catch (e) {
+        logger.warn('[iOS] 增量删除 DB 记录失败:', e?.message || e);
+      }
+    }
+
+    // 通知上层刷新 GlobalImageCache + 重渲染
+    if (this._onIncrementalRefresh) {
+      try {
+        await this._onIncrementalRefresh({
+          inserted: inserted.length,
+          changed: changed.length,
+          removed: removed.length,
+        });
+      } catch (_) { /* 回调失败不阻断 */ }
+    }
   }
 
   /** ============ M3：AI 分类 ============ */

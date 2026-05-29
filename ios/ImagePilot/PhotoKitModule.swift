@@ -25,10 +25,97 @@ import Photos
 import React
 
 @objc(PhotoKitModule)
-class PhotoKitModule: NSObject {
+class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
 
-  // RN 模块默认会在 main queue init；我们不操 UI，无需 main queue
-  @objc static func requiresMainQueueSetup() -> Bool { false }
+  // RCTEventEmitter 需要在 main queue setup；不开 main queue setup 启动时会有警告
+  @objc override static func requiresMainQueueSetup() -> Bool { true }
+
+  // MARK: - 增量监听（PHPhotoLibraryChangeObserver）
+
+  /// JS 端订阅 / 退订时 RN 自动调 startObserving / stopObserving。
+  /// 我们靠这个时机注册/反注册 PHPhotoLibrary 观察者 —— 无 JS 订阅时不浪费 CPU。
+  private var observerFetchResult: PHFetchResult<PHAsset>?
+  private var isObserving = false
+
+  override func supportedEvents() -> [String]! { ["PhotoLibraryDidChange"] }
+
+  override func startObserving() {
+    super.startObserving()
+    guard !isObserving else { return }
+    isObserving = true
+    // 注册必须先抓一次 fetchResult 作为 diff 基线；后续变更 PhotoKit 会就着它出 diff
+    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+      guard let self = self else { return }
+      let opts = PHFetchOptions()
+      opts.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+      opts.predicate = NSPredicate(format: "isHidden == NO")
+      self.observerFetchResult = PHAsset.fetchAssets(with: .image, options: opts)
+      PHPhotoLibrary.shared().register(self)
+    }
+  }
+
+  override func stopObserving() {
+    if isObserving {
+      isObserving = false
+      PHPhotoLibrary.shared().unregisterChangeObserver(self)
+      observerFetchResult = nil
+    }
+    super.stopObserving()
+  }
+
+  /// PhotoKit 后台线程回调；我们把 diff 装好后切回 main 发 RN 事件。
+  func photoLibraryDidChange(_ changeInstance: PHChange) {
+    guard let prev = observerFetchResult,
+          let details = changeInstance.changeDetails(for: prev) else { return }
+
+    // 更新基线，下次 diff 就用这次结果
+    observerFetchResult = details.fetchResultAfterChanges
+
+    let inserted = details.insertedObjects.map { Self.assetToDict($0) }
+    let changed  = details.changedObjects.map { Self.assetToDict($0) }
+    let removed  = details.removedObjects.map { $0.localIdentifier }
+
+    if inserted.isEmpty && changed.isEmpty && removed.isEmpty { return }
+
+    let body: [String: Any] = [
+      "inserted": inserted,
+      "changed": changed,
+      "removed": removed,
+    ]
+    DispatchQueue.main.async { [weak self] in
+      // sendEvent 要求 main queue；有 listener 才发，没就静默丢
+      guard let self = self, self.bridge != nil else { return }
+      self.sendEvent(withName: "PhotoLibraryDidChange", body: body)
+    }
+  }
+
+  /// 与 fetchAllPhotos 同形状的 PHAsset → JS dict 转换；diff 推送和初扫共用。
+  private static func assetToDict(_ asset: PHAsset) -> [String: Any] {
+    let resources = PHAssetResource.assetResources(for: asset)
+    let primary = resources.first(where: { $0.type == .photo || $0.type == .fullSizePhoto }) ?? resources.first
+    let fileName = primary?.originalFilename ?? "\(asset.localIdentifier).jpg"
+    let fileSize = (primary?.value(forKey: "fileSize") as? Int64) ?? 0
+    let takenAt = Int64((asset.creationDate?.timeIntervalSince1970 ?? 0) * 1000)
+    let isScreenshot = asset.mediaSubtypes.contains(.photoScreenshot)
+    let lowerName = fileName.lowercased()
+    let mimeType: String =
+      lowerName.hasSuffix(".png") ? "image/png" :
+      lowerName.hasSuffix(".heic") ? "image/heic" :
+      lowerName.hasSuffix(".gif") ? "image/gif" :
+      "image/jpeg"
+    return [
+      "id": asset.localIdentifier,
+      "uri": "ph://\(asset.localIdentifier)",
+      "localIdentifier": asset.localIdentifier,
+      "fileName": fileName,
+      "size": fileSize,
+      "takenAt": takenAt,
+      "width": asset.pixelWidth,
+      "height": asset.pixelHeight,
+      "mimeType": mimeType,
+      "isScreenshot": isScreenshot,
+    ]
+  }
 
   // MARK: - 授权
 
@@ -89,36 +176,7 @@ class PhotoKitModule: NSObject {
       items.reserveCapacity(fetchResult.count)
 
       fetchResult.enumerateObjects { (asset, _, _) in
-        let resources = PHAssetResource.assetResources(for: asset)
-        // 一张资产可能有多个 resource（原图+编辑后等），取第一个 photo / fullSizePhoto
-        let primary = resources.first(where: { $0.type == .photo || $0.type == .fullSizePhoto }) ?? resources.first
-
-        let fileName = primary?.originalFilename ?? "\(asset.localIdentifier).jpg"
-        // PHAssetResource.fileSize 是私有 KVC key，iOS 8 起一直可用；社区 cameraroll 也用同方案
-        let fileSize = (primary?.value(forKey: "fileSize") as? Int64) ?? 0
-        let takenAt = Int64((asset.creationDate?.timeIntervalSince1970 ?? 0) * 1000)
-        let isScreenshot = asset.mediaSubtypes.contains(.photoScreenshot)
-
-        let lowerName = fileName.lowercased()
-        let mimeType: String =
-          lowerName.hasSuffix(".png") ? "image/png" :
-          lowerName.hasSuffix(".heic") ? "image/heic" :
-          lowerName.hasSuffix(".gif") ? "image/gif" :
-          "image/jpeg"
-
-        let item: [String: Any] = [
-          "id": asset.localIdentifier,
-          "uri": "ph://\(asset.localIdentifier)",
-          "localIdentifier": asset.localIdentifier,
-          "fileName": fileName,
-          "size": fileSize,
-          "takenAt": takenAt,
-          "width": asset.pixelWidth,
-          "height": asset.pixelHeight,
-          "mimeType": mimeType,
-          "isScreenshot": isScreenshot,
-        ]
-        items.append(item)
+        items.append(Self.assetToDict(asset))
       }
 
       DispatchQueue.main.async {

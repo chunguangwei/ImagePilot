@@ -182,9 +182,27 @@ const HomeScreen = ({ navigation }) => {
     initializeData();
     loadLastScanTime();
     loadHideEmptyCategoriesSetting();
-    
+
     // 调试：检查当前权限状态
     checkCurrentPermissionStatus();
+
+    // iOS 增量监听：PhotoKit 观察者收到变化 → 落 DB + 刷新 UI
+    // 仅在 iOS 跑，且 GalleryScannerService 提供了对应方法时
+    let iosIncrementalScanner = null;
+    if (Platform.OS === 'ios') {
+      try {
+        iosIncrementalScanner = new GalleryScannerService();
+        if (typeof iosIncrementalScanner.startIncrementalSync === 'function') {
+          iosIncrementalScanner.startIncrementalSync(async () => {
+            try {
+              await GlobalImageCache.refreshCache();
+            } catch (_) { /* 静默 */ }
+            // 重新拉首页数据
+            try { await loadAllData(); } catch (_) { /* 静默 */ }
+          });
+        }
+      } catch (_) { /* 启不来就跳过，不影响主流程 */ }
+    }
 
     // 启动时静默检查 GitHub 更新（每会话一次；失败不打扰，有新版才弹一次）
     if (!_launchUpdateChecked) {
@@ -239,6 +257,9 @@ const HomeScreen = ({ navigation }) => {
     return () => {
       if (languageSubscription && i18n && i18n.off) {
         i18n.off('languageChanged', handleLanguageChange);
+      }
+      if (iosIncrementalScanner && typeof iosIncrementalScanner.stopIncrementalSync === 'function') {
+        try { iosIncrementalScanner.stopIncrementalSync(); } catch (_) { /* 静默 */ }
       }
     };
   }, []);
