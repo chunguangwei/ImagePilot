@@ -59,13 +59,20 @@ export const darkColors = {
 export const colors = lightColors;
 
 /**
- * 按系统外观返回当前 iOS 调色板。
+ * 按系统外观返回当前调色板（跨端：iOS + Android 都用同一钩子）。
  * - useColorScheme() → 'light' | 'dark' | null（用户没明确选；按 null 走 light）
+ *
+ * 跨端注意：Android 要让原生 Activity theme 走 DayNight 才能让
+ * StatusBar / 系统 chrome 跟 light/dark 切；JS 侧的 useColorScheme 在两端都自动跟
+ * 系统外观（android/values/styles.xml 改 AppTheme parent 之后生效）。
  */
-export function useIosColors() {
+export function useThemeColors() {
   const scheme = useColorScheme();
   return scheme === 'dark' ? darkColors : lightColors;
 }
+
+// 旧名 useIosColors 保留为别名（之前 7 个屏在用）；新代码统一用 useThemeColors。
+export const useIosColors = useThemeColors;
 
 export const radius = { card: 12, button: 12, chip: 16, sheet: 16 };
 
@@ -83,5 +90,5 @@ export const font = {
   caption: 12,
 };
 
-export const ios = { colors, lightColors, darkColors, useIosColors, radius, spacing, font };
+export const ios = { colors, lightColors, darkColors, useIosColors, useThemeColors, radius, spacing, font };
 export default ios;

@@ -6,7 +6,7 @@ import './i18n';
 import { loadSavedLanguage } from './i18n';
 
 import React, { useEffect, useState, Suspense } from 'react';
-import { View, Text, StyleSheet, StatusBar, Platform } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, Platform, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
 
@@ -223,7 +223,12 @@ console.log('📦 App.js: 定义 App 组件...');
 export default function App() {
   console.log('📦 App.js: App 组件开始渲染');
   const { t } = useTranslation('common');
-  
+  // 跟随系统外观切 StatusBar 风格（light: 黑字白底 / dark: 白字黑底）
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const sbStyle = isDark ? 'light-content' : 'dark-content';
+  const sbBg = isDark ? '#000000' : '#ffffff';
+
   const [isServiceReady, setIsServiceReady] = React.useState(false);
   const [stagingBoxCount, setStagingBoxCount] = React.useState(0);
   // 隐私政策预同意：fork（ImagePilot）已彻底剥离原作者第三方后端，所有 AI 分类/增强
@@ -302,7 +307,7 @@ export default function App() {
   if (!isServiceReady) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <StatusBar barStyle={sbStyle} backgroundColor={sbBg} />
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>🚀 {t('common.initializing')}</Text>
           <Text style={styles.loadingSubText}>{t('app.loadingServices')}</Text>
@@ -315,7 +320,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.container}>
       <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <StatusBar barStyle={sbStyle} backgroundColor={sbBg} />
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="MainTabs">
