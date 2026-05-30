@@ -13,16 +13,17 @@
 
 import * as ortNS from 'onnxruntime-react-native';
 import Jimp from './jimpCustom.js';
+import { loadOnnxSession } from './loadOnnxSession.js';
 
 const ort = ortNS.default || ortNS;
-const { InferenceSession, Tensor } = ort;
+const { Tensor } = ort;
 
 export function createInpaintRunner(cfg = {}) {
   const config = { inputImage: 'image', inputMask: 'mask', output: 'result', ...cfg };
   let _session = null;
 
   async function getSession() {
-    if (!_session) _session = await InferenceSession.create(config.modelPath);
+    if (!_session) _session = await loadOnnxSession(config.modelPath);
     return _session;
   }
 

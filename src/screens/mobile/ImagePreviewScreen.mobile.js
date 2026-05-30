@@ -1764,61 +1764,60 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     }
     const categories = sortCategoryList(merged);
 
+    // 同 PR #36：RN iOS <Modal> 在 visible:true→false 切换偶发不响应（native
+    // UIVC 漏 hide command），改用 absolute fill inline overlay，setState(false)
+    // 直接卸载组件，不走原生 modal 生命周期。
+    if (!showCategoryModal) return null;
     return (
-      <Modal
-        visible={showCategoryModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={closeCategoryModal}
+      <TouchableOpacity
+        activeOpacity={1}
+        onPress={closeCategoryModal}
+        style={[styles.modalOverlay, { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }]}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { backgroundColor: cTheme.card }]}>
-            {/* 标题栏 */}
-            <View style={[styles.modalHeader, { borderBottomColor: cTheme.separator }]}>
-              <Text style={[styles.modalTitle, { color: cTheme.label }]}>{t('imagePreview.selectCategory')}</Text>
-              <Text style={[styles.modalSubtitle, { color: cTheme.tertiaryLabel }]}>
-                {t('category.moveImagesTo', { count: 1 })}
-              </Text>
-            </View>
-
-            {/* 分类列表（统一图标主题：MaterialIcons + 圆形彩色背景） */}
-            <ScrollView style={styles.categoryList}>
-              {categories.map((cat) => {
-                const categoryName = configService.getCategoryDisplayName(cat.id, language) ||
-                                   (currentLang === 'en' ? (cat.english || cat.chinese) : (cat.chinese || cat.english)) ||
-                                   cat.id;
-                const isSelected = currentImage?.category === cat.id;
-                const meta = getCategoryIconMeta(cat.id, customCategoryList);
-
-                return (
-                  <TouchableOpacity
-                    key={cat.id}
-                    style={[styles.categoryItem, { borderBottomColor: cTheme.separator }]}
-                    onPress={() => handleCategoryChange(cat.id)}
-                  >
-                    <View style={[styles.categoryIconWrap, { backgroundColor: meta.color }]}>
-                      <Icon name={meta.iconName} size={20} color="#FFFFFF" />
-                    </View>
-                    <Text style={[
-                      styles.categoryName,
-                      { color: cTheme.label },
-                      isSelected && styles.selectedCategoryText
-                    ]}>{categoryName}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            {/* 取消按钮 */}
-            <TouchableOpacity
-              style={[styles.modalCancelButton, { borderTopColor: cTheme.separator }]}
-              onPress={closeCategoryModal}
-            >
-              <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
+        {/* 内层 TouchableOpacity 拦截，不让点 sheet 内部冒泡到 backdrop 关闭 */}
+        <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalContainer, { backgroundColor: cTheme.card }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: cTheme.separator }]}>
+            <Text style={[styles.modalTitle, { color: cTheme.label }]}>{t('imagePreview.selectCategory')}</Text>
+            <Text style={[styles.modalSubtitle, { color: cTheme.tertiaryLabel }]}>
+              {t('category.moveImagesTo', { count: 1 })}
+            </Text>
           </View>
-        </View>
-      </Modal>
+
+          <ScrollView style={styles.categoryList}>
+            {categories.map((cat) => {
+              const categoryName = configService.getCategoryDisplayName(cat.id, language) ||
+                                 (currentLang === 'en' ? (cat.english || cat.chinese) : (cat.chinese || cat.english)) ||
+                                 cat.id;
+              const isSelected = currentImage?.category === cat.id;
+              const meta = getCategoryIconMeta(cat.id, customCategoryList);
+
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[styles.categoryItem, { borderBottomColor: cTheme.separator }]}
+                  onPress={() => handleCategoryChange(cat.id)}
+                >
+                  <View style={[styles.categoryIconWrap, { backgroundColor: meta.color }]}>
+                    <Icon name={meta.iconName} size={20} color="#FFFFFF" />
+                  </View>
+                  <Text style={[
+                    styles.categoryName,
+                    { color: cTheme.label },
+                    isSelected && styles.selectedCategoryText
+                  ]}>{categoryName}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          <TouchableOpacity
+            style={[styles.modalCancelButton, { borderTopColor: cTheme.separator }]}
+            onPress={closeCategoryModal}
+          >
+            <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </TouchableOpacity>
     );
   };
 

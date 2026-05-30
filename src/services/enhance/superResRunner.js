@@ -17,8 +17,9 @@ import Jimp from './jimpCustom.js'; // RN/Hermes 下可用、带 .read 的定制
 // onnxruntime-react-native 在 CJS 下需经 default 取（与 ImageClassifierService 一致），
 // 命名导入 { InferenceSession, Tensor } 可能为 undefined → 调用报 "undefined is not a function"。
 const ort = ortNS.default || ortNS;
-const { InferenceSession, Tensor } = ort;
+const { Tensor } = ort;
 import { rgbaToCHW, chwToRGBA, planTiles } from './superResTensor.js';
+import { loadOnnxSession } from './loadOnnxSession.js';
 
 /** 默认配置：对应 Qualcomm Real-ESRGAN-General-x4v3（固定 128 输入、x4）。换模型改这里。 */
 export const DEFAULT_SR_CONFIG = Object.freeze({
@@ -79,7 +80,7 @@ export function createSuperResRunner(cfg = {}) {
 
   async function getSession() {
     if (_session) return _session;
-    _session = await InferenceSession.create(config.modelPath);
+    _session = await loadOnnxSession(config.modelPath);
     if (!_inputName && _session.inputNames && _session.inputNames.length) {
       _inputName = _session.inputNames[0];
     }

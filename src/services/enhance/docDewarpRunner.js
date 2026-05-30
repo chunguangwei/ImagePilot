@@ -13,9 +13,10 @@
 import * as ortNS from 'onnxruntime-react-native';
 import Jimp from './jimpCustom.js';
 import { applyDocumentScanToBase64 } from './jimpFilters.js';
+import { loadOnnxSession } from './loadOnnxSession.js';
 
 const ort = ortNS.default || ortNS;
-const { InferenceSession, Tensor } = ort;
+const { Tensor } = ort;
 
 const S = 320;
 const MEAN = [0.485, 0.456, 0.406];
@@ -25,7 +26,7 @@ let _session = null;
 let _sessionPath = null;
 async function getSession(modelPath) {
   if (_session && _sessionPath === modelPath) return _session;
-  _session = await InferenceSession.create(modelPath);
+  _session = await loadOnnxSession(modelPath);
   _sessionPath = modelPath;
   return _session;
 }
