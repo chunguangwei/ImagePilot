@@ -1,15 +1,10 @@
 const path = require('path');
 
 module.exports = {
-  babel: {
-    presets: [
-      '@babel/preset-env',
-      '@babel/preset-react'
-    ],
-    plugins: [
-      '@babel/plugin-proposal-class-properties'
-    ]
-  },
+  // 不再叠加 babel: { presets/plugins }——CRA 默认 babel-preset-react-app 已包含
+  // 现代等价物，叠加会导致 @babel/plugin-transform-class-properties / private-methods /
+  // private-property-in-object 三个插件 loose 模式冲突，构建直接报错。所有 JSX /
+  // class fields 走 CRA 默认管线即可。
   webpack: {
     configure: (webpackConfig) => {
       // 指定入口文件为 index.desktop.js
