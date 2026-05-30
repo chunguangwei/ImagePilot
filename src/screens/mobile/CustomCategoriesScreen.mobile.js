@@ -17,11 +17,13 @@ import { SafeAreaView, Icon } from '../../adapters/WebAdapters';
 import configService from '../../services/llm/adapters/UnifiedDataConfigService';
 import UnifiedDataService from '../../services/UnifiedDataService';
 import { CUSTOM_ICON_PRESETS, getCategoryIconMeta } from '../../components/shared/categoryUI';
+import { useIosColors } from '../../ui/ios/theme';
 
 // 内置分类 id（自定义 id 不应与之冲突）
 const BUILTIN_IDS = ['single_person', 'social_activities', 'travel_scenery', 'pets', 'foods', 'idcard', 'screenshot', 'qrcode', 'other', 'NA'];
 
 export default function CustomCategoriesScreen({ navigation }) {
+  const theme = useIosColors();
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   // 新增表单
@@ -146,28 +148,28 @@ export default function CustomCategoriesScreen({ navigation }) {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.groupedBg }]}>
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.separator, borderBottomWidth: 0.5 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>自定义分类</Text>
+        <Text style={[styles.headerTitle, { color: theme.label }]}>自定义分类</Text>
         <View style={styles.headerRight} />
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-        <Text style={styles.tip}>
+        <Text style={[styles.tip, { color: theme.secondaryLabel }]}>
           配置后，使用云端大模型分类时，会按你的「规则」把图片归入对应自定义分类。id 用英文（大模型输出用），创建后不可改。
         </Text>
 
         {/* 新增表单 */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>新增分类</Text>
-          <TextInput style={styles.input} placeholder="id（英文，如 work_screenshot）" placeholderTextColor="#8E8E93" value={id} onChangeText={setId} autoCapitalize="none" />
-          <TextInput style={styles.input} placeholder="名称（如 工作截图）" placeholderTextColor="#8E8E93" value={name} onChangeText={setName} />
-          <TextInput style={[styles.input, styles.multiline]} placeholder="规则：什么样的图片归入此类（如 含代码/表格/聊天记录的截图）" placeholderTextColor="#8E8E93" value={rule} onChangeText={setRule} multiline />
+        <View style={[styles.card, { backgroundColor: theme.card }]}>
+          <Text style={[styles.cardTitle, { color: theme.label }]}>新增分类</Text>
+          <TextInput style={[styles.input, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder="id（英文，如 work_screenshot）" placeholderTextColor={theme.tertiaryLabel} value={id} onChangeText={setId} autoCapitalize="none" />
+          <TextInput style={[styles.input, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder="名称（如 工作截图）" placeholderTextColor={theme.tertiaryLabel} value={name} onChangeText={setName} />
+          <TextInput style={[styles.input, styles.multiline, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder="规则：什么样的图片归入此类（如 含代码/表格/聊天记录的截图）" placeholderTextColor={theme.tertiaryLabel} value={rule} onChangeText={setRule} multiline />
 
-          <Text style={styles.iconPickerLabel}>选择图标</Text>
+          <Text style={[styles.iconPickerLabel, { color: theme.secondaryLabel }]}>选择图标</Text>
           <IconGrid selectedKey={iconKey} onSelect={setIconKey} />
 
           <TouchableOpacity style={styles.addBtn} onPress={onAdd}>
@@ -176,22 +178,22 @@ export default function CustomCategoriesScreen({ navigation }) {
         </View>
 
         {/* 已有列表 */}
-        <Text style={styles.cardTitle}>已定义（{list.length}）</Text>
+        <Text style={[styles.cardTitle, { color: theme.label }]}>已定义（{list.length}）</Text>
         {loading ? (
           <ActivityIndicator style={{ marginTop: 20 }} />
         ) : list.length === 0 ? (
-          <Text style={styles.empty}>还没有自定义分类</Text>
+          <Text style={[styles.empty, { color: theme.tertiaryLabel }]}>还没有自定义分类</Text>
         ) : (
           list.map((c) => {
             const meta = getCategoryIconMeta(c.id, list);
             return (
-              <View key={c.id} style={styles.item}>
+              <View key={c.id} style={[styles.item, { backgroundColor: theme.card }]}>
                 <View style={[styles.itemIconWrap, { backgroundColor: meta.color }]}>
                   <Icon name={meta.iconName} size={18} color="#FFFFFF" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.itemName}>{c.name} <Text style={styles.itemId}>({c.id})</Text></Text>
-                  {!!c.rule && <Text style={styles.itemRule}>{c.rule}</Text>}
+                  <Text style={[styles.itemName, { color: theme.label }]}>{c.name} <Text style={[styles.itemId, { color: theme.tertiaryLabel }]}>({c.id})</Text></Text>
+                  {!!c.rule && <Text style={[styles.itemRule, { color: theme.secondaryLabel }]}>{c.rule}</Text>}
                 </View>
                 <TouchableOpacity onPress={() => onOpenEdit(c)} style={styles.actionBtn} activeOpacity={0.6}>
                   <Icon name="edit" size={18} color="#007AFF" />
