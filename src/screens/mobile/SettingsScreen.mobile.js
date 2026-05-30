@@ -21,6 +21,7 @@ import {
   Modal,
   Linking,
   Platform,
+  NativeModules,
 } from 'react-native';
 import { SafeAreaView, Alert, RNFS, AsyncStorage } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../../services/UnifiedDataService';
@@ -69,6 +70,9 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   const [editingPreset, setEditingPreset] = useState(null); // 当前编辑的预设
   const [showEditModal, setShowEditModal] = useState(false);
   
+  // iOS 相册权限层级：'authorized' | 'limited' | 'denied' | 'restricted' | 'notDetermined' | null
+  const [iosPhotoAuth, setIosPhotoAuth] = useState(null);
+
   // 微信授权相关状态
   const [wechatStatus, setWechatStatus] = useState('checking'); // checking, not_followed, followed_not_member, member
   const [qrCode, setQrCode] = useState('');
@@ -89,7 +93,8 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     loadSettings();
     detectStorageInfo();
     checkMembershipStatus();
-    
+    refreshIosPhotoAuth();
+
     // 组件卸载时清理轮询
     return () => {
       if (pollIntervalRef.current) {
@@ -98,6 +103,24 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
       }
     };
   }, []);
+
+  // iOS：刷新 PhotoKit 授权层级（authorized / limited / denied / restricted / notDetermined）
+  // 从系统设置回来时 navigation focus 也会重新触发，保证显示的是最新状态
+  const refreshIosPhotoAuth = async () => {
+    if (Platform.OS !== 'ios') return;
+    try {
+      const PhotoKitModule = NativeModules?.PhotoKitModule;
+      if (!PhotoKitModule || typeof PhotoKitModule.getAuthorizationStatus !== 'function') return;
+      const r = await PhotoKitModule.getAuthorizationStatus();
+      setIosPhotoAuth(r?.status || null);
+    } catch (_) { /* 静默 */ }
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios' || !navigation) return;
+    const unsub = navigation.addListener?.('focus', refreshIosPhotoAuth);
+    return () => { try { unsub && unsub(); } catch (_) {} };
+  }, [navigation]);
 
   // 监听语言变化，同步更新 currentLanguage 状态
   useEffect(() => {
@@ -1047,6 +1070,18 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
   // ==================== 渲染函数 ====================
 
+  // iOS 相册授权层级 → 副标描述 + 是否提示去设置
+  const iosPhotoAuthMeta = () => {
+    switch (iosPhotoAuth) {
+      case 'authorized': return { desc: '✓ 已允许完全访问', warn: false };
+      case 'limited':    return { desc: '⚠️ 仅部分访问 · 点击调整为完整', warn: true };
+      case 'denied':     return { desc: '✗ 已拒绝 · 点击去系统设置开启', warn: true };
+      case 'restricted': return { desc: '⛔ 系统限制（家长控制等）· 点击查看', warn: true };
+      case 'notDetermined': return { desc: '尚未请求 · 首次扫描时会弹窗', warn: false };
+      default: return { desc: '检测中…', warn: false };
+    }
+  };
+
   /**
    * 渲染操作按钮
    */
@@ -1247,6 +1282,15 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             t('settings.clearAlbumInfoDesc'),
             handleClearData,
             true
+          )}
+
+          {/* iOS 专属：相册权限层级显示 + 跳系统设置（Linking.openSettings） */}
+          {Platform.OS === 'ios' && renderActionButton(
+            'images-outline',
+            'iOS 相册访问',
+            iosPhotoAuthMeta().desc,
+            () => { try { Linking.openSettings(); } catch (_) {} },
+            false
           )}
 
           {/* 🆕 AI 模型设置：配置个人 LLM API Key，启用云端在线分类 */}
