@@ -22,7 +22,9 @@
 
 import Foundation
 import Photos
+import PhotosUI
 import React
+import UIKit
 
 @objc(PhotoKitModule)
 class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
@@ -182,6 +184,51 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
       DispatchQueue.main.async {
         resolve(["count": items.count, "items": items])
       }
+    }
+  }
+
+  // MARK: - Limited Library Picker（iOS 14+，"仅允许部分照片"层级专用）
+
+  /// 当授权层级是 .limited 时，弹原生选择器让用户增删可被 app 看见的照片。
+  /// 用户在选择器里加/减照片后，PHPhotoLibraryChangeObserver 会自动推送 diff，
+  /// 走我们的增量监听管线落 DB + 刷 UI——不用 JS 再手动 fetchAllPhotos。
+  ///
+  /// 不是 limited 状态时直接 resolve 走，主要 fail-soft：
+  ///   - 系统已经是 authorized：没东西可选
+  ///   - denied / restricted：本身就拿不到，跳系统设置才对（JS 侧已经做）
+  @objc(presentLimitedLibraryPicker:rejecter:)
+  func presentLimitedLibraryPicker(_ resolve: @escaping RCTPromiseResolveBlock,
+                                   rejecter reject: @escaping RCTPromiseRejectBlock) {
+    if #available(iOS 14, *) {
+      DispatchQueue.main.async {
+        // 取当前 keyWindow 的 rootVC——RN 的 app 只有一个 window，第一个 keyWindow 就是它
+        let rootVC: UIViewController? = UIApplication.shared.connectedScenes
+          .compactMap { $0 as? UIWindowScene }
+          .flatMap { $0.windows }
+          .first(where: { $0.isKeyWindow })?
+          .rootViewController
+        // 走到顶层 presentedViewController，避免在已 present 的 RN modal 上叠 present
+        var presenter = rootVC
+        while let p = presenter?.presentedViewController { presenter = p }
+
+        guard let host = presenter else {
+          reject("E_NO_VIEWCONTROLLER", "无法定位当前 view controller", nil)
+          return
+        }
+
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        guard status == .limited else {
+          // 非 limited 状态本来就不该弹，直接成功返回，由 JS 侧决定下一步
+          resolve(["presented": false, "status": Self.statusString(status)])
+          return
+        }
+
+        PHPhotoLibrary.shared().presentLimitedLibraryPicker(from: host)
+        // PhotoKit 没回调；用户调整后变化由 PHPhotoLibraryChangeObserver 自动推
+        resolve(["presented": true, "status": "limited"])
+      }
+    } else {
+      reject("E_UNSUPPORTED", "presentLimitedLibraryPicker 需要 iOS 14+", nil)
     }
   }
 
