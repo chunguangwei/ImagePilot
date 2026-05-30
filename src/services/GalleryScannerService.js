@@ -2136,6 +2136,12 @@ class GalleryScannerService {
       }
     }
     logger.info(`✅ 本地 ONNX 分类完成：成功 ${processedCount}，失败 ${failedCount}`);
+    // 跑完所有 batch 后统一刷 GlobalImageCache，避免 HomeScreen 拿到陈旧 categoryCounts
+    try {
+      await UnifiedDataService.imageCache.refreshCache();
+    } catch (e) {
+      logger.warn('legacy scanner 本地分类后刷新 GlobalImageCache 失败:', e?.message || e);
+    }
     return { processedCount, failedCount };
   }
 
@@ -2397,9 +2403,15 @@ class GalleryScannerService {
       }
       
       logger.info(`✅ 第3层完成：远程推理成功 ${totalProcessedCount} 张，失败 ${allFailedImages.length} 张`);
-      
+      // 所有 batch 跑完后统一刷 GlobalImageCache，UI 才能拿到最新 categoryCounts
+      try {
+        await UnifiedDataService.imageCache.refreshCache();
+      } catch (e) {
+        logger.warn('legacy scanner 云端分类后刷新 GlobalImageCache 失败:', e?.message || e);
+      }
+
       return { remainingImages: allFailedImages, processedCount: totalProcessedCount, failedCount: totalFailedCount };
-      
+
     } catch (error) {
       // 处理超时和取消请求的情况
       if (error.name === 'AbortError' || error.message === 'The user aborted a request.') {
