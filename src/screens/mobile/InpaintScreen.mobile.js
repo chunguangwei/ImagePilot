@@ -8,9 +8,9 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, PanResponder, ActivityIndicator } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, PanResponder, ActivityIndicator, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { RNFS, Alert, logger } from '../../adapters/WebAdapters';
+import { RNFS, Alert, logger, SafeAreaView } from '../../adapters/WebAdapters';
 import { inpaintLocally } from '../../services/enhance/localEnhance';
 
 const BRUSHES = [
@@ -115,7 +115,8 @@ export default function InpaintScreen({ route, navigation }) {
   const previewUri = resultUri && !comparing ? resultUri : imageUri;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.headerBtn}>‹ 返回</Text></TouchableOpacity>
         <Text style={styles.title}>物体消除</Text>
@@ -193,13 +194,13 @@ export default function InpaintScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, paddingTop: 44 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 },
   headerBtn: { color: '#0A84FF', fontSize: 16, fontWeight: '500' },
   disabled: { color: '#8E8E93' },
   title: { color: '#fff', fontSize: 17, fontWeight: '600' },

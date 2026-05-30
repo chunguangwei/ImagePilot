@@ -7,9 +7,9 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Alert, ActivityIndicator, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { RNFS, getLocalPath, ModelPathAdapter } from '../../adapters/WebAdapters';
+import { RNFS, getLocalPath, ModelPathAdapter, SafeAreaView } from '../../adapters/WebAdapters';
 import ImageProcessor from '../../services/ImageProcessor';
 import { JIMP_FILTERS, JIMP_FILTER_IDS, hasIntensity, applyJimpFilterToBase64 } from '../../services/enhance/jimpFilters.js';
 
@@ -130,10 +130,11 @@ export default function FilterEditorScreen({ route, navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.headerBtn}>← 返回</Text>
+          <Text style={styles.headerBtn}>‹ 返回</Text>
         </TouchableOpacity>
         <Text style={styles.title}>滤镜修图</Text>
         <TouchableOpacity onPress={onSave} disabled={busy || aiBusy || !canSave}>
@@ -207,13 +208,13 @@ export default function FilterEditorScreen({ route, navigation }) {
           </TouchableOpacity>
         ))}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, paddingTop: 44 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 },
   headerBtn: { color: '#0A84FF', fontSize: 16, fontWeight: '500' },
   disabled: { color: '#8E8E93' },
   title: { color: '#fff', fontSize: 17, fontWeight: '600' },

@@ -500,10 +500,11 @@ const parseCombinedUri = (uri) => {
   const separatorIndex = uri.indexOf(URI_SEPARATOR);
   if (separatorIndex === -1) {
     // 没有分隔符，说明是普通URI
-    return { 
-      contentUri: uri.startsWith('content://') ? uri : null,
-      relativePath: null, 
-      isCombined: false 
+    const isOpaqueScheme = uri.startsWith('content://') || uri.startsWith('ph://');
+    return {
+      contentUri: isOpaqueScheme ? uri : null,
+      relativePath: null,
+      isCombined: false
     };
   }
   
@@ -570,7 +571,7 @@ export const getFileUri = (input) => {
     return null;
   }
 
-  if (originalUri.startsWith('content://')) {
+  if (originalUri.startsWith('content://') || originalUri.startsWith('ph://')) {
     return null;
   }
 
@@ -603,7 +604,7 @@ export const getContentUri = (input) => {
   }
   
   // 不是拼装格式，按原逻辑处理
-  if (originalUri.startsWith('content://')) {
+  if (originalUri.startsWith('content://') || originalUri.startsWith('ph://')) {
     return originalUri;
   }
 
@@ -1169,42 +1170,48 @@ export const ModelPathAdapter = {
       logger.debug(`📱 Android: ${destPath} -> ${fileUri}`);
       return fileUri;
       } else {
-      // iOS: 使用 MainBundle 路径
-      const fullPath = `${RNFS_Native.MainBundlePath}/models/${modelRelativePath}`;
+      // iOS: 用 DocumentDirectoryPath/models（可写目录）
+      // —— onnxruntime-react-native iOS 端 InferenceSession.create 不能直接读 MainBundle
+      //    （只读分区，落 "Can't load model: failed to load model"）。
+      //    所以 ensureModelExists 会先把模型从 MainBundle/models 一次性拷到 Documents/models。
+      const fullPath = `${RNFS_Native.DocumentDirectoryPath}/models/${modelRelativePath}`;
       return fullPath;
     }
   },
   
-  // Android: 从 APK assets 复制模型到文档目录（只复制一次）
+  // 把模型从只读源（Android: APK assets / iOS: MainBundle）一次性拷到可写目录
+  // —— onnxruntime-react-native 在两个平台上都要求模型路径是可读写区
   ensureModelExists: async (modelRelativePath) => {
-    if (Platform.OS !== 'android') {
-      logger.debug(`📱 非Android平台，跳过模型复制: ${modelRelativePath}`);
-      return; // iOS/Web 无需复制
+    if (Platform.OS === 'web') {
+      logger.debug(`📱 web 平台，跳过模型复制: ${modelRelativePath}`);
+      return;
     }
-    
+
     const destPath = `${RNFS_Native.DocumentDirectoryPath}/models/${modelRelativePath}`;
     const dirPath = `${RNFS_Native.DocumentDirectoryPath}/models`;
-    
+
     logger.debug(`🔍 检查模型文件: ${destPath}`);
-    
+
     try {
-      // 检查文件是否已复制
+      // 已存在 → 跳过；ONNX 模型不会变，覆盖时机交给应用升级（卸载重装会清 Documents）
       const fileExists = await RNFS_Native.exists(destPath);
       logger.debug(`📋 文件存在检查: ${modelRelativePath} = ${fileExists}`);
-      if (fileExists) {
-        return; // 已存在，跳过
-      }
-      
-      // 确保目录存在
+      if (fileExists) return;
+
       const dirExists = await RNFS_Native.exists(dirPath);
-      if (!dirExists) {
-        await RNFS_Native.mkdir(dirPath);
+      if (!dirExists) await RNFS_Native.mkdir(dirPath);
+
+      if (Platform.OS === 'android') {
+        // Android: 从 APK assets 拷
+        const sourcePath = `models/${modelRelativePath}`;
+        logger.debug(`📋 从 APK 复制模型: ${modelRelativePath}`);
+        await RNFS_Native.copyFileAssets(sourcePath, destPath);
+      } else {
+        // iOS: 从 MainBundle/models 拷（blue folder ref 已经把整层放进 .app）
+        const sourcePath = `${RNFS_Native.MainBundlePath}/models/${modelRelativePath}`;
+        logger.debug(`📋 从 MainBundle 复制模型: ${sourcePath}`);
+        await RNFS_Native.copyFile(sourcePath, destPath);
       }
-      
-      // 从 APK assets 复制到文档目录（一次性操作）
-      const sourcePath = `models/${modelRelativePath}`;
-      logger.debug(`📋 从 APK 复制模型: ${modelRelativePath}`);
-      await RNFS_Native.copyFileAssets(sourcePath, destPath);
       logger.debug(`✅ 模型复制完成: ${modelRelativePath}`);
     } catch (error) {
       const errorMessage = error && typeof error === 'object' ? (error.message || String(error)) : String(error || 'Unknown error');

@@ -25,6 +25,8 @@ import {
   NativeModules,
   Animated,
   PanResponder,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { getDefaultPresets, getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
@@ -224,6 +226,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
   }), [scaleAnim, translateXAnim, translateYAnim]);
 
   // 使用 getUri 统一获取图片 URI
+  // iOS ph:// 由原生 PhotoKitImageLoader 直接渲染（透明），无需 JS 侧再做转换
   const resolveImageUri = useCallback((image) => {
     if (!image) return null;
     return getUri(image);
@@ -687,12 +690,34 @@ const ImagePreviewScreen = ({ route, navigation }) => {
       return;
     }
 
-    // 当直接 unlink 失败（Android 11+ 删除别的应用创建的媒体需要系统授权）时，
-    // 拉起 MediaStore.createDeleteRequest 的原生确认对话框；用户同意后系统物理删除，
+    // 当直接 unlink 失败（Android 11+ 删除别的应用创建的媒体需要系统授权 /
+    // iOS 全部走 PhotoKit）时，拉起原生确认对话框；用户同意后系统物理删除，
     // 这里再把 app DB 里的残留记录清掉（不然列表会出现"删了还在"的鬼影直到下次扫描），
     // 最后才提示"已删除"——只有 systemDelete + DB clean 都走通才算真成功。
     const tryRequestDeleteThenFinalize = async () => {
       try {
+        // iOS 分支：走 PhotoKitModule.deleteAssets([localIdentifier])
+        // PHAssetChangeRequest 会让系统自动弹原生确认对话框，用户拒绝时 reject E_USER_CANCELLED
+        if (Platform.OS === 'ios') {
+          const { PhotoKitModule } = NativeModules;
+          if (!PhotoKitModule || typeof PhotoKitModule.deleteAssets !== 'function') {
+            Alert.alert(t('category.deleteFailedTitle') || t('common.error'), 'PhotoKitModule 不可用');
+            return;
+          }
+          // iOS 端 currentImage.id 就是 PHAsset.localIdentifier（M2 那一步赋值的）
+          await PhotoKitModule.deleteAssets([currentImage.id]);
+          await UnifiedDataService.purgeDeletedImageRecords([currentImage.id]);
+          if (fromScreen === 'Home') {
+            Alert.alert(t('common.success'), t('imagePreview.deleteSuccess') || t('category.deleteSuccess', { count: 1 }), [
+              { text: t('common.confirm'), onPress: goBack },
+            ]);
+            return;
+          }
+          const reloadSuccess = await reloadImageListWithIndexAdjustment('删除');
+          if (reloadSuccess) Alert.alert(t('common.success'), t('imagePreview.deleteSuccess') || t('category.deleteSuccess', { count: 1 }));
+          return;
+        }
+
         const { MediaStoreModule } = NativeModules;
         if (!MediaStoreModule || typeof MediaStoreModule.requestDeleteByPath !== 'function') {
           Alert.alert(t('category.deleteFailedTitle') || t('common.error'), t('category.deleteFailedMessage') || t('category.deleteFailed'));
@@ -719,7 +744,8 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         if (reloadSuccess) Alert.alert(t('common.success'), t('imagePreview.deleteSuccess') || t('category.deleteSuccess', { count: 1 }));
       } catch (e) {
         const code = e && e.code;
-        if (code === 'E_DENIED') return; // 用户拒绝授权 → 不弹错误，也不提示"已删除"
+        // 用户拒绝授权（Android E_DENIED / iOS E_USER_CANCELLED）→ 不弹错误，也不提示"已删除"
+        if (code === 'E_DENIED' || code === 'E_USER_CANCELLED') return;
         logger.debug('授权删除失败:', e);
         Alert.alert(t('category.deleteFailedTitle') || t('common.error'), e?.message || (t('category.deleteFailedMessage') || t('category.deleteFailed')));
       }
@@ -1804,6 +1830,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
       {/* 顶部导航栏 */}
       {renderHeader()}
 
