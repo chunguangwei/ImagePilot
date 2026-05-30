@@ -39,6 +39,7 @@ import { logger, getUri } from '../../adapters/WebAdapters';
 let CatIonicons = null;
 try { CatIonicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { CatIonicons = null; }
 import { getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation, getDefaultPresets } from '../../i18n';
+import { useIosColors } from '../../ui/ios/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_COLUMNS = 3;
@@ -72,7 +73,8 @@ const TimelineLocationLine = React.memo(({ imagesForDate }) => {
 
 const CategoryScreen = ({ route, navigation }) => {
   const { t, i18n } = useTranslation('common');
-  
+  const c = useIosColors();
+
   // ==================== 路由参数 ====================
   // 统一使用 filterType 和 filterValue，从旧参数推导（过渡期）
   const { filterType: propFilterType, filterValue: propFilterValue, fromScreen } = route.params || {};
@@ -1950,18 +1952,18 @@ const CategoryScreen = ({ route, navigation }) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: c.groupedBg }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={c.accent} />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: c.groupedBg }]}>
       {/* 顶部导航栏 */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.separator, borderBottomWidth: 0.5 }]}>
         <TouchableOpacity onPress={() => {
           if (navigation.canGoBack()) {
             navigation.goBack();
@@ -1972,7 +1974,7 @@ const CategoryScreen = ({ route, navigation }) => {
         }} style={styles.backButton}>
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{getPageTitle()}</Text>
+        <Text style={[styles.headerTitle, { color: c.label }]}>{getPageTitle()}</Text>
         <View style={styles.headerRight} />
           </View>
 

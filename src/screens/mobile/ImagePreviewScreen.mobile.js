@@ -42,6 +42,7 @@ import { sortCategoryList, getCategoryIconMeta } from '../../components/shared/c
 import { Icon } from '../../adapters/WebAdapters';
 import { logger, getUri, getLocalPath } from '../../adapters/WebAdapters';
 import Haptics from '../../utils/haptics';
+import { useIosColors } from '../../ui/ios/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // iOS 单色图标（字体已打包）；异常时回退 emoji。
@@ -60,6 +61,7 @@ const getTouchDistance = (touches) => {
 
 const ImagePreviewScreen = ({ route, navigation }) => {
   const { t, i18n } = useTranslation('common');
+  const cTheme = useIosColors();
   // 实时视口宽度（折叠屏/旋转/分屏会变，不能用模块级静态 SCREEN_WIDTH，否则分页宽度与屏幕不符→图片只显示一半/不居中）
   const { width: viewportW } = useWindowDimensions();
 
@@ -1770,11 +1772,11 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         onRequestClose={closeCategoryModal}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { backgroundColor: cTheme.card }]}>
             {/* 标题栏 */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('imagePreview.selectCategory')}</Text>
-              <Text style={styles.modalSubtitle}>
+            <View style={[styles.modalHeader, { borderBottomColor: cTheme.separator }]}>
+              <Text style={[styles.modalTitle, { color: cTheme.label }]}>{t('imagePreview.selectCategory')}</Text>
+              <Text style={[styles.modalSubtitle, { color: cTheme.tertiaryLabel }]}>
                 {t('category.moveImagesTo', { count: 1 })}
               </Text>
             </View>
@@ -1791,7 +1793,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                 return (
                   <TouchableOpacity
                     key={cat.id}
-                    style={styles.categoryItem}
+                    style={[styles.categoryItem, { borderBottomColor: cTheme.separator }]}
                     onPress={() => handleCategoryChange(cat.id)}
                   >
                     <View style={[styles.categoryIconWrap, { backgroundColor: meta.color }]}>
@@ -1799,6 +1801,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                     </View>
                     <Text style={[
                       styles.categoryName,
+                      { color: cTheme.label },
                       isSelected && styles.selectedCategoryText
                     ]}>{categoryName}</Text>
                   </TouchableOpacity>
@@ -1808,7 +1811,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
 
             {/* 取消按钮 */}
             <TouchableOpacity
-              style={styles.modalCancelButton}
+              style={[styles.modalCancelButton, { borderTopColor: cTheme.separator }]}
               onPress={closeCategoryModal}
             >
               <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
