@@ -190,7 +190,7 @@ export default function BackupRestoreScreen({ navigation }) {
           list.map((file) => (
             <View key={file.path} style={styles.item}>
               <View style={styles.itemIconWrap}>
-                <Icon name="inventory-2" size={18} color="#FFFFFF" />
+                <Icon name="archive" size={18} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemName} numberOfLines={1}>{file.name}</Text>
@@ -250,8 +250,9 @@ const styles = StyleSheet.create({
   },
   itemName: { fontSize: 14, fontWeight: '500', color: '#000000' },
   itemMeta: { fontSize: 12, color: '#8E8E93', marginTop: 3 },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 6, marginLeft: 4 },
-  shareTxt: { color: '#007AFF', marginLeft: 4, fontSize: 14 },
-  restoreTxt: { color: '#34C759', marginLeft: 4, fontSize: 14, fontWeight: '600' },
-  deleteTxt: { color: '#FF3B30', marginLeft: 4, fontSize: 14, fontWeight: '600' },
+  // 三个动作按钮挤一行：图标 + 文字小一号，紧排
+  actionBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, paddingVertical: 6, marginLeft: 2 },
+  shareTxt: { color: '#007AFF', marginLeft: 2, fontSize: 12 },
+  restoreTxt: { color: '#34C759', marginLeft: 2, fontSize: 12, fontWeight: '600' },
+  deleteTxt: { color: '#FF3B30', marginLeft: 2, fontSize: 12, fontWeight: '600' },
 });
