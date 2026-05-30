@@ -12,6 +12,7 @@ import {
   PanResponder,
   Animated,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { getDefaultPresets } from '../../i18n';
@@ -654,6 +655,7 @@ export default function EnhanceResultScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
       {/* 顶部栏 */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>

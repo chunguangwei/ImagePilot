@@ -8,7 +8,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, PanResponder, ActivityIndicator } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, PanResponder, ActivityIndicator, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RNFS, Alert, logger, SafeAreaView } from '../../adapters/WebAdapters';
 import { inpaintLocally } from '../../services/enhance/localEnhance';
@@ -116,6 +116,7 @@ export default function InpaintScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.headerBtn}>‹ 返回</Text></TouchableOpacity>
         <Text style={styles.title}>物体消除</Text>

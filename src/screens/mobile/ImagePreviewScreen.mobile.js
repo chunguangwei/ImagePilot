@@ -26,6 +26,7 @@ import {
   Animated,
   PanResponder,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { getDefaultPresets, getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
@@ -1829,6 +1830,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
       {/* 顶部导航栏 */}
       {renderHeader()}
 
