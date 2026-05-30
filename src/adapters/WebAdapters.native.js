@@ -628,49 +628,6 @@ export const getUri = (input) => {
   return getFileUri(input);
 };
 
-// iOS ph:// → file:// 解析缓存（PhotoKit 把 PHAsset 导出到 NSTemporaryDirectory 后缓存路径）
-// 没有 cameraroll lib 时，RN <Image> 不识别 ph://，必须先导出再渲染。
-const _phUriCache = new Map();
-const _phUriInflight = new Map();
-
-const _extractPhLocalId = (uri) => {
-  if (typeof uri !== 'string' || !uri.startsWith('ph://')) return null;
-  return uri.slice('ph://'.length);
-};
-
-export const resolvePhAssetUri = async (input) => {
-  const originalUri = normalizePathParams(input);
-  const id = _extractPhLocalId(originalUri);
-  if (!id) return null;
-  if (_phUriCache.has(id)) return _phUriCache.get(id);
-  if (_phUriInflight.has(id)) return _phUriInflight.get(id);
-  const { NativeModules } = require('react-native');
-  const PhotoKitModule = NativeModules.PhotoKitModule;
-  if (!PhotoKitModule || typeof PhotoKitModule.requestImageFileURL !== 'function') {
-    return null;
-  }
-  const p = (async () => {
-    try {
-      const res = await PhotoKitModule.requestImageFileURL(id);
-      const fileUri = res?.uri || null;
-      if (fileUri) _phUriCache.set(id, fileUri);
-      return fileUri;
-    } catch (_e) {
-      return null;
-    } finally {
-      _phUriInflight.delete(id);
-    }
-  })();
-  _phUriInflight.set(id, p);
-  return p;
-};
-
-// 同步只读：用于已缓存场景
-export const getCachedPhAssetUri = (input) => {
-  const id = _extractPhLocalId(normalizePathParams(input));
-  return id ? (_phUriCache.get(id) || null) : null;
-};
-
 // 文件统计信息
 export const getFileStats = async (filePath) => {
   const normalizedPath = normalizeFilePath(filePath);
