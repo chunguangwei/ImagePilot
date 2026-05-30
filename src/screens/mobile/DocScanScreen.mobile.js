@@ -11,7 +11,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, PanResponder, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { RNFS, Alert, logger } from '../../adapters/WebAdapters';
+import { RNFS, Alert, logger, SafeAreaView } from '../../adapters/WebAdapters';
 import { detectDocCorners, dewarpDocument } from '../../services/enhance/localEnhance';
 
 const HANDLE = 30; // 手柄触控直径
@@ -124,7 +124,7 @@ export default function DocScanScreen({ route, navigation }) {
   });
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.headerBtn}>‹ 返回</Text></TouchableOpacity>
         <Text style={styles.title}>证件矫正</Text>
@@ -179,13 +179,13 @@ export default function DocScanScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, paddingTop: 44 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 },
   headerBtn: { color: '#0A84FF', fontSize: 16, fontWeight: '500' },
   disabled: { color: '#8E8E93' },
   title: { color: '#fff', fontSize: 17, fontWeight: '600' },

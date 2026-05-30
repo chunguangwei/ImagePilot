@@ -657,7 +657,7 @@ export default function EnhanceResultScreen({ route, navigation }) {
       {/* 顶部栏 */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>←</Text>
+          <Text style={styles.back}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.title} numberOfLines={1}>{presetName}</Text>
         <Text style={styles.progress}>{completed}/{total}</Text>
@@ -757,7 +757,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 12,
   },
-  back: { color: '#fff', fontSize: 20 },
+  back: { color: '#fff', fontSize: 32, fontWeight: 'bold', width: 40, textAlign: 'center' },
   title: { color: '#fff', fontSize: 16, fontWeight: '600', flex: 1, textAlign: 'center' },
   progress: { color: '#8E8E93', fontSize: 14, width: 64, textAlign: 'right' },
   imageContainer: { flex: 1, position: 'relative', justifyContent: 'center', alignItems: 'center' },
