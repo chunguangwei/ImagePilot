@@ -24,6 +24,18 @@ import i18n from '../i18n';
 
 const { GalleryScanModule } = NativeModules;
 
+/**
+ * MobileNetV3 top-1 → 应用分类的最低置信度门槛。
+ * 低于此值视作"模型不确定"，落 `other` 兜底，避免噪声映射进 pets / foods /
+ * travel_scenery 等专门类（如 0.05 置信度的"金鱼"被当成宠物分进 pets）。
+ *
+ * 调档思路：ImagenetClasses 的 1000 类很多互相重叠，且大量壁纸/抽象图模型
+ * 给的 top-1 都在 0.05~0.10 区间是噪声；正确归类的真实样本通常 0.2+。
+ * 这里取 0.15 比 ImageClassifier 里的 validPredictions 阈值 0.3 略松，
+ * 既过滤掉明显的随机猜，也不至于把略低于 0.3 的边缘正确预测都落 other。
+ */
+const MOBILENET_MAP_THRESHOLD = 0.15;
+
 class GalleryScannerService {
   constructor() {
     // 🆕 标识：这是Android原生扫描版本
@@ -541,15 +553,21 @@ class GalleryScannerService {
             if (!imageUri) { failedCount++; continue; }
             const r = await this.imageClassifier.classifyImageWithMobileNetV3(imageUri);
             const top = r && r.success ? r.topPrediction : null;
-            const category =
-              top && typeof this.imageClassifier.mapMobileNetV3ToAppCategory === 'function'
-                ? (this.imageClassifier.mapMobileNetV3ToAppCategory(top.class) || 'other')
-                : 'other';
+            const conf = (r && typeof r.confidence === 'number') ? r.confidence : 0;
+            let category;
+            if (top && conf >= MOBILENET_MAP_THRESHOLD && typeof this.imageClassifier.mapMobileNetV3ToAppCategory === 'function') {
+              category = this.imageClassifier.mapMobileNetV3ToAppCategory(top.class) || 'other';
+            } else {
+              if (top && conf < MOBILENET_MAP_THRESHOLD) {
+                logger.debug(`[Android] 本地分类 conf=${conf.toFixed(3)} < ${MOBILENET_MAP_THRESHOLD}，top="${top.class}" 落 other`);
+              }
+              category = 'other';
+            }
             classificationDataArray.push({
               uri: image?.uri || imageUri,
               id: image.id,
               category,
-              confidence: (r && r.confidence) || 0.5,
+              confidence: conf || 0.5,
               idCardDetections: [],
               generalDetections: [],
               mobileNetV3Detections: null,
