@@ -1070,16 +1070,34 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
   // ==================== 渲染函数 ====================
 
-  // iOS 相册授权层级 → 副标描述 + 是否提示去设置
+  // iOS 相册授权层级 → 副标描述
   const iosPhotoAuthMeta = () => {
     switch (iosPhotoAuth) {
-      case 'authorized': return { desc: '✓ 已允许完全访问', warn: false };
-      case 'limited':    return { desc: '⚠️ 仅部分访问 · 点击调整为完整', warn: true };
-      case 'denied':     return { desc: '✗ 已拒绝 · 点击去系统设置开启', warn: true };
-      case 'restricted': return { desc: '⛔ 系统限制（家长控制等）· 点击查看', warn: true };
-      case 'notDetermined': return { desc: '尚未请求 · 首次扫描时会弹窗', warn: false };
-      default: return { desc: '检测中…', warn: false };
+      case 'authorized': return { desc: '✓ 已允许完全访问' };
+      case 'limited':    return { desc: '⚠️ 仅部分访问 · 点击调整可见照片' };
+      case 'denied':     return { desc: '✗ 已拒绝 · 点击去系统设置开启' };
+      case 'restricted': return { desc: '⛔ 系统限制（家长控制等）· 点击查看' };
+      case 'notDetermined': return { desc: '尚未请求 · 首次扫描时会弹窗' };
+      default: return { desc: '检测中…' };
     }
+  };
+
+  // iOS 相册权限入口的点击行为：
+  // - limited → 弹原生 Limited Library Picker，让用户增删可见照片（PhotoKit ChangeObserver 会自动推 diff）
+  // - 其它   → 跳系统设置 → ImagePilot
+  const onIosPhotoAuthPress = async () => {
+    if (iosPhotoAuth === 'limited') {
+      try {
+        const PhotoKitModule = NativeModules?.PhotoKitModule;
+        if (PhotoKitModule && typeof PhotoKitModule.presentLimitedLibraryPicker === 'function') {
+          const r = await PhotoKitModule.presentLimitedLibraryPicker();
+          // 若原生不让弹（状态已不是 limited），退化为跳系统设置
+          if (!r?.presented) { try { Linking.openSettings(); } catch (_) {} }
+          return;
+        }
+      } catch (_) { /* 失败也兜到系统设置 */ }
+    }
+    try { Linking.openSettings(); } catch (_) {}
   };
 
   /**
@@ -1284,12 +1302,14 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             true
           )}
 
-          {/* iOS 专属：相册权限层级显示 + 跳系统设置（Linking.openSettings） */}
+          {/* iOS 专属：相册权限层级显示
+              · limited → 弹原生 Limited Library Picker（增删可见照片）
+              · 其它    → 跳系统设置（Linking.openSettings） */}
           {Platform.OS === 'ios' && renderActionButton(
             'images-outline',
             'iOS 相册访问',
             iosPhotoAuthMeta().desc,
-            () => { try { Linking.openSettings(); } catch (_) {} },
+            onIosPhotoAuthPress,
             false
           )}
 
