@@ -32,6 +32,7 @@ import * as UpdateService from '../../services/UpdateService';
 import DirectoryPicker from '../../components/DirectoryPicker.mobile';
 import { logger } from '../../adapters/WebAdapters';
 import { presetIcon } from '../../ui/ios/presetIcons';
+import { useIosColors } from '../../ui/ios/theme';
 import { SUPERRES_VARIANTS, ensureModel, isModelDownloaded, resolveSuperRes, deleteModel } from '../../services/enhance/modelSource';
 import { BUILD_DATE, BUILD_VERSION, BUILD_VERSION_CODE } from '../../config/BuildInfo';
 
@@ -42,7 +43,8 @@ import { changeLanguage, getCurrentLanguage, getDefaultPresets } from '../../i18
 
 const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   const { t, i18n } = useTranslation('common');
-  
+  const c = useIosColors();
+
   // ==================== 状态管理 ====================
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState({});
@@ -1105,18 +1107,18 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
    */
   const renderActionButton = (icon, title, description, onPress, danger = false) => (
     <TouchableOpacity
-      style={styles.actionButton}
+      style={[styles.actionButton, { backgroundColor: c.card }]}
       onPress={onPress}
       activeOpacity={0.6}
     >
       <View style={styles.actionButtonRow}>
         <View style={styles.actionButtonMain}>
-          <Text style={[styles.actionButtonText, danger && styles.dangerText]}>
-            {SetIonicons ? <SetIonicons name={icon} size={17} color={danger ? '#FF3B30' : '#007AFF'} /> : null} {title}
+          <Text style={[styles.actionButtonText, { color: c.label }, danger && styles.dangerText]}>
+            {SetIonicons ? <SetIonicons name={icon} size={17} color={danger ? c.danger : c.accent} /> : null} {title}
           </Text>
-          <Text style={styles.actionButtonDescription}>{description}</Text>
+          <Text style={[styles.actionButtonDescription, { color: c.tertiaryLabel }]}>{description}</Text>
         </View>
-        {!danger ? <Text style={styles.actionChevron}>›</Text> : null}
+        {!danger ? <Text style={[styles.actionChevron, { color: c.chevron }]}>›</Text> : null}
       </View>
     </TouchableOpacity>
   );
@@ -1268,26 +1270,26 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: c.groupedBg }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>{t('common.loading')}</Text>
+          <ActivityIndicator size="large" color={c.accent} />
+          <Text style={[styles.loadingText, { color: c.secondaryLabel }]}>{t('common.loading')}</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: c.groupedBg }]}>
       {/* 顶部导航栏 */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('settings.title')}</Text>
+      <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.separator, borderBottomWidth: 0.5 }]}>
+        <Text style={[styles.headerTitle, { color: c.label }]}>{t('settings.title')}</Text>
       </View>
 
       {/* 设置列表 */}
       <ScrollView style={styles.scrollView}>
         {/* 智能分类 */}
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: c.card }]}>
           <View style={styles.sectionHeader}>
             <View style={styles.titleRow}>
               <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">{SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color="#007AFF" /> : null} {t('settings.smartClassification')}</Text>
@@ -1480,7 +1482,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         </View>
 
         {/* 照片创玩 */}
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: c.card }]}>
           <View style={styles.sectionHeader}>
             <View style={styles.titleRow}>
               <Text style={styles.sectionTitle}>✨ {t('settings.photoEnhancement')}</Text>
@@ -1552,7 +1554,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
         {/* 会员服务（已按需求隐藏，不向用户展示会员/额度/二维码） */}
         {false && (
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: c.card }]}>
           <View style={styles.sectionHeader}>
             <View style={styles.titleRow}>
               <Text style={styles.sectionTitle}>💎 {t('settings.membershipService')}</Text>
@@ -1639,7 +1641,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         )}
 
         {/* 应用信息 */}
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: c.card }]}>
           <View style={styles.sectionHeader}>
             <View style={styles.titleRow}>
               <Text style={styles.sectionTitle}>{SetIonicons ? <SetIonicons name="information-circle-outline" size={17} color="#007AFF" /> : null} {t('settings.appInfo')}</Text>

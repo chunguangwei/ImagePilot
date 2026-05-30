@@ -24,8 +24,10 @@ import {
 } from 'react-native';
 import { SafeAreaView, Icon } from '../../adapters/WebAdapters';
 import BackupService from '../../services/BackupService';
+import { useIosColors } from '../../ui/ios/theme';
 
 export default function BackupRestoreScreen({ navigation }) {
+  const c = useIosColors();
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -145,24 +147,24 @@ export default function BackupRestoreScreen({ navigation }) {
   const fmtTime = (iso) => (iso ? iso.replace('T', ' ').slice(0, 16) : '');
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: c.groupedBg }]}>
+      <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.separator, borderBottomWidth: 0.5 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>分类备份与还原</Text>
+        <Text style={[styles.headerTitle, { color: c.label }]}>分类备份与还原</Text>
         <View style={styles.headerRight} />
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-        <Text style={styles.tip}>
+        <Text style={[styles.tip, { color: c.secondaryLabel }]}>
           导出：把每张已分类图的分类 + 自定义分类定义打包到 JSON，落在公共 Downloads 目录。{'\n'}
           还原：从 Downloads 选一个备份，按 文件名 + 大小 + 拍摄时间 命中本地相册即恢复分类，未命中的图不动。
         </Text>
 
         {/* 导出 */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>导出当前分类</Text>
+        <View style={[styles.card, { backgroundColor: c.card }]}>
+          <Text style={[styles.cardTitle, { color: c.label }]}>导出当前分类</Text>
           <TouchableOpacity style={[styles.primaryBtn, busy && styles.btnDisabled]} onPress={onExport} disabled={busy}>
             {busy ? (
               <ActivityIndicator color="#FFFFFF" />
@@ -171,30 +173,30 @@ export default function BackupRestoreScreen({ navigation }) {
             )}
           </TouchableOpacity>
           {lastExport && (
-            <Text style={styles.tipSmall}>
+            <Text style={[styles.tipSmall, { color: c.tertiaryLabel }]}>
               最近：{lastExport.fileName}（已分类 {lastExport.withCategory} 张）
             </Text>
           )}
         </View>
 
         {/* 已有备份 */}
-        <Text style={styles.sectionTitle}>已有备份（{list.length}）</Text>
+        <Text style={[styles.sectionTitle, { color: c.label }]}>已有备份（{list.length}）</Text>
         {loading ? (
           <ActivityIndicator style={{ marginTop: 20 }} />
         ) : list.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Icon name="folder-open" size={36} color="#C7C7CC" />
-            <Text style={styles.empty}>Downloads 目录下还没备份文件</Text>
+          <View style={[styles.emptyBox, { backgroundColor: c.card }]}>
+            <Icon name="folder-open" size={36} color={c.tertiaryLabel} />
+            <Text style={[styles.empty, { color: c.tertiaryLabel }]}>Downloads 目录下还没备份文件</Text>
           </View>
         ) : (
           list.map((file) => (
-            <View key={file.path} style={styles.item}>
+            <View key={file.path} style={[styles.item, { backgroundColor: c.card }]}>
               <View style={styles.itemIconWrap}>
                 <Icon name="archive" size={18} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.itemName} numberOfLines={1}>{file.name}</Text>
-                <Text style={styles.itemMeta}>{fmtBytes(file.size)} · {fmtTime(file.mtime)}</Text>
+                <Text style={[styles.itemName, { color: c.label }]} numberOfLines={1}>{file.name}</Text>
+                <Text style={[styles.itemMeta, { color: c.tertiaryLabel }]}>{fmtBytes(file.size)} · {fmtTime(file.mtime)}</Text>
               </View>
               <TouchableOpacity onPress={() => onShareFile(file)} style={styles.actionBtn} activeOpacity={0.6}>
                 <Icon name="share" size={18} color="#007AFF" />

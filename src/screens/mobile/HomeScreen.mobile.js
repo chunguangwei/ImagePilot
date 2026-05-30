@@ -38,6 +38,7 @@ import WakeLockService from '../../services/WakeLockService';
 import * as UpdateService from '../../services/UpdateService';
 import cityLocationService from '../../services/CityLocationService';
 import SkeuomorphicCamera from '../../ui/ios/SkeuomorphicCamera';
+import { useIosColors } from '../../ui/ios/theme';
 import { sortCategoryList } from '../../components/shared/categoryUI';
 import { logger, getUri, getLocalPath } from '../../adapters/WebAdapters';
 import { getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
@@ -121,7 +122,11 @@ let _launchUpdateChecked = false;
 
 const HomeScreen = ({ navigation }) => {
   const { t, i18n } = useTranslation('common');
-  
+  const c = useIosColors();
+  // 主题动态色叠加到 StyleSheet 上（避免改写所有 styles 表）
+  const dynSection = { backgroundColor: c.card };
+  const dynSectionTitle = { color: c.label };
+
   // ==================== 状态管理 ====================
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -1678,10 +1683,10 @@ const HomeScreen = ({ navigation }) => {
       return t(`home.${key}`);
     };
     return (
-      <View style={styles.section}>
+      <View style={[styles.section, dynSection]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleContainer}>
-            <Text style={styles.sectionTitle}><SectionIcon name="calendar-outline" emoji="📅" /> {t('home.byTime')}</Text>
+            <Text style={[styles.sectionTitle, dynSectionTitle]}><SectionIcon name="calendar-outline" emoji="📅" /> {t('home.byTime')}</Text>
           </View>
         </View>
         <View style={styles.categoriesGrid}>
@@ -1722,10 +1727,10 @@ const HomeScreen = ({ navigation }) => {
     const hasContent = filteredCategories.length > 0 || filteredColors.length > 0;
 
     return (
-      <View style={styles.section}>
+      <View style={[styles.section, dynSection]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleColumn}>
-            <Text style={styles.sectionTitle}><SectionIcon name="pricetags-outline" emoji="🏷️" /> {t('home.byContent')}</Text>
+            <Text style={[styles.sectionTitle, dynSectionTitle]}><SectionIcon name="pricetags-outline" emoji="🏷️" /> {t('home.byContent')}</Text>
             {hasUnclassifiedPhotos && (
               <Text style={styles.sectionHint}>{t('home.longPressUnclassifiedHint')}</Text>
             )}
@@ -1849,10 +1854,10 @@ const HomeScreen = ({ navigation }) => {
    */
   const renderSimilarityGroupsSection = () => {
     return (
-      <View style={styles.section}>
+      <View style={[styles.section, dynSection]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleContainer}>
-            <Text style={styles.sectionTitle}><SectionIcon name="copy-outline" emoji="🔗" /> {t('home.similarPhotos')}</Text>
+            <Text style={[styles.sectionTitle, dynSectionTitle]}><SectionIcon name="copy-outline" emoji="🔗" /> {t('home.similarPhotos')}</Text>
           </View>
           {similarityGroups && similarityGroups.length > 0 && (
             <View style={styles.headerButtonsContainer}>
@@ -2025,8 +2030,8 @@ const HomeScreen = ({ navigation }) => {
     if (!hasDir && !hasFormat && !hasResolution && !hasOrientation) return null;
 
     return (
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { marginBottom: 12, paddingHorizontal: 16 }]}><SectionIcon name="list-outline" emoji="📋" /> {t('home.byAttributes')}</Text>
+      <View style={[styles.section, dynSection]}>
+        <Text style={[styles.sectionTitle, dynSectionTitle, { marginBottom: 12, paddingHorizontal: 16 }]}><SectionIcon name="list-outline" emoji="📋" /> {t('home.byAttributes')}</Text>
         <View style={styles.attributesContainer}>
           {hasDir && (
             <View style={styles.attributeSubBlock}>
@@ -2115,8 +2120,8 @@ const HomeScreen = ({ navigation }) => {
     if (!hasISO && !hasAperture && !hasShutter && !hasFocalLength) return null;
 
     return (
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { marginBottom: 12, paddingHorizontal: 16 }]}><SectionIcon name="aperture-outline" emoji="📸" /> {t('home.byShootingParams')}</Text>
+      <View style={[styles.section, dynSection]}>
+        <Text style={[styles.sectionTitle, dynSectionTitle, { marginBottom: 12, paddingHorizontal: 16 }]}><SectionIcon name="aperture-outline" emoji="📸" /> {t('home.byShootingParams')}</Text>
         <View style={styles.attributesContainer}>
           {hasISO && (
             <View style={styles.attributeSubBlock}>
@@ -2166,10 +2171,10 @@ const HomeScreen = ({ navigation }) => {
     const displayCities = showAllCities ? sortedCities : sortedCities.slice(0, 8);
     
     return (
-      <View style={styles.section}>
+      <View style={[styles.section, dynSection]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleContainer}>
-            <Text style={styles.sectionTitle}><SectionIcon name="location-outline" emoji="🏙️" /> {t('home.byCity')}</Text>
+            <Text style={[styles.sectionTitle, dynSectionTitle]}><SectionIcon name="location-outline" emoji="🏙️" /> {t('home.byCity')}</Text>
           </View>
           {cities && cities.length > 0 && (
             <View style={styles.headerButtonsContainer}>
@@ -2266,10 +2271,10 @@ const HomeScreen = ({ navigation }) => {
     };
     
     return (
-      <View style={styles.section}>
+      <View style={[styles.section, dynSection]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleContainer}>
-            <Text style={styles.sectionTitle}><SectionIcon name="images-outline" emoji="📸" /> {t('home.recentDiscoveredPhotos')}</Text>
+            <Text style={[styles.sectionTitle, dynSectionTitle]}><SectionIcon name="images-outline" emoji="📸" /> {t('home.recentDiscoveredPhotos')}</Text>
             {recentImagesTotal > 0 && (
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>{recentImagesTotal}</Text>
@@ -2361,20 +2366,20 @@ const HomeScreen = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: c.groupedBg }]}>
       {/* 顶部导航栏 */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
         <Pressable
           onLongPress={handleExportLogs}
           style={styles.headerTitleContainer}
         >
-          <Text style={styles.headerTitle}>{t('app.name')}</Text>
+          <Text style={[styles.headerTitle, { color: c.label }]}>{t('app.name')}</Text>
         </Pressable>
       </View>
 
       {/* 消息提示区 */}
       <View style={styles.messageBanner}>
-        <Text style={styles.messageText}>{globalMessage}</Text>
+        <Text style={[styles.messageText, { color: c.secondaryLabel }]}>{globalMessage}</Text>
         </View>
 
       {/* 主内容区 */}
