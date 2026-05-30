@@ -598,6 +598,13 @@ class GalleryScannerService {
       }
 
       logger.info(`✅ JS 离线分类完成：成功 ${processedCount}，失败 ${failedCount}`);
+      // 跑完所有 batch 后统一刷 GlobalImageCache；不然 HomeScreen.loadCategories
+      // 读到的 categoryCounts 还是分类前 NA 状态，UI 显示「待分类|N」陈旧数据
+      try {
+        await UnifiedDataService.imageCache.refreshCache();
+      } catch (e) {
+        logger.warn('[Android] 分类后刷新 GlobalImageCache 失败:', e?.message || e);
+      }
       await this.sendProgressMessage('completed', processedCount, naImages.length, this.imagesClassified, naImages.length);
       return { success: true, processedCount, failedCount };
     } catch (error) {
@@ -725,6 +732,11 @@ class GalleryScannerService {
       }
 
       logger.info(`✅ JS 云端分类完成：成功 ${processedCount}，失败 ${failedCount}`);
+      try {
+        await UnifiedDataService.imageCache.refreshCache();
+      } catch (e) {
+        logger.warn('[Android] 云端分类后刷新 GlobalImageCache 失败:', e?.message || e);
+      }
       await this.sendProgressMessage('completed', processedCount, naImages.length, this.imagesClassified, naImages.length);
       return { success: true, processedCount, failedCount };
     } catch (error) {

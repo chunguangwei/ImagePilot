@@ -362,6 +362,13 @@ class GalleryScannerService {
       }
 
       logger.info(`✅ [iOS] 离线分类完成：成功 ${processedCount}，失败 ${failedCount}`);
+      // 分类完所有 batch 后统一刷一次 GlobalImageCache，否则上层 HomeScreen 读到的
+      // 仍是分类前 NA 的 categoryCounts，UI 显示「待分类|12」而 DB 实际已是 other|12。
+      try {
+        await UnifiedDataService.imageCache.refreshCache();
+      } catch (e) {
+        logger.warn('[iOS] 分类后刷新 GlobalImageCache 失败:', e?.message || e);
+      }
       await this.sendProgressMessage('completed', processedCount, naImages.length, this.imagesClassified, naImages.length);
       return { success: true, processedCount, failedCount };
     } catch (error) {
@@ -477,6 +484,11 @@ class GalleryScannerService {
       }
 
       logger.info(`✅ [iOS] 云端分类完成：成功 ${processedCount}，失败 ${failedCount}`);
+      try {
+        await UnifiedDataService.imageCache.refreshCache();
+      } catch (e) {
+        logger.warn('[iOS] 云端分类后刷新 GlobalImageCache 失败:', e?.message || e);
+      }
       await this.sendProgressMessage('completed', processedCount, naImages.length, this.imagesClassified, naImages.length);
       return { success: true, processedCount, failedCount };
     } catch (error) {
