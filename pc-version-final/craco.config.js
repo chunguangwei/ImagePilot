@@ -1,15 +1,10 @@
 const path = require('path');
 
 module.exports = {
-  babel: {
-    presets: [
-      '@babel/preset-env',
-      '@babel/preset-react'
-    ],
-    plugins: [
-      '@babel/plugin-proposal-class-properties'
-    ]
-  },
+  // 不再叠加 babel: { presets/plugins }——CRA 默认 babel-preset-react-app 已包含
+  // 现代等价物，叠加会导致 @babel/plugin-transform-class-properties / private-methods /
+  // private-property-in-object 三个插件 loose 模式冲突，构建直接报错。所有 JSX /
+  // class fields 走 CRA 默认管线即可。
   webpack: {
     configure: (webpackConfig) => {
       // 指定入口文件为 index.desktop.js
@@ -63,7 +58,7 @@ module.exports = {
             const sourceMapLoaderIndex = rule.use.findIndex(
               (use) => use.loader && use.loader.includes('source-map-loader')
             );
-            
+
             if (sourceMapLoaderIndex !== -1) {
               // 排除 onnxruntime-react-native 模块
               if (!rule.exclude) {
@@ -73,12 +68,42 @@ module.exports = {
               } else {
                 rule.exclude = [rule.exclude, /node_modules\/onnxruntime-react-native/];
               }
-              
+
               // 配置 source-map-loader 忽略错误
               rule.use[sourceMapLoaderIndex].options = rule.use[sourceMapLoaderIndex].options || {};
               // 使用 webpack 的 ignoreWarnings 或者直接修改 loader 行为
             }
           }
+        });
+      }
+
+      // 扩 babel-loader 的 include —— CRA 默认只编译 pc-version-final/src/，
+      // 但 RN 移动端共享的 src/ui/config/AIModelConfigScreen.desktop.jsx 在 RN 根 src/ 下，
+      // 没扩 include 它进 source-map-loader 但没进 babel-loader，
+      // 结果 JSX 没转译 → 报 "Unexpected token <"。
+      // 把 RN 根 src/ 也加进 babel-loader 的 include，复用同一 controller 双端共享。
+      const rnSrcPath = path.resolve(__dirname, '../src');
+      if (webpackConfig.module && webpackConfig.module.rules) {
+        webpackConfig.module.rules.forEach((rule) => {
+          // CRA 的规则 oneOf 在 rule.oneOf 数组里
+          const innerRules = rule.oneOf || [rule];
+          innerRules.forEach((inner) => {
+            const loader = inner.loader || '';
+            const isBabel = loader.includes('babel-loader');
+            const testsJsx =
+              inner.test instanceof RegExp &&
+              (inner.test.test('test.jsx') || inner.test.test('test.js'));
+            if (isBabel && testsJsx) {
+              // include 可能是 string / array / RegExp，统一成数组追加
+              if (!inner.include) {
+                inner.include = [rnSrcPath];
+              } else if (Array.isArray(inner.include)) {
+                if (!inner.include.includes(rnSrcPath)) inner.include.push(rnSrcPath);
+              } else {
+                inner.include = [inner.include, rnSrcPath];
+              }
+            }
+          });
         });
       }
       
