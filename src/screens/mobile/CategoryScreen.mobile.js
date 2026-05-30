@@ -1123,52 +1123,82 @@ const CategoryScreen = ({ route, navigation }) => {
 
   /**
    * 批量修改分类
+   *
+   * 健壮性：updateImagesCategory 在某些数据规模下偶发不返回（DB SQL 实际已成功落库
+   * 但 cache rebuild / updateStats 链路某步未 resolve），导致"正在修改 X 张"弹窗
+   * 卡死、用户必须杀 app 才能脱离。
+   * 这里加三层保险：
+   *   1) try/finally 保证 setShowUpdateProgress(false) 一定执行
+   *   2) Promise.race + 30s 超时兜底；超时后日志会告诉用户"DB 已写，UI 缓存可能滞后"
+   *   3) 各步加 logger.debug 标记，下次卡时能定位到 step.X 之间的具体行
    */
   const batchChangeCategory = async (imageIds, newCategory) => {
+    let stage = 'init';
+    // Modal 最小显示时长：实测 DB+cache 全跑完只要 35ms，但 RN iOS Modal 在
+    // fade-in 动画中途收到 visible=false 会忽略 hide → 卡死。让 modal 至少显示
+    // 500ms 兜底，等 fade-in 完成后再 hide
+    const modalShownAt = Date.now();
+    const MIN_MODAL_MS = 500;
+
     try {
+      logger.debug(`[batchChangeCategory] start ids=${imageIds.length} -> ${newCategory}`);
       const categoryName = UnifiedDataService.getCategoryDisplayName(newCategory);
-      
+
       // 1. 先更新UI（立即响应用户操作）
+      stage = 'optimistic-ui';
       imageIds.forEach(id => {
         UnifiedDataService.setImageSelection(id, false);
       });
       setImages(prevImages => {
         const newImages = prevImages.filter(img => !imageIds.includes(img.id));
-        
-        // 同时更新分组图片
         if (newImages.length > 0) {
           const grouped = groupImagesByDate(newImages);
           setGroupedImages(grouped);
         } else {
           setGroupedImages({});
         }
-        
         return newImages;
       });
       setSelectionMode(false);
-      
+
       // 2. 显示进度提示
+      stage = 'show-modal';
       setShowUpdateProgress(true);
       setUpdateOperationType('changeCategory');
       setUpdateProgress({ filesProcessed: imageIds.length, filesFailed: 0, total: imageIds.length });
-      
-      // 3. 执行数据库操作（后台进行）
-      const result = await UnifiedDataService.updateImagesCategory(imageIds, newCategory, 'manual');
-      
+
+      // 3. 执行数据库操作；30s 超时兜底
+      stage = 'db-update';
+      logger.debug('[batchChangeCategory] step 3: updateImagesCategory…');
+      const result = await Promise.race([
+        UnifiedDataService.updateImagesCategory(imageIds, newCategory, 'manual'),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT_30S')), 30000)),
+      ]);
+      logger.debug(`[batchChangeCategory] step 3 done: processed=${result?.processed} errors=${result?.errors?.length || 0}`);
+
       // 4. 更新失败数量（如果有）
+      stage = 'update-progress-final';
       setUpdateProgress({ filesProcessed: result.processed, filesFailed: result.errors?.length || 0, total: imageIds.length });
-      
-      if (result.success) {
-      } else {
+      if (!result.success) {
         logger.warn('⚠️ 批量更新分类部分失败:', result.errors);
       }
-      
-      // 5. 关闭进度提示
-      setShowUpdateProgress(false);
     } catch (error) {
-      logger.error('❌ 批量修改分类失败:', error);
-      setShowUpdateProgress(false);
-      Alert.alert(t('settings.operationFailed'), error.message);
+      if (error?.message === 'TIMEOUT_30S') {
+        logger.error(`❌ [batchChangeCategory] 超时 30s（stage=${stage}）— DB 通常已落库，UI 缓存可能滞后`);
+        Alert.alert(t('settings.operationFailed') || '操作失败', '修改超时；分类大概率已写入，请下拉刷新页面或重启 app 验证');
+      } else {
+        logger.error(`❌ 批量修改分类失败（stage=${stage}）:`, error);
+        Alert.alert(t('settings.operationFailed'), error?.message || String(error));
+      }
+    } finally {
+      // 兜底关 modal —— 等 fade-in 动画走完再 hide，否则 iOS Modal 会忽略 hide
+      const elapsed = Date.now() - modalShownAt;
+      const wait = elapsed >= MIN_MODAL_MS ? 0 : (MIN_MODAL_MS - elapsed);
+      logger.debug(`[batchChangeCategory] finally: scheduling hide in ${wait}ms`);
+      setTimeout(() => {
+        logger.debug('[batchChangeCategory] CALLING setShowUpdateProgress(false) now');
+        setShowUpdateProgress(false);
+      }, wait);
     }
   };
 
@@ -2023,15 +2053,15 @@ const CategoryScreen = ({ route, navigation }) => {
       </Modal>
       
       {/* 更新进度弹窗 */}
-      <Modal
-        visible={showUpdateProgress}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowUpdateProgress(false)}>
-        <View style={styles.progressModalOverlay}>
+      {/* 更新进度浮层：放弃 RN <Modal>，改用 absolute View overlay
+          —— RN iOS Modal 在 visible=true → false 切换时偶发卡死（即使 animationType=none
+          且 visible 已写 false），native UIView 不响应隐藏请求。inline overlay 完全靠
+          React 渲染树，setShowUpdateProgress(false) 一定卸载。 */}
+      {showUpdateProgress && (
+        <View style={styles.progressModalOverlayInline} pointerEvents="auto">
           <View style={styles.progressModalContent}>
             <Text style={styles.progressModalTitle}>
-              {updateOperationType === 'changeCategory' 
+              {updateOperationType === 'changeCategory'
                 ? t('category.changingCategory', { count: updateProgress.total })
                 : updateOperationType === 'moveToStaging'
                 ? t('category.movingToStaging', { count: updateProgress.total })
@@ -2046,16 +2076,16 @@ const CategoryScreen = ({ route, navigation }) => {
               </Text>
             )}
             <View style={styles.progressBar}>
-              <View 
+              <View
                 style={[
-                  styles.progressBarFill, 
-                  { width: '100%' } // 批量操作显示100%进度条
-                ]} 
+                  styles.progressBarFill,
+                  { width: '100%' }
+                ]}
               />
             </View>
           </View>
         </View>
-      </Modal>
+      )}
     </SafeAreaView>
   );
 };
@@ -2473,6 +2503,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // inline 版本：absolute fill 屏幕，跟 Modal overlay 同样视觉
+  progressModalOverlayInline: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+    elevation: 999,
   },
   progressModalContent: {
     backgroundColor: '#FFFFFF',
