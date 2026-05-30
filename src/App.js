@@ -130,8 +130,8 @@ const MainTabNavigator = ({ stagingBoxCount }) => {
         backgroundColor: '#FFFFFF',
         borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: '#C6C6C8',
-        height: 58,
-        paddingBottom: 6,
+        // 不写 height，让 React Navigation 自适应 home-indicator 安全区
+        // iOS 标准 49pt + 底部安全区；Android 用默认值
         paddingTop: 6,
       },
       tabBarShowLabel: true,
