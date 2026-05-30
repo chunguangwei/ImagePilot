@@ -1628,57 +1628,53 @@ const ImagePreviewScreen = ({ route, navigation }) => {
    * 渲染照片创玩 Modal
    */
   const renderEnhanceModal = () => {
+    // 同 categoryModal：RN iOS <Modal> 偶发不响应 hide，改 inline TouchableOpacity overlay
+    if (!showEnhancePresets) return null;
     return (
-      <Modal
-        visible={showEnhancePresets}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={closeEnhanceModal}
+      <TouchableOpacity
+        activeOpacity={1}
+        onPress={closeEnhanceModal}
+        style={[styles.modalOverlay, { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }]}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            {/* 标题栏 */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('category.enhanceMenu').replace(' ›', '')}</Text>
-              <Text style={styles.modalSubtitle}>
-                {t('category.selectEnhancePresetForImages', { count: 1 })}
-              </Text>
-            </View>
-
-            {/* 预设列表 */}
-            <ScrollView style={styles.categoryList}>
-              {Object.entries(enhancePresets)
-                .sort(([, a], [, b]) => (a?.sortOrder || 0) - (b?.sortOrder || 0))
-                .map(([presetId, preset]) => {
-                  const displayName = preset.name || presetId;
-                  return (
-                    <TouchableOpacity
-                      key={presetId}
-                      style={styles.categoryItem}
-                      onPress={() => {
-                        handleEnhancePresetPress(presetId);
-                        closeEnhanceModal();
-                      }}
-                    >
-                      {PvIonicons
-                        ? <PvIonicons name={presetIcon(presetId)} size={22} color="#007AFF" style={styles.categoryIcon} />
-                        : <Text style={styles.categoryIcon}>{preset.icon || '✨'}</Text>}
-                      <Text style={styles.categoryName}>{displayName}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-            </ScrollView>
-
-            {/* 取消按钮 */}
-            <TouchableOpacity
-              style={styles.modalCancelButton}
-              onPress={closeEnhanceModal}
-            >
-              <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
+        <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalContainer, { backgroundColor: cTheme.card }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: cTheme.separator }]}>
+            <Text style={[styles.modalTitle, { color: cTheme.label }]}>{t('category.enhanceMenu').replace(' ›', '')}</Text>
+            <Text style={[styles.modalSubtitle, { color: cTheme.tertiaryLabel }]}>
+              {t('category.selectEnhancePresetForImages', { count: 1 })}
+            </Text>
           </View>
-        </View>
-      </Modal>
+
+          <ScrollView style={styles.categoryList}>
+            {Object.entries(enhancePresets)
+              .sort(([, a], [, b]) => (a?.sortOrder || 0) - (b?.sortOrder || 0))
+              .map(([presetId, preset]) => {
+                const displayName = preset.name || presetId;
+                return (
+                  <TouchableOpacity
+                    key={presetId}
+                    style={[styles.categoryItem, { borderBottomColor: cTheme.separator }]}
+                    onPress={() => {
+                      handleEnhancePresetPress(presetId);
+                      closeEnhanceModal();
+                    }}
+                  >
+                    {PvIonicons
+                      ? <PvIonicons name={presetIcon(presetId)} size={22} color={cTheme.accent} style={styles.categoryIcon} />
+                      : <Text style={styles.categoryIcon}>{preset.icon || '✨'}</Text>}
+                    <Text style={[styles.categoryName, { color: cTheme.label }]}>{displayName}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+          </ScrollView>
+
+          <TouchableOpacity
+            style={[styles.modalCancelButton, { borderTopColor: cTheme.separator }]}
+            onPress={closeEnhanceModal}
+          >
+            <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </TouchableOpacity>
     );
   };
 
