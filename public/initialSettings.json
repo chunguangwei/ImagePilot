@@ -26,17 +26,14 @@
       "chinese": "美食记录",
       "english": "Food Records"
     },
-   
     "travel_scenery": {
       "chinese": "旅行风景",
       "english": "Travel Scenery"
     },
-   
     "screenshot": {
       "chinese": "手机截图",
       "english": "Mobile Screenshots"
     },
-   
     "other": {
       "chinese": "其它",
       "english": "Other Images"
@@ -53,7 +50,6 @@
       "chinese": "二维码",
       "english": "QR Code"
     }
-   
   },
   "categoryDisplayOrder": [
     "single_person",
@@ -68,12 +64,14 @@
     "NA"
   ],
   "objectMappings": {
-    "animals": "pets", 
+    "animals": "pets",
     "food": "foods",
     "transportation": "travel_scenery",
     "infrastructure": "travel_scenery",
     "nature": "travel_scenery",
-    "daily_items": "other"
+    "daily_items": "other",
+    "sports": "social_activities",
+    "people": "single_person"
   },
   "objectCategories": {
     "person": {
@@ -3186,7 +3184,8 @@
     "Arabian camel, dromedary, Camelus dromedarius": {
       "id": 354,
       "chinese": "骆驼",
-      "english": "Arabian camel, dromedary, Camelus dromedarius"
+      "english": "Arabian camel, dromedary, Camelus dromedarius",
+      "category": "animals"
     },
     "llama": {
       "id": 355,
@@ -3198,37 +3197,44 @@
     "weasel": {
       "id": 356,
       "chinese": "狸",
-      "english": "weasel"
+      "english": "weasel",
+      "category": "animals"
     },
     "mink": {
       "id": 357,
       "chinese": "狸",
-      "english": "mink"
+      "english": "mink",
+      "category": "animals"
     },
     "polecat, fitch, foulmart, foumart, Mustela putorius": {
       "id": 358,
       "chinese": "狸",
-      "english": "polecat, fitch, foulmart, foumart, Mustela putorius"
+      "english": "polecat, fitch, foulmart, foumart, Mustela putorius",
+      "category": "animals"
     },
     "black-footed ferret, ferret, Mustela nigripes": {
       "id": 359,
       "chinese": "狸",
-      "english": "black-footed ferret, ferret, Mustela nigripes"
+      "english": "black-footed ferret, ferret, Mustela nigripes",
+      "category": "animals"
     },
     "otter": {
       "id": 360,
       "chinese": "狸",
-      "english": "otter"
+      "english": "otter",
+      "category": "animals"
     },
     "skunk, polecat, wood pussy": {
       "id": 361,
       "chinese": "狸",
-      "english": "skunk, polecat, wood pussy"
+      "english": "skunk, polecat, wood pussy",
+      "category": "animals"
     },
     "badger": {
       "id": 362,
       "chinese": "狸",
-      "english": "badger"
+      "english": "badger",
+      "category": "animals"
     },
     "armadillo": {
       "id": 363,
@@ -3247,7 +3253,8 @@
     "orangutan, orang, orangutang, Pongo pygmaeus": {
       "id": 365,
       "chinese": "狒狒",
-      "english": "orangutan, orang, orangutang, Pongo pygmaeus"
+      "english": "orangutan, orang, orangutang, Pongo pygmaeus",
+      "category": "animals"
     },
     "gorilla, Gorilla gorilla": {
       "id": 366,
@@ -3483,12 +3490,14 @@
     "abaya": {
       "id": 399,
       "chinese": "穆斯林",
-      "english": "abaya"
+      "english": "abaya",
+      "category": "daily_items"
     },
     "academic gown, academic robe, judge’s robe": {
       "id": 400,
       "chinese": "学士服",
-      "english": "academic gown, academic robe, judge’s robe"
+      "english": "academic gown, academic robe, judge’s robe",
+      "category": "daily_items"
     },
     "accordion, piano accordion, squeeze box": {
       "id": 401,
@@ -3521,7 +3530,8 @@
     "airship, dirigible": {
       "id": 405,
       "chinese": "飞艇",
-      "english": "airship, dirigible"
+      "english": "airship, dirigible",
+      "category": "transportation"
     },
     "altar": {
       "id": 406,
@@ -3547,27 +3557,32 @@
     "analog clock": {
       "id": 409,
       "chinese": "钟",
-      "english": "analog clock"
+      "english": "analog clock",
+      "category": "daily_items"
     },
     "apiary, bee house": {
       "id": 410,
       "chinese": "箱子",
-      "english": "apiary, bee house"
+      "english": "apiary, bee house",
+      "category": "infrastructure"
     },
     "apron": {
       "id": 411,
       "chinese": "围裙",
-      "english": "apron"
+      "english": "apron",
+      "category": "daily_items"
     },
     "ashcan, trash can, garbage can, wastebin, ash bin, ash-bin, ashbin, dustbin, trash barrel, trash bin": {
       "id": 412,
       "chinese": "垃圾箱",
-      "english": "ashcan, trash can, garbage can, wastebin, ash bin, ash-bin, ashbin, dustbin, trash barrel, trash bin"
+      "english": "ashcan, trash can, garbage can, wastebin, ash bin, ash-bin, ashbin, dustbin, trash barrel, trash bin",
+      "category": "daily_items"
     },
     "assault rifle, assault gun": {
       "id": 413,
       "chinese": "枪",
-      "english": "assault rifle, assault gun"
+      "english": "assault rifle, assault gun",
+      "category": "daily_items"
     },
     "backpack, back pack, knapsack, packsack, rucksack, haversack": {
       "id": 414,
@@ -3586,7 +3601,8 @@
     "balance beam, beam": {
       "id": 416,
       "chinese": "体操",
-      "english": "balance beam, beam"
+      "english": "balance beam, beam",
+      "category": "sports"
     },
     "balloon": {
       "id": 417,
@@ -3605,17 +3621,20 @@
     "Band Aid": {
       "id": 419,
       "chinese": "邦迪",
-      "english": "Band Aid"
+      "english": "Band Aid",
+      "category": "daily_items"
     },
     "banjo": {
       "id": 420,
       "chinese": "乐器",
-      "english": "banjo"
+      "english": "banjo",
+      "category": "daily_items"
     },
     "bannister, banister, balustrade, balusters, handrail": {
       "id": 421,
       "chinese": "楼梯",
-      "english": "bannister, banister, balustrade, balusters, handrail"
+      "english": "bannister, banister, balustrade, balusters, handrail",
+      "category": "daily_items"
     },
     "barbell": {
       "id": 422,
@@ -3627,22 +3646,26 @@
     "barber chair": {
       "id": 423,
       "chinese": "座椅",
-      "english": "barber chair"
+      "english": "barber chair",
+      "category": "daily_items"
     },
     "barbershop": {
       "id": 424,
       "chinese": "理发",
-      "english": "barbershop"
+      "english": "barbershop",
+      "category": "infrastructure"
     },
     "barn": {
       "id": 425,
       "chinese": "木屋",
-      "english": "barn"
+      "english": "barn",
+      "category": "infrastructure"
     },
     "barometer": {
       "id": 426,
       "chinese": "表",
-      "english": "barometer"
+      "english": "barometer",
+      "category": "daily_items"
     },
     "barrel, cask": {
       "id": 427,
@@ -3675,12 +3698,14 @@
     "bassinet": {
       "id": 431,
       "chinese": "婴儿",
-      "english": "bassinet"
+      "english": "bassinet",
+      "category": "daily_items"
     },
     "bassoon": {
       "id": 432,
       "chinese": "乐器",
-      "english": "bassoon"
+      "english": "bassoon",
+      "category": "daily_items"
     },
     "bathing cap, swimming cap": {
       "id": 433,
@@ -3699,7 +3724,8 @@
     "bathtub, bathing tub, bath, tub": {
       "id": 435,
       "chinese": "浴缸",
-      "english": "bathtub, bathing tub, bath, tub"
+      "english": "bathtub, bathing tub, bath, tub",
+      "category": "daily_items"
     },
     "heck, beach wagon, station wagon, wagon, estate car, beach waggon, station waggon, waggon": {
       "id": 436,
@@ -3718,12 +3744,14 @@
     "beaker": {
       "id": 438,
       "chinese": "烧杯",
-      "english": "beaker"
+      "english": "beaker",
+      "category": "daily_items"
     },
     "bearskin, busby, shako": {
       "id": 439,
       "chinese": "守卫",
-      "english": "bearskin, busby, shako"
+      "english": "bearskin, busby, shako",
+      "category": "daily_items"
     },
     "beer bottle": {
       "id": 440,
@@ -3749,7 +3777,8 @@
     "bib": {
       "id": 443,
       "chinese": "围兜",
-      "english": "bib"
+      "english": "bib",
+      "category": "daily_items"
     },
     "bicycle-built-for-two, tandem bicycle, tandem": {
       "id": 444,
@@ -3761,7 +3790,8 @@
     "bikini, two-piece": {
       "id": 445,
       "chinese": "比基尼",
-      "english": "bikini, two-piece"
+      "english": "bikini, two-piece",
+      "category": "daily_items"
     },
     "binder, ring-binder": {
       "id": 446,
@@ -3773,17 +3803,20 @@
     "binoculars, field glasses, opera glasses": {
       "id": 447,
       "chinese": "望远镜",
-      "english": "binoculars, field glasses, opera glasses"
+      "english": "binoculars, field glasses, opera glasses",
+      "category": "daily_items"
     },
     "birdhouse": {
       "id": 448,
       "chinese": "信箱",
-      "english": "birdhouse"
+      "english": "birdhouse",
+      "category": "infrastructure"
     },
     "boathouse": {
       "id": 449,
       "chinese": "小屋",
-      "english": "boathouse"
+      "english": "boathouse",
+      "category": "infrastructure"
     },
     "bobsled, bobsleigh, bob": {
       "id": 450,
@@ -3823,7 +3856,8 @@
     "bottlecap": {
       "id": 455,
       "chinese": "瓶盖",
-      "english": "bottlecap"
+      "english": "bottlecap",
+      "category": "daily_items"
     },
     "bow": {
       "id": 456,
@@ -3835,17 +3869,20 @@
     "bow tie, bow-tie, bowtie": {
       "id": 457,
       "chinese": "领结",
-      "english": "bow tie, bow-tie, bowtie"
+      "english": "bow tie, bow-tie, bowtie",
+      "category": "daily_items"
     },
     "brass, memorial tablet, plaque": {
       "id": 458,
       "chinese": "墓碑",
-      "english": "brass, memorial tablet, plaque"
+      "english": "brass, memorial tablet, plaque",
+      "category": "daily_items"
     },
     "brassiere, bra, bandeau": {
       "id": 459,
       "chinese": "胸罩",
-      "english": "brassiere, bra, bandeau"
+      "english": "brassiere, bra, bandeau",
+      "category": "daily_items"
     },
     "breakwater, groin, groyne, mole, bulwark, seawall, jetty": {
       "id": 460,
@@ -3871,17 +3908,20 @@
     "bucket, pail": {
       "id": 463,
       "chinese": "水桶",
-      "english": "bucket, pail"
+      "english": "bucket, pail",
+      "category": "daily_items"
     },
     "buckle": {
       "id": 464,
       "chinese": "皮带",
-      "english": "buckle"
+      "english": "buckle",
+      "category": "daily_items"
     },
     "bulletproof vest": {
       "id": 465,
       "chinese": "防弹背心",
-      "english": "bulletproof vest"
+      "english": "bulletproof vest",
+      "category": "daily_items"
     },
     "bullet train, bullet": {
       "id": 466,
@@ -3907,7 +3947,8 @@
     "caldron, cauldron": {
       "id": 469,
       "chinese": "锅",
-      "english": "caldron, cauldron"
+      "english": "caldron, cauldron",
+      "category": "daily_items"
     },
     "candle, taper, wax light": {
       "id": 470,
@@ -3919,12 +3960,14 @@
     "cannon": {
       "id": 471,
       "chinese": "炮",
-      "english": "cannon"
+      "english": "cannon",
+      "category": "daily_items"
     },
     "canoe": {
       "id": 472,
       "chinese": "艇",
-      "english": "canoe"
+      "english": "canoe",
+      "category": "transportation"
     },
     "can opener, tin opener": {
       "id": 473,
@@ -3943,7 +3986,8 @@
     "car mirror": {
       "id": 475,
       "chinese": "反光镜",
-      "english": "car mirror"
+      "english": "car mirror",
+      "category": "transportation"
     },
     "carousel, carrousel, merry-go-round, roundabout, whirligig": {
       "id": 476,
@@ -3962,32 +4006,38 @@
     "carton": {
       "id": 478,
       "chinese": "盒子",
-      "english": "carton"
+      "english": "carton",
+      "category": "daily_items"
     },
     "car wheel": {
       "id": 479,
       "chinese": "轮胎",
-      "english": "car wheel"
+      "english": "car wheel",
+      "category": "transportation"
     },
     "cash machine, cash dispenser, automated teller machine, automatic teller machine, automated teller, automatic teller, ATM": {
       "id": 480,
       "chinese": "取款机",
-      "english": "cash machine, cash dispenser, automated teller machine, automatic teller machine, automated teller, automatic teller, ATM"
+      "english": "cash machine, cash dispenser, automated teller machine, automatic teller machine, automated teller, automatic teller, ATM",
+      "category": "daily_items"
     },
     "cassette": {
       "id": 481,
       "chinese": "磁带",
-      "english": "cassette"
+      "english": "cassette",
+      "category": "daily_items"
     },
     "cassette player": {
       "id": 482,
       "chinese": "磁带",
-      "english": "cassette player"
+      "english": "cassette player",
+      "category": "daily_items"
     },
     "castle": {
       "id": 483,
       "chinese": "城堡",
-      "english": "castle"
+      "english": "castle",
+      "category": "infrastructure"
     },
     "catamaran": {
       "id": 484,
@@ -3999,7 +4049,8 @@
     "CD player": {
       "id": 485,
       "chinese": "cd播放器",
-      "english": "CD player"
+      "english": "CD player",
+      "category": "daily_items"
     },
     "cello, violoncello": {
       "id": 486,
@@ -4018,32 +4069,38 @@
     "chain": {
       "id": 488,
       "chinese": "铁链",
-      "english": "chain"
+      "english": "chain",
+      "category": "daily_items"
     },
     "chainlink fence": {
       "id": 489,
       "chinese": "铁丝网",
-      "english": "chainlink fence"
+      "english": "chainlink fence",
+      "category": "daily_items"
     },
     "chain mail, ring mail, mail, chain armor, chain armour, ring armor, ring armour": {
       "id": 490,
       "chinese": "铁丝网",
-      "english": "chain mail, ring mail, mail, chain armor, chain armour, ring armor, ring armour"
+      "english": "chain mail, ring mail, mail, chain armor, chain armour, ring armor, ring armour",
+      "category": "daily_items"
     },
     "chain saw, chainsaw": {
       "id": 491,
       "chinese": "电锯",
-      "english": "chain saw, chainsaw"
+      "english": "chain saw, chainsaw",
+      "category": "daily_items"
     },
     "chest": {
       "id": 492,
       "chinese": "木箱",
-      "english": "chest"
+      "english": "chest",
+      "category": "daily_items"
     },
     "chiffonier, commode": {
       "id": 493,
       "chinese": "木柜",
-      "english": "chiffonier, commode"
+      "english": "chiffonier, commode",
+      "category": "daily_items"
     },
     "chime, bell, gong": {
       "id": 494,
@@ -4083,17 +4140,20 @@
     "cleaver, meat cleaver, chopper": {
       "id": 499,
       "chinese": "刀",
-      "english": "cleaver, meat cleaver, chopper"
+      "english": "cleaver, meat cleaver, chopper",
+      "category": "daily_items"
     },
     "cliff dwelling": {
       "id": 500,
       "chinese": "堡垒",
-      "english": "cliff dwelling"
+      "english": "cliff dwelling",
+      "category": "infrastructure"
     },
     "cloak": {
       "id": 501,
       "chinese": "斗篷",
-      "english": "cloak"
+      "english": "cloak",
+      "category": "daily_items"
     },
     "clog, geta, patten, sabot": {
       "id": 502,
@@ -4119,12 +4179,14 @@
     "coffeepot": {
       "id": 505,
       "chinese": "壶",
-      "english": "coffeepot"
+      "english": "coffeepot",
+      "category": "daily_items"
     },
     "coil, spiral, volute, whorl, helix": {
       "id": 506,
       "chinese": "螺旋",
-      "english": "coil, spiral, volute, whorl, helix"
+      "english": "coil, spiral, volute, whorl, helix",
+      "category": "daily_items"
     },
     "combination lock": {
       "id": 507,
@@ -4164,12 +4226,14 @@
     "corkscrew, bottle screw": {
       "id": 512,
       "chinese": "开瓶器",
-      "english": "corkscrew, bottle screw"
+      "english": "corkscrew, bottle screw",
+      "category": "daily_items"
     },
     "cornet, horn, trumpet, trump": {
       "id": 513,
       "chinese": "号（乐器）",
-      "english": "cornet, horn, trumpet, trump"
+      "english": "cornet, horn, trumpet, trump",
+      "category": "daily_items"
     },
     "cowboy boot": {
       "id": 514,
@@ -4202,7 +4266,8 @@
     "crate": {
       "id": 519,
       "chinese": "木箱",
-      "english": "crate"
+      "english": "crate",
+      "category": "daily_items"
     },
     "crib, cot": {
       "id": 520,
@@ -4242,12 +4307,14 @@
     "dam, dike, dyke": {
       "id": 525,
       "chinese": "水库",
-      "english": "dam, dike, dyke"
+      "english": "dam, dike, dyke",
+      "category": "infrastructure"
     },
     "desk": {
       "id": 526,
       "chinese": "办公桌",
-      "english": "desk"
+      "english": "desk",
+      "category": "daily_items"
     },
     "desktop computer": {
       "id": 527,
@@ -4266,7 +4333,8 @@
     "diaper, nappy, napkin": {
       "id": 529,
       "chinese": "尿布",
-      "english": "diaper, nappy, napkin"
+      "english": "diaper, nappy, napkin",
+      "category": "daily_items"
     },
     "digital clock": {
       "id": 530,
@@ -4285,12 +4353,14 @@
     "dining table, board": {
       "id": 532,
       "chinese": "餐桌",
-      "english": "dining table, board"
+      "english": "dining table, board",
+      "category": "daily_items"
     },
     "dishrag, dishcloth": {
       "id": 533,
       "chinese": "垫子",
-      "english": "dishrag, dishcloth"
+      "english": "dishrag, dishcloth",
+      "category": "daily_items"
     },
     "dishwasher, dish washer, dishwashing machine": {
       "id": 534,
@@ -4323,7 +4393,8 @@
     "dome": {
       "id": 538,
       "chinese": "穹顶",
-      "english": "dome"
+      "english": "dome",
+      "category": "infrastructure"
     },
     "doormat, welcome mat": {
       "id": 539,
@@ -4335,7 +4406,8 @@
     "drilling platform, offshore rig": {
       "id": 540,
       "chinese": "油田",
-      "english": "drilling platform, offshore rig"
+      "english": "drilling platform, offshore rig",
+      "category": "infrastructure"
     },
     "drum, membranophone, tympan": {
       "id": 541,
@@ -4361,7 +4433,8 @@
     "Dutch oven": {
       "id": 544,
       "chinese": "锅",
-      "english": "Dutch oven"
+      "english": "Dutch oven",
+      "category": "daily_items"
     },
     "electric fan, blower": {
       "id": 545,
@@ -4394,7 +4467,8 @@
     "envelope": {
       "id": 549,
       "chinese": "信",
-      "english": "envelope"
+      "english": "envelope",
+      "category": "daily_items"
     },
     "espresso maker": {
       "id": 550,
@@ -4413,7 +4487,8 @@
     "feather boa, boa": {
       "id": 552,
       "chinese": "绒毛",
-      "english": "feather boa, boa"
+      "english": "feather boa, boa",
+      "category": "daily_items"
     },
     "file, file cabinet, filing cabinet": {
       "id": 553,
@@ -4439,22 +4514,26 @@
     "fire screen, fireguard": {
       "id": 556,
       "chinese": "壁炉",
-      "english": "fire screen, fireguard"
+      "english": "fire screen, fireguard",
+      "category": "daily_items"
     },
     "flagpole, flagstaff": {
       "id": 557,
       "chinese": "旗杆",
-      "english": "flagpole, flagstaff"
+      "english": "flagpole, flagstaff",
+      "category": "daily_items"
     },
     "flute, transverse flute": {
       "id": 558,
       "chinese": "笛子",
-      "english": "flute, transverse flute"
+      "english": "flute, transverse flute",
+      "category": "daily_items"
     },
     "folding chair": {
       "id": 559,
       "chinese": "座椅",
-      "english": "folding chair"
+      "english": "folding chair",
+      "category": "daily_items"
     },
     "football helmet": {
       "id": 560,
@@ -4501,17 +4580,20 @@
     "French horn, horn": {
       "id": 566,
       "chinese": "圆号",
-      "english": "French horn, horn"
+      "english": "French horn, horn",
+      "category": "daily_items"
     },
     "frying pan, frypan, skillet": {
       "id": 567,
       "chinese": "平底锅",
-      "english": "frying pan, frypan, skillet"
+      "english": "frying pan, frypan, skillet",
+      "category": "daily_items"
     },
     "fur coat": {
       "id": 568,
       "chinese": "裘皮",
-      "english": "fur coat"
+      "english": "fur coat",
+      "category": "daily_items"
     },
     "heck, garbage truck, dustcart": {
       "id": 569,
@@ -4523,12 +4605,14 @@
     "gasmask, respirator, gas helmet": {
       "id": 570,
       "chinese": "面具",
-      "english": "gasmask, respirator, gas helmet"
+      "english": "gasmask, respirator, gas helmet",
+      "category": "daily_items"
     },
     "gas pump, gasoline pump, petrol pump, island dispenser": {
       "id": 571,
       "chinese": "加油",
-      "english": "gas pump, gasoline pump, petrol pump, island dispenser"
+      "english": "gas pump, gasoline pump, petrol pump, island dispenser",
+      "category": "transportation"
     },
     "goblet": {
       "id": 572,
@@ -4547,7 +4631,8 @@
     "golf ball": {
       "id": 574,
       "chinese": "高尔夫",
-      "english": "golf ball"
+      "english": "golf ball",
+      "category": "sports"
     },
     "golfcart, golf cart": {
       "id": 575,
@@ -4573,7 +4658,8 @@
     "gown": {
       "id": 578,
       "chinese": "婚纱",
-      "english": "gown"
+      "english": "gown",
+      "category": "daily_items"
     },
     "grand piano, grand": {
       "id": 579,
@@ -4585,7 +4671,8 @@
     "greenhouse, nursery, glasshouse": {
       "id": 580,
       "chinese": "大棚",
-      "english": "greenhouse, nursery, glasshouse"
+      "english": "greenhouse, nursery, glasshouse",
+      "category": "infrastructure"
     },
     "标 check, grille, radiator grille": {
       "id": 581,
@@ -4597,22 +4684,26 @@
     "grocery store, grocery, food market, market": {
       "id": 582,
       "chinese": "菜场",
-      "english": "grocery store, grocery, food market, market"
+      "english": "grocery store, grocery, food market, market",
+      "category": "infrastructure"
     },
     "guillotine": {
       "id": 583,
       "chinese": "断头台",
-      "english": "guillotine"
+      "english": "guillotine",
+      "category": "daily_items"
     },
     "hair slide": {
       "id": 584,
       "chinese": "发饰",
-      "english": "hair slide"
+      "english": "hair slide",
+      "category": "daily_items"
     },
     "hair spray": {
       "id": 585,
       "chinese": "发蜡",
-      "english": "hair spray"
+      "english": "hair spray",
+      "category": "daily_items"
     },
     "half track": {
       "id": 586,
@@ -4624,12 +4715,14 @@
     "hammer": {
       "id": 587,
       "chinese": "榔头",
-      "english": "hammer"
+      "english": "hammer",
+      "category": "daily_items"
     },
     "hamper": {
       "id": 588,
       "chinese": "竹筒",
-      "english": "hamper"
+      "english": "hamper",
+      "category": "daily_items"
     },
     "hand blower, blow dryer, blow drier, hair dryer, hair drier": {
       "id": 589,
@@ -4641,17 +4734,20 @@
     "hand-held computer, hand-held microcomputer": {
       "id": 590,
       "chinese": "pos机",
-      "english": "hand-held computer, hand-held microcomputer"
+      "english": "hand-held computer, hand-held microcomputer",
+      "category": "daily_items"
     },
     "handkerchief, hankie, hanky, hankey": {
       "id": 591,
       "chinese": "手帕",
-      "english": "handkerchief, hankie, hanky, hankey"
+      "english": "handkerchief, hankie, hanky, hankey",
+      "category": "daily_items"
     },
     "hard disc, hard disk, fixed disk": {
       "id": 592,
       "chinese": "硬盘",
-      "english": "hard disc, hard disk, fixed disk"
+      "english": "hard disc, hard disk, fixed disk",
+      "category": "daily_items"
     },
     "harmonica, mouth organ, harp, mouth harp": {
       "id": 593,
@@ -4698,12 +4794,14 @@
     "honeycomb": {
       "id": 599,
       "chinese": "蜂巢",
-      "english": "honeycomb"
+      "english": "honeycomb",
+      "category": "daily_items"
     },
     "hook, claw": {
       "id": 600,
       "chinese": "钩子",
-      "english": "hook, claw"
+      "english": "hook, claw",
+      "category": "daily_items"
     },
     "hoopskirt, crinoline": {
       "id": 601,
@@ -4715,7 +4813,8 @@
     "horizontal bar, high bar": {
       "id": 602,
       "chinese": "体操",
-      "english": "horizontal bar, high bar"
+      "english": "horizontal bar, high bar",
+      "category": "sports"
     },
     "horse cart, horse-cart": {
       "id": 603,
@@ -4734,7 +4833,8 @@
     "iPod": {
       "id": 605,
       "chinese": "音乐播放器",
-      "english": "iPod"
+      "english": "iPod",
+      "category": "daily_items"
     },
     "iron, smoothing iron": {
       "id": 606,
@@ -4746,7 +4846,8 @@
     "jack-o’-lantern": {
       "id": 607,
       "chinese": "南瓜灯",
-      "english": "jack-o’-lantern"
+      "english": "jack-o’-lantern",
+      "category": "daily_items"
     },
     "jean, blue jean, denim": {
       "id": 608,
@@ -4772,7 +4873,8 @@
     "jigsaw puzzle": {
       "id": 611,
       "chinese": "拼图",
-      "english": "jigsaw puzzle"
+      "english": "jigsaw puzzle",
+      "category": "daily_items"
     },
     "jinrikisha, ricksha, rickshaw": {
       "id": 612,
@@ -4784,27 +4886,32 @@
     "joystick": {
       "id": 613,
       "chinese": "操纵杆",
-      "english": "joystick"
+      "english": "joystick",
+      "category": "daily_items"
     },
     "kimono": {
       "id": 614,
       "chinese": "和服",
-      "english": "kimono"
+      "english": "kimono",
+      "category": "daily_items"
     },
     "knee pad": {
       "id": 615,
       "chinese": "护具",
-      "english": "knee pad"
+      "english": "knee pad",
+      "category": "sports"
     },
     "knot": {
       "id": 616,
       "chinese": "绳结",
-      "english": "knot"
+      "english": "knot",
+      "category": "daily_items"
     },
     "lab coat, laboratory coat": {
       "id": 617,
       "chinese": "医生",
-      "english": "lab coat, laboratory coat"
+      "english": "lab coat, laboratory coat",
+      "category": "daily_items"
     },
     "ladle": {
       "id": 618,
@@ -4816,7 +4923,8 @@
     "lampshade, lamp shade": {
       "id": 619,
       "chinese": "灯",
-      "english": "lampshade, lamp shade"
+      "english": "lampshade, lamp shade",
+      "category": "daily_items"
     },
     "laptop, laptop computer": {
       "id": 620,
@@ -4842,7 +4950,8 @@
     "letter opener, paper knife, paperknife": {
       "id": 623,
       "chinese": "小刀",
-      "english": "letter opener, paper knife, paperknife"
+      "english": "letter opener, paper knife, paperknife",
+      "category": "daily_items"
     },
     "library": {
       "id": 624,
@@ -4910,17 +5019,20 @@
     "loupe, jeweler’s loupe": {
       "id": 633,
       "chinese": "放大镜",
-      "english": "loupe, jeweler’s loupe"
+      "english": "loupe, jeweler’s loupe",
+      "category": "daily_items"
     },
     "lumbermill, sawmill": {
       "id": 634,
       "chinese": "原木",
-      "english": "lumbermill, sawmill"
+      "english": "lumbermill, sawmill",
+      "category": "infrastructure"
     },
     "magnetic compass": {
       "id": 635,
       "chinese": "指南针",
-      "english": "magnetic compass"
+      "english": "magnetic compass",
+      "category": "daily_items"
     },
     "mailbag, postbag": {
       "id": 636,
@@ -4932,7 +5044,8 @@
     "mailbox, letter box": {
       "id": 637,
       "chinese": "邮箱",
-      "english": "mailbox, letter box"
+      "english": "mailbox, letter box",
+      "category": "daily_items"
     },
     "maillot": {
       "id": 638,
@@ -4951,22 +5064,26 @@
     "manhole cover": {
       "id": 640,
       "chinese": "窨井盖",
-      "english": "manhole cover"
+      "english": "manhole cover",
+      "category": "daily_items"
     },
     "maraca": {
       "id": 641,
       "chinese": "手摇铃",
-      "english": "maraca"
+      "english": "maraca",
+      "category": "daily_items"
     },
     "marimba, xylophone": {
       "id": 642,
       "chinese": "木琴",
-      "english": "marimba, xylophone"
+      "english": "marimba, xylophone",
+      "category": "daily_items"
     },
     "mask": {
       "id": 643,
       "chinese": "面具",
-      "english": "mask"
+      "english": "mask",
+      "category": "daily_items"
     },
     "matchstick": {
       "id": 644,
@@ -4978,17 +5095,20 @@
     "maypole": {
       "id": 645,
       "chinese": "绳子",
-      "english": "maypole"
+      "english": "maypole",
+      "category": "infrastructure"
     },
     "maze, labyrinth": {
       "id": 646,
       "chinese": "迷宫",
-      "english": "maze, labyrinth"
+      "english": "maze, labyrinth",
+      "category": "daily_items"
     },
     "measuring cup": {
       "id": 647,
       "chinese": "烧杯",
-      "english": "measuring cup"
+      "english": "measuring cup",
+      "category": "daily_items"
     },
     "medicine chest, medicine cabinet": {
       "id": 648,
@@ -5007,7 +5127,8 @@
     "microphone, mike": {
       "id": 650,
       "chinese": "话筒",
-      "english": "microphone, mike"
+      "english": "microphone, mike",
+      "category": "daily_items"
     },
     "microwave, microwave oven": {
       "id": 651,
@@ -5019,12 +5140,14 @@
     "military uniform": {
       "id": 652,
       "chinese": "军人",
-      "english": "military uniform"
+      "english": "military uniform",
+      "category": "daily_items"
     },
     "milk can": {
       "id": 653,
       "chinese": "水壶",
-      "english": "milk can"
+      "english": "milk can",
+      "category": "daily_items"
     },
     "heck, minibus": {
       "id": 654,
@@ -5036,7 +5159,8 @@
     "miniskirt, mini": {
       "id": 655,
       "chinese": "短裙",
-      "english": "miniskirt, mini"
+      "english": "miniskirt, mini",
+      "category": "daily_items"
     },
     "heck, minivan": {
       "id": 656,
@@ -5111,12 +5235,14 @@
     "mortar": {
       "id": 666,
       "chinese": "砚",
-      "english": "mortar"
+      "english": "mortar",
+      "category": "daily_items"
     },
     "mortarboard": {
       "id": 667,
       "chinese": "学士帽",
-      "english": "mortarboard"
+      "english": "mortarboard",
+      "category": "daily_items"
     },
     "mosque": {
       "id": 668,
@@ -5240,12 +5366,14 @@
     "odometer, hodometer, mileometer, milometer": {
       "id": 685,
       "chinese": "仪表盘",
-      "english": "odometer, hodometer, mileometer, milometer"
+      "english": "odometer, hodometer, mileometer, milometer",
+      "category": "daily_items"
     },
     "oil filter": {
       "id": 686,
       "chinese": "机油滤清器",
-      "english": "oil filter"
+      "english": "oil filter",
+      "category": "daily_items"
     },
     "organ, pipe organ": {
       "id": 687,
@@ -5257,12 +5385,14 @@
     "oscilloscope, scope, cathode-ray oscilloscope, CRO": {
       "id": 688,
       "chinese": "示波器",
-      "english": "oscilloscope, scope, cathode-ray oscilloscope, CRO"
+      "english": "oscilloscope, scope, cathode-ray oscilloscope, CRO",
+      "category": "daily_items"
     },
     "overskirt": {
       "id": 689,
       "chinese": "礼服",
-      "english": "overskirt"
+      "english": "overskirt",
+      "category": "daily_items"
     },
     "oxcart": {
       "id": 690,
@@ -5274,22 +5404,26 @@
     "oxygen mask": {
       "id": 691,
       "chinese": "呼吸器",
-      "english": "oxygen mask"
+      "english": "oxygen mask",
+      "category": "daily_items"
     },
     "packet": {
       "id": 692,
       "chinese": "零食",
-      "english": "packet"
+      "english": "packet",
+      "category": "daily_items"
     },
     "paddle, boat paddle": {
       "id": 693,
       "chinese": "划桨",
-      "english": "paddle, boat paddle"
+      "english": "paddle, boat paddle",
+      "category": "daily_items"
     },
     "paddlewheel, paddle wheel": {
       "id": 694,
       "chinese": "水轮",
-      "english": "paddlewheel, paddle wheel"
+      "english": "paddlewheel, paddle wheel",
+      "category": "transportation"
     },
     "padlock": {
       "id": 695,
@@ -5322,22 +5456,26 @@
     "panpipe, pandean pipe, syrinx": {
       "id": 699,
       "chinese": "乐器",
-      "english": "panpipe, pandean pipe, syrinx"
+      "english": "panpipe, pandean pipe, syrinx",
+      "category": "daily_items"
     },
     "paper towel": {
       "id": 700,
       "chinese": "纸巾",
-      "english": "paper towel"
+      "english": "paper towel",
+      "category": "daily_items"
     },
     "parachute, chute": {
       "id": 701,
       "chinese": "降落伞",
-      "english": "parachute, chute"
+      "english": "parachute, chute",
+      "category": "daily_items"
     },
     "parallel bars, bars": {
       "id": 702,
       "chinese": "体操",
-      "english": "parallel bars, bars"
+      "english": "parallel bars, bars",
+      "category": "sports"
     },
     "park bench": {
       "id": 703,
@@ -5363,7 +5501,8 @@
     "patio, terrace": {
       "id": 706,
       "chinese": "院子",
-      "english": "patio, terrace"
+      "english": "patio, terrace",
+      "category": "infrastructure"
     },
     "pay-phone, pay-station": {
       "id": 707,
@@ -5375,12 +5514,14 @@
     "pedestal, plinth, footstall": {
       "id": 708,
       "chinese": "柱子",
-      "english": "pedestal, plinth, footstall"
+      "english": "pedestal, plinth, footstall",
+      "category": "daily_items"
     },
     "pencil box, pencil case": {
       "id": 709,
       "chinese": "文具袋",
-      "english": "pencil box, pencil case"
+      "english": "pencil box, pencil case",
+      "category": "daily_items"
     },
     "pencil sharpener": {
       "id": 710,
@@ -5399,7 +5540,8 @@
     "Petri dish": {
       "id": 712,
       "chinese": "培养皿",
-      "english": "Petri dish"
+      "english": "Petri dish",
+      "category": "daily_items"
     },
     "photocopier": {
       "id": 713,
@@ -5446,7 +5588,8 @@
     "piggy bank, penny bank": {
       "id": 719,
       "chinese": "储蓄罐",
-      "english": "piggy bank, penny bank"
+      "english": "piggy bank, penny bank",
+      "category": "daily_items"
     },
     "pill bottle": {
       "id": 720,
@@ -5493,7 +5636,8 @@
     "plane, carpenter’s plane, woodworking plane": {
       "id": 726,
       "chinese": "刨子",
-      "english": "plane, carpenter’s plane, woodworking plane"
+      "english": "plane, carpenter’s plane, woodworking plane",
+      "category": "daily_items"
     },
     "planetarium": {
       "id": 727,
@@ -5519,12 +5663,14 @@
     "plow, plough": {
       "id": 730,
       "chinese": "推土机",
-      "english": "plow, plough"
+      "english": "plow, plough",
+      "category": "daily_items"
     },
     "plunger, plumber’s helper": {
       "id": 731,
       "chinese": "搋子",
-      "english": "plunger, plumber’s helper"
+      "english": "plunger, plumber’s helper",
+      "category": "daily_items"
     },
     "Polaroid camera, Polaroid Land camera": {
       "id": 732,
@@ -5536,7 +5682,8 @@
     "pole": {
       "id": 733,
       "chinese": "杆子",
-      "english": "pole"
+      "english": "pole",
+      "category": "daily_items"
     },
     "heck, police van, police wagon, paddy wagon, patrol wagon, wagon, black Maria": {
       "id": 734,
@@ -5576,12 +5723,14 @@
     "potter’s wheel": {
       "id": 739,
       "chinese": "陶艺",
-      "english": "potter’s wheel"
+      "english": "potter’s wheel",
+      "category": "daily_items"
     },
     "power drill": {
       "id": 740,
       "chinese": "钻机",
-      "english": "power drill"
+      "english": "power drill",
+      "category": "daily_items"
     },
     "prayer rug, prayer mat": {
       "id": 741,
@@ -5600,7 +5749,8 @@
     "prison, prison house": {
       "id": 743,
       "chinese": "监狱",
-      "english": "prison, prison house"
+      "english": "prison, prison house",
+      "category": "infrastructure"
     },
     "projectile, missile": {
       "id": 744,
@@ -5626,12 +5776,14 @@
     "punching bag, punch bag, punching ball, punchball": {
       "id": 747,
       "chinese": "拳击",
-      "english": "punching bag, punch bag, punching ball, punchball"
+      "english": "punching bag, punch bag, punching ball, punchball",
+      "category": "sports"
     },
     "purse": {
       "id": 748,
       "chinese": "手提袋",
-      "english": "purse"
+      "english": "purse",
+      "category": "daily_items"
     },
     "quill, quill pen": {
       "id": 749,
@@ -5664,7 +5816,8 @@
     "radiator": {
       "id": 753,
       "chinese": "加热器",
-      "english": "radiator"
+      "english": "radiator",
+      "category": "daily_items"
     },
     "radio, wireless": {
       "id": 754,
@@ -5802,7 +5955,8 @@
     "saltshaker, salt shaker": {
       "id": 773,
       "chinese": "调料瓶",
-      "english": "saltshaker, salt shaker"
+      "english": "saltshaker, salt shaker",
+      "category": "daily_items"
     },
     "sandal": {
       "id": 774,
@@ -5814,7 +5968,8 @@
     "sarong": {
       "id": 775,
       "chinese": "长裙",
-      "english": "sarong"
+      "english": "sarong",
+      "category": "daily_items"
     },
     "sax, saxophone": {
       "id": 776,
@@ -5833,7 +5988,8 @@
     "scale, weighing machine": {
       "id": 778,
       "chinese": "秤",
-      "english": "scale, weighing machine"
+      "english": "scale, weighing machine",
+      "category": "daily_items"
     },
     "school bus": {
       "id": 779,
@@ -5866,7 +6022,8 @@
     "screw": {
       "id": 783,
       "chinese": "螺丝",
-      "english": "screw"
+      "english": "screw",
+      "category": "daily_items"
     },
     "screwdriver": {
       "id": 784,
@@ -5878,7 +6035,8 @@
     "seat belt, seatbelt": {
       "id": 785,
       "chinese": "安全带",
-      "english": "seat belt, seatbelt"
+      "english": "seat belt, seatbelt",
+      "category": "daily_items"
     },
     "sewing machine": {
       "id": 786,
@@ -5897,17 +6055,20 @@
     "shoe shop, shoe-shop, shoe store": {
       "id": 788,
       "chinese": "鞋店",
-      "english": "shoe shop, shoe-shop, shoe store"
+      "english": "shoe shop, shoe-shop, shoe store",
+      "category": "infrastructure"
     },
     "shoji": {
       "id": 789,
       "chinese": "榻榻米",
-      "english": "shoji"
+      "english": "shoji",
+      "category": "daily_items"
     },
     "shopping basket": {
       "id": 790,
       "chinese": "购物篮",
-      "english": "shopping basket"
+      "english": "shopping basket",
+      "category": "daily_items"
     },
     "shopping cart": {
       "id": 791,
@@ -5919,17 +6080,20 @@
     "shovel": {
       "id": 792,
       "chinese": "铲子",
-      "english": "shovel"
+      "english": "shovel",
+      "category": "daily_items"
     },
     "shower cap": {
       "id": 793,
       "chinese": "浴帽",
-      "english": "shower cap"
+      "english": "shower cap",
+      "category": "daily_items"
     },
     "shower curtain": {
       "id": 794,
       "chinese": "浴帘",
-      "english": "shower curtain"
+      "english": "shower curtain",
+      "category": "daily_items"
     },
     "ski": {
       "id": 795,
@@ -5941,7 +6105,8 @@
     "ski mask": {
       "id": 796,
       "chinese": "面罩",
-      "english": "ski mask"
+      "english": "ski mask",
+      "category": "sports"
     },
     "sleeping bag": {
       "id": 797,
@@ -5995,7 +6160,8 @@
     "soap dispenser": {
       "id": 804,
       "chinese": "洗手液",
-      "english": "soap dispenser"
+      "english": "soap dispenser",
+      "category": "daily_items"
     },
     "soccer ball": {
       "id": 805,
@@ -6042,7 +6208,8 @@
     "space heater": {
       "id": 811,
       "chinese": "电热器",
-      "english": "space heater"
+      "english": "space heater",
+      "category": "daily_items"
     },
     "space shuttle": {
       "id": 812,
@@ -6054,7 +6221,8 @@
     "spatula": {
       "id": 813,
       "chinese": "锅铲",
-      "english": "spatula"
+      "english": "spatula",
+      "category": "daily_items"
     },
     "speedboat": {
       "id": 814,
@@ -6073,7 +6241,8 @@
     "spindle": {
       "id": 816,
       "chinese": "毛线",
-      "english": "spindle"
+      "english": "spindle",
+      "category": "daily_items"
     },
     "heck, sports car, sport car": {
       "id": 817,
@@ -6085,12 +6254,14 @@
     "spotlight, spot": {
       "id": 818,
       "chinese": "探照灯",
-      "english": "spotlight, spot"
+      "english": "spotlight, spot",
+      "category": "daily_items"
     },
     "stage": {
       "id": 819,
       "chinese": "乐队",
-      "english": "stage"
+      "english": "stage",
+      "category": "daily_items"
     },
     "steam locomotive": {
       "id": 820,
@@ -6144,12 +6315,14 @@
     "stove": {
       "id": 827,
       "chinese": "火炉",
-      "english": "stove"
+      "english": "stove",
+      "category": "daily_items"
     },
     "strainer": {
       "id": 828,
       "chinese": "滤网",
-      "english": "strainer"
+      "english": "strainer",
+      "category": "daily_items"
     },
     "heck, streetcar, tram, tramcar, trolley, trolley car": {
       "id": 829,
@@ -6175,7 +6348,8 @@
     "stupa, tope": {
       "id": 832,
       "chinese": "皇宫",
-      "english": "stupa, tope"
+      "english": "stupa, tope",
+      "category": "infrastructure"
     },
     "submarine, pigboat, sub, U-boat": {
       "id": 833,
@@ -6334,7 +6508,8 @@
     "thimble": {
       "id": 855,
       "chinese": "指套",
-      "english": "thimble"
+      "english": "thimble",
+      "category": "daily_items"
     },
     "thresher, thrasher, threshing machine": {
       "id": 856,
@@ -6346,12 +6521,14 @@
     "throne": {
       "id": 857,
       "chinese": "皇位",
-      "english": "throne"
+      "english": "throne",
+      "category": "daily_items"
     },
     "tile roof": {
       "id": 858,
       "chinese": "瓦片",
-      "english": "tile roof"
+      "english": "tile roof",
+      "category": "infrastructure"
     },
     "toaster": {
       "id": 859,
@@ -6377,12 +6554,14 @@
     "torch": {
       "id": 862,
       "chinese": "火炬",
-      "english": "torch"
+      "english": "torch",
+      "category": "daily_items"
     },
     "totem pole": {
       "id": 863,
       "chinese": "图腾",
-      "english": "totem pole"
+      "english": "totem pole",
+      "category": "daily_items"
     },
     "heck, tow truck, tow car, wrecker": {
       "id": 864,
@@ -6394,12 +6573,14 @@
     "toyshop": {
       "id": 865,
       "chinese": "玩具店",
-      "english": "toyshop"
+      "english": "toyshop",
+      "category": "infrastructure"
     },
     "tractor": {
       "id": 866,
       "chinese": "拖拉机",
-      "english": "tractor"
+      "english": "tractor",
+      "category": "transportation"
     },
     "heck, trailer truck, tractor trailer, trucking rig, rig, articulated lorry, semi": {
       "id": 867,
@@ -6411,7 +6592,8 @@
     "子, tray": {
       "id": 868,
       "chinese": "碟子",
-      "english": "子, tray"
+      "english": "子, tray",
+      "category": "daily_items"
     },
     "trench coat": {
       "id": 869,
@@ -6437,7 +6619,8 @@
     "tripod": {
       "id": 872,
       "chinese": "三脚架",
-      "english": "tripod"
+      "english": "tripod",
+      "category": "daily_items"
     },
     "triumphal arch": {
       "id": 873,
@@ -6449,7 +6632,8 @@
     "heck, trolleybus, trolley coach, trackless trolley": {
       "id": 874,
       "chinese": "巴士",
-      "english": "heck, trolleybus, trolley coach, trackless trolley"
+      "english": "heck, trolleybus, trolley coach, trackless trolley",
+      "category": "transportation"
     },
     "trombone": {
       "id": 875,
@@ -6461,22 +6645,26 @@
     "tub, vat": {
       "id": 876,
       "chinese": "浴缸",
-      "english": "tub, vat"
+      "english": "tub, vat",
+      "category": "daily_items"
     },
     "turnstile": {
       "id": 877,
       "chinese": "闸机",
-      "english": "turnstile"
+      "english": "turnstile",
+      "category": "infrastructure"
     },
     "typewriter keyboard": {
       "id": 878,
       "chinese": "打字机",
-      "english": "typewriter keyboard"
+      "english": "typewriter keyboard",
+      "category": "daily_items"
     },
     "umbrella": {
       "id": 879,
       "chinese": "伞",
-      "english": "umbrella"
+      "english": "umbrella",
+      "category": "daily_items"
     },
     "unicycle, monocycle": {
       "id": 880,
@@ -6495,7 +6683,8 @@
     "vacuum, vacuum cleaner": {
       "id": 882,
       "chinese": "吸尘器",
-      "english": "vacuum, vacuum cleaner"
+      "english": "vacuum, vacuum cleaner",
+      "category": "daily_items"
     },
     "vase": {
       "id": 883,
@@ -6507,7 +6696,8 @@
     "vault": {
       "id": 884,
       "chinese": "拱廊",
-      "english": "vault"
+      "english": "vault",
+      "category": "daily_items"
     },
     "velvet": {
       "id": 885,
@@ -6519,12 +6709,14 @@
     "vending machine": {
       "id": 886,
       "chinese": "自动贩卖机",
-      "english": "vending machine"
+      "english": "vending machine",
+      "category": "daily_items"
     },
     "vestment": {
       "id": 887,
       "chinese": "教皇袍",
-      "english": "vestment"
+      "english": "vestment",
+      "category": "daily_items"
     },
     "viaduct": {
       "id": 888,
@@ -6557,12 +6749,14 @@
     "wall clock": {
       "id": 892,
       "chinese": "挂钟",
-      "english": "wall clock"
+      "english": "wall clock",
+      "category": "daily_items"
     },
     "wallet, billfold, notecase, pocketbook": {
       "id": 893,
       "chinese": "钱夹",
-      "english": "wallet, billfold, notecase, pocketbook"
+      "english": "wallet, billfold, notecase, pocketbook",
+      "category": "daily_items"
     },
     "wardrobe, closet, press": {
       "id": 894,
@@ -6581,7 +6775,8 @@
     "washbasin, handbasin, washbowl, lavabo, wash-hand basin": {
       "id": 896,
       "chinese": "台盆",
-      "english": "washbasin, handbasin, washbowl, lavabo, wash-hand basin"
+      "english": "washbasin, handbasin, washbowl, lavabo, wash-hand basin",
+      "category": "daily_items"
     },
     "washer, automatic washer, washing machine": {
       "id": 897,
@@ -6593,12 +6788,14 @@
     "water bottle": {
       "id": 898,
       "chinese": "水瓶",
-      "english": "water bottle"
+      "english": "water bottle",
+      "category": "daily_items"
     },
     "water jug": {
       "id": 899,
       "chinese": "水壶",
-      "english": "water jug"
+      "english": "water jug",
+      "category": "daily_items"
     },
     "water tower": {
       "id": 900,
@@ -6610,17 +6807,20 @@
     "whiskey jug": {
       "id": 901,
       "chinese": "水壶",
-      "english": "whiskey jug"
+      "english": "whiskey jug",
+      "category": "daily_items"
     },
     "whistle": {
       "id": 902,
       "chinese": "哨子",
-      "english": "whistle"
+      "english": "whistle",
+      "category": "daily_items"
     },
     "wig": {
       "id": 903,
       "chinese": "头发",
-      "english": "wig"
+      "english": "wig",
+      "category": "daily_items"
     },
     "window screen": {
       "id": 904,
@@ -6639,7 +6839,8 @@
     "Windsor tie": {
       "id": 906,
       "chinese": "领带",
-      "english": "Windsor tie"
+      "english": "Windsor tie",
+      "category": "daily_items"
     },
     "wine bottle": {
       "id": 907,
@@ -6658,7 +6859,8 @@
     "wok": {
       "id": 909,
       "chinese": "炒锅",
-      "english": "wok"
+      "english": "wok",
+      "category": "daily_items"
     },
     "wooden spoon": {
       "id": 910,
@@ -6705,7 +6907,8 @@
     "web site, website, internet site, site": {
       "id": 916,
       "chinese": "网页",
-      "english": "web site, website, internet site, site"
+      "english": "web site, website, internet site, site",
+      "category": "daily_items"
     },
     "comic book": {
       "id": 917,
@@ -6717,7 +6920,8 @@
     "crossword puzzle, crossword": {
       "id": 918,
       "chinese": "填字游戏",
-      "english": "crossword puzzle, crossword"
+      "english": "crossword puzzle, crossword",
+      "category": "daily_items"
     },
     "street sign": {
       "id": 919,
@@ -6729,7 +6933,8 @@
     "traffic light, traffic signal, stoplight": {
       "id": 920,
       "chinese": "交通灯",
-      "english": "traffic light, traffic signal, stoplight"
+      "english": "traffic light, traffic signal, stoplight",
+      "category": "infrastructure"
     },
     "book jacket, dust cover, dust jacket, dust wrapper": {
       "id": 921,
@@ -6742,7 +6947,7 @@
       "id": 922,
       "chinese": "菜单",
       "english": "menu",
-      "category": "daily_items", 
+      "category": "daily_items",
       "subcategory": "tools"
     },
     "plate": {
@@ -6804,7 +7009,8 @@
     "bagel, beigel": {
       "id": 931,
       "chinese": "甜甜圈",
-      "english": "bagel, beigel"
+      "english": "bagel, beigel",
+      "category": "food"
     },
     "pretzel": {
       "id": 932,
@@ -6830,7 +7036,8 @@
     "mashed potato": {
       "id": 935,
       "chinese": "焗饭",
-      "english": "mashed potato"
+      "english": "mashed potato",
+      "category": "food"
     },
     "head cabbage": {
       "id": 936,
@@ -6863,17 +7070,20 @@
     "spaghetti squash": {
       "id": 940,
       "chinese": "金瓜",
-      "english": "spaghetti squash"
+      "english": "spaghetti squash",
+      "category": "food"
     },
     "acorn squash": {
       "id": 941,
       "chinese": "南瓜",
-      "english": "acorn squash"
+      "english": "acorn squash",
+      "category": "food"
     },
     "butternut squash": {
       "id": 942,
       "chinese": "南瓜",
-      "english": "butternut squash"
+      "english": "butternut squash",
+      "category": "food"
     },
     "cucumber, cuke": {
       "id": 943,
@@ -6892,7 +7102,8 @@
     "椒 红椒, bell pepper": {
       "id": 945,
       "chinese": "青椒",
-      "english": "椒 红椒, bell pepper"
+      "english": "椒 红椒, bell pepper",
+      "category": "food"
     },
     "cardoon": {
       "id": 946,
@@ -6904,7 +7115,8 @@
     "mushroom": {
       "id": 947,
       "chinese": "蘑菇",
-      "english": "mushroom"
+      "english": "mushroom",
+      "category": "food"
     },
     "Granny Smith": {
       "id": 948,
@@ -6958,7 +7170,8 @@
     "jackfruit, jak, jack": {
       "id": 955,
       "chinese": "榴莲",
-      "english": "jackfruit, jak, jack"
+      "english": "jackfruit, jak, jack",
+      "category": "food"
     },
     "custard apple": {
       "id": 956,
@@ -6984,17 +7197,20 @@
     "carbonara": {
       "id": 959,
       "chinese": "意大利面",
-      "english": "carbonara"
+      "english": "carbonara",
+      "category": "food"
     },
     "chocolate sauce, chocolate syrup": {
       "id": 960,
       "chinese": "甜品",
-      "english": "chocolate sauce, chocolate syrup"
+      "english": "chocolate sauce, chocolate syrup",
+      "category": "food"
     },
     "dough": {
       "id": 961,
       "chinese": "面团",
-      "english": "dough"
+      "english": "dough",
+      "category": "food"
     },
     "meat loaf, meatloaf": {
       "id": 962,
@@ -7013,7 +7229,8 @@
     "potpie": {
       "id": 964,
       "chinese": "派",
-      "english": "potpie"
+      "english": "potpie",
+      "category": "food"
     },
     "burrito": {
       "id": 965,
@@ -7046,7 +7263,8 @@
     "eggnog": {
       "id": 969,
       "chinese": "饮料杯",
-      "english": "eggnog"
+      "english": "eggnog",
+      "category": "food"
     },
     "alp": {
       "id": 970,
@@ -7058,7 +7276,8 @@
     "bubble": {
       "id": 971,
       "chinese": "泡泡",
-      "english": "bubble"
+      "english": "bubble",
+      "category": "daily_items"
     },
     "cliff, drop, drop-off": {
       "id": 972,
@@ -7133,12 +7352,14 @@
     "groom, bridegroom": {
       "id": 982,
       "chinese": "婚礼",
-      "english": "groom, bridegroom"
+      "english": "groom, bridegroom",
+      "category": "people"
     },
     "scuba diver": {
       "id": 983,
       "chinese": "潜水",
-      "english": "scuba diver"
+      "english": "scuba diver",
+      "category": "people"
     },
     "rapeseed": {
       "id": 984,
@@ -7185,42 +7406,50 @@
     "buckeye, horse chestnut, conker": {
       "id": 990,
       "chinese": "栗子",
-      "english": "buckeye, horse chestnut, conker"
+      "english": "buckeye, horse chestnut, conker",
+      "category": "food"
     },
     "coral fungus": {
       "id": 991,
       "chinese": "菌菇",
-      "english": "coral fungus"
+      "english": "coral fungus",
+      "category": "food"
     },
     "agaric": {
       "id": 992,
       "chinese": "菌菇",
-      "english": "agaric"
+      "english": "agaric",
+      "category": "food"
     },
     "gyromitra": {
       "id": 993,
       "chinese": "菌菇",
-      "english": "gyromitra"
+      "english": "gyromitra",
+      "category": "food"
     },
     "stinkhorn, carrion fungus": {
       "id": 994,
       "chinese": "菌菇",
-      "english": "stinkhorn, carrion fungus"
+      "english": "stinkhorn, carrion fungus",
+      "category": "food"
     },
     "earthstar": {
       "id": 995,
       "chinese": "菌菇",
-      "english": "earthstar"
+      "english": "earthstar",
+      "category": "food"
     },
     "hen-of-the-woods, hen of the woods, Polyporus frondosus, Grifola frondosa": {
       "id": 996,
       "chinese": "菌菇",
-      "english": "hen-of-the-woods, hen of the woods, Polyporus frondosus, Grifola frondosa"
+      "english": "hen-of-the-woods, hen of the woods, Polyporus frondosus, Grifola frondosa",
+      "category": "food"
     },
     "bolete": {
       "id": 997,
       "chinese": "菌菇",
-      "english": "bolete"
+      "english": "bolete",
+      "category": "food"
     },
     "ear, spike, capitulum": {
       "id": 998,
@@ -7232,7 +7461,8 @@
     "toilet tissue, toilet paper, bathroom tissue": {
       "id": 999,
       "chinese": "卷筒纸",
-      "english": "toilet tissue, toilet paper, bathroom tissue"
+      "english": "toilet tissue, toilet paper, bathroom tissue",
+      "category": "daily_items"
     }
   }
 }
