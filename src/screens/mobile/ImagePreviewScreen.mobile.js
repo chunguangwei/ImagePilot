@@ -41,6 +41,7 @@ import cityLocationService from '../../services/CityLocationService';
 import { sortCategoryList, getCategoryIconMeta } from '../../components/shared/categoryUI';
 import { Icon } from '../../adapters/WebAdapters';
 import { logger, getUri, getLocalPath } from '../../adapters/WebAdapters';
+import Haptics from '../../utils/haptics';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // iOS 单色图标（字体已打包）；异常时回退 emoji。
@@ -707,6 +708,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           // iOS 端 currentImage.id 就是 PHAsset.localIdentifier（M2 那一步赋值的）
           await PhotoKitModule.deleteAssets([currentImage.id]);
           await UnifiedDataService.purgeDeletedImageRecords([currentImage.id]);
+          Haptics.notification('warning');
           if (fromScreen === 'Home') {
             Alert.alert(t('common.success'), t('imagePreview.deleteSuccess') || t('category.deleteSuccess', { count: 1 }), [
               { text: t('common.confirm'), onPress: goBack },
@@ -937,16 +939,17 @@ const ImagePreviewScreen = ({ route, navigation }) => {
       
       // 使用专门的分类更新接口
       await UnifiedDataService.updateImagesCategory([currentImage.id], newCategory, 'manual');
-      
+
       // 更新本地状态
-      setCurrentImage(prev => ({ 
-        ...prev, 
+      setCurrentImage(prev => ({
+        ...prev,
         category: newCategory,
         confidence: 'manual'
       }));
-      
+
       logger.debug('分类修改成功');
-      
+      Haptics.notification('success');
+
       // 自动关闭分类 Modal
       closeCategoryModal();
       

@@ -25,6 +25,7 @@ import {
 import { SafeAreaView, Icon } from '../../adapters/WebAdapters';
 import BackupService from '../../services/BackupService';
 import { useIosColors } from '../../ui/ios/theme';
+import Haptics from '../../utils/haptics';
 
 export default function BackupRestoreScreen({ navigation }) {
   const c = useIosColors();
@@ -52,6 +53,7 @@ export default function BackupRestoreScreen({ navigation }) {
       const result = await BackupService.exportBackup();
       setLastExport(result);
       await reload();
+      Haptics.notification('success');
       Alert.alert(
         '导出成功',
         `已写入：\n${result.path}\n\n共 ${result.withCategory} 张已分类（总 ${result.total} 张）。\n你可以用文件管理器把它发给别的手机做还原。`
@@ -91,7 +93,9 @@ export default function BackupRestoreScreen({ navigation }) {
                 setLastExport(null);
               }
               await reload();
+              Haptics.notification('warning');
             } catch (e) {
+              Haptics.notification('error');
               Alert.alert('删除失败', e?.message || String(e));
             } finally {
               setBusy(false);

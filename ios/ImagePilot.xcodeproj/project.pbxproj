@@ -18,6 +18,8 @@
 		6132EF182BDFF13200BBE14D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6132EF172BDFF13200BBE14D /* PrivacyInfo.xcprivacy */; };
 		7699B88040F8A987B510C191 /* libPods-ImagePilot-ImagePilotTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-ImagePilot-ImagePilotTests.a */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		A82C43BF5DA72167AABCB3F8 /* HapticsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1AD126DC3B93B4FCDF6317 /* HapticsModule.swift */; };
+		B7908FA00F04119B7EF84D0C /* HapticsModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 0B45F464BEB95DC426F8DE84 /* HapticsModule.m */; };
 		D6654B6EFE0A9494E3E6610C /* PhotoKitImageLoader.m in Sources */ = {isa = PBXBuildFile; fileRef = 889EBAA3471FD175F07FEFC9 /* PhotoKitImageLoader.m */; };
 /* End PBXBuildFile section */
 
@@ -35,6 +37,7 @@
 		00E356EE1AD99517003FC87E /* ImagePilotTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ImagePilotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		00E356F11AD99517003FC87E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		00E356F21AD99517003FC87E /* ImagePilotTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ImagePilotTests.m; sourceTree = "<group>"; };
+		0B45F464BEB95DC426F8DE84 /* HapticsModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = ImagePilot/HapticsModule.m; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* ImagePilot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ImagePilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = ImagePilot/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = ImagePilot/AppDelegate.mm; sourceTree = "<group>"; };
@@ -50,6 +53,7 @@
 		5B7EB9410499542E8C5724F5 /* Pods-ImagePilot-ImagePilotTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ImagePilot-ImagePilotTests.debug.xcconfig"; path = "Target Support Files/Pods-ImagePilot-ImagePilotTests/Pods-ImagePilot-ImagePilotTests.debug.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-ImagePilot.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ImagePilot.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6132EF172BDFF13200BBE14D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = ImagePilot/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		7C1AD126DC3B93B4FCDF6317 /* HapticsModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ImagePilot/HapticsModule.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = ImagePilot/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		8483E80CAFA3CEF3E72C8A91 /* ImagePilot-Bridging-Header.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "ImagePilot-Bridging-Header.h"; path = "ImagePilot/ImagePilot-Bridging-Header.h"; sourceTree = "<group>"; };
 		889EBAA3471FD175F07FEFC9 /* PhotoKitImageLoader.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = ImagePilot/PhotoKitImageLoader.m; sourceTree = "<group>"; };
@@ -108,6 +112,8 @@
 				8483E80CAFA3CEF3E72C8A91 /* ImagePilot-Bridging-Header.h */,
 				158E0FF6576B385E68256F5C /* models */,
 				889EBAA3471FD175F07FEFC9 /* PhotoKitImageLoader.m */,
+				7C1AD126DC3B93B4FCDF6317 /* HapticsModule.swift */,
+				0B45F464BEB95DC426F8DE84 /* HapticsModule.m */,
 			);
 			name = ImagePilot;
 			sourceTree = "<group>";
@@ -436,6 +442,8 @@
 				089A744E8262575171D2864D /* PhotoKitModule.swift in Sources */,
 				2F4FFD8DF7EF7BE51B873CC2 /* PhotoKitModule.m in Sources */,
 				D6654B6EFE0A9494E3E6610C /* PhotoKitImageLoader.m in Sources */,
+				A82C43BF5DA72167AABCB3F8 /* HapticsModule.swift in Sources */,
+				B7908FA00F04119B7EF84D0C /* HapticsModule.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

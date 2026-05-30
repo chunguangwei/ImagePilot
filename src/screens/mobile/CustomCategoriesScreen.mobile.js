@@ -18,6 +18,7 @@ import configService from '../../services/llm/adapters/UnifiedDataConfigService'
 import UnifiedDataService from '../../services/UnifiedDataService';
 import { CUSTOM_ICON_PRESETS, getCategoryIconMeta } from '../../components/shared/categoryUI';
 import { useIosColors } from '../../ui/ios/theme';
+import Haptics from '../../utils/haptics';
 
 // 内置分类 id（自定义 id 不应与之冲突）
 const BUILTIN_IDS = ['single_person', 'social_activities', 'travel_scenery', 'pets', 'foods', 'idcard', 'screenshot', 'qrcode', 'other', 'NA'];
@@ -73,6 +74,7 @@ export default function CustomCategoriesScreen({ navigation }) {
     }
     await persist([...list, { id: cid, name: cname, rule: rule.trim(), iconKey }]);
     setId(''); setName(''); setRule(''); setIconKey(CUSTOM_ICON_PRESETS[0].key);
+    Haptics.notification('success');
   };
 
   // 打开编辑弹窗：拷贝一份编辑态，id 不可改（避免历史归属图断链）
@@ -119,7 +121,9 @@ export default function CustomCategoriesScreen({ navigation }) {
                 await UnifiedDataService.updateImagesCategory(ids, 'NA', 'manual');
               }
               await persist(list.filter((c) => c.id !== cid));
+              Haptics.notification('warning');
             } catch (e) {
+              Haptics.notification('error');
               Alert.alert('删除失败', e?.message || String(e));
             }
           },
