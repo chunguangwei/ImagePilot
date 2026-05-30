@@ -34,6 +34,7 @@ import { logger } from '../../adapters/WebAdapters';
 import { presetIcon } from '../../ui/ios/presetIcons';
 import { useIosColors } from '../../ui/ios/theme';
 import { SUPERRES_VARIANTS, ensureModel, isModelDownloaded, resolveSuperRes, deleteModel } from '../../services/enhance/modelSource';
+import { CLASSIFIER_TIERS, CLASSIFIER_TIER_ORDER, DEFAULT_CLASSIFIER_TIER } from '../../services/classify/classifierModelTiers';
 import { BUILD_DATE, BUILD_VERSION, BUILD_VERSION_CODE } from '../../config/BuildInfo';
 
 // iOS 单色图标（字体已打包）；异常时回退 emoji
@@ -66,6 +67,9 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   const [srDownloaded, setSrDownloaded] = useState(false);
   const [srDownloading, setSrDownloading] = useState(false);
   const [srProgress, setSrProgress] = useState(0);
+
+  // 分类模型：basic（默认已内置） / scene（Places365，P1）/ clip（MobileCLIP，P2）
+  const [classifierTier, setClassifierTier] = useState('basic');
 
   // AI增强预设相关状态
   const [aiEnhancePresets, setAiEnhancePresets] = useState({});
@@ -174,6 +178,11 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
       setSrVariant(sr.variant || 'small');
       setSrCustomUrl(sr.customUrl || '');
       try { const r = await resolveSuperRes(); setSrDownloaded(await isModelDownloaded(r.filename)); } catch (_) {}
+
+      // 分类模型档位（P0：仅 basic 可用，scene/clip 落 basic 兜底）
+      const savedTier = savedSettings.classifierModelTier || DEFAULT_CLASSIFIER_TIER;
+      const validTier = (CLASSIFIER_TIERS[savedTier] && CLASSIFIER_TIERS[savedTier].readyForUse) ? savedTier : DEFAULT_CLASSIFIER_TIER;
+      setClassifierTier(validTier);
       
       logger.debug('设置加载完成:', savedSettings);
     } catch (error) {
@@ -1152,6 +1161,66 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     } finally { setSrDownloading(false); }
   };
 
+  // ===== 分类模型三档（P0：basic 可用；scene/clip 占位待 P1/P2） =====
+  const selectClassifierTier = async (tierKey) => {
+    const tier = CLASSIFIER_TIERS[tierKey];
+    if (!tier) return;
+    if (!tier.readyForUse) {
+      Alert.alert(
+        '即将上线',
+        `${tier.label} 正在适配中（接入 ${tier.engine.toUpperCase()} 推理引擎）。\n\n当前继续使用「物体识别」（默认）。`,
+      );
+      return;
+    }
+    setClassifierTier(tierKey);
+    try { await updateSetting('classifierModelTier', tierKey); } catch (_) {}
+  };
+
+  const renderClassifierModel = () => {
+    return (
+      <View style={styles.actionButton}>
+        <Text style={styles.actionButtonText}>
+          {SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color="#007AFF" /> : null} 分类模型
+        </Text>
+        <Text style={styles.actionButtonDescription}>
+          三种风格的设备端分类模型，按需下载、可随时切换。模型只在设备运行，照片不上传。
+        </Text>
+        {CLASSIFIER_TIER_ORDER.map((tierKey) => {
+          const tier = CLASSIFIER_TIERS[tierKey];
+          const isActive = classifierTier === tierKey;
+          const sizeText = tier.bundled
+            ? `${tier.sizeMB}MB · 已内置`
+            : `${tier.sizeMB}MB · 离线 · ${tier.speed}`;
+          return (
+            <TouchableOpacity
+              key={tierKey}
+              style={[
+                styles.classifierTierRow,
+                isActive && styles.classifierTierRowActive,
+                !tier.readyForUse && { opacity: 0.55 },
+              ]}
+              onPress={() => selectClassifierTier(tierKey)}
+              activeOpacity={0.6}
+            >
+              <View style={styles.classifierTierHead}>
+                {SetIonicons
+                  ? <SetIonicons name={isActive ? 'radio-button-on' : 'radio-button-off'} size={20} color={isActive ? '#007AFF' : '#C6C6C8'} />
+                  : <Text>{isActive ? '●' : '○'}</Text>}
+                <Text style={styles.classifierTierTitle}>
+                  {tier.label}
+                  <Text style={styles.classifierTierSublabel}>  {tier.sublabel}{tier.readyForUse ? '' : '（适配中）'}</Text>
+                </Text>
+              </View>
+              <Text style={styles.classifierTierMeta}>{sizeText} · {tier.classes} 类</Text>
+              <Text style={styles.classifierTierDesc}>{tier.desc}</Text>
+              <Text style={styles.classifierTierWeak}>限制：{tier.weak}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  };
+
   const renderSuperResModel = () => {
     const opts = [
       { key: 'small', label: SUPERRES_VARIANTS.small.label },
@@ -1350,6 +1419,9 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             handleCheckUpdate,
             false
           )}
+
+          {/* 分类模型：basic / scene / clip 三档（按需下载 + 推荐说明） */}
+          {renderClassifierModel()}
 
           {/* 超分(AI增强)模型：小/大/自定义 + 按需下载 */}
           {renderSuperResModel()}
@@ -2037,6 +2109,20 @@ const styles = StyleSheet.create({
   // 超分模型选择
   srOptionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 9 },
   srOptionLabel: { fontSize: 15, color: '#000000', marginLeft: 10 },
+
+  // 分类模型三档卡片样式
+  classifierTierRow: {
+    paddingVertical: 10, paddingHorizontal: 10, marginVertical: 4,
+    borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: '#E5E5EA',
+    backgroundColor: '#F9F9F9',
+  },
+  classifierTierRowActive: { borderColor: '#007AFF', backgroundColor: '#EAF2FF' },
+  classifierTierHead: { flexDirection: 'row', alignItems: 'center' },
+  classifierTierTitle: { fontSize: 15, fontWeight: '600', color: '#000000', marginLeft: 8 },
+  classifierTierSublabel: { fontSize: 13, fontWeight: '400', color: '#8E8E93' },
+  classifierTierMeta: { fontSize: 13, color: '#3C3C43', marginTop: 4, marginLeft: 28, fontVariant: ['tabular-nums'] },
+  classifierTierDesc: { fontSize: 13, color: '#3C3C43', marginTop: 4, marginLeft: 28, lineHeight: 18 },
+  classifierTierWeak: { fontSize: 12, color: '#8E8E93', marginTop: 3, marginLeft: 28 },
   srCustomRow: { marginTop: 4, marginBottom: 4 },
   srInput: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#C6C6C8', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 13, color: '#000000', backgroundColor: '#F2F2F7' },
   srStatusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
