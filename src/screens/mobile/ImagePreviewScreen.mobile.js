@@ -26,6 +26,7 @@ import {
   Animated,
   PanResponder,
   Platform,
+  Pressable,
   StatusBar,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -126,6 +127,21 @@ const ImagePreviewScreen = ({ route, navigation }) => {
   const [toastMessage, setToastMessage] = useState(null);
   const isNavigatingBackRef = useRef(false); // 防止递归循环的标志
   const [locationDetail, setLocationDetail] = useState(null); // 位置详细信息
+  // P1：iOS Photos 风格沉浸式 chrome（顶部 header + 底部 actionsBar）的显隐切换
+  // 用 Animated.timing 做 200ms 渐隐渐显；pointerEvents 同步隐藏避免误触
+  const [chromeVisible, setChromeVisible] = useState(true);
+  const chromeOpacityAnim = useRef(new Animated.Value(1)).current;
+  const toggleChrome = useCallback(() => {
+    setChromeVisible((v) => {
+      const next = !v;
+      Animated.timing(chromeOpacityAnim, {
+        toValue: next ? 1 : 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+      return next;
+    });
+  }, [chromeOpacityAnim]);
   // 用户自定义分类（重新分类弹窗也需要展示自定义分类，并为其取主题图标）
   const [customCategoryList, setCustomCategoryList] = useState([]);
   useEffect(() => {
@@ -215,12 +231,21 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         } else if (gestureModeRef.current === 'pan') {
           savedTranslateXRef.current = savedTranslateXRef.current + g.dx;
           savedTranslateYRef.current = savedTranslateYRef.current + g.dy;
+        } else {
+          // P1：PanResponder 抢到事件但既不是 pinch 也不是 pan（如缩放态下的轻触），
+          // 几乎无位移 + 短时长 视为 tap，切换 chrome（与外层 Pressable 形成双保险）
+          const dx = Math.abs(g.dx);
+          const dy = Math.abs(g.dy);
+          const dur = (g.x0 != null && evt.nativeEvent.timestamp && g.t0) ? (evt.nativeEvent.timestamp - g.t0) : 0;
+          if (dx < 5 && dy < 5 && (dur === 0 || dur < 200)) {
+            toggleChrome();
+          }
         }
         initialPinchDistanceRef.current = null;
         gestureModeRef.current = null;
       }
     },
-  }), [scaleAnim, translateXAnim, translateYAnim]);
+  }), [scaleAnim, translateXAnim, translateYAnim, toggleChrome]);
 
   const zoomableStyle = useMemo(() => ({
     transform: [
@@ -253,9 +278,9 @@ const ImagePreviewScreen = ({ route, navigation }) => {
   }, []);
 
   // 获取图片尺寸（优先使用数据库中的）
-  const imageDimensions = currentImage?.imageDimensions || 
-    (currentImage?.width && currentImage?.height ? 
-      { width: currentImage.width, height: currentImage.height } : null);
+  const imageDimensions = currentImage?.imageDimensions ||
+    (currentImage?.width && currentImage?.height ?
+      { width: currentImage?.width, height: currentImage?.height } : null);
   const displayUri = resolveImageUri(currentImage);
   const displayLocalPath = resolveLocalPath(currentImage);
   
@@ -896,16 +921,19 @@ const ImagePreviewScreen = ({ route, navigation }) => {
    * 处理分类修改
    */
   const handleCategoryChange = async (newCategory) => {
-    if (newCategory === currentImage.category) {
+    if (!currentImage || !currentImage.id) {
+      return; // P1：防御 currentImage 暂时为 null（异步加载中）
+    }
+    if (newCategory === currentImage?.category) {
       return; // 如果选择的是当前分类，不做任何操作
     }
 
     try {
       logger.debug('修改分类前检查currentImage:', {
-        hasIdCard: !!currentImage.idCardDetections,
-        hasGeneral: !!currentImage.generalDetections,
+        hasIdCard: !!currentImage?.idCardDetections,
+        hasGeneral: !!currentImage?.generalDetections,
       });
-      
+
       // 使用专门的分类更新接口
       await UnifiedDataService.updateImagesCategory([currentImage.id], newCategory, 'manual');
 
@@ -1114,7 +1142,10 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     // 如果是暂存箱，显示"暂存箱 (6/20)"格式
     if (currentFilterType === 'stagingBox') {
       return (
-        <View style={styles.header}>
+        <Animated.View
+          style={[styles.header, { opacity: chromeOpacityAnim }]}
+          pointerEvents={chromeVisible ? 'auto' : 'none'}
+        >
           <TouchableOpacity onPress={goBack} style={styles.headerButton}>
             <Text style={styles.headerIcon}>‹</Text>
           </TouchableOpacity>
@@ -1126,7 +1157,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           <TouchableOpacity onPress={() => setShowInfo(!showInfo)} style={styles.headerButton}>
             {PvIonicons ? <PvIonicons name="information-circle-outline" size={26} color="#FFFFFF" /> : <Text style={styles.headerIcon}>ℹ️</Text>}
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       );
     }
     
@@ -1187,7 +1218,10 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     }
 
     return (
-      <View style={styles.header}>
+      <Animated.View
+        style={[styles.header, { opacity: chromeOpacityAnim }]}
+        pointerEvents={chromeVisible ? 'auto' : 'none'}
+      >
         <TouchableOpacity onPress={goBack} style={styles.headerButton}>
           <Text style={styles.headerIcon}>‹</Text>
         </TouchableOpacity>
@@ -1204,7 +1238,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         <TouchableOpacity onPress={() => setShowInfo(!showInfo)} style={styles.headerButton}>
           {PvIonicons ? <PvIonicons name="information-circle-outline" size={26} color="#FFFFFF" /> : <Text style={styles.headerIcon}>ℹ️</Text>}
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     );
   };
 
@@ -1636,7 +1670,10 @@ const ImagePreviewScreen = ({ route, navigation }) => {
 
   const renderActions = () => {
     return (
-      <View style={styles.actionsBar}>
+      <Animated.View
+        style={[styles.actionsBar, { opacity: chromeOpacityAnim }]}
+        pointerEvents={chromeVisible ? 'auto' : 'none'}
+      >
         {/* 暂存/移出按钮 */}
         {!isInStagingBox ? (
           <TouchableOpacity style={styles.actionButton} onPress={handleStaging}>
@@ -1681,7 +1718,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           {actIcon('share', '📤')}
           <Text style={styles.actionLabel}>{t('category.share')}</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     );
   };
 
@@ -1788,6 +1825,15 @@ const ImagePreviewScreen = ({ route, navigation }) => {
             offset: viewportW * index,
             index,
           })}
+          // P1：FlatList 性能调优（左右滑动看图场景）
+          windowSize={3}
+          initialNumToRender={1}
+          maxToRenderPerBatch={2}
+          removeClippedSubviews={true}
+          onScrollToIndexFailed={({ index }) => {
+            // 列表还未把目标行渲染出来时退避重试（windowSize=3 时 scrollToIndex 可能落空）
+            setTimeout(() => flatListRef.current?.scrollToIndex({ index, animated: false }), 200);
+          }}
           onMomentumScrollEnd={(e) => {
             const offsetX = e.nativeEvent.contentOffset.x;
             const index = Math.round(offsetX / viewportW);
@@ -1800,7 +1846,13 @@ const ImagePreviewScreen = ({ route, navigation }) => {
             const isCurrentPage = index === currentImageIndex;
             const showZoomable = isCurrentPage && !!itemUri;
             return (
-              <View style={[styles.imagePage, { width: viewportW }]}>
+              // P1：Pressable 外层捕获 tap → 切换 chrome（不打断 PanResponder：
+              // PanResponder 在 imageWrap 上，只有 2 指 / 已放大 1 指拖动 才会抢事件，
+              // 单指轻触会冒泡到 Pressable）
+              <Pressable
+                style={[styles.imagePage, { width: viewportW }]}
+                onPress={toggleChrome}
+              >
                 <View style={[styles.imagePageClip, { width: viewportW }]}>
                 {itemUri ? (
                   showZoomable ? (
@@ -1832,7 +1884,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   </View>
                 )}
                 </View>
-            </View>
+              </Pressable>
             );
           }}
         />
