@@ -98,7 +98,15 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
     let fileName = primary?.originalFilename ?? "\(asset.localIdentifier).jpg"
     let fileSize = (primary?.value(forKey: "fileSize") as? Int64) ?? 0
     let takenAt = Int64((asset.creationDate?.timeIntervalSince1970 ?? 0) * 1000)
-    let isScreenshot = asset.mediaSubtypes.contains(.photoScreenshot)
+    // PhotoKit mediaSubtypes 暴露的系统级标记（私有 vision 标签拿不到，只能用这些）
+    let subtypes = asset.mediaSubtypes
+    let isScreenshot = subtypes.contains(.photoScreenshot)
+    let isPanorama = subtypes.contains(.photoPanorama)
+    let isHDR = subtypes.contains(.photoHDR)
+    let isLive = subtypes.contains(.photoLive)
+    let isDepthEffect = subtypes.contains(.photoDepthEffect) // 人像模式
+    let isBurst = asset.representsBurst
+
     let lowerName = fileName.lowercased()
     let mimeType: String =
       lowerName.hasSuffix(".png") ? "image/png" :
@@ -116,6 +124,12 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
       "height": asset.pixelHeight,
       "mimeType": mimeType,
       "isScreenshot": isScreenshot,
+      // 新增：iOS 系统能告诉我们的拍摄类型（用于 model fail 时的兜底分类）
+      "isPanorama": isPanorama,
+      "isHDR": isHDR,
+      "isLive": isLive,
+      "isDepthEffect": isDepthEffect,
+      "isBurst": isBurst,
     ]
   }
 

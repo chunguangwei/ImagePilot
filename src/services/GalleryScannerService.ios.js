@@ -30,18 +30,31 @@ const IS_NATIVE_AVAILABLE = !!(PhotoKitModule && PhotoKitModule.fetchAllPhotos);
 
 /**
  * MobileNetV3 top-1 → 应用分类的最低置信度门槛。
- * 低于此值视作"模型不确定"，落 `other` 兜底，避免噪声映射进 pets / foods /
- * travel_scenery 等专门类（如 0.05 置信度的"金鱼"被当成宠物分进 pets）。
- *
- * 调档思路：ImagenetClasses 的 1000 类很多互相重叠，且大量壁纸/抽象图模型
- * 给的 top-1 都在 0.05~0.10 区间是噪声；正确归类的真实样本通常 0.2+。
- * 这里取 0.15 比 ImageClassifier 里的 validPredictions 阈值 0.3 略松，
- * 既过滤掉明显的随机猜，也不至于把略低于 0.3 的边缘正确预测都落 other。
+ * 0.15：实测低于此值（5~10% conf 接近 1/1000 类随机猜）映射出来错得离谱，
+ * 用户体感"全错"比"全 other"更差。提升分类准度的路子在改善 1000→9 映射表 +
+ * 后续换 Places365 权重的模型，不在调阈值上。
  */
 const MOBILENET_MAP_THRESHOLD = 0.15;
 
+/**
+ * PHAsset mediaSubtypes → 应用分类映射（系统给的硬信号，比 ML 模型更可靠）
+ * - photoScreenshot → screenshot（已有）
+ * - photoPanorama   → travel_scenery（全景照基本都是风景/建筑）
+ * - photoDepthEffect → single_person（人像模式默认拍人）
+ *
+ * HDR / Live / Burst 不直接映射 category（题材不固定），仅作为 image record 标记
+ * 供后续可能用到（如优先级排序、筛选等）。
+ */
+function categoryFromSubtype(asset) {
+  if (asset.isScreenshot) return 'screenshot';
+  if (asset.isPanorama) return 'travel_scenery';
+  if (asset.isDepthEffect) return 'single_person';
+  return null;
+}
+
 /** PHAsset → 业务层 image 记录（与 Android 形状对齐，category 默认 'NA'）*/
 function toImageRecord(asset) {
+  const systemCat = categoryFromSubtype(asset);
   return {
     id: asset.id,
     uri: asset.uri, // "ph://<localIdentifier>" —— RN <Image> 与 react-native-image-resizer 都能消费
@@ -52,8 +65,8 @@ function toImageRecord(asset) {
     width: asset.width || 0,
     height: asset.height || 0,
     mimeType: asset.mimeType || 'image/jpeg',
-    category: asset.isScreenshot ? 'screenshot' : 'NA',
-    confidence: asset.isScreenshot ? 'system' : null,
+    category: systemCat || 'NA',
+    confidence: systemCat ? 'system' : null,
     message: null,
     background_color: null,
     latitude: null, longitude: null, altitude: null, accuracy: null,

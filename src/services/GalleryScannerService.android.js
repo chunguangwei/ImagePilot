@@ -26,13 +26,8 @@ const { GalleryScanModule } = NativeModules;
 
 /**
  * MobileNetV3 top-1 → 应用分类的最低置信度门槛。
- * 低于此值视作"模型不确定"，落 `other` 兜底，避免噪声映射进 pets / foods /
- * travel_scenery 等专门类（如 0.05 置信度的"金鱼"被当成宠物分进 pets）。
- *
- * 调档思路：ImagenetClasses 的 1000 类很多互相重叠，且大量壁纸/抽象图模型
- * 给的 top-1 都在 0.05~0.10 区间是噪声；正确归类的真实样本通常 0.2+。
- * 这里取 0.15 比 ImageClassifier 里的 validPredictions 阈值 0.3 略松，
- * 既过滤掉明显的随机猜，也不至于把略低于 0.3 的边缘正确预测都落 other。
+ * 0.15：低于此值映射出来错得离谱（5~10% conf ≈ 1/1000 随机猜），
+ * 提升路子在改善 1000→9 映射表 + Places365 模型，不在调阈值上。
  */
 const MOBILENET_MAP_THRESHOLD = 0.15;
 
