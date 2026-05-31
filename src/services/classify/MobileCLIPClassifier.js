@@ -1,0 +1,162 @@
+/**
+ * MobileCLIPClassifier — P2-lite：CLIP image encoder（设备端） + 9 个 app 类
+ * 的 text embeddings（云端预算 / 内嵌 JS）→ 余弦相似度 → 分类。
+ *
+ * 为什么这么做：CLIP 全套（image + text encoder + BPE tokenizer）在 Hermes 上
+ * 跑得起来但是工程量大，且 P2 的"用户自定义类离线生效"在用户侧已经走云端 LLM。
+ * P2-lite 只在 inference 时用图编码器，文本侧一次性离线算好 9 类原型（prompt
+ * ensemble + L2 normed），让分类质量在不增加设备端 tokenizer/解码复杂度的前提下
+ * 比 MobileNetV3-ImageNet 在抽象场景上明显更稳。
+ *
+ * 期望 ONNX：
+ *   input  name='image'    shape=[1,3,H,W]    (H/W 由 EMBED_META.input_size)
+ *   output name='embedding' shape=[1, D]       已经 L2 norm 过（导出脚本里做了）
+ *
+ * 文本侧：clipTextEmbeddings.json 是导出脚本的产物，结构：
+ *   { _meta: {model, input_size, mean, std, embed_dim, categories[]},
+ *     embeddings: { [appCategory]: [float, ...] } }
+ */
+
+import { logger } from '../../adapters/WebAdapters';
+import { loadOnnxSession } from '../enhance/loadOnnxSession';
+import * as ortNS from 'onnxruntime-react-native';
+import TEXT_EMBEDS from './clipTextEmbeddings.json';
+
+const ort = ortNS.default || ortNS;
+const { Tensor } = ort;
+
+// eslint-disable-next-line global-require
+const RNFS = require('react-native-fs');
+let ImageResizer = null;
+try { ImageResizer = require('react-native-image-resizer').default || require('react-native-image-resizer'); }
+catch (_) { ImageResizer = null; }
+
+const META = TEXT_EMBEDS._meta || {};
+const INPUT_SIZE = META.input_size || 224;
+const MEAN = META.mean || [0.48145466, 0.4578275, 0.40821073];
+const STD = META.std || [0.26862954, 0.26130258, 0.27577711];
+const EMBED_DIM = META.embed_dim || 512;
+const CATEGORIES = META.categories || Object.keys(TEXT_EMBEDS.embeddings || {});
+
+/**
+ * 阈值：top1 cosine > MIN_SIM 才采纳，否则 落 other。CLIP 通常 top1 真匹配 0.25+，
+ * 弱相关 0.18~0.22；保守起 0.20。
+ */
+const MIN_SIM = 0.20;
+
+let _session = null;
+let _sessionPath = null;
+let _inputName = null;
+let _outputName = null;
+
+/** 用户重新下载模型 / 换 tier 时释放缓存的 session */
+export function disposeMobileCLIPSession() {
+  _session = null;
+  _sessionPath = null;
+  _inputName = null;
+  _outputName = null;
+}
+
+async function ensureSession(modelPath) {
+  if (_session && _sessionPath === modelPath) return _session;
+  logger.debug(`[MobileCLIP] 加载 image encoder ${modelPath}`);
+  _session = await loadOnnxSession(modelPath);
+  _sessionPath = modelPath;
+  _inputName = (_session.inputNames && _session.inputNames[0]) || 'image';
+  _outputName = (_session.outputNames && _session.outputNames[0]) || 'embedding';
+  logger.debug(`[MobileCLIP] session ready in=${_inputName} out=${_outputName}`);
+  return _session;
+}
+
+/** ph:// / file:// → INPUT_SIZE×INPUT_SIZE CHW float32（CLIP 归一） */
+async function preprocessImage(imageUri) {
+  if (!ImageResizer) throw new Error('react-native-image-resizer 不可用');
+  const resized = await ImageResizer.createResizedImage(
+    imageUri, INPUT_SIZE, INPUT_SIZE, 'JPEG', 95, 0, undefined, false,
+  );
+  const path = (resized.uri || '').replace(/^file:\/\//, '');
+  const b64 = await RNFS.readFile(path, 'base64');
+  // eslint-disable-next-line global-require
+  const Jimp = require('../enhance/jimpCustom').default || require('../enhance/jimpCustom');
+  // eslint-disable-next-line global-require
+  const { Buffer } = require('buffer');
+  const img = await Jimp.read(Buffer.from(b64, 'base64'));
+  if (img.bitmap.width !== INPUT_SIZE || img.bitmap.height !== INPUT_SIZE) {
+    img.resize(INPUT_SIZE, INPUT_SIZE);
+  }
+  const data = img.bitmap.data; // RGBA Uint8
+  const chw = new Float32Array(3 * INPUT_SIZE * INPUT_SIZE);
+  const HW = INPUT_SIZE * INPUT_SIZE;
+  for (let i = 0; i < HW; i++) {
+    for (let c = 0; c < 3; c++) {
+      const v = data[i * 4 + c] / 255;
+      chw[c * HW + i] = (v - MEAN[c]) / STD[c];
+    }
+  }
+  return chw;
+}
+
+/** 余弦相似度（两侧都假设已 L2 norm，直接点积） */
+function cosineSim(a, b) {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+  return s;
+}
+
+/**
+ * 单张图 → top1 app 类。
+ * @returns {Promise<{success, predictions, topPrediction, confidence, model, processingTime}>}
+ */
+export async function classifyImageWithMobileCLIP(imageUri, modelPath) {
+  const t0 = Date.now();
+  try {
+    const session = await ensureSession(modelPath);
+    const chw = await preprocessImage(imageUri);
+    const feeds = { [_inputName]: new Tensor('float32', chw, [1, 3, INPUT_SIZE, INPUT_SIZE]) };
+    const out = await session.run(feeds);
+    const embT = out[_outputName] || out[Object.keys(out)[0]];
+    if (!embT || !embT.data) throw new Error('CLIP 图编码器输出为空');
+    const emb = Array.from(embT.data);
+    if (emb.length !== EMBED_DIM) {
+      logger.warn(`[MobileCLIP] embed_dim mismatch: ONNX=${emb.length} JSON=${EMBED_DIM}`);
+    }
+
+    // 9 类 cosine 相似度 → 排序
+    const scored = CATEGORIES.map((cat) => {
+      const ref = TEXT_EMBEDS.embeddings[cat];
+      const sim = ref ? cosineSim(emb, ref) : -1;
+      return { index: CATEGORIES.indexOf(cat), name: cat, probability: sim, appCategory: cat };
+    }).sort((a, b) => b.probability - a.probability);
+
+    const top = scored[0];
+    const adopt = top.probability >= MIN_SIM ? top : {
+      ...top,
+      name: 'other',
+      appCategory: 'other',
+    };
+
+    logger.debug(`[MobileCLIP] ${imageUri.slice(-30)} → ${adopt.appCategory} sim=${top.probability.toFixed(3)} in ${Date.now() - t0}ms`);
+
+    return {
+      success: true,
+      predictions: scored.slice(0, 5),
+      topPrediction: adopt,
+      confidence: top.probability,
+      model: 'mobileclip',
+      processingTime: Date.now() - t0,
+    };
+  } catch (e) {
+    logger.error(`[MobileCLIP] 推理失败: ${e?.message || e}`);
+    return {
+      success: false,
+      error: e?.message || String(e),
+      predictions: [],
+      topPrediction: null,
+      confidence: 0,
+      model: 'mobileclip',
+      processingTime: Date.now() - t0,
+    };
+  }
+}
+
+export default { classifyImageWithMobileCLIP, disposeMobileCLIPSession };
