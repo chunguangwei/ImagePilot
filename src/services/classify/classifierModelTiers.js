@@ -55,16 +55,20 @@ export const CLASSIFIER_TIERS = {
     key: 'clip',
     label: 'AI 智能识别',
     sublabel: '高级 · 按需下载',
-    sizeMB: 50,
+    sizeMB: 87,
     speed: '中等（约慢 2x）',
     bundled: false,
-    filename: 'mobileclip_s0.onnx',
-    url: `${BASE}/mobileclip_s0.onnx`,
+    // P2-lite：MobileCLIP-S1 image encoder（OpenCLIP / datacompdr），输入 256×256，
+    // 输出 512 维 L2-normed embedding。9 个 app 类的 text embeddings 在导出脚本里
+    // 一次性用 text encoder 算好，bundle 进 JS（clipTextEmbeddings.json）。
+    // 设备端不跑 text encoder + 不带 BPE tokenizer——自定义类走云端 LLM 链路。
+    filename: 'mobileclip_image_encoder.onnx',
+    url: `${BASE}/mobileclip_image_encoder.onnx`,
     engine: 'clip',
-    readyForUse: false,        // P2：模型 + 推理引擎还没接入
-    desc: '用自然语言定义自己的分类（如"我家狗" / "工作截图"），无固定类别',
-    weak: '推理比前两种慢约 2x',
-    classes: '无固定（自定义）',
+    readyForUse: true,
+    desc: '用 CLIP 视觉特征分类，对抽象场景（生活方式 / 氛围 / 室内外）比物体识别更准',
+    weak: '比基础档慢约 2x；自定义类请用云端 AI 智能分类',
+    classes: 9,
   },
 };
 

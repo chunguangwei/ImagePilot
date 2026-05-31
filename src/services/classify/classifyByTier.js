@@ -4,7 +4,7 @@
  * 三档（见 classifierModelTiers.js）：
  *   - basic  → MobileNetV3-ImageNet（沿用现有 ImageClassifierService.classifyImageWithMobileNetV3）
  *   - scene  → Places365Classifier.classifyImageWithPlaces365（P1）
- *   - clip   → MobileCLIPClassifier（P2，未接入；当前回退 basic）
+ *   - clip   → MobileCLIPClassifier.classifyImageWithMobileCLIP（P2-lite：image encoder + 9 类 precomputed text embeds）
  *
  * 模型下载/缺失时回退 basic（confidence 改 'fallback'，方便上层显示提示）。
  *
@@ -27,6 +27,7 @@ import { CLASSIFIER_TIERS, DEFAULT_CLASSIFIER_TIER } from './classifierModelTier
 import { ensureClassifierModel, isClassifierModelDownloaded } from './classifierModelSource';
 
 let _places365Mod = null;
+let _mobileClipMod = null;
 let _imageClassifierSingleton = null;
 
 /** 优先用 scanner 传入的现有实例（避免重复加载 ONNX 模型）；没传退回单例 */
@@ -98,9 +99,37 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
     }
   }
   if (tierCfg.engine === 'clip') {
-    logger.warn('[classifyByTier] clip tier 暂未接入，回退 basic');
-    const fb = await runImageNet(imageUri, sharedClassifier);
-    return { ...fb, fallback: 'engine-error' };
+    const downloaded = await isClassifierModelDownloaded(tierCfg.filename);
+    if (!downloaded) {
+      logger.warn(`[classifyByTier] clip tier 模型未下载，回退 basic`);
+      const r = await runImageNet(imageUri, sharedClassifier);
+      return { ...r, fallback: 'no-model' };
+    }
+    try {
+      const modelPath = await ensureClassifierModel(tierCfg.filename, tierCfg.url);
+      if (!_mobileClipMod) {
+        // eslint-disable-next-line global-require
+        _mobileClipMod = require('./MobileCLIPClassifier');
+      }
+      const r = await _mobileClipMod.classifyImageWithMobileCLIP(imageUri, modelPath);
+      if (!r.success) {
+        const fb = await runImageNet(imageUri, sharedClassifier);
+        return { ...fb, fallback: 'engine-error' };
+      }
+      return {
+        engine: 'clip',
+        topPrediction: r.topPrediction ? {
+          name: r.topPrediction.name,
+          appCategory: r.topPrediction.appCategory,
+        } : null,
+        confidence: r.confidence,
+        predictions: r.predictions,
+      };
+    } catch (e) {
+      logger.warn(`[classifyByTier] clip 失败回退 basic: ${e?.message || e}`);
+      const fb = await runImageNet(imageUri, sharedClassifier);
+      return { ...fb, fallback: 'engine-error' };
+    }
   }
   const fb = await runImageNet(imageUri, sharedClassifier);
   return { ...fb, fallback: 'engine-error' };
