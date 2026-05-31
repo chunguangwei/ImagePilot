@@ -6,18 +6,25 @@
  * A 期扫描增强 → 预览结果（可对比原图/重新矫正/保存到相册）。
  * 无原生绘图库：四角=带 PanResponder 的圆形 View，连线=按角度旋转的细 View。
  * 入口：ImagePreview「AI修图」→ 证件处理。
+ *
+ * 主题：黑底沉浸式编辑画布；useIosColors 仅给非沉浸 chrome（强调蓝/危险红）做随主题切换。
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, PanResponder, ActivityIndicator, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { RNFS, Alert, logger, SafeAreaView } from '../../adapters/WebAdapters';
 import { detectDocCorners, dewarpDocument } from '../../services/enhance/localEnhance';
+import { useIosColors } from '../../ui/ios/theme';
 
 const HANDLE = 30; // 手柄触控直径
 
 export default function DocScanScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation('common');
+  const c = useIosColors();
+  const styles = useMemo(() => createStyles(c), [c]);
   const imageUri = route?.params?.imageUri;
   const win = Dimensions.get('window');
 
@@ -40,7 +47,7 @@ export default function DocScanScreen({ route, navigation }) {
   const maxH = win.height - (insets.top + insets.bottom) - 220;
 
   useEffect(() => {
-    if (!imageUri) { setError('未传入图片'); return; }
+    if (!imageUri) { setError(t('docScan.noImage')); return; }
     Image.getSize(
       imageUri,
       (w, h) => {
@@ -60,7 +67,7 @@ export default function DocScanScreen({ route, navigation }) {
           } catch (_) { /* 失败保留默认框 */ }
         })();
       },
-      () => setError('无法读取图片尺寸'),
+      () => setError(t('docScan.cannotReadSize')),
     );
   }, [imageUri]);
 
@@ -70,7 +77,7 @@ export default function DocScanScreen({ route, navigation }) {
     return [0, 1, 2, 3].map((i) => PanResponder.create({
       onStartShouldSetPanResponder: () => !resultRef.current && !busyRef.current,
       onMoveShouldSetPanResponder: () => !resultRef.current && !busyRef.current,
-      onPanResponderGrant: () => { const c = cornersRef.current; dragStart.current = c ? { ...c[i] } : null; },
+      onPanResponderGrant: () => { const cs = cornersRef.current; dragStart.current = cs ? { ...cs[i] } : null; },
       onPanResponderMove: (e, g) => {
         if (!dragStart.current) return;
         const nx = clamp(dragStart.current.x + g.dx, disp.w);
@@ -88,10 +95,10 @@ export default function DocScanScreen({ route, navigation }) {
       const out = await dewarpDocument(imageUri, quadFrac, ({ done, total }) => setProgress(total ? done / total : 0));
       setResultUri(out);
     } catch (e) {
-      logger.error('❌ 证件矫正失败:', e);
+      logger.error('❌ docScan dewarp failed:', e);
       const raw = e?.message || String(e);
-      const msg = /E_TIMEOUT/.test(raw) ? raw.replace('E_TIMEOUT', '').trim() : `矫正失败：${raw}`;
-      Alert.alert('证件矫正', msg); // 仅弹窗提示，保留四角界面可重试
+      const msg = /E_TIMEOUT/.test(raw) ? raw.replace('E_TIMEOUT', '').trim() : t('docScan.correctFailedMsg', { error: raw });
+      Alert.alert(t('docScan.correctFailedTitle'), msg); // 仅弹窗提示，保留四角界面可重试
     } finally {
       setBusy(false);
     }
@@ -103,9 +110,9 @@ export default function DocScanScreen({ route, navigation }) {
     try {
       await RNFS.saveImageToGallery(resultUri, `scan_${Date.now()}.jpg`);
       setSaved(true);
-      Alert.alert('已保存', '已保存到相册');
+      Alert.alert(t('docScan.savedTitle'), t('docScan.savedToGallery'));
     } catch (e) {
-      Alert.alert('保存失败', e?.message || String(e));
+      Alert.alert(t('docScan.saveFailed'), e?.message || String(e));
     }
   };
 
@@ -118,7 +125,7 @@ export default function DocScanScreen({ route, navigation }) {
     return (
       <View key={`edge-${i}`} pointerEvents="none" style={{
         position: 'absolute', left: mx - len / 2, top: my - 1, width: len, height: 2,
-        backgroundColor: '#0A84FF', transform: [{ rotateZ: `${ang}rad` }],
+        backgroundColor: c.accent, transform: [{ rotateZ: `${ang}rad` }],
       }} />
     );
   });
@@ -127,10 +134,10 @@ export default function DocScanScreen({ route, navigation }) {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.headerBtn}>‹ 返回</Text></TouchableOpacity>
-        <Text style={styles.title}>证件矫正</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.headerBtn}>‹ {t('docScan.back')}</Text></TouchableOpacity>
+        <Text style={styles.title}>{t('docScan.title')}</Text>
         <TouchableOpacity onPress={onSave} disabled={!resultUri || saved}>
-          <Text style={[styles.headerBtn, (!resultUri || saved) && styles.disabled]}>{saved ? '已保存' : '保存'}</Text>
+          <Text style={[styles.headerBtn, (!resultUri || saved) && styles.disabled]}>{saved ? t('docScan.saved') : t('docScan.save')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -142,7 +149,7 @@ export default function DocScanScreen({ route, navigation }) {
         ) : resultUri ? (
           <View style={{ width: disp.w, height: disp.h }}>
             <Image source={{ uri: comparing ? imageUri : resultUri }} style={{ width: disp.w, height: disp.h }} resizeMode="contain" />
-            <View style={styles.badge}><Text style={styles.badgeText}>{comparing ? '原图' : '已矫正'}</Text></View>
+            <View style={styles.badge}><Text style={styles.badgeText}>{comparing ? t('docScan.badgeOriginal') : t('docScan.badgeDone')}</Text></View>
           </View>
         ) : (
           <View style={{ width: disp.w, height: disp.h }}>
@@ -156,27 +163,27 @@ export default function DocScanScreen({ route, navigation }) {
             {busy && (
               <View style={styles.overlay}>
                 <ActivityIndicator color="#fff" />
-                <Text style={styles.overlayText}>矫正中… {Math.round(progress * 100)}%</Text>
+                <Text style={styles.overlayText}>{t('docScan.progress', { percent: Math.round(progress * 100) })}</Text>
               </View>
             )}
           </View>
         )}
       </View>
 
-      <Text style={styles.tip}>{resultUri ? '已透视矫正 + 扫描增强' : '拖动四角对齐证件/文档边缘'}</Text>
+      <Text style={styles.tip}>{resultUri ? t('docScan.tipDone') : t('docScan.tipDraw')}</Text>
 
       {!resultUri ? (
         <TouchableOpacity style={[styles.primaryBtn, busy && styles.primaryBtnDisabled]} onPress={onApply} disabled={busy}>
-          <Text style={styles.primaryBtnText}>🪪 矫正并增强</Text>
+          <Text style={styles.primaryBtnText}>{t('docScan.applyBtn')}</Text>
         </TouchableOpacity>
       ) : (
         <View style={styles.resultRow}>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={onRedo}><Text style={styles.secondaryText}>重新矫正</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryBtn} onPress={onRedo}><Text style={styles.secondaryText}>{t('docScan.retryBtn')}</Text></TouchableOpacity>
           <TouchableOpacity style={styles.compareBtn} activeOpacity={1} onPressIn={() => setComparing(true)} onPressOut={() => setComparing(false)}>
-            <Text style={styles.compareText}>👁 按住看原图</Text>
+            <Text style={styles.compareText}>{t('docScan.compareHold')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.primaryBtnSmall, saved && styles.primaryBtnDisabled]} onPress={onSave} disabled={saved}>
-            <Text style={styles.primaryBtnText}>{saved ? '已保存' : '保存到相册'}</Text>
+            <Text style={styles.primaryBtnText}>{saved ? t('docScan.saved') : t('docScan.saveToGallery')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -184,22 +191,23 @@ export default function DocScanScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+// 黑底沉浸式编辑画布；蓝色（返回/保存/手柄/边线/主按钮）走 c.accent 跟随主题切换。
+const createStyles = (c) => StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 },
-  headerBtn: { color: '#0A84FF', fontSize: 16, fontWeight: '500' },
+  headerBtn: { color: c.accent, fontSize: 16, fontWeight: '500' },
   disabled: { color: '#8E8E93' },
   title: { color: '#fff', fontSize: 17, fontWeight: '600' },
   canvasWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  err: { color: '#FF453A', padding: 20, textAlign: 'center' },
+  err: { color: c.danger, padding: 20, textAlign: 'center' },
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)' },
   overlayText: { color: '#fff', marginTop: 8 },
   badge: { position: 'absolute', top: 10, left: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.55)' },
   badgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  handle: { position: 'absolute', width: HANDLE, height: HANDLE, borderRadius: HANDLE / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,132,255,0.25)', borderWidth: 2, borderColor: '#0A84FF' },
+  handle: { position: 'absolute', width: HANDLE, height: HANDLE, borderRadius: HANDLE / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,132,255,0.25)', borderWidth: 2, borderColor: c.accent },
   handleDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
   tip: { color: '#EBEBF5', textAlign: 'center', paddingVertical: 10, fontSize: 13 },
-  primaryBtn: { marginHorizontal: 14, marginBottom: 16, paddingVertical: 13, borderRadius: 12, backgroundColor: '#007AFF', alignItems: 'center' },
+  primaryBtn: { marginHorizontal: 14, marginBottom: 16, paddingVertical: 13, borderRadius: 12, backgroundColor: c.accent, alignItems: 'center' },
   primaryBtnDisabled: { opacity: 0.45 },
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   resultRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 16 },
@@ -207,5 +215,5 @@ const styles = StyleSheet.create({
   secondaryText: { color: '#fff', fontSize: 14 },
   compareBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.12)' },
   compareText: { color: '#fff', fontSize: 14 },
-  primaryBtnSmall: { paddingHorizontal: 18, paddingVertical: 11, borderRadius: 12, backgroundColor: '#007AFF' },
+  primaryBtnSmall: { paddingHorizontal: 18, paddingVertical: 11, borderRadius: 12, backgroundColor: c.accent },
 });

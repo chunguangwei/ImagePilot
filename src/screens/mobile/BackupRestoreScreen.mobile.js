@@ -11,7 +11,7 @@
  * 入口：设置页「📦 分类备份与还原」。
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import {
   ActivityIndicator,
   Share,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { SafeAreaView, Icon } from '../../adapters/WebAdapters';
 import BackupService from '../../services/BackupService';
 import { useIosColors } from '../../ui/ios/theme';
@@ -29,6 +30,8 @@ import Haptics from '../../utils/haptics';
 
 export default function BackupRestoreScreen({ navigation }) {
   const c = useIosColors();
+  const styles = useMemo(() => createStyles(c), [c]);
+  const { t } = useTranslation('common');
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -55,11 +58,11 @@ export default function BackupRestoreScreen({ navigation }) {
       await reload();
       Haptics.notification('success');
       Alert.alert(
-        '导出成功',
-        `已写入：\n${result.path}\n\n共 ${result.withCategory} 张已分类（总 ${result.total} 张）。\n你可以用文件管理器把它发给别的手机做还原。`
+        t('backupRestore.exportSuccessTitle'),
+        t('backupRestore.exportSuccessMsg', { path: result.path, withCategory: result.withCategory, total: result.total })
       );
     } catch (e) {
-      Alert.alert('导出失败', e?.message || String(e));
+      Alert.alert(t('backupRestore.exportFailedTitle'), e?.message || String(e));
     } finally {
       setBusy(false);
     }
@@ -69,20 +72,20 @@ export default function BackupRestoreScreen({ navigation }) {
     try {
       // RN 内置 Share 对 Android 不直接支持任意文件 URI，但 message 写明路径让用户走文件管理器
       await Share.share({
-        title: 'ImagePilot 备份',
-        message: `ImagePilot 备份文件：\n${file.path}`,
+        title: t('backupRestore.shareTitle'),
+        message: t('backupRestore.shareMessage', { path: file.path }),
       });
     } catch (_) { /* 用户取消即可 */ }
   };
 
   const onDelete = (file) => {
     Alert.alert(
-      '删除备份',
-      `确认删除 ${file.name}？\n该操作不可恢复，但本地相册分类不受影响。`,
+      t('backupRestore.deleteTitle'),
+      t('backupRestore.deleteConfirm', { name: file.name }),
       [
-        { text: '取消', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: '删除',
+          text: t('backupRestore.deleteAction'),
           style: 'destructive',
           onPress: async () => {
             if (busy) return;
@@ -96,7 +99,7 @@ export default function BackupRestoreScreen({ navigation }) {
               Haptics.notification('warning');
             } catch (e) {
               Haptics.notification('error');
-              Alert.alert('删除失败', e?.message || String(e));
+              Alert.alert(t('backupRestore.deleteFailedTitle'), e?.message || String(e));
             } finally {
               setBusy(false);
             }
@@ -108,12 +111,12 @@ export default function BackupRestoreScreen({ navigation }) {
 
   const onRestore = (file) => {
     Alert.alert(
-      '还原备份',
-      `将按 ${file.name} 中的分类索引匹配本地相册，命中即恢复其分类（仅覆盖命中项，未命中的图不动）。是否继续？`,
+      t('backupRestore.restoreTitle'),
+      t('backupRestore.restoreConfirm', { name: file.name }),
       [
-        { text: '取消', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: '还原',
+          text: t('backupRestore.restoreAction'),
           style: 'default',
           onPress: async () => {
             if (busy) return;
@@ -122,16 +125,16 @@ export default function BackupRestoreScreen({ navigation }) {
               const payload = await BackupService.readBackup(file.path);
               const result = await BackupService.applyBackup(payload);
               Alert.alert(
-                '还原完成',
+                t('backupRestore.restoreCompleteTitle'),
                 [
-                  `命中: ${result.matched}`,
-                  `已写入: ${result.applied}`,
-                  `跳过(未命中): ${result.skipped}`,
-                  `合并新自定义分类: ${result.customAdded}`,
+                  t('backupRestore.restoreMatched', { count: result.matched }),
+                  t('backupRestore.restoreApplied', { count: result.applied }),
+                  t('backupRestore.restoreSkipped', { count: result.skipped }),
+                  t('backupRestore.restoreCustomAdded', { count: result.customAdded }),
                 ].join('\n')
               );
             } catch (e) {
-              Alert.alert('还原失败', e?.message || String(e));
+              Alert.alert(t('backupRestore.restoreFailedTitle'), e?.message || String(e));
             } finally {
               setBusy(false);
             }
@@ -156,41 +159,40 @@ export default function BackupRestoreScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: c.label }]}>分类备份与还原</Text>
+        <Text style={[styles.headerTitle, { color: c.label }]}>{t('backupRestore.title')}</Text>
         <View style={styles.headerRight} />
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
         <Text style={[styles.tip, { color: c.secondaryLabel }]}>
-          导出：把每张已分类图的分类 + 自定义分类定义打包到 JSON，落在公共 Downloads 目录。{'\n'}
-          还原：从 Downloads 选一个备份，按 文件名 + 大小 + 拍摄时间 命中本地相册即恢复分类，未命中的图不动。
+          {t('backupRestore.intro')}
         </Text>
 
         {/* 导出 */}
         <View style={[styles.card, { backgroundColor: c.card }]}>
-          <Text style={[styles.cardTitle, { color: c.label }]}>导出当前分类</Text>
+          <Text style={[styles.cardTitle, { color: c.label }]}>{t('backupRestore.exportSection')}</Text>
           <TouchableOpacity style={[styles.primaryBtn, busy && styles.btnDisabled]} onPress={onExport} disabled={busy}>
             {busy ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.primaryBtnText}>导出备份</Text>
+              <Text style={styles.primaryBtnText}>{t('backupRestore.exportBtn')}</Text>
             )}
           </TouchableOpacity>
           {lastExport && (
             <Text style={[styles.tipSmall, { color: c.tertiaryLabel }]}>
-              最近：{lastExport.fileName}（已分类 {lastExport.withCategory} 张）
+              {t('backupRestore.lastExport', { fileName: lastExport.fileName, count: lastExport.withCategory })}
             </Text>
           )}
         </View>
 
         {/* 已有备份 */}
-        <Text style={[styles.sectionTitle, { color: c.label }]}>已有备份（{list.length}）</Text>
+        <Text style={[styles.sectionTitle, { color: c.label }]}>{t('backupRestore.existing', { count: list.length })}</Text>
         {loading ? (
           <ActivityIndicator style={{ marginTop: 20 }} />
         ) : list.length === 0 ? (
           <View style={[styles.emptyBox, { backgroundColor: c.card }]}>
             <Icon name="folder-open" size={36} color={c.tertiaryLabel} />
-            <Text style={[styles.empty, { color: c.tertiaryLabel }]}>Downloads 目录下还没备份文件</Text>
+            <Text style={[styles.empty, { color: c.tertiaryLabel }]}>{t('backupRestore.empty')}</Text>
           </View>
         ) : (
           list.map((file) => (
@@ -203,62 +205,64 @@ export default function BackupRestoreScreen({ navigation }) {
                 <Text style={[styles.itemMeta, { color: c.tertiaryLabel }]}>{fmtBytes(file.size)} · {fmtTime(file.mtime)}</Text>
               </View>
               <TouchableOpacity onPress={() => onShareFile(file)} style={styles.actionBtn} activeOpacity={0.6}>
-                <Icon name="share" size={18} color="#007AFF" />
-                <Text style={styles.shareTxt}>分享</Text>
+                <Icon name="share" size={18} color={c.accent} />
+                <Text style={styles.shareTxt}>{t('backupRestore.actionShare')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => onRestore(file)} style={styles.actionBtn} activeOpacity={0.6} disabled={busy}>
-                <Icon name="restore" size={18} color={busy ? '#A8E0B5' : '#34C759'} />
-                <Text style={[styles.restoreTxt, busy && { opacity: 0.4 }]}>还原</Text>
+                <Icon name="restore" size={18} color={busy ? '#A8E0B5' : c.success} />
+                <Text style={[styles.restoreTxt, busy && { opacity: 0.4 }]}>{t('backupRestore.actionRestore')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => onDelete(file)} style={styles.actionBtn} activeOpacity={0.6} disabled={busy}>
-                <Icon name="delete-outline" size={18} color={busy ? '#F5B7B1' : '#FF3B30'} />
-                <Text style={[styles.deleteTxt, busy && { opacity: 0.4 }]}>删除</Text>
+                <Icon name="delete-outline" size={18} color={busy ? '#F5B7B1' : c.danger} />
+                <Text style={[styles.deleteTxt, busy && { opacity: 0.4 }]}>{t('backupRestore.actionDelete')}</Text>
               </TouchableOpacity>
             </View>
           ))
         )}
 
-        <Text style={styles.footTip}>
-          想跨手机还原？把 Downloads 下的 {`imagepilot-backup-*.json`} 拷到新机相同位置，回到本页即可看到并还原。
+        <Text style={[styles.footTip, { color: c.tertiaryLabel }]}>
+          {t('backupRestore.footTip')}
         </Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F2F2F7' },
-  header: { height: 56, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
+// styles：原 26 个硬色（卡片白/边框/文字）迁到 createStyles(c) 工厂，跟随 light/dark；
+// 强调蓝/危险红/成功绿等保留同一语义但走 c.accent / c.danger / c.success 通道。
+const createStyles = (c) => StyleSheet.create({
+  container: { flex: 1 },
+  header: { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
   backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  backIcon: { fontSize: 32, color: '#007AFF', fontWeight: 'bold' },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', color: '#000000', textAlign: 'center' },
+  backIcon: { fontSize: 32, color: c.accent, fontWeight: 'bold' },
+  headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', textAlign: 'center' },
   headerRight: { width: 40 },
 
-  tip: { color: '#6C6C70', fontSize: 13, lineHeight: 19, marginBottom: 14 },
-  tipSmall: { color: '#8E8E93', fontSize: 12, marginTop: 8 },
-  footTip: { color: '#8E8E93', fontSize: 12, lineHeight: 18, marginTop: 16 },
+  tip: { fontSize: 13, lineHeight: 19, marginBottom: 14 },
+  tipSmall: { fontSize: 12, marginTop: 8 },
+  footTip: { fontSize: 12, lineHeight: 18, marginTop: 16 },
 
-  card: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 16 },
-  cardTitle: { fontSize: 15, fontWeight: '600', color: '#000000', marginBottom: 10 },
-  sectionTitle: { fontSize: 15, fontWeight: '600', color: '#000000', marginBottom: 10, marginTop: 4 },
+  card: { borderRadius: 12, padding: 16, marginBottom: 16 },
+  cardTitle: { fontSize: 15, fontWeight: '600', marginBottom: 10 },
+  sectionTitle: { fontSize: 15, fontWeight: '600', marginBottom: 10, marginTop: 4 },
 
-  primaryBtn: { backgroundColor: '#007AFF', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+  primaryBtn: { backgroundColor: c.accent, borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
   primaryBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 17 },
   btnDisabled: { opacity: 0.6 },
 
-  empty: { color: '#8E8E93', fontSize: 14, marginTop: 8 },
-  emptyBox: { backgroundColor: '#FFFFFF', borderRadius: 12, paddingVertical: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  empty: { fontSize: 14, marginTop: 8 },
+  emptyBox: { borderRadius: 12, paddingVertical: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
 
-  item: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, marginBottom: 10 },
+  item: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, padding: 14, marginBottom: 10 },
   itemIconWrap: {
     width: 34, height: 34, borderRadius: 17, backgroundColor: '#5E5CE6',
     alignItems: 'center', justifyContent: 'center', marginRight: 12,
   },
-  itemName: { fontSize: 14, fontWeight: '500', color: '#000000' },
-  itemMeta: { fontSize: 12, color: '#8E8E93', marginTop: 3 },
+  itemName: { fontSize: 14, fontWeight: '500' },
+  itemMeta: { fontSize: 12, marginTop: 3 },
   // 三个动作按钮挤一行：图标 + 文字小一号，紧排
   actionBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, paddingVertical: 6, marginLeft: 2 },
-  shareTxt: { color: '#007AFF', marginLeft: 2, fontSize: 12 },
-  restoreTxt: { color: '#34C759', marginLeft: 2, fontSize: 12, fontWeight: '600' },
-  deleteTxt: { color: '#FF3B30', marginLeft: 2, fontSize: 12, fontWeight: '600' },
+  shareTxt: { color: c.accent, marginLeft: 2, fontSize: 12 },
+  restoreTxt: { color: c.success, marginLeft: 2, fontSize: 12, fontWeight: '600' },
+  deleteTxt: { color: c.danger, marginLeft: 2, fontSize: 12, fontWeight: '600' },
 });

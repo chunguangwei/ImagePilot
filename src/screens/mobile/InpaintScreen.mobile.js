@@ -5,24 +5,32 @@
  * 预览结果，可「按住看原图」对比、保存到相册。入口：ImagePreview「AI修图」菜单→物体消除。
  * 无原生绘图库：PanResponder 采集笔画(显示坐标)+ View 圆点叠加做反馈；笔画在推理时由
  * inpaintRunner 按实际图像尺寸栅格化为 mask（见 services/enhance/inpaintRunner.js）。
+ *
+ * 主题：屏本身是黑底涂抹工具，多数硬色（黑底/红涂抹/白文）刻意保留——属于沉浸式编辑画布；
+ * useIosColors 仅用于错误文案颜色等少量随主题切换的元素。
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, PanResponder, ActivityIndicator, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { RNFS, Alert, logger, SafeAreaView } from '../../adapters/WebAdapters';
 import { inpaintLocally } from '../../services/enhance/localEnhance';
-
-const BRUSHES = [
-  { label: '细', value: 14 },
-  { label: '中', value: 26 },
-  { label: '粗', value: 42 },
-];
+import { useIosColors } from '../../ui/ios/theme';
 
 export default function InpaintScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation('common');
+  const c = useIosColors();
+  const styles = useMemo(() => createStyles(c), [c]);
   const imageUri = route?.params?.imageUri;
   const win = Dimensions.get('window');
+
+  const BRUSHES = useMemo(() => ([
+    { key: 'fine', label: t('inpaint.brushFine'), value: 14 },
+    { key: 'medium', label: t('inpaint.brushMedium'), value: 26 },
+    { key: 'coarse', label: t('inpaint.brushCoarse'), value: 42 },
+  ]), [t]);
 
   const [disp, setDisp] = useState(null); // 图像显示尺寸 {w,h}
   const [strokes, setStrokes] = useState([]); // [{ brushRadius, points:[{x,y}] }]
@@ -45,11 +53,11 @@ export default function InpaintScreen({ route, navigation }) {
   const maxH = win.height - (insets.top + insets.bottom) - 280;
 
   useEffect(() => {
-    if (!imageUri) { setError('未传入图片'); return; }
+    if (!imageUri) { setError(t('inpaint.noImage')); return; }
     Image.getSize(
       imageUri,
       (w, h) => { const s = Math.min(maxW / w, maxH / h); setDisp({ w: Math.round(w * s), h: Math.round(h * s) }); },
-      () => setError('无法读取图片尺寸'),
+      () => setError(t('inpaint.cannotReadSize')),
     );
   }, [imageUri]);
 
@@ -89,8 +97,8 @@ export default function InpaintScreen({ route, navigation }) {
       );
       setResultUri(out);
     } catch (e) {
-      logger.error('❌ 物体消除失败:', e);
-      setError('消除失败：' + (e?.message || String(e)));
+      logger.error('❌ inpaint failed:', e);
+      setError(t('inpaint.eraseFailed', { error: e?.message || String(e) }));
     } finally {
       setBusy(false);
     }
@@ -106,9 +114,9 @@ export default function InpaintScreen({ route, navigation }) {
       const fileName = `erased_${Date.now()}.jpg`;
       await RNFS.saveImageToGallery(resultUri, fileName); // data URL 由原生 MediaStore 落盘
       setSaved(true);
-      Alert.alert('已保存', '已保存到相册');
+      Alert.alert(t('inpaint.savedTitle'), t('inpaint.savedToGallery'));
     } catch (e) {
-      Alert.alert('保存失败', e?.message || String(e));
+      Alert.alert(t('inpaint.saveFailed'), e?.message || String(e));
     }
   };
 
@@ -118,10 +126,10 @@ export default function InpaintScreen({ route, navigation }) {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.headerBtn}>‹ 返回</Text></TouchableOpacity>
-        <Text style={styles.title}>物体消除</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.headerBtn}>‹ {t('inpaint.back')}</Text></TouchableOpacity>
+        <Text style={styles.title}>{t('inpaint.title')}</Text>
         <TouchableOpacity onPress={onSave} disabled={!resultUri || saved}>
-          <Text style={[styles.headerBtn, (!resultUri || saved) && styles.disabled]}>{saved ? '已保存' : '保存'}</Text>
+          <Text style={[styles.headerBtn, (!resultUri || saved) && styles.disabled]}>{saved ? t('inpaint.saved') : t('inpaint.save')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -144,12 +152,12 @@ export default function InpaintScreen({ route, navigation }) {
               ))
             ))}
             {resultUri && (
-              <View style={styles.badge}><Text style={styles.badgeText}>{comparing ? '原图' : '已消除'}</Text></View>
+              <View style={styles.badge}><Text style={styles.badgeText}>{comparing ? t('inpaint.badgeOriginal') : t('inpaint.badgeErased')}</Text></View>
             )}
             {busy && (
               <View style={styles.overlay}>
                 <ActivityIndicator color="#fff" />
-                <Text style={styles.overlayText}>{phase === 'download' ? '下载模型' : '消除中'}… {Math.round(progress * 100)}%</Text>
+                <Text style={styles.overlayText}>{phase === 'download' ? t('inpaint.phaseDownload') : t('inpaint.phaseProcess')}… {Math.round(progress * 100)}%</Text>
               </View>
             )}
           </View>
@@ -158,39 +166,39 @@ export default function InpaintScreen({ route, navigation }) {
 
       {/* 提示 */}
       <Text style={styles.tip}>
-        {resultUri ? '已消除涂抹区域' : '用手指涂抹要消除的物体'}
+        {resultUri ? t('inpaint.tipDone') : t('inpaint.tipDraw')}
       </Text>
 
       {/* 控制区 */}
       {!resultUri ? (
         <>
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>笔刷</Text>
+            <Text style={styles.rowLabel}>{t('inpaint.brushLabel')}</Text>
             {BRUSHES.map((b) => (
-              <TouchableOpacity key={b.label} style={[styles.chip, brush === b.value && styles.chipActive]} onPress={() => setBrush(b.value)}>
+              <TouchableOpacity key={b.key} style={[styles.chip, brush === b.value && styles.chipActive]} onPress={() => setBrush(b.value)}>
                 <Text style={styles.chipText}>{b.label}</Text>
               </TouchableOpacity>
             ))}
             <View style={{ flex: 1 }} />
-            <TouchableOpacity style={styles.toolBtn} onPress={onUndo} disabled={!hasMask}><Text style={[styles.toolText, !hasMask && styles.disabled]}>撤销</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.toolBtn} onPress={onClear} disabled={!hasMask}><Text style={[styles.toolText, !hasMask && styles.disabled]}>清除</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.toolBtn} onPress={onUndo} disabled={!hasMask}><Text style={[styles.toolText, !hasMask && styles.disabled]}>{t('inpaint.undo')}</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.toolBtn} onPress={onClear} disabled={!hasMask}><Text style={[styles.toolText, !hasMask && styles.disabled]}>{t('inpaint.clear')}</Text></TouchableOpacity>
           </View>
           <TouchableOpacity style={[styles.primaryBtn, (!hasMask || busy) && styles.primaryBtnDisabled]} onPress={onErase} disabled={!hasMask || busy}>
-            <Text style={styles.primaryBtnText}>🩹 消除涂抹区域</Text>
+            <Text style={styles.primaryBtnText}>{t('inpaint.eraseBtn')}</Text>
           </TouchableOpacity>
         </>
       ) : (
         <View style={styles.resultRow}>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={onRedraw}><Text style={styles.secondaryText}>继续涂抹</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryBtn} onPress={onRedraw}><Text style={styles.secondaryText}>{t('inpaint.continueDraw')}</Text></TouchableOpacity>
           <TouchableOpacity
             style={styles.compareBtn}
             activeOpacity={1}
             onPressIn={() => setComparing(true)}
             onPressOut={() => setComparing(false)}>
-            <Text style={styles.compareText}>👁 按住看原图</Text>
+            <Text style={styles.compareText}>{t('inpaint.compareHold')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.primaryBtnSmall, saved && styles.primaryBtnDisabled]} onPress={onSave} disabled={saved}>
-            <Text style={styles.primaryBtnText}>{saved ? '已保存' : '保存到相册'}</Text>
+            <Text style={styles.primaryBtnText}>{saved ? t('inpaint.saved') : t('inpaint.saveToGallery')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -198,14 +206,16 @@ export default function InpaintScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+// styles：黑底涂抹画布是沉浸式工具屏，多数色（黑/白/红涂抹）刻意保留；
+// 仅把蓝色强调（返回/保存/笔刷活跃态/主按钮）走 c.accent，随主题深浅切换。
+const createStyles = (c) => StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 },
-  headerBtn: { color: '#0A84FF', fontSize: 16, fontWeight: '500' },
+  headerBtn: { color: c.accent, fontSize: 16, fontWeight: '500' },
   disabled: { color: '#8E8E93' },
   title: { color: '#fff', fontSize: 17, fontWeight: '600' },
   canvasWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  err: { color: '#FF453A', padding: 20, textAlign: 'center' },
+  err: { color: c.danger, padding: 20, textAlign: 'center' },
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)' },
   overlayText: { color: '#fff', marginTop: 8 },
   badge: { position: 'absolute', top: 10, left: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.55)' },
@@ -214,11 +224,11 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8 },
   rowLabel: { color: '#EBEBF5', marginRight: 12 },
   chip: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, backgroundColor: '#2C2C2E', marginRight: 8 },
-  chipActive: { backgroundColor: '#007AFF' },
+  chipActive: { backgroundColor: c.accent },
   chipText: { color: '#fff' },
   toolBtn: { paddingHorizontal: 12, paddingVertical: 6 },
-  toolText: { color: '#0A84FF', fontSize: 15 },
-  primaryBtn: { marginHorizontal: 14, marginVertical: 10, paddingVertical: 13, borderRadius: 12, backgroundColor: '#007AFF', alignItems: 'center' },
+  toolText: { color: c.accent, fontSize: 15 },
+  primaryBtn: { marginHorizontal: 14, marginVertical: 10, paddingVertical: 13, borderRadius: 12, backgroundColor: c.accent, alignItems: 'center' },
   primaryBtnDisabled: { opacity: 0.45 },
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   resultRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10 },
@@ -226,5 +236,5 @@ const styles = StyleSheet.create({
   secondaryText: { color: '#fff', fontSize: 14 },
   compareBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.12)' },
   compareText: { color: '#fff', fontSize: 14 },
-  primaryBtnSmall: { paddingHorizontal: 18, paddingVertical: 11, borderRadius: 12, backgroundColor: '#007AFF' },
+  primaryBtnSmall: { paddingHorizontal: 18, paddingVertical: 11, borderRadius: 12, backgroundColor: c.accent },
 });
