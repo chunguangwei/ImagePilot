@@ -39,6 +39,7 @@ export const DEFAULT_SCHEMA = {
         'scenery',
         'id_card',
         'screenshot',
+        'electronics',
         'qrcode',
         'other',
       ],

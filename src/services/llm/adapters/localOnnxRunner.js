@@ -45,7 +45,7 @@ export function createLocalOnnxRunner(imageClassifier) {
 /**
  * 把 infer() 的原始结果映射到 schema.json 字段。
  * ⚠️ contentCategory 必须落在 schema 枚举内
- * （single_person|social|pet|food|scenery|id_card|screenshot|qrcode|other）。
+ * （single_person|social|pet|food|scenery|id_card|screenshot|electronics|qrcode|other）。
  * 本仓库 mapMobileNetV3ToAppCategory 返回的是 App 自有分类，可能不在该枚举——
  * 不在则被 LocalClassifierService 归一化回 'other'。生产请提供 App 分类 → schema 的对照表，
  * 或扩展 schema.json 枚举以匹配 App 分类体系（详见 INTEGRATION-REAL.md）。

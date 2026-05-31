@@ -71,6 +71,7 @@ const BUILTIN_ICON_META = {
   foods: { iconName: 'restaurant', color: '#E74C3C' },
   idcard: { iconName: 'badge', color: '#00897B' },
   screenshot: { iconName: 'phone-iphone', color: '#9B59B6' },
+  electronics: { iconName: 'devices', color: '#1976D2' },
   qrcode: { iconName: 'qr-code', color: '#212121' },
   other: { iconName: 'apps', color: '#7F8C8D' },
   NA: { iconName: 'help-outline', color: '#F39C12' },

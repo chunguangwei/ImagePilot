@@ -1,7 +1,7 @@
 /**
  * Places365 365 类 → 9 app 分类映射。
  * 由 scripts/places365_to_app.py 自动生成（按关键词归类）。
- * 共 365 类，分布：{'travel_scenery': 142, 'social_activities': 95, 'other': 94, 'foods': 25, 'single_person': 8, 'pets': 1}。
+ * 共 365 类，分布：computer_room/server_room/television_room 重归 electronics。
  *
  * 数据源：CSAILVision/places365 standard categories file.
  */
@@ -109,7 +109,7 @@ export const PLACES365_CLASSES = [
   { name: "coast", category: "travel_scenery" },  // 97
   { name: "cockpit", category: "other" },  // 98
   { name: "coffee_shop", category: "foods" },  // 99
-  { name: "computer_room", category: "other" },  // 100
+  { name: "computer_room", category: "electronics" },  // 100
   { name: "conference_center", category: "social_activities" },  // 101
   { name: "conference_room", category: "social_activities" },  // 102
   { name: "construction_site", category: "other" },  // 103
@@ -307,7 +307,7 @@ export const PLACES365_CLASSES = [
   { name: "sauna", category: "single_person" },  // 295
   { name: "schoolhouse", category: "social_activities" },  // 296
   { name: "science_museum", category: "social_activities" },  // 297
-  { name: "server_room", category: "other" },  // 298
+  { name: "server_room", category: "electronics" },  // 298
   { name: "shed", category: "travel_scenery" },  // 299
   { name: "shoe_shop", category: "social_activities" },  // 300
   { name: "shopfront", category: "social_activities" },  // 301
@@ -337,7 +337,7 @@ export const PLACES365_CLASSES = [
   { name: "swimming_pool/indoor", category: "social_activities" },  // 325
   { name: "swimming_pool/outdoor", category: "social_activities" },  // 326
   { name: "synagogue/outdoor", category: "social_activities" },  // 327
-  { name: "television_room", category: "other" },  // 328
+  { name: "television_room", category: "electronics" },  // 328
   { name: "television_studio", category: "social_activities" },  // 329
   { name: "temple/asia", category: "social_activities" },  // 330
   { name: "throne_room", category: "travel_scenery" },  // 331
