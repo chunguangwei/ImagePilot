@@ -62,6 +62,8 @@ const getTouchDistance = (touches) => {
 const ImagePreviewScreen = ({ route, navigation }) => {
   const { t, i18n } = useTranslation('common');
   const cTheme = useIosColors();
+  // 主题感知样式：跟随 light/dark 切换；createStyles(cTheme) 由 useMemo 缓存
+  const styles = React.useMemo(() => createStyles(cTheme), [cTheme]);
   // 实时视口宽度（折叠屏/旋转/分屏会变，不能用模块级静态 SCREEN_WIDTH，否则分页宽度与屏幕不符→图片只显示一半/不居中）
   const { width: viewportW } = useWindowDimensions();
 
@@ -266,6 +268,15 @@ const ImagePreviewScreen = ({ route, navigation }) => {
       logger.debug(`✅ 当前图片：索引${currentImageIndex}/${allImagesState.length}，URI: ${displayUri?.substring(0, 50)}...`);
     }
   }, [currentImageIndex, currentImage, allImagesState.length, displayUri]);
+
+  // 调试：标题来源参数（合并以前散落在 renderHeader switch 里每帧都打的多条日志）
+  React.useEffect(() => {
+    logger.debug('📋 ImagePreview 标题参数:', {
+      filterType: finalFilterType,
+      filterValue: finalFilterValue,
+      fromScreen,
+    });
+  }, [finalFilterType, finalFilterValue, fromScreen]);
 
   // 初始化时滚动到正确的起始位置
   React.useEffect(() => {
@@ -561,17 +572,6 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     
     return reloadSuccess;
   };
-
-  /**
-   * 计算显示的序号
-   */
-  const getDisplayNumbers = () => {
-  return {
-      displayIndex: currentImageIndex + 1,
-      displayTotal: allImagesState.length
-    };
-  };
-
 
   /**
    * 格式化文件大小
@@ -875,39 +875,6 @@ const ImagePreviewScreen = ({ route, navigation }) => {
   };
 
   /**
-   * 获取所有分类（排除暂存箱）
-   */
-  const getAllCategories = () => {
-    if (!configService || !configService.isConfigLoaded()) {
-      return [];
-    }
-    
-    const currentLang = i18n.language || 'zh';
-    const language = currentLang === 'en' ? 'english' : 'chinese';
-    
-    // 注意：暂存箱不是分类，不会出现在 getAllCategoriesWithUI() 返回的列表中，所以不需要过滤
-    return configService.getAllCategoriesWithUI()
-      .map(category => {
-        let name = configService.getCategoryDisplayName(category.id, language) || 
-                   (currentLang === 'en' ? (category.english || category.chinese) : (category.chinese || category.english)) ||
-                   category.id;
-        // 将名称改为两行显示（每行2个字）
-        if (name.length >= 3) {
-          // 3个字或更多：每2个字换行
-          const firstLine = name.substring(0, 2);
-          const secondLine = name.substring(2);
-          name = firstLine + '\n' + secondLine;
-        }
-        // 2个字或更少：不换行
-        return {
-          id: category.id,
-          name: name,
-          icon: '📷',
-        };
-      });
-  };
-
-  /**
    * 打开分类选择器 Modal
    */
   const openCategoryModal = () => {
@@ -1136,7 +1103,8 @@ const ImagePreviewScreen = ({ route, navigation }) => {
    * 渲染顶部导航栏
    */
   const renderHeader = () => {
-    const { displayIndex, displayTotal } = getDisplayNumbers();
+    const displayIndex = currentImageIndex + 1;
+    const displayTotal = allImagesState.length;
     
     // 从 route.params 获取最新的参数（确保使用最新值）
     const currentParams = route.params || {};
@@ -1165,77 +1133,56 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     // 优先显示来源分类（城市、颜色、目录），而不是内容类别
     let displayName = '';
     const currentLang = i18n.language || 'zh';
-    
-    // 调试：记录参数值
-    logger.debug('📋 ImagePreview 标题显示参数:', {
-      filterType: currentFilterType,
-      filterValue: currentFilterValue,
-      fromScreen
-    });
-    
-    // 统一基于 filterType 判断标题显示
-    if (!currentFilterType) {
-      logger.debug('⚠️ 未找到匹配的标题显示条件');
-    } else {
+
+    // 统一基于 filterType 判断标题显示（日志合并到 useEffect 里只在参数变化时打一次）
+    if (currentFilterType) {
       switch (currentFilterType) {
         case 'city':
           displayName = currentFilterValue || t('category.city');
-          logger.debug('✅ 使用城市名作为标题:', displayName);
           break;
         case 'color':
           displayName = getColorNameTranslation(currentFilterValue, currentLang) || currentFilterValue || t('category.color');
-          logger.debug('✅ 使用颜色名作为标题:', displayName);
           break;
         case 'directory':
           if (currentFilterValue) {
             const directoryName = currentFilterValue.split('/').pop() || currentFilterValue;
             displayName = truncateText(directoryName, 20);
-            logger.debug('✅ 使用目录名作为标题:', { filterValue: currentFilterValue, directoryName, displayName });
           }
           break;
         case 'format':
           displayName = currentFilterValue || t('category.format');
-          logger.debug('✅ 使用格式名作为标题:', displayName);
           break;
         case 'resolution':
           displayName = currentFilterValue || t('category.resolution');
-          logger.debug('✅ 使用分辨率名作为标题:', displayName);
           break;
         case 'orientation':
           displayName = getOrientationNameTranslation(currentFilterValue, currentLang) || currentFilterValue || t('category.orientation');
-          logger.debug('✅ 使用方向名作为标题:', displayName);
           break;
         case 'iso':
           displayName = getCameraSettingsCategoryTranslation('iso', currentFilterValue, currentLang) || currentFilterValue || 'ISO';
-          logger.debug('✅ 使用ISO作为标题:', displayName);
           break;
         case 'aperture':
           displayName = getCameraSettingsCategoryTranslation('aperture', currentFilterValue, currentLang) || currentFilterValue || t('settings.apertureCategory');
-          logger.debug('✅ 使用光圈作为标题:', displayName);
           break;
         case 'shutter':
           displayName = getCameraSettingsCategoryTranslation('shutter', currentFilterValue, currentLang) || currentFilterValue || t('settings.shutterCategory');
-          logger.debug('✅ 使用快门作为标题:', displayName);
           break;
         case 'focalLength':
           displayName = getCameraSettingsCategoryTranslation('focalLength', currentFilterValue, currentLang) || currentFilterValue || t('settings.focalLengthCategory');
-          logger.debug('✅ 使用焦距作为标题:', displayName);
           break;
         case 'similarityGroup':
           displayName = t('category.similarityGroup');
-          logger.debug('✅ 使用相似组作为标题');
           break;
         case 'category':
           if (currentFilterValue) {
             const language = currentLang === 'en' ? 'english' : 'chinese';
-            displayName = configService?.getCategoryDisplayName(currentFilterValue, language) || 
-                         UnifiedDataService.getCategoryDisplayName(currentFilterValue) || 
+            displayName = configService?.getCategoryDisplayName(currentFilterValue, language) ||
+                         UnifiedDataService.getCategoryDisplayName(currentFilterValue) ||
                          currentFilterValue;
-            logger.debug('✅ 使用内容分类作为标题:', displayName);
           }
           break;
         default:
-          logger.debug('⚠️ 未找到匹配的标题显示条件');
+          break;
       }
     }
 
@@ -1266,6 +1213,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
    */
   const renderImageInfo = () => {
     if (!showInfo) return null;
+    if (!currentImage) return null;
 
     const imageDimensions = currentImage.imageDimensions;
 
@@ -1683,7 +1631,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
    */
   // 操作栏图标：优先 Ionicons（iOS 单色），回退 emoji
   const actIcon = (key, emoji) => (PvIonicons
-    ? <PvIonicons name={ACTION_ICONS[key]} size={24} color="#1C1C1E" style={styles.actionIcon} />
+    ? <PvIonicons name={ACTION_ICONS[key]} size={24} color={cTheme.label} style={styles.actionIcon} />
     : <Text style={styles.actionIcon}>{emoji}</Text>);
 
   const renderActions = () => {
@@ -1719,7 +1667,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           style={styles.actionButton}
           onPress={() => displayUri && navigation.navigate('FilterEditor', { imageUri: displayUri })}>
           {actIcon('filter', '🎨')}
-          <Text style={styles.actionLabel}>滤镜</Text>
+          <Text style={styles.actionLabel}>{t('imagePreview.filter')}</Text>
         </TouchableOpacity>
 
         {/* 分类按钮 */}
@@ -1817,16 +1765,6 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     );
   };
 
-  /**
-   * 渲染导航箭头（已移除）
-   * 现代移动端设计趋势：完全移除导航按钮，使用纯手势操作
-   * 用户可以通过左右滑动来切换图片，更符合现代APP的设计理念
-   */
-  const renderNavigationArrows = () => {
-    // 完全移除导航按钮，使用手势操作
-    return null;
-  };
-
   // ==================== 主渲染 ====================
 
   return (
@@ -1898,9 +1836,6 @@ const ImagePreviewScreen = ({ route, navigation }) => {
             );
           }}
         />
-
-        {/* 导航箭头 */}
-        {renderNavigationArrows()}
         </View>
 
       {/* 图片信息面板 */}
@@ -1923,14 +1858,26 @@ const ImagePreviewScreen = ({ route, navigation }) => {
 };
 
 // ==================== 样式 ====================
+// 工厂模式：styles 跟随主题（light/dark）切换，与 HomeScreen / SettingsScreen 一致。
+// 入参 c = useIosColors() 返回的调色板（lightColors 或 darkColors）。
+//
+// 颜色映射约定（与本项目 iOS 主题令牌对齐）：
+//   #FFFFFF 卡背景 → c.card           #000000/#1C1C1E 主文 → c.label
+//   #8E8E93 次要 → c.tertiaryLabel    #C6C6C8/#E5E5EA 分隔 → c.separator
+//   #007AFF → c.accent                #EAF2FF → c.accentSoft   #FF3B30 → c.danger
+// 保留不动：
+//   - 顶部 header（rgba 半透明黑底，永远叠在图片上，文字写死白色更稳）
+//   - imagePlaceholder（位于全黑图片画布内）
+//   - container 背景 #000000（沉浸式照片画布）
+//   - modalOverlay rgba(0,0,0,0.5)（背板）
 
-const styles = StyleSheet.create({
+const createStyles = (c) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#000000', // 沉浸式照片画布：永远黑底，与主题无关
   },
-  
-  // 头部
+
+  // 头部：常驻深色半透明叠在图片上层，文字/图标固定白色（与系统主题无关）
   header: {
     height: 56,
     flexDirection: 'row',
@@ -1963,7 +1910,7 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     marginTop: 2,
   },
-  
+
   // 图片区域
   imageContainer: {
     flex: 1,
@@ -1995,7 +1942,7 @@ const styles = StyleSheet.create({
   imagePlaceholder: {
     width: SCREEN_WIDTH,
     height: '100%',
-    backgroundColor: '#1C1C1E',
+    backgroundColor: '#1C1C1E', // 位于黑色图片画布内：占位永远深灰，与主题无关
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -2003,16 +1950,16 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     fontSize: 14,
   },
-  
+
   // 导航箭头样式已移除 - 使用纯手势操作
-  
-  // 信息面板
+
+  // 信息面板（卡片表面）
   infoPanel: {
     position: 'absolute',
     bottom: 80,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     maxHeight: SCREEN_HEIGHT * 0.6,
@@ -2023,16 +1970,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#C6C6C8',
+    borderBottomColor: c.separator,
   },
   infoPanelTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
   },
   infoPanelClose: {
     fontSize: 20,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
   },
   infoContent: {
     padding: 16,
@@ -2041,20 +1988,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: c.separator,
   },
   infoLabel: {
     width: 80,
     fontSize: 14,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
   },
   infoValue: {
     flex: 1,
     fontSize: 14,
-    color: '#000000',
+    color: c.label,
   },
 
-  // 检测结果样式（iOS 风格：每条标签做成 system-blue 浅色胶囊，
+  // 检测结果样式（iOS 风格：每条标签做成 accent-soft 胶囊，
   // 标题/「更多」用 width:100% 占满整行做换行，items 自然 flex-wrap）。
   detectionSection: {
     marginTop: 8,
@@ -2065,16 +2012,16 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: c.separator,
   },
   detectionTitle: {
     width: '100%',
     fontSize: 13,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     marginBottom: 6,
   },
   detectionItem: {
-    backgroundColor: 'rgba(0, 122, 255, 0.10)',
+    backgroundColor: c.accentSoft,
     borderRadius: 11,
     paddingHorizontal: 9,
     paddingVertical: 4,
@@ -2084,25 +2031,25 @@ const styles = StyleSheet.create({
   detectionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#007AFF',
+    color: c.accent,
     letterSpacing: -0.1,
     fontVariant: ['tabular-nums'],
   },
   detectionMore: {
     width: '100%',
     fontSize: 12,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     marginTop: 2,
     fontStyle: 'italic',
   },
-  
+
   // 操作栏
   actionsBar: {
     position: 'relative',
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#C6C6C8',
+    borderTopColor: c.separator,
     paddingTop: 10,
     paddingBottom: 16,
     paddingHorizontal: 8,
@@ -2120,17 +2067,17 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     fontSize: 11,
-    color: '#1C1C1E',
+    color: c.label,
   },
-  
+
   // Modal 样式
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // 半透明背板：保持不动
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '85%',
@@ -2138,17 +2085,17 @@ const styles = StyleSheet.create({
   modalHeader: {
     padding: 20,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#C6C6C8',
+    borderBottomColor: c.separator,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
     marginBottom: 8,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
   },
   categoryList: {
     flexShrink: 1, // 在 modal 高度内自适应并可滚动，保证"取消"始终在列表下方不重叠
@@ -2159,7 +2106,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: c.separator,
   },
   categoryIcon: {
     fontSize: 22,
@@ -2176,22 +2123,22 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 16,
-    color: '#000000',
+    color: c.label,
     flex: 1,
   },
   selectedCategoryText: {
-    color: '#007AFF',
+    color: c.accent,
     fontWeight: '600',
   },
   modalCancelButton: {
     padding: 16,
     alignItems: 'center',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#C6C6C8',
+    borderTopColor: c.separator,
   },
   modalCancelText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: c.accent,
     fontWeight: '500',
   },
 });
