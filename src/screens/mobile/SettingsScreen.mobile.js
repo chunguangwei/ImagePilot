@@ -35,6 +35,11 @@ import { presetIcon } from '../../ui/ios/presetIcons';
 import { useIosColors } from '../../ui/ios/theme';
 import { SUPERRES_VARIANTS, ensureModel, isModelDownloaded, resolveSuperRes, deleteModel } from '../../services/enhance/modelSource';
 import { CLASSIFIER_TIERS, CLASSIFIER_TIER_ORDER, DEFAULT_CLASSIFIER_TIER } from '../../services/classify/classifierModelTiers';
+import {
+  ensureClassifierModel as ensureClassifierModelFile,
+  isClassifierModelDownloaded as isClassifierModelDownloadedFile,
+  deleteClassifierModel as deleteClassifierModelFile,
+} from '../../services/classify/classifierModelSource';
 import { BUILD_DATE, BUILD_VERSION, BUILD_VERSION_CODE } from '../../config/BuildInfo';
 
 // iOS 单色图标（字体已打包）；异常时回退 emoji
@@ -68,8 +73,12 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   const [srDownloading, setSrDownloading] = useState(false);
   const [srProgress, setSrProgress] = useState(0);
 
-  // 分类模型：basic（默认已内置） / scene（Places365，P1）/ clip（MobileCLIP，P2）
+  // 分类模型：basic（默认已内置） / scene（Places365）/ clip（MobileCLIP，P2 未接入）
   const [classifierTier, setClassifierTier] = useState('basic');
+  // 各档下载状态 + 当前下载中进度（key 是 tier key）
+  const [classifierDownloaded, setClassifierDownloaded] = useState({});  // { scene: true/false, ... }
+  const [classifierDownloadingKey, setClassifierDownloadingKey] = useState(null); // 哪个 tier 正在下载
+  const [classifierDownloadProgress, setClassifierDownloadProgress] = useState(0);
 
   // AI增强预设相关状态
   const [aiEnhancePresets, setAiEnhancePresets] = useState({});
@@ -179,10 +188,20 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
       setSrCustomUrl(sr.customUrl || '');
       try { const r = await resolveSuperRes(); setSrDownloaded(await isModelDownloaded(r.filename)); } catch (_) {}
 
-      // 分类模型档位（P0：仅 basic 可用，scene/clip 落 basic 兜底）
+      // 分类模型档位（P1：basic 已内置 / scene 按需下载 / clip 未接入）
       const savedTier = savedSettings.classifierModelTier || DEFAULT_CLASSIFIER_TIER;
-      const validTier = (CLASSIFIER_TIERS[savedTier] && CLASSIFIER_TIERS[savedTier].readyForUse) ? savedTier : DEFAULT_CLASSIFIER_TIER;
+      const savedCfg = CLASSIFIER_TIERS[savedTier];
+      const validTier = (savedCfg && savedCfg.readyForUse) ? savedTier : DEFAULT_CLASSIFIER_TIER;
       setClassifierTier(validTier);
+      // 检查各 tier 模型下载状态
+      const dlMap = {};
+      for (const k of CLASSIFIER_TIER_ORDER) {
+        const tier = CLASSIFIER_TIERS[k];
+        if (tier.bundled) { dlMap[k] = true; continue; }
+        try { dlMap[k] = await isClassifierModelDownloadedFile(tier.filename); }
+        catch (_) { dlMap[k] = false; }
+      }
+      setClassifierDownloaded(dlMap);
       
       logger.debug('设置加载完成:', savedSettings);
     } catch (error) {
@@ -1161,19 +1180,73 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     } finally { setSrDownloading(false); }
   };
 
-  // ===== 分类模型三档（P0：basic 可用；scene/clip 占位待 P1/P2） =====
+  // ===== 分类模型三档（basic 已内置；scene 按需下载；clip 等 P2 接入） =====
   const selectClassifierTier = async (tierKey) => {
     const tier = CLASSIFIER_TIERS[tierKey];
     if (!tier) return;
     if (!tier.readyForUse) {
+      Alert.alert('即将上线', `${tier.label} 推理引擎尚未接入（P2 计划中）。`);
+      return;
+    }
+    // 非内置档：模型未下载 → 提示先下载
+    if (!tier.bundled && !classifierDownloaded[tierKey]) {
       Alert.alert(
-        '即将上线',
-        `${tier.label} 正在适配中（接入 ${tier.engine.toUpperCase()} 推理引擎）。\n\n当前继续使用「物体识别」（默认）。`,
+        '需要下载模型',
+        `${tier.label} 模型未下载（${tier.sizeMB}MB）。下载完成后才能切换到此档。`,
+        [
+          { text: '取消', style: 'cancel' },
+          { text: '立即下载', onPress: () => downloadClassifierModel(tierKey) },
+        ],
       );
       return;
     }
     setClassifierTier(tierKey);
     try { await updateSetting('classifierModelTier', tierKey); } catch (_) {}
+  };
+
+  const downloadClassifierModel = async (tierKey) => {
+    const tier = CLASSIFIER_TIERS[tierKey];
+    if (!tier || tier.bundled || !tier.url) return;
+    setClassifierDownloadingKey(tierKey);
+    setClassifierDownloadProgress(0);
+    try {
+      await ensureClassifierModelFile(tier.filename, tier.url, (p) => setClassifierDownloadProgress(p));
+      setClassifierDownloaded((prev) => ({ ...prev, [tierKey]: true }));
+      Alert.alert('下载完成', `${tier.label} 模型已就绪，可切换为当前分类档。`);
+    } catch (e) {
+      const msg = (e?.message || String(e)).replace(/^E_\w+\s*/, '');
+      Alert.alert('下载失败', msg);
+    } finally {
+      setClassifierDownloadingKey(null);
+      setClassifierDownloadProgress(0);
+    }
+  };
+
+  const deleteClassifierTierModel = async (tierKey) => {
+    const tier = CLASSIFIER_TIERS[tierKey];
+    if (!tier || tier.bundled) return;
+    Alert.alert(
+      '删除模型',
+      `删除 ${tier.label} 的本地模型？下次使用需重新下载 ${tier.sizeMB}MB。`,
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '删除',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteClassifierModelFile(tier.filename);
+              setClassifierDownloaded((prev) => ({ ...prev, [tierKey]: false }));
+              // 若删的就是当前选中档，切回 basic
+              if (classifierTier === tierKey) {
+                setClassifierTier(DEFAULT_CLASSIFIER_TIER);
+                try { await updateSetting('classifierModelTier', DEFAULT_CLASSIFIER_TIER); } catch (_) {}
+              }
+            } catch (e) { Alert.alert('删除失败', e?.message || String(e)); }
+          },
+        },
+      ]
+    );
   };
 
   const renderClassifierModel = () => {
@@ -1188,9 +1261,11 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         {CLASSIFIER_TIER_ORDER.map((tierKey) => {
           const tier = CLASSIFIER_TIERS[tierKey];
           const isActive = classifierTier === tierKey;
+          const downloaded = !!classifierDownloaded[tierKey];
+          const downloading = classifierDownloadingKey === tierKey;
           const sizeText = tier.bundled
             ? `${tier.sizeMB}MB · 已内置`
-            : `${tier.sizeMB}MB · 离线 · ${tier.speed}`;
+            : `${tier.sizeMB}MB · 离线 · ${tier.speed}` + (downloaded ? ' · 已下载' : '');
           return (
             <TouchableOpacity
               key={tierKey}
@@ -1214,6 +1289,27 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
               <Text style={styles.classifierTierMeta}>{sizeText} · {tier.classes} 类</Text>
               <Text style={styles.classifierTierDesc}>{tier.desc}</Text>
               <Text style={styles.classifierTierWeak}>限制：{tier.weak}</Text>
+              {/* 下载/删除/进度按钮（仅非内置档） */}
+              {!tier.bundled && tier.readyForUse && (
+                <View style={styles.classifierDlBar}>
+                  {downloading ? (
+                    <Text style={styles.classifierDlText}>下载中 {Math.round(classifierDownloadProgress * 100)}%…</Text>
+                  ) : downloaded ? (
+                    <>
+                      <TouchableOpacity onPress={() => downloadClassifierModel(tierKey)} style={styles.classifierDlBtn}>
+                        <Text style={styles.classifierDlBtnText}>重新下载</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => deleteClassifierTierModel(tierKey)} style={[styles.classifierDlBtn, styles.classifierDlBtnDanger]}>
+                        <Text style={styles.classifierDlBtnDangerText}>删除</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <TouchableOpacity onPress={() => downloadClassifierModel(tierKey)} style={[styles.classifierDlBtn, styles.classifierDlBtnPrimary]}>
+                      <Text style={styles.classifierDlBtnPrimaryText}>下载 {tier.sizeMB}MB</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -2134,6 +2230,14 @@ const styles = StyleSheet.create({
   classifierTierMeta: { fontSize: 13, color: '#3C3C43', marginTop: 4, marginLeft: 28, fontVariant: ['tabular-nums'] },
   classifierTierDesc: { fontSize: 13, color: '#3C3C43', marginTop: 4, marginLeft: 28, lineHeight: 18 },
   classifierTierWeak: { fontSize: 12, color: '#8E8E93', marginTop: 3, marginLeft: 28 },
+  classifierDlBar: { flexDirection: 'row', alignItems: 'center', marginTop: 8, marginLeft: 28, gap: 8 },
+  classifierDlText: { fontSize: 12, color: '#007AFF', fontVariant: ['tabular-nums'] },
+  classifierDlBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, backgroundColor: '#EEF2F7' },
+  classifierDlBtnText: { fontSize: 12, color: '#3C3C43' },
+  classifierDlBtnPrimary: { backgroundColor: '#007AFF' },
+  classifierDlBtnPrimaryText: { fontSize: 12, color: '#FFFFFF', fontWeight: '600' },
+  classifierDlBtnDanger: { backgroundColor: '#FFE5E3' },
+  classifierDlBtnDangerText: { fontSize: 12, color: '#FF3B30', fontWeight: '600' },
   srCustomRow: { marginTop: 4, marginBottom: 4 },
   srInput: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#C6C6C8', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 13, color: '#000000', backgroundColor: '#F2F2F7' },
   srStatusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },

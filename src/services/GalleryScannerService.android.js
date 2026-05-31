@@ -20,6 +20,7 @@ import cityLocationService from './CityLocationService';
 import ImageSimilarityService from './ImageSimilarityService';
 import { ScanService } from '../adapters/ScanServiceAdapter';
 import { similarityDetectionPhase as sharedSimilarityDetection } from './similarityDetectionPhase';
+import { classifyImageByTier, readActiveTier } from './classify/classifyByTier';
 import i18n from '../i18n';
 
 const { GalleryScanModule } = NativeModules;
@@ -542,19 +543,22 @@ class GalleryScannerService {
       for (let i = 0; i < naImages.length; i += BATCH) {
         const batch = naImages.slice(i, i + BATCH);
         const classificationDataArray = [];
+        // 当前批次共用一个 tier（每批读一次 settings，避免单图 IO）
+        const activeTier = await readActiveTier();
         for (const image of batch) {
           try {
             const imageUri = getUri(image) || image?.uri;
             if (!imageUri) { failedCount++; continue; }
-            const r = await this.imageClassifier.classifyImageWithMobileNetV3(imageUri);
-            const top = r && r.success ? r.topPrediction : null;
-            const conf = (r && typeof r.confidence === 'number') ? r.confidence : 0;
+            // P1：按 tier 路由（basic→ImageNet / scene→Places365 / clip→未接入回退）
+            const r = await classifyImageByTier(imageUri, activeTier, { imageClassifier: this.imageClassifier });
+            const top = r?.topPrediction || null;
+            const conf = (typeof r?.confidence === 'number') ? r.confidence : 0;
             let category;
-            if (top && conf >= MOBILENET_MAP_THRESHOLD && typeof this.imageClassifier.mapMobileNetV3ToAppCategory === 'function') {
-              category = this.imageClassifier.mapMobileNetV3ToAppCategory(top.class) || 'other';
+            if (top && conf >= MOBILENET_MAP_THRESHOLD) {
+              category = top.appCategory || 'other';
             } else {
               if (top && conf < MOBILENET_MAP_THRESHOLD) {
-                logger.debug(`[Android] 本地分类 conf=${conf.toFixed(3)} < ${MOBILENET_MAP_THRESHOLD}，top="${top.class}" 落 other`);
+                logger.debug(`[Android] ${r?.engine || '?'} conf=${conf.toFixed(3)} < ${MOBILENET_MAP_THRESHOLD}，top="${top?.name}" 落 other`);
               }
               category = 'other';
             }
