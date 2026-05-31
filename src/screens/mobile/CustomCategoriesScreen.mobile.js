@@ -21,7 +21,7 @@ import { useIosColors } from '../../ui/ios/theme';
 import Haptics from '../../utils/haptics';
 
 // 内置分类 id（自定义 id 不应与之冲突）
-const BUILTIN_IDS = ['single_person', 'social_activities', 'travel_scenery', 'pets', 'foods', 'idcard', 'screenshot', 'qrcode', 'other', 'NA'];
+const BUILTIN_IDS = ['single_person', 'social_activities', 'travel_scenery', 'pets', 'foods', 'idcard', 'screenshot', 'electronics', 'qrcode', 'other', 'NA'];
 
 export default function CustomCategoriesScreen({ navigation }) {
   const theme = useIosColors();

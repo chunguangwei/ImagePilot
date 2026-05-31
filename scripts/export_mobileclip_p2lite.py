@@ -18,7 +18,9 @@ import json
 import torch
 import open_clip
 
-# ---- 9 app 类 prompt ensembling（CLIP 标准做法：多 prompt 平均）----
+# ---- 10 app 类 prompt ensembling（CLIP 标准：多 prompt 平均后 L2 norm）----
+# key 必须严格匹配 public/initialSettings.json 的 categoryNameMap key
+# （screenshot / idcard / qrcode / electronics 这些是 app 的真实 ID）
 PROMPTS_PER_CLASS = {
     "single_person": [
         "a photo of a single person",
@@ -51,25 +53,27 @@ PROMPTS_PER_CLASS = {
         "a delicious dish",
         "food photography",
     ],
-    "mobile_screenshot": [
+    "screenshot": [
         "a smartphone screenshot",
         "a screen capture of a mobile app",
         "a phone screen photo",
     ],
-    "id_photo": [
+    "idcard": [
         "an ID card photo",
         "a passport photo",
         "an official document photo",
     ],
-    "qr_code": [
+    "electronics": [
+        "a photo of an electronic device",
+        "a laptop or computer",
+        "a smartphone or tablet",
+        "a TV or monitor display",
+        "a digital camera or watch",
+    ],
+    "qrcode": [
         "a QR code",
         "a barcode",
         "a scannable code",
-    ],
-    "house_view": [
-        "an indoor view of a house",
-        "a room interior",
-        "a view from a window",
     ],
 }
 

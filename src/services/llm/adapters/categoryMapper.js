@@ -6,9 +6,9 @@
  * ImageClassifier 的 App 分类 ID（见 fork `public/initialSettings.json` 的
  * `categoryDisplayOrder` / `categoryNameMap`，由 `mapMobileNetV3ToAppCategory` 落地）
  * 是另一套命名：single_person / social_activities / travel_scenery / pets / foods /
- * idcard / screenshot / qrcode / other / NA。
+ * idcard / screenshot / electronics / qrcode / other / NA。
  *
- * 9 个 schema 枚举里有 5 个与 App ID 不一致（social/pet/food/scenery/id_card），
+ * 10 个 schema 枚举里有 5 个与 App ID 不一致（social/pet/food/scenery/id_card），
  * 若不映射会被下游识别为未知分类而落入 other。本模块提供权威映射表 + 守卫，
  * 供 remoteClassifyRouter 作默认 `mapCategory` 使用。
  *
@@ -25,6 +25,7 @@ export const APP_CATEGORY_IDS = Object.freeze([
   'foods',
   'idcard',
   'screenshot',
+  'electronics',
   'qrcode',
   'other',
   'NA',
@@ -39,6 +40,7 @@ export const SCHEMA_TO_APP_CATEGORY = Object.freeze({
   scenery: 'travel_scenery',
   id_card: 'idcard',
   screenshot: 'screenshot',
+  electronics: 'electronics',
   qrcode: 'qrcode',
   other: 'other',
 });
