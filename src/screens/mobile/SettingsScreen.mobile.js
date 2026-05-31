@@ -1153,8 +1153,10 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   };
 
   const renderSuperResModel = () => {
+    // 小模型是 Qualcomm AI Hub 格式，仅 Android 上跑得动；iOS 标注「不兼容」并隐藏推荐
+    const smallSuffix = Platform.OS === 'ios' ? '（iOS 不兼容，请选大）' : '';
     const opts = [
-      { key: 'small', label: SUPERRES_VARIANTS.small.label },
+      { key: 'small', label: SUPERRES_VARIANTS.small.label + smallSuffix },
       { key: 'large', label: SUPERRES_VARIANTS.large.label },
       { key: 'custom', label: '自定义链接（.onnx）' },
     ];
@@ -1163,15 +1165,24 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         <Text style={styles.actionButtonText}>
           {SetIonicons ? <SetIonicons name="color-wand-outline" size={17} color="#007AFF" /> : null} AI 增强模型
         </Text>
-        <Text style={styles.actionButtonDescription}>模型按需下载（不占安装包）。大模型更清晰但更慢更大。</Text>
-        {opts.map((o) => (
-          <TouchableOpacity key={o.key} style={styles.srOptionRow} onPress={() => selectSrVariant(o.key)} activeOpacity={0.6}>
-            {SetIonicons
-              ? <SetIonicons name={srVariant === o.key ? 'radio-button-on' : 'radio-button-off'} size={20} color={srVariant === o.key ? '#007AFF' : '#C6C6C8'} />
-              : <Text>{srVariant === o.key ? '●' : '○'}</Text>}
-            <Text style={styles.srOptionLabel}>{o.label}</Text>
-          </TouchableOpacity>
-        ))}
+        <Text style={styles.actionButtonDescription}>模型按需下载（不占安装包）。大模型更清晰但更慢更大。{Platform.OS === 'ios' ? 'iOS 首次默认走「大」。' : ''}</Text>
+        {opts.map((o) => {
+          const disabled = Platform.OS === 'ios' && o.key === 'small';
+          return (
+            <TouchableOpacity
+              key={o.key}
+              style={[styles.srOptionRow, disabled && { opacity: 0.4 }]}
+              onPress={() => { if (!disabled) selectSrVariant(o.key); }}
+              activeOpacity={disabled ? 1 : 0.6}
+              disabled={disabled}
+            >
+              {SetIonicons
+                ? <SetIonicons name={srVariant === o.key ? 'radio-button-on' : 'radio-button-off'} size={20} color={srVariant === o.key ? '#007AFF' : '#C6C6C8'} />
+                : <Text>{srVariant === o.key ? '●' : '○'}</Text>}
+              <Text style={styles.srOptionLabel}>{o.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
         {srVariant === 'custom' && (
           <View style={styles.srCustomRow}>
             <TextInput

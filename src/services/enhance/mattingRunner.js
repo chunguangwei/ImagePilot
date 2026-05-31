@@ -12,9 +12,10 @@
 
 import * as ortNS from 'onnxruntime-react-native';
 import Jimp from './jimpCustom.js';
+import { loadOnnxSession } from './loadOnnxSession.js';
 
 const ort = ortNS.default || ortNS; // CJS 下经 default 取（与 superResRunner 一致）
-const { InferenceSession, Tensor } = ort;
+const { Tensor } = ort;
 
 const S = 320; // u2netp 固定输入边长
 const MEAN = [0.485, 0.456, 0.406];
@@ -25,7 +26,7 @@ export function createMattingRunner(cfg = {}) {
   let _session = null;
 
   async function getSession() {
-    if (!_session) _session = await InferenceSession.create(config.modelPath);
+    if (!_session) _session = await loadOnnxSession(config.modelPath);
     return _session;
   }
 

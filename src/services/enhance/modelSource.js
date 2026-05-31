@@ -9,6 +9,7 @@
 
 import { logger } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../UnifiedDataService';
+import { Platform } from 'react-native';
 
 // 注意：adapters 的 RNFS 是裁剪过的子集，没有 downloadFile/moveFile 等；
 // 这里直接用原生 react-native-fs（与 UpdateService 一致），否则会 "undefined is not a function"。
@@ -80,16 +81,28 @@ export async function ensureModel(filename, url, onProgress) {
   return asUri(dest);
 }
 
-/** 读取设置里激活的超分模型变体 → { filename, url, variant } */
+/**
+ * 读取设置里激活的超分模型变体 → { filename, url, variant }
+ *
+ * 默认变体平台分桶：
+ * - Android 默认 'small'：real_esrgan_x4v3_merged.onnx ~5MB，Qualcomm AI Hub
+ *   导出格式，onnxruntime Android 能跑、体积友好
+ * - iOS 默认 'large'：Real-ESRGAN-x4plus.onnx ~64MB，标准 ONNX，iOS
+ *   onnxruntime-react-native 解析不了 Qualcomm 格式 → 创建会话直接失败
+ *   (实测三策略 bare/orig/buf 全 "failed to load model")
+ *
+ * 用户手动选定的 variant 优先级高于默认；只在 cfg.variant 缺时按平台兜底。
+ */
 export async function resolveSuperRes() {
   let cfg = {};
   try { const s = await UnifiedDataService.readSettings(); cfg = (s && s.superResModel) || {}; } catch (_) {}
-  const variant = cfg.variant || 'small';
+  const defaultVariant = Platform.OS === 'ios' ? 'large' : 'small';
+  const variant = cfg.variant || defaultVariant;
   if (variant === 'custom' && cfg.customUrl) {
     return { filename: CUSTOM_SUPERRES_FILENAME, url: cfg.customUrl, variant: 'custom' };
   }
-  const v = SUPERRES_VARIANTS[variant] || SUPERRES_VARIANTS.small;
-  return { ...v, variant: SUPERRES_VARIANTS[variant] ? variant : 'small' };
+  const v = SUPERRES_VARIANTS[variant] || SUPERRES_VARIANTS[defaultVariant];
+  return { ...v, variant: SUPERRES_VARIANTS[variant] ? variant : defaultVariant };
 }
 
 /** 删除某模型（用于"重新下载"/换自定义链接） */
