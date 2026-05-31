@@ -26,6 +26,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, useFocusEffect, Alert } from '../../adapters/WebAdapters';
 import { DeviceEventEmitter } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import UnifiedDataService from '../../services/UnifiedDataService';
 import WeChatAuthService from '../../services/WeChatAuthService';
 import GlobalImageCache from '../../services/GlobalImageCache';
@@ -42,12 +43,11 @@ import { getColorNameTranslation, getOrientationNameTranslation, getCameraSettin
 import { useIosColors } from '../../ui/ios/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const GRID_COLUMNS = 3;
-const GRID_ITEM_SIZE = (SCREEN_WIDTH - 8) / GRID_COLUMNS; // 减去间距
 
 /** 时间轴某日下的照片相关地点（异步解析 location_id 为显示名） */
 const TimelineLocationLine = React.memo(({ imagesForDate }) => {
   const { i18n } = useTranslation('common');
+  const c = useIosColors();
   const [locationNames, setLocationNames] = useState([]);
   const lang = i18n.language || 'zh';
   useEffect(() => {
@@ -65,7 +65,7 @@ const TimelineLocationLine = React.memo(({ imagesForDate }) => {
   }, [imagesForDate, lang]);
   if (locationNames.length === 0) return null;
   return (
-    <Text style={styles.timelineLocation} numberOfLines={1}>
+    <Text style={{ fontSize: 12, color: c.tertiaryLabel, marginTop: 2 }} numberOfLines={1}>
       {locationNames.join('、')}
     </Text>
   );
@@ -74,6 +74,8 @@ const TimelineLocationLine = React.memo(({ imagesForDate }) => {
 const CategoryScreen = ({ route, navigation }) => {
   const { t, i18n } = useTranslation('common');
   const c = useIosColors();
+  const insets = useSafeAreaInsets();
+  const styles = React.useMemo(() => createStyles(c), [c]);
 
   // ==================== 路由参数 ====================
   // 统一使用 filterType 和 filterValue，从旧参数推导（过渡期）
@@ -128,14 +130,9 @@ const CategoryScreen = ({ route, navigation }) => {
   const [updateProgress, setUpdateProgress] = useState({ filesProcessed: 0, filesFailed: 0, total: 0 });
   const [updateOperationType, setUpdateOperationType] = useState(''); // 'changeCategory' 或 'moveToStaging'
   
-  // 分页
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  
   // 城市显示名称（根据语言设置）
   const [cityDisplayName, setCityDisplayName] = useState(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  
+
   // 时间轴分组
   const [groupedImages, setGroupedImages] = useState({});
   
@@ -163,8 +160,6 @@ const CategoryScreen = ({ route, navigation }) => {
   }, []);
   
   // 照片创玩任务相关（任务提交已移到结果页，不再需要状态跟踪）
-  
-  const ITEMS_PER_PAGE = 50;
 
   // ==================== 页面类型判断 ====================
   // 统一基于 filterType 判断
@@ -667,7 +662,6 @@ const CategoryScreen = ({ route, navigation }) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
-        setPage(1);
       } else {
         setLoading(true);
       }
@@ -710,8 +704,7 @@ const CategoryScreen = ({ route, navigation }) => {
       
       // 直接设置状态，同步执行
       setImages(filteredImages);
-      setHasMore(filteredImages.length > ITEMS_PER_PAGE);
-      
+
       // 同时设置分组图片
       if (filteredImages.length > 0) {
         const grouped = groupImagesByDate(filteredImages);
@@ -784,19 +777,6 @@ const CategoryScreen = ({ route, navigation }) => {
     // 只重新加载数据（从缓存读取），不重建缓存
     // 缓存只在数据真正变化时（扫描、删除）才重建
     await loadImages(true);
-  };
-
-  /**
-   * 加载更多
-   */
-  const loadMore = () => {
-    if (!hasMore || loadingMore) return;
-    
-    setLoadingMore(true);
-    setTimeout(() => {
-      setPage(page + 1);
-      setLoadingMore(false);
-    }, 300);
   };
 
   // ==================== 选择操作 ====================
@@ -1504,89 +1484,7 @@ const CategoryScreen = ({ route, navigation }) => {
 
 
 
-  /**
-   * 保留选中（相似组分类中使用：将其他相似图片移到暂存箱）
-   */
-  const batchKeep = async (keepIds) => {
-    if (!similarityGroupId) {
-      Alert.alert(t('common.tip'), t('category.onlyAvailableInSimilarityGroup'));
-      return;
-    }
-    
-    const moveIds = images.filter(img => !keepIds.includes(img.id)).map(img => img.id);
-    
-    if (moveIds.length === 0) {
-      Alert.alert(t('common.tip'), t('category.noImagesToMove'));
-      return;
-    }
-    
-    Alert.alert(
-      t('category.keepSelectedImagesTitle'),
-      t('category.keepSelectedImagesMessage', { keep: keepIds.length, move: moveIds.length }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.confirm'),
-          onPress: async () => {
-            // 复用批量移到暂存箱的函数
-            await batchMoveToStaging(moveIds);
-            
-            // 清除保留图片的选中状态
-            keepIds.forEach(id => {
-              UnifiedDataService.setImageSelection(id, false);
-            });
-            
-          },
-        },
-      ]
-    );
-  };
-
   // ==================== 渲染函数 ====================
-
-  /**
-   * 渲染图片项
-   */
-  const renderImageItem = ({ item }) => {
-    // 🆕 添加空值检查
-    if (!item || !item.id) {
-      console.warn('⚠️ renderImageItem 发现无效的图片对象:', item);
-      return null;
-    }
-    
-    // 使用 getUri 获取正确的 URI
-    const imageUri = getUri(item);
-    if (!imageUri) {
-      console.warn('⚠️ renderImageItem 无法获取图片 URI:', item.id);
-      return null;
-    }
-    
-    const isSelected = UnifiedDataService.isImageSelected(item.id);
-    
-    return (
-      <TouchableOpacity
-        style={styles.gridItem}
-        onPress={() => handlePress(item)}
-        onLongPress={() => handleLongPress(item)}
-        activeOpacity={0.8}
-      >
-        <Image
-          source={{ uri: imageUri }}
-          style={styles.gridImage}
-          resizeMode="cover"
-        />
-        {selectionMode && (
-          <View style={[styles.selectionOverlay, isSelected && styles.selectedOverlay]}>
-            {isSelected && (
-              <View style={styles.checkmark}>
-                <Text style={styles.checkmarkText}>✓</Text>
-    </View>
-            )}
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  };
 
   /**
    * 渲染顶部操作栏
@@ -1622,7 +1520,7 @@ const CategoryScreen = ({ route, navigation }) => {
     const actions = getActionButtons();
 
     return (
-      <View style={styles.actionBar}>
+      <View style={[styles.actionBar, { paddingBottom: 8 + insets.bottom }]}>
         {actions.map(action => (
           <TouchableOpacity
             key={action.id}
@@ -1705,23 +1603,11 @@ const CategoryScreen = ({ route, navigation }) => {
   };
 
   /**
-   * 渲染列表底部
-   */
-  const renderFooter = () => {
-    if (!loadingMore) return null;
-      return (
-      <View style={styles.footer}>
-        <ActivityIndicator size="small" color="#007AFF" />
-        </View>
-      );
-  };
-
-  /**
    * 渲染空状态
    */
   const renderEmpty = () => (
         <View style={styles.emptyContainer}>
-      {CatIonicons ? <CatIonicons name="file-tray-outline" size={64} color="#C7C7CC" style={{ marginBottom: 16 }} /> : <Text style={styles.emptyIcon}>📭</Text>}
+      {CatIonicons ? <CatIonicons name="file-tray-outline" size={64} color={c.tertiaryLabel} style={{ marginBottom: 16 }} /> : <Text style={styles.emptyIcon}>📭</Text>}
       <Text style={styles.emptyText}>{t('category.noImages')}</Text>
         </View>
       );
@@ -2092,10 +1978,10 @@ const CategoryScreen = ({ route, navigation }) => {
 
 // ==================== 样式 ====================
 
-const styles = StyleSheet.create({
+const createStyles = (c) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: c.groupedBg,
   },
   loadingContainer: {
     flex: 1,
@@ -2104,7 +1990,7 @@ const styles = StyleSheet.create({
   },
   header: {
     height: 56,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
@@ -2117,90 +2003,54 @@ const styles = StyleSheet.create({
   },
   backIcon: {
     fontSize: 32,
-    color: '#007AFF',
+    color: c.accent,
     fontWeight: 'bold',
   },
   headerTitle: {
     flex: 1,
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
     textAlign: 'center',
   },
   headerRight: {
     width: 40,
   },
-  
+
   // 选择栏
   selectionBar: {
     height: 44,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#C6C6C8',
+    borderBottomColor: c.separator,
   },
   selectionCancel: {
     fontSize: 16,
-    color: '#007AFF',
+    color: c.accent,
   },
   selectionCount: {
      fontSize: 16,
-    color: '#000000',
+    color: c.label,
      fontWeight: '600',
   },
   selectionAll: {
      fontSize: 16,
-    color: '#007AFF',
+    color: c.accent,
   },
-  
-  // 网格
-  gridContainer: {
-    padding: 2,
-  },
-  gridItem: {
-    width: GRID_ITEM_SIZE,
-    height: GRID_ITEM_SIZE,
-    padding: 2,
-  },
-  gridImage: {
-    width: '100%',
-    height: '100%',
-  },
-  selectionOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  selectedOverlay: {
-    backgroundColor: 'rgba(0,122,255,0.3)',
-  },
-  checkmark: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkmarkText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  
-  // 操作栏
+
+  // 操作栏（底部 paddingBottom 由调用处加 safe-area insets）
   actionBar: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
+    backgroundColor: c.card,
+    paddingTop: 12,
     paddingHorizontal: 16,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: '#C6C6C8',
+    borderTopColor: c.separator,
   },
   actionButton: {
     flex: 1,
@@ -2218,80 +2068,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  // 照片创玩面板
-  enhancePanel: {
-    position: 'absolute',
-    left: 8,
-    right: 8,
-    bottom: 80, // 覆盖在底部操作按钮上方
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#C6C6C8',
-    paddingHorizontal: 8,
-    paddingVertical: 10,
-    zIndex: 1000, // 确保在底部操作按钮上方
-    elevation: 10, // Android 阴影
-    shadowColor: '#000', // iOS 阴影
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  enhanceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  enhanceTitle: {
-    fontSize: 14,
-    color: '#000000',
-    fontWeight: '600',
-  },
-  enhanceClose: {
-    fontSize: 13,
-    color: '#8E8E93',
-  },
-  enhanceList: {
-    maxHeight: 300,
-    marginTop: 6,
-  },
-  enhanceListContent: {
-    paddingVertical: 0,
-  },
-  enhancePresetItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  enhancePresetIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  enhancePresetName: {
-    fontSize: 16,
-    color: '#000000',
-    flex: 1,
-  },
-  presetInfo: {
-    flex: 1,
-  },
-  presetPrompt: {
-    fontSize: 12,
-    color: '#8E8E93',
-    lineHeight: 16,
-  },
-  
-  // 底部加载
-  footer: {
-    padding: 16,
-    alignItems: 'center',
-  },
-  
+
   // 空状态
   emptyContainer: {
     flex: 1,
@@ -2305,9 +2082,9 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
   },
-  
+
   // 时间轴样式
    timelineContainer: {
      padding: 8,
@@ -2331,23 +2108,18 @@ const styles = StyleSheet.create({
   timelineHeaderLeft: {
     flex: 1,
   },
-  timelineLocation: {
-    fontSize: 12,
-    color: '#8E8E93',
-    marginTop: 2,
-  },
   timelineDate: {
     fontSize: 15,
      fontWeight: '600',
-    color: '#000000',
+    color: c.label,
   },
   timelineCount: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     marginLeft: 6,
   },
   timelineSelectionIndicator: {
-    backgroundColor: '#007AFF',
+    backgroundColor: c.accent,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -2372,7 +2144,7 @@ const styles = StyleSheet.create({
   },
   timelineItemSelected: {
     borderWidth: 3,
-    borderColor: '#007AFF',
+    borderColor: c.accent,
   },
   timelineItemHighlighted: {
     borderWidth: 3,
@@ -2394,7 +2166,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#007AFF',
+    backgroundColor: c.accent,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -2429,7 +2201,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
-  
+
   // 分类选择器模态框样式
   modalOverlay: {
     flex: 1,
@@ -2437,7 +2209,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '70%',
@@ -2445,17 +2217,17 @@ const styles = StyleSheet.create({
   modalHeader: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#C6C6C8',
+    borderBottomColor: c.separator,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
     marginBottom: 8,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
   },
   categoryList: {
     maxHeight: 400,
@@ -2465,7 +2237,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: c.separator,
   },
   categoryIcon: {
     fontSize: 24,
@@ -2482,21 +2254,21 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 16,
-    color: '#000000',
+    color: c.label,
     flex: 1,
   },
   modalCancelButton: {
     padding: 16,
      alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#C6C6C8',
+    borderTopColor: c.separator,
   },
   modalCancelText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: c.accent,
     fontWeight: '500',
   },
-  
+
   // 删除进度弹窗样式
   progressModalOverlay: {
     flex: 1,
@@ -2515,7 +2287,7 @@ const styles = StyleSheet.create({
     elevation: 999,
   },
   progressModalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     borderRadius: 12,
     padding: 24,
     minWidth: 280,
@@ -2524,29 +2296,29 @@ const styles = StyleSheet.create({
   progressModalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
     marginBottom: 12,
   },
   progressModalText: {
     fontSize: 16,
-    color: '#000000',
+    color: c.label,
     marginBottom: 8,
   },
   progressModalError: {
     fontSize: 14,
-    color: '#FF3B30',
+    color: c.danger,
     marginBottom: 16,
   },
   progressBar: {
     width: '100%',
     height: 4,
-    backgroundColor: '#C6C6C8',
+    backgroundColor: c.separator,
     borderRadius: 2,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#007AFF',
+    backgroundColor: c.accent,
     borderRadius: 2,
   },
 });
