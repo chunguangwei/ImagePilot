@@ -7,22 +7,22 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Alert, ActivityIndicator, StatusBar } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Alert, ActivityIndicator, StatusBar, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { RNFS, getLocalPath, ModelPathAdapter, SafeAreaView } from '../../adapters/WebAdapters';
+import { useIosColors } from '../../ui/ios/theme';
 import ImageProcessor from '../../services/ImageProcessor';
 import { JIMP_FILTERS, JIMP_FILTER_IDS, hasIntensity, applyJimpFilterToBase64 } from '../../services/enhance/jimpFilters.js';
 
 const SR_MODEL = 'real_esrgan_x4v3_merged.onnx'; // 单文件（权重内嵌）；改名以绕过旧外部权重版的缓存
 
-const INTENSITY_LEVELS = [
-  { label: '弱', value: 0.33 },
-  { label: '中', value: 0.66 },
-  { label: '强', value: 1.0 },
-];
-
 export default function FilterEditorScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation('common');
+  const c = useIosColors();
+  const scheme = useColorScheme();
+  const styles = React.useMemo(() => createStyles(c, scheme === 'dark'), [c, scheme]);
   const imageUri = route?.params?.imageUri;
   const [srcBase64, setSrcBase64] = useState(null); // 原图 base64（一次性读入）
   const [resultUri, setResultUri] = useState(imageUri); // 预览 data URL
@@ -34,6 +34,12 @@ export default function FilterEditorScreen({ route, navigation }) {
   const [aiProgress, setAiProgress] = useState(0);
   const [comparing, setComparing] = useState(false); // 按住对比原图时为 true
 
+  const INTENSITY_LEVELS = React.useMemo(() => ([
+    { key: 'weak', label: t('filterEditor.intensityWeak'), value: 0.33 },
+    { key: 'medium', label: t('filterEditor.intensityMedium'), value: 0.66 },
+    { key: 'strong', label: t('filterEditor.intensityStrong'), value: 1.0 },
+  ]), [t]);
+
   const win = Dimensions.get('window');
   // 预留底部 chrome（AI 增强按钮+强度行+滤镜条）与安全区，避免滤镜条被挤到屏幕外/被手势条遮挡
   const size = Math.min(win.width, win.height - 300 - insets.bottom);
@@ -43,24 +49,24 @@ export default function FilterEditorScreen({ route, navigation }) {
   useEffect(() => {
     (async () => {
       try {
-        if (!imageUri) throw new Error('未传入图片');
+        if (!imageUri) throw new Error(t('filterEditor.imageMissing'));
         const resized = await ImageProcessor.resizeImage(imageUri, 1024, 1024, {
           maintainAspectRatio: true,
           outputFormat: 'jpeg',
           quality: 90,
         });
         const uri = resized?.uri;
-        if (!uri) throw new Error('缩放未返回有效 URI');
+        if (!uri) throw new Error(t('filterEditor.resizeNoUri'));
         // resize 产出的是干净 file:// URI，直接剥前缀得绝对路径；
         // 不走 getLocalPath（它对该 URI 会返回缺前导斜杠的相对路径 → RNFS ENOENT）。
         const path = uri.startsWith('file://') ? uri.replace(/^file:\/\//, '') : (getLocalPath(uri) || uri);
         const b64 = await RNFS.readFile(path, 'base64');
         setSrcBase64(b64);
       } catch (e) {
-        setError('读图失败：' + (e?.message || String(e)));
+        setError(t('filterEditor.readImageFailed', { error: e?.message || String(e) }));
       }
     })();
-  }, [imageUri]);
+  }, [imageUri, t]);
 
   // 应用滤镜（切滤镜/强度时重处理）
   const reprocess = useCallback(async (fid, inten) => {
@@ -95,9 +101,9 @@ export default function FilterEditorScreen({ route, navigation }) {
       await RNFS.mkdir(dir).catch(() => {});
       const path = `${dir}/filtered_${Date.now()}.jpg`;
       await RNFS.writeFile(path, base64, 'base64');
-      Alert.alert('已保存', `已保存到:\n${path}`);
+      Alert.alert(t('filterEditor.savedTitle'), t('filterEditor.savedMessage', { path }));
     } catch (e) {
-      Alert.alert('保存失败', e?.message || String(e));
+      Alert.alert(t('filterEditor.saveFailedTitle'), e?.message || String(e));
     } finally {
       setBusy(false);
     }
@@ -123,22 +129,29 @@ export default function FilterEditorScreen({ route, navigation }) {
       setResultUri(out);
       setFilterId('none');
     } catch (e) {
-      setError('AI 增强失败：' + (e?.message || String(e)));
+      setError(t('filterEditor.aiEnhanceFailed', { error: e?.message || String(e) }));
     } finally {
       setAiBusy(false);
     }
   };
 
+  const filterLabel = (id) => {
+    // i18n 优先，缺 key 时回退到注册表 name（中文）
+    const key = `filterEditor.filters.${id}`;
+    const v = t(key);
+    return v === key ? JIMP_FILTERS[id]?.name || id : v;
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'} />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.headerBtn}>‹ 返回</Text>
+          <Text style={styles.headerBtn}>{t('filterEditor.back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>滤镜修图</Text>
+        <Text style={styles.title}>{t('filterEditor.title')}</Text>
         <TouchableOpacity onPress={onSave} disabled={busy || aiBusy || !canSave}>
-          <Text style={[styles.headerBtn, (busy || aiBusy || !canSave) && styles.disabled]}>保存</Text>
+          <Text style={[styles.headerBtn, (busy || aiBusy || !canSave) && styles.disabled]}>{t('common.save')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -151,7 +164,7 @@ export default function FilterEditorScreen({ route, navigation }) {
             {/* 角标：当前在看原图还是效果 */}
             {hasResult && !busy && !aiBusy && (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{comparing ? '原图' : '效果'}</Text>
+                <Text style={styles.badgeText}>{comparing ? t('filterEditor.compareOriginalBadge') : t('filterEditor.compareResultBadge')}</Text>
               </View>
             )}
             {/* 按住对比原图 */}
@@ -161,13 +174,13 @@ export default function FilterEditorScreen({ route, navigation }) {
                 activeOpacity={1}
                 onPressIn={() => setComparing(true)}
                 onPressOut={() => setComparing(false)}>
-                <Text style={styles.compareBtnText}>👁 按住看原图</Text>
+                <Text style={styles.compareBtnText}>{t('filterEditor.compareHoldHint')}</Text>
               </TouchableOpacity>
             )}
             {(busy || aiBusy) && (
               <View style={styles.overlay}>
-                <ActivityIndicator color="#fff" />
-                <Text style={styles.overlayText}>{aiBusy ? `AI 增强中… ${aiProgress}%（较慢，请稍候）` : '处理中…'}</Text>
+                <ActivityIndicator color="#FFFFFF" />
+                <Text style={styles.overlayText}>{aiBusy ? t('filterEditor.aiEnhancing', { percent: aiProgress }) : t('filterEditor.processing')}</Text>
               </View>
             )}
           </>
@@ -179,15 +192,15 @@ export default function FilterEditorScreen({ route, navigation }) {
         style={[styles.aiBtn, aiBusy && styles.disabledBtn]}
         disabled={aiBusy || !srcBase64}
         onPress={aiEnhance}>
-        <Text style={styles.aiBtnText}>✨ AI 增强（超分修复，较慢）</Text>
+        <Text style={styles.aiBtnText}>{t('filterEditor.aiEnhanceButton')}</Text>
       </TouchableOpacity>
 
       {hasIntensity(filterId) && (
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>强度</Text>
+          <Text style={styles.rowLabel}>{t('filterEditor.intensityLabel')}</Text>
           {INTENSITY_LEVELS.map((lv) => (
             <TouchableOpacity
-              key={lv.label}
+              key={lv.key}
               style={[styles.chip, Math.abs(intensity - lv.value) < 0.05 && styles.chipActive]}
               onPress={() => setIntensity(lv.value)}>
               <Text style={styles.chipText}>{lv.label}</Text>
@@ -203,7 +216,7 @@ export default function FilterEditorScreen({ route, navigation }) {
             style={[styles.filterChip, filterId === id && styles.filterChipActive]}
             onPress={() => setFilterId(id)}>
             <Text style={[styles.filterChipText, filterId === id && styles.filterChipTextActive]}>
-              {JIMP_FILTERS[id].name}
+              {filterLabel(id)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -212,32 +225,34 @@ export default function FilterEditorScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+const createStyles = (c, isDark) => StyleSheet.create({
+  // 在 light 主题下用 groupedBg（不再全黑），dark 下用 card 黑面板
+  container: { flex: 1, backgroundColor: isDark ? c.groupedBg : c.groupedBg },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 },
-  headerBtn: { color: '#0A84FF', fontSize: 16, fontWeight: '500' },
-  disabled: { color: '#8E8E93' },
-  title: { color: '#fff', fontSize: 17, fontWeight: '600' },
-  preview: { justifyContent: 'center', alignItems: 'center' },
-  err: { color: '#FF453A', padding: 20, textAlign: 'center' },
+  headerBtn: { color: c.accent, fontSize: 16, fontWeight: '500' },
+  disabled: { color: c.tertiaryLabel },
+  title: { color: c.label, fontSize: 17, fontWeight: '600' },
+  // 预览区保持深底，避免照片缩放后透出与外壳同色，便于聚焦图片本身
+  preview: { justifyContent: 'center', alignItems: 'center', backgroundColor: '#000000' },
+  err: { color: c.danger, padding: 20, textAlign: 'center' },
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)' },
-  overlayText: { color: '#fff', marginTop: 8 },
+  overlayText: { color: '#FFFFFF', marginTop: 8 },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8 },
-  rowLabel: { color: '#EBEBF5', marginRight: 12 },
-  chip: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, backgroundColor: '#2C2C2E', marginRight: 8 },
-  chipActive: { backgroundColor: '#007AFF' },
-  chipText: { color: '#fff' },
+  rowLabel: { color: c.label, marginRight: 12 },
+  chip: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, backgroundColor: c.fill, marginRight: 8 },
+  chipActive: { backgroundColor: c.accent },
+  chipText: { color: c.label },
   filterBar: { maxHeight: 64, paddingHorizontal: 8, paddingVertical: 10 },
-  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 18, backgroundColor: '#2C2C2E', marginHorizontal: 5 },
-  filterChipActive: { backgroundColor: '#007AFF' },
-  filterChipText: { color: '#EBEBF5' },
-  filterChipTextActive: { color: '#fff', fontWeight: '600' },
-  aiBtn: { marginHorizontal: 14, marginVertical: 6, paddingVertical: 13, borderRadius: 12, backgroundColor: '#007AFF', alignItems: 'center' },
+  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 18, backgroundColor: c.fill, marginHorizontal: 5 },
+  filterChipActive: { backgroundColor: c.accent },
+  filterChipText: { color: c.label },
+  filterChipTextActive: { color: '#FFFFFF', fontWeight: '600' },
+  aiBtn: { marginHorizontal: 14, marginVertical: 6, paddingVertical: 13, borderRadius: 12, backgroundColor: c.accent, alignItems: 'center' },
   disabledBtn: { opacity: 0.5 },
-  aiBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  aiBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
   badge: { position: 'absolute', top: 10, left: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.55)' },
-  badgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  badgeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
   compareBtn: { position: 'absolute', bottom: 12, alignSelf: 'center', paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' },
   compareBtnActive: { backgroundColor: 'rgba(0,122,255,0.85)' },
-  compareBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  compareBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
 });
