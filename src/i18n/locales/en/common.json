@@ -236,7 +236,7 @@
   },
   "home": {
     "title": "Home",
-    "ready": "Image classification app is ready",
+    "ready": "Ready",
     "scanning": "Scanning...",
     "scanComplete": "Scan Complete",
     "smartScan": "Smart Scan",
