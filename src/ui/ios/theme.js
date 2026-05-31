@@ -23,6 +23,11 @@ export const lightColors = {
   cardPressed: '#D1D1D6',
   separator: '#C6C6C8', // separator
 
+  // iOS systemFill 系列：用于无主色的中性按钮 / chip / pill
+  fill: 'rgba(120, 120, 128, 0.20)',          // systemFill
+  fillSecondary: 'rgba(120, 120, 128, 0.16)', // secondarySystemFill
+  fillTertiary: 'rgba(118, 118, 128, 0.12)',  // tertiarySystemFill
+
   // 文字
   label: '#000000',
   secondaryLabel: '#3C3C4399', // 60% on light
@@ -32,7 +37,11 @@ export const lightColors = {
   accent: '#007AFF',
   accentSoft: '#EAF2FF',
   danger: '#FF3B30',
+  dangerSoft: '#FFE5E3',     // 红 destructive 的轻底（HIG: systemRed @ ~12%）
   success: '#34C759',
+  successSoft: '#E8F5E9',
+  warning: '#FF9500',        // iOS systemOrange
+  warningSoft: '#FFF3E0',
   chevron: '#C4C4C6',
 };
 
@@ -44,14 +53,23 @@ export const darkColors = {
   cardPressed: '#2C2C2E',
   separator: '#38383A', // separator dark
 
+  // iOS systemFill 系列 dark 值（与 light 不同的不透明度）
+  fill: 'rgba(120, 120, 128, 0.36)',
+  fillSecondary: 'rgba(120, 120, 128, 0.32)',
+  fillTertiary: 'rgba(118, 118, 128, 0.24)',
+
   label: '#FFFFFF',
   secondaryLabel: '#EBEBF599', // 60% on dark
-  tertiaryLabel: '#8E8E93', // 中灰两个 mode 都可读
+  tertiaryLabel: '#EBEBF54D', // 30% on dark (更柔和；之前 8E8E93 在 dark 太亮)
 
   accent: '#0A84FF', // iOS dark accent 比浅色蓝稍亮
-  accentSoft: '#0A84FF22',
+  accentSoft: 'rgba(10, 132, 255, 0.20)',  // 比 22 略深，dark 上更清晰
   danger: '#FF453A',
+  dangerSoft: 'rgba(255, 69, 58, 0.20)',
   success: '#30D158',
+  successSoft: 'rgba(48, 209, 88, 0.20)',
+  warning: '#FF9F0A',
+  warningSoft: 'rgba(255, 159, 10, 0.20)',
   chevron: '#48484A',
 };
 

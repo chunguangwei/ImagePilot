@@ -50,6 +50,9 @@ import { changeLanguage, getCurrentLanguage, getDefaultPresets } from '../../i18
 const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   const { t, i18n } = useTranslation('common');
   const c = useIosColors();
+  // 颜色 token 一变（系统切 light/dark），整页 StyleSheet 重建一次；
+  // 同一渲染周期内复用同一份 styles，避免每次 render 重新 create。
+  const styles = React.useMemo(() => createStyles(c), [c]);
 
   // ==================== 状态管理 ====================
   const [loading, setLoading] = useState(true);
@@ -1253,7 +1256,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     return (
       <View style={styles.actionButton}>
         <Text style={styles.actionButtonText}>
-          {SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color="#007AFF" /> : null} 分类模型
+          {SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color={c.accent} /> : null} 分类模型
         </Text>
         <Text style={styles.actionButtonDescription}>
           三种风格的设备端分类模型，按需下载、可随时切换。模型只在设备运行，照片不上传。
@@ -1279,7 +1282,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             >
               <View style={styles.classifierTierHead}>
                 {SetIonicons
-                  ? <SetIonicons name={isActive ? 'radio-button-on' : 'radio-button-off'} size={20} color={isActive ? '#007AFF' : '#C6C6C8'} />
+                  ? <SetIonicons name={isActive ? 'radio-button-on' : 'radio-button-off'} size={20} color={isActive ? c.accent : c.separator} />
                   : <Text>{isActive ? '●' : '○'}</Text>}
                 <Text style={styles.classifierTierTitle}>
                   {tier.label}
@@ -1328,7 +1331,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     return (
       <View style={styles.actionButton}>
         <Text style={styles.actionButtonText}>
-          {SetIonicons ? <SetIonicons name="color-wand-outline" size={17} color="#007AFF" /> : null} AI 增强模型
+          {SetIonicons ? <SetIonicons name="color-wand-outline" size={17} color={c.accent} /> : null} AI 增强模型
         </Text>
         <Text style={styles.actionButtonDescription}>模型按需下载（不占安装包）。大模型更清晰但更慢更大。{Platform.OS === 'ios' ? 'iOS 首次默认走「大」。' : ''}</Text>
         {opts.map((o) => {
@@ -1342,7 +1345,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
               disabled={disabled}
             >
               {SetIonicons
-                ? <SetIonicons name={srVariant === o.key ? 'radio-button-on' : 'radio-button-off'} size={20} color={srVariant === o.key ? '#007AFF' : '#C6C6C8'} />
+                ? <SetIonicons name={srVariant === o.key ? 'radio-button-on' : 'radio-button-off'} size={20} color={srVariant === o.key ? c.accent : c.separator} />
                 : <Text>{srVariant === o.key ? '●' : '○'}</Text>}
               <Text style={styles.srOptionLabel}>{o.label}</Text>
             </TouchableOpacity>
@@ -1353,7 +1356,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             <TextInput
               style={styles.srInput}
               placeholder="https://.../model.onnx（输入/输出须与 Real-ESRGAN 一致）"
-              placeholderTextColor="#8E8E93"
+              placeholderTextColor={c.tertiaryLabel}
               value={srCustomUrl}
               onChangeText={setSrCustomUrl}
               autoCapitalize="none"
@@ -1464,21 +1467,18 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
       {/* 设置列表 */}
       <ScrollView style={styles.scrollView}>
-        {/* 智能分类 */}
-        <View style={[styles.section, { backgroundColor: c.card }]}>
+        {/* === Section 1：分类引擎 ===
+            归口所有"把照片打成分类索引"的设置：
+              · iOS 相册权限（iOS-only）/ 在线分类 LLM Key / 自定义分类规则
+              · 分类模型三档（renderClassifierModel）
+              · 本地分类（MobileNetV3 开关 + 相似度阈值）子卡
+              · 目录设置（Android-only，iOS 没用户可访问目录概念） */}
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.titleRow}>
-              <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">{SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color="#007AFF" /> : null} {t('settings.smartClassification')}</Text>
+              <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">{SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color={c.accent} /> : null} {t('settings.smartClassification')}</Text>
             </View>
           </View>
-          
-          {renderActionButton(
-            'trash-outline',
-            t('settings.clearAlbumInfo'),
-            t('settings.clearAlbumInfoDesc'),
-            handleClearData,
-            true
-          )}
 
           {/* iOS 专属：相册权限层级显示
               · limited → 弹原生 Limited Library Picker（增删可见照片）
@@ -1491,7 +1491,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             false
           )}
 
-          {/* 🆕 AI 模型设置：配置个人 LLM API Key，启用云端在线分类 */}
+          {/* AI 模型设置：配置个人 LLM API Key，启用云端在线分类 */}
           {renderActionButton(
             'cloud-outline',
             t('settings.aiModelConfig') || 'AI 模型设置（在线分类）',
@@ -1500,7 +1500,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             false
           )}
 
-          {/* 🆕 自定义分类：定义规则，云端大模型按规则归类 */}
+          {/* 自定义分类：定义规则，云端大模型按规则归类 */}
           {renderActionButton(
             'pricetag-outline',
             '自定义分类',
@@ -1509,42 +1509,21 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             false
           )}
 
-          {/* 🆕 分类备份与还原：导出 JSON 到 Downloads / 从 Downloads 还原 */}
-          {renderActionButton(
-            'archive-outline',
-            '分类备份与还原',
-            '导出当前分类索引到本地，换机/重装/清数据后可一键还原，不必再走云端',
-            () => navigation.navigate('BackupRestore'),
-            false
-          )}
-
-          {/* 🆕 检查更新：从 GitHub Releases 升级到客户端 */}
-          {renderActionButton(
-            'cloud-download-outline',
-            t('settings.checkUpdate'),
-            t('settings.checkUpdateDesc', { version: UpdateService.CURRENT_VERSION }),
-            handleCheckUpdate,
-            false
-          )}
-
           {/* 分类模型：basic / scene / clip 三档（按需下载 + 推荐说明） */}
           {renderClassifierModel()}
 
-          {/* 超分(AI增强)模型：小/大/自定义 + 按需下载 */}
-          {renderSuperResModel()}
-
           {/* 本地分类设置 - 与目录设置平级，使用actionButton样式 */}
           <View style={styles.actionButton}>
-            <Text style={styles.actionButtonText}>{SetIonicons ? <SetIonicons name="phone-portrait-outline" size={17} color="#007AFF" /> : null} {t('settings.localClassification')}</Text>
-            
+            <Text style={styles.actionButtonText}>{SetIonicons ? <SetIonicons name="phone-portrait-outline" size={17} color={c.accent} /> : null} {t('settings.localClassification')}</Text>
+
             {/* 使用MobileNetV3分类 - 子区块 */}
             <View style={styles.switchItemCompact}>
               <View style={styles.switchItemCompactLeft}>
-                <Text style={styles.switchLabelCompact} numberOfLines={1}>{SetIonicons ? <SetIonicons name="cube-outline" size={15} color="#007AFF" /> : null} {t('settings.enableMobileNetV3')}</Text>
+                <Text style={styles.switchLabelCompact} numberOfLines={1}>{SetIonicons ? <SetIonicons name="cube-outline" size={15} color={c.accent} /> : null} {t('settings.enableMobileNetV3')}</Text>
                 <Switch
                   value={settings.enableMobileNetV3Classification === true}
                   onValueChange={(value) => updateSetting('enableMobileNetV3Classification', value)}
-                  trackColor={{ false: '#E5E5EA', true: '#34C759' }}
+                  trackColor={{ false: c.separator, true: c.success }}
                   thumbColor="#FFFFFF"
                 />
               </View>
@@ -1579,14 +1558,16 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
               </View>
             </View>
           </View>
-          
-          {/* 目录设置 - 与"清空相册信息"区域对齐 */}
+
+          {/* 目录设置 —— Android 专属：iOS 没有"用户可见目录"概念，对应整块在 iOS 完全无意义；
+              微信/QQ/相机/截图 快捷目录按钮 + 路径列表也只在 Android 文件系统上能找到 */}
+          {Platform.OS === 'android' && (
           <View style={styles.actionButton}>
             <Text style={styles.actionButtonText}>{t('settings.directorySettings.title')}</Text>
             <Text style={styles.actionButtonDescription}>
               {t('settings.directorySettings.description')}
             </Text>
-            
+
             {/* 目录选择器按钮 */}
             <TouchableOpacity
               style={styles.directoryPickerButton}
@@ -1658,53 +1639,60 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
               </View>
             ))}
           </View>
+          )}
         </View>
 
-        {/* 照片创玩 */}
-        <View style={[styles.section, { backgroundColor: c.card }]}>
+        {/* === Section 2：修图引擎 ===
+            归口"把照片本身处理一下"的设置：超分(AI增强)模型 + 照片创玩 AI 修图预设 */}
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.titleRow}>
-              <Text style={styles.sectionTitle}>✨ {t('settings.photoEnhancement')}</Text>
+              <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">{SetIonicons ? <SetIonicons name="sparkles-outline" size={17} color={c.accent} /> : null} {t('settings.imageEngine') || '修图引擎'}</Text>
             </View>
           </View>
+
+          {/* 超分(AI增强)模型：小/大/自定义 + 按需下载 */}
+          {renderSuperResModel()}
+
+          {/* 照片创玩预设（原"照片创玩" section 整体挪过来） */}
           <Text style={styles.sectionDescription}>
             {t('settings.photoEnhancementDesc')}
           </Text>
-          
+
           {Object.entries(aiEnhancePresets)
             .sort(([, a], [, b]) => a.sortOrder - b.sortOrder)
             .map(([presetId, preset]) => {
               // 获取当前语言的缺省预设，用于显示
               const defaultPresets = getDefaultPresets(currentLanguage);
               const defaultPreset = defaultPresets[presetId];
-              
+
               // 如果是缺省预设，且用户没有修改过名称、描述和提示词，使用当前语言的翻译
               // 判断方法：检查当前值是否等于中文或英文的缺省值
               const zhDefaults = getDefaultPresets('zh');
               const enDefaults = getDefaultPresets('en');
               const isDefaultName = defaultPreset && (
-                preset.name === zhDefaults[presetId]?.name || 
+                preset.name === zhDefaults[presetId]?.name ||
                 preset.name === enDefaults[presetId]?.name
               );
               const isDefaultDescription = defaultPreset && (
-                preset.description === zhDefaults[presetId]?.description || 
+                preset.description === zhDefaults[presetId]?.description ||
                 preset.description === enDefaults[presetId]?.description
               );
               const isDefaultPrompt = defaultPreset && (
-                preset.prompt === zhDefaults[presetId]?.prompt || 
+                preset.prompt === zhDefaults[presetId]?.prompt ||
                 preset.prompt === enDefaults[presetId]?.prompt
               );
-              
+
               // 显示用的名称、描述和提示词
               const displayName = (defaultPreset && isDefaultName) ? defaultPreset.name : preset.name;
               const displayDescription = (defaultPreset && isDefaultDescription) ? defaultPreset.description : preset.description;
               const displayPrompt = (defaultPreset && isDefaultPrompt) ? defaultPreset.prompt : preset.prompt;
-              
+
               return (
                 <View key={presetId} style={styles.presetItem}>
                   <View style={styles.presetLeft}>
                     {SetIonicons
-                      ? <SetIonicons name={presetIcon(presetId)} size={24} color="#007AFF" style={styles.presetIcon} />
+                      ? <SetIonicons name={presetIcon(presetId)} size={24} color={c.accent} style={styles.presetIcon} />
                       : <Text style={styles.presetIcon}>{preset.icon}</Text>}
                     <View style={styles.presetInfo}>
                       <Text style={styles.presetName}>{displayName}</Text>
@@ -1722,13 +1710,42 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                   <Switch
                     value={preset.enabled}
                     onValueChange={() => togglePresetEnabled(presetId)}
-                    trackColor={{ false: '#ccc', true: '#4CAF50' }}
+                    trackColor={{ false: c.separator, true: c.success }}
                   />
                 </View>
               </View>
               );
             })}
-          
+
+        </View>
+
+        {/* === Section 3：数据管理 ===
+            按 HIG，destructive 操作（清空相册信息）放最底独立一段；
+            备份与还原是导出/导入分类索引，跟"清空"是同一数据生命周期的两端 */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.titleRow}>
+              <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">{SetIonicons ? <SetIonicons name="archive-outline" size={17} color={c.accent} /> : null} {t('settings.dataManagement') || '数据管理'}</Text>
+            </View>
+          </View>
+
+          {/* 分类备份与还原：导出 JSON 到 Downloads / 从 Downloads 还原 */}
+          {renderActionButton(
+            'archive-outline',
+            '分类备份与还原',
+            '导出当前分类索引到本地，换机/重装/清数据后可一键还原，不必再走云端',
+            () => navigation.navigate('BackupRestore'),
+            false
+          )}
+
+          {/* 清空相册信息（destructive；按 HIG 放最底，独立一项） */}
+          {renderActionButton(
+            'trash-outline',
+            t('settings.clearAlbumInfo'),
+            t('settings.clearAlbumInfoDesc'),
+            handleClearData,
+            true
+          )}
         </View>
 
         {/* 会员服务（已按需求隐藏，不向用户展示会员/额度/二维码） */}
@@ -1819,13 +1836,25 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         </View>
         )}
 
-        {/* 应用信息 */}
-        <View style={[styles.section, { backgroundColor: c.card }]}>
+        {/* === Section 4：关于 ===
+            检查更新挪到版本号旁边（更新和版本是同一类信息）；
+            其他依旧是版本 / 存储类型 / 存储大小 / 语言切换 */}
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.titleRow}>
-              <Text style={styles.sectionTitle}>{SetIonicons ? <SetIonicons name="information-circle-outline" size={17} color="#007AFF" /> : null} {t('settings.appInfo')}</Text>
+              <Text style={styles.sectionTitle}>{SetIonicons ? <SetIonicons name="information-circle-outline" size={17} color={c.accent} /> : null} {t('settings.appInfo')}</Text>
             </View>
           </View>
+
+          {/* 检查更新：从 GitHub Releases 升级到客户端（紧贴 version，同一类信息） */}
+          {renderActionButton(
+            'cloud-download-outline',
+            t('settings.checkUpdate'),
+            t('settings.checkUpdateDesc', { version: UpdateService.CURRENT_VERSION }),
+            handleCheckUpdate,
+            false
+          )}
+
           {/* 版本与构建版本合并：大版本(构建版本)，去掉日期时间；移除"平台"项 */}
           {renderInfoItem(t('settings.version'), `${BUILD_VERSION} (${BUILD_VERSION_CODE})`)}
           {renderInfoItem(t('settings.storageType'), storageType)}
@@ -1872,7 +1901,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                 <>
                   <View style={styles.presetInfoDisplay}>
                     {SetIonicons
-                      ? <SetIonicons name={presetIcon(editingPreset.id)} size={40} color="#007AFF" style={styles.presetIconLarge} />
+                      ? <SetIonicons name={presetIcon(editingPreset.id)} size={40} color={c.accent} style={styles.presetIconLarge} />
                       : <Text style={styles.presetIconLarge}>{editingPreset.icon}</Text>}
                     <View>
                       <Text style={styles.presetNameLarge}>{editingPreset.name}</Text>
@@ -2055,29 +2084,32 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
 // ==================== 样式 ====================
 
-const styles = StyleSheet.create({
+// 工厂模式：把颜色 token c 注入到 StyleSheet，使整页跟随系统 light/dark 主题切换
+// 布局（margin/padding/width/height/borderRadius/fontSize/fontWeight）都不动，
+// 只把颜色硬编码替换成 c.xxx；纯白按钮文字 '#FFFFFF' / rgba 半透明 / 阴影色保留不变。
+const createStyles = (c) => StyleSheet.create({
   // 更新弹窗（自建 Modal，Alert 排版 markdown 太丑）
   updateOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  updateCard: { width: '100%', maxWidth: 480, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 18, maxHeight: '85%' },
-  updateTitle: { fontSize: 17, fontWeight: '600', color: '#000000', marginBottom: 6 },
-  updateSubtitle: { fontSize: 13, color: '#6C6C70', marginBottom: 12 },
-  updateNotesBox: { maxHeight: 320, backgroundColor: '#F7F7FA', borderRadius: 10, paddingHorizontal: 12, marginBottom: 14 },
-  updateNotesText: { fontSize: 14, color: '#1C1C1E', lineHeight: 21 },
+  updateCard: { width: '100%', maxWidth: 480, backgroundColor: c.card, borderRadius: 14, padding: 18, maxHeight: '85%' },
+  updateTitle: { fontSize: 17, fontWeight: '600', color: c.label, marginBottom: 6 },
+  updateSubtitle: { fontSize: 13, color: c.secondaryLabel, marginBottom: 12 },
+  updateNotesBox: { maxHeight: 320, backgroundColor: c.groupedBg, borderRadius: 10, paddingHorizontal: 12, marginBottom: 14 },
+  updateNotesText: { fontSize: 14, color: c.label, lineHeight: 21 },
   updateFooter: { flexDirection: 'row', justifyContent: 'flex-end' },
   updateBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10, marginLeft: 8, alignItems: 'center', justifyContent: 'center' },
-  updateBtnGhost: { backgroundColor: '#F2F2F7' },
-  updateBtnGhostText: { color: '#3A3A3C', fontSize: 15 },
-  updateBtnPrimary: { backgroundColor: '#007AFF' },
+  updateBtnGhost: { backgroundColor: c.groupedBg },
+  updateBtnGhostText: { color: c.secondaryLabel, fontSize: 15 },
+  updateBtnPrimary: { backgroundColor: c.accent },
   updateBtnPrimaryText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
   // 下载进度
   progressWrap: { marginVertical: 6 },
-  progressTrack: { height: 8, backgroundColor: '#E5E5EA', borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#34C759' },
-  progressText: { textAlign: 'right', marginTop: 6, color: '#6C6C70', fontSize: 13 },
+  progressTrack: { height: 8, backgroundColor: c.separator, borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: c.success },
+  progressText: { textAlign: 'right', marginTop: 6, color: c.secondaryLabel, fontSize: 13 },
 
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: c.groupedBg,
   },
   loadingContainer: {
     flex: 1,
@@ -2087,9 +2119,9 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#8E8E93',
+    color: c.secondaryLabel,
   },
-  
+
   // 扫描路径设置样式
   sectionHeader: {
     paddingHorizontal: 16,
@@ -2098,7 +2130,7 @@ const styles = StyleSheet.create({
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: c.secondaryLabel,
     fontWeight: 'normal',
     marginLeft: 8,
     flex: 1,
@@ -2112,7 +2144,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 8,
     padding: 16,
-    backgroundColor: '#007AFF',
+    backgroundColor: c.accent,
     borderRadius: 8,
     alignItems: 'center',
   },
@@ -2126,12 +2158,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: c.separator,
   },
   pathText: {
     flex: 1,
     fontSize: 14,
-    color: '#333',
+    color: c.label,
     fontFamily: 'monospace',
   },
   removeButton: {
@@ -2139,37 +2171,37 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#ff4444',
+    backgroundColor: c.danger,
     alignItems: 'center',
     justifyContent: 'center',
   },
   removeButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
   },
   header: {
     height: 56,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: c.separator,
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000000',
+    color: c.label,
   },
   scrollView: {
     flex: 1,
   },
-  
+
   // 分组
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: c.secondaryLabel,
     paddingHorizontal: 0,
     paddingTop: 0,
     paddingBottom: 0,
@@ -2177,17 +2209,17 @@ const styles = StyleSheet.create({
     textAlignVertical: 'center',
   },
   section: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     marginTop: 8,
   },
-  
+
   // 操作按钮（iOS 风格：纯白圆角单元格 + 右侧箭头）
   actionButton: {
     marginHorizontal: 16,
     marginVertical: 5,
     paddingHorizontal: 16,
     paddingVertical: 13,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     borderRadius: 12,
   },
   actionButtonRow: {
@@ -2198,56 +2230,56 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actionChevron: {
-    color: '#C4C4C6',
+    color: c.chevron,
     fontSize: 22,
     marginLeft: 8,
   },
   actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
   },
   actionButtonDescription: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     marginTop: 3,
     lineHeight: 18,
   },
   // 超分模型选择
   srOptionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 9 },
-  srOptionLabel: { fontSize: 15, color: '#000000', marginLeft: 10 },
+  srOptionLabel: { fontSize: 15, color: c.label, marginLeft: 10 },
 
   // 分类模型三档卡片样式
   classifierTierRow: {
     paddingVertical: 10, paddingHorizontal: 10, marginVertical: 4,
-    borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: '#E5E5EA',
-    backgroundColor: '#F9F9F9',
+    borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: c.separator,
+    backgroundColor: c.groupedBg,
   },
-  classifierTierRowActive: { borderColor: '#007AFF', backgroundColor: '#EAF2FF' },
+  classifierTierRowActive: { borderColor: c.accent, backgroundColor: c.accentSoft },
   classifierTierHead: { flexDirection: 'row', alignItems: 'center' },
-  classifierTierTitle: { fontSize: 15, fontWeight: '600', color: '#000000', marginLeft: 8 },
-  classifierTierSublabel: { fontSize: 13, fontWeight: '400', color: '#8E8E93' },
-  classifierTierMeta: { fontSize: 13, color: '#3C3C43', marginTop: 4, marginLeft: 28, fontVariant: ['tabular-nums'] },
-  classifierTierDesc: { fontSize: 13, color: '#3C3C43', marginTop: 4, marginLeft: 28, lineHeight: 18 },
-  classifierTierWeak: { fontSize: 12, color: '#8E8E93', marginTop: 3, marginLeft: 28 },
+  classifierTierTitle: { fontSize: 15, fontWeight: '600', color: c.label, marginLeft: 8 },
+  classifierTierSublabel: { fontSize: 13, fontWeight: '400', color: c.tertiaryLabel },
+  classifierTierMeta: { fontSize: 13, color: c.secondaryLabel, marginTop: 4, marginLeft: 28, fontVariant: ['tabular-nums'] },
+  classifierTierDesc: { fontSize: 13, color: c.secondaryLabel, marginTop: 4, marginLeft: 28, lineHeight: 18 },
+  classifierTierWeak: { fontSize: 12, color: c.tertiaryLabel, marginTop: 3, marginLeft: 28 },
   classifierDlBar: { flexDirection: 'row', alignItems: 'center', marginTop: 8, marginLeft: 28, gap: 8 },
-  classifierDlText: { fontSize: 12, color: '#007AFF', fontVariant: ['tabular-nums'] },
-  classifierDlBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, backgroundColor: '#EEF2F7' },
-  classifierDlBtnText: { fontSize: 12, color: '#3C3C43' },
-  classifierDlBtnPrimary: { backgroundColor: '#007AFF' },
+  classifierDlText: { fontSize: 12, color: c.accent, fontVariant: ['tabular-nums'] },
+  classifierDlBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: c.fillTertiary },
+  classifierDlBtnText: { fontSize: 12, color: c.label, fontWeight: '500' },
+  classifierDlBtnPrimary: { backgroundColor: c.accent },
   classifierDlBtnPrimaryText: { fontSize: 12, color: '#FFFFFF', fontWeight: '600' },
-  classifierDlBtnDanger: { backgroundColor: '#FFE5E3' },
-  classifierDlBtnDangerText: { fontSize: 12, color: '#FF3B30', fontWeight: '600' },
+  classifierDlBtnDanger: { backgroundColor: c.dangerSoft },
+  classifierDlBtnDangerText: { fontSize: 12, color: c.danger, fontWeight: '600' },
   srCustomRow: { marginTop: 4, marginBottom: 4 },
-  srInput: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#C6C6C8', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 13, color: '#000000', backgroundColor: '#F2F2F7' },
+  srInput: { borderWidth: StyleSheet.hairlineWidth, borderColor: c.separator, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 13, color: c.label, backgroundColor: c.groupedBg },
   srStatusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
-  srStatusText: { fontSize: 13, color: '#8E8E93' },
-  srDownloadBtn: { backgroundColor: '#007AFF', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
+  srStatusText: { fontSize: 13, color: c.tertiaryLabel },
+  srDownloadBtn: { backgroundColor: c.accent, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
   srDownloadBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
   dangerText: {
-    color: '#FF3B30',
+    color: c.danger,
   },
-  
+
   // 信息项
   infoItem: {
     flexDirection: 'row',
@@ -2256,15 +2288,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
+    borderBottomColor: c.separator,
   },
   infoLabel: {
     fontSize: 16,
-    color: '#000000',
+    color: c.label,
   },
   infoValue: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     textAlign: 'right',
     flex: 1,
     marginLeft: 16,
@@ -2278,18 +2310,18 @@ const styles = StyleSheet.create({
   subSectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
     marginBottom: 8,
   },
   subSectionDescription: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     marginBottom: 12,
   },
   // AI增强预设样式
   sectionDescription: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
@@ -2299,7 +2331,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
+    borderBottomColor: c.separator,
   },
   presetLeft: {
     flexDirection: 'row',
@@ -2317,12 +2349,12 @@ const styles = StyleSheet.create({
   presetName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
     marginBottom: 6,
   },
   presetPrompt: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     lineHeight: 18,
   },
   presetRight: {
@@ -2332,7 +2364,7 @@ const styles = StyleSheet.create({
   editPresetButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#007AFF',
+    backgroundColor: c.accent,
     borderRadius: 6,
     marginRight: 12,
   },
@@ -2345,15 +2377,15 @@ const styles = StyleSheet.create({
   creditsContainer: {
     margin: 16,
     padding: 16,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: c.groupedBg,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: c.separator,
   },
   creditsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
     marginBottom: 12,
   },
   creditsInfo: {
@@ -2363,17 +2395,17 @@ const styles = StyleSheet.create({
   },
   creditsLabel: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
   },
   creditsValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#007AFF',
+    color: c.accent,
     marginLeft: 8,
   },
   creditsDescription: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
   },
   // 内联额度显示样式（与PC端对齐）
   creditsInfoInline: {
@@ -2382,19 +2414,19 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
+    borderTopColor: c.separator,
     flexWrap: 'nowrap',
     marginLeft: 28, // 与AI修图文案对齐（对号宽度20 + 间距8）
   },
   creditsLabelInline: {
     fontSize: 14,
-    color: '#666',
+    color: c.tertiaryLabel,
     fontWeight: '500',
     flexShrink: 0,
   },
   creditsValueInline: {
     fontSize: 14,
-    color: '#4CAF50',
+    color: c.success,
     fontWeight: '600',
     marginLeft: 4,
     flexShrink: 0,
@@ -2403,18 +2435,18 @@ const styles = StyleSheet.create({
   membershipCard: {
     margin: 16,
     padding: 16,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: c.groupedBg,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: c.separator,
   },
   membershipCardPremium: {
     margin: 16,
     padding: 16,
-    backgroundColor: '#FFF7E6',
+    backgroundColor: c.warningSoft,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FFD700',
+    borderColor: c.warning,
   },
   membershipHeader: {
     flexDirection: 'row',
@@ -2428,13 +2460,13 @@ const styles = StyleSheet.create({
   membershipName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
     marginBottom: 4,
   },
   membershipTag: {
     fontSize: 13,
-    color: '#4CAF50',
-    backgroundColor: '#E8F5E9',
+    color: c.success,
+    backgroundColor: c.successSoft,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -2442,8 +2474,8 @@ const styles = StyleSheet.create({
   },
   membershipTagPremium: {
     fontSize: 13,
-    color: '#FF9800',
-    backgroundColor: '#FFF3E0',
+    color: c.warning,
+    backgroundColor: c.warningSoft,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -2467,19 +2499,19 @@ const styles = StyleSheet.create({
   },
   membershipFeatureIcon: {
     fontSize: 16,
-    color: '#4CAF50',
+    color: c.success,
     minWidth: 20,
     marginRight: 8,
   },
   membershipFeatureText: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
   },
   membershipQrCode: {
     width: 200,
     height: 200,
     borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     marginBottom: 12,
   },
   membershipStatusContainer: {
@@ -2490,25 +2522,25 @@ const styles = StyleSheet.create({
   membershipStatusText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#4CAF50',
+    color: c.success,
     marginBottom: 8,
     textAlign: 'center',
   },
   membershipStatusHint: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     textAlign: 'center',
   },
   membershipQrHint: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     textAlign: 'center',
     lineHeight: 18,
   },
   membershipQrButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: '#4CAF50',
+    backgroundColor: c.success,
     borderRadius: 8,
     marginBottom: 12,
   },
@@ -2522,12 +2554,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
+    borderTopColor: c.separator,
   },
   freeMemberTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: c.secondaryLabel,
     marginBottom: 8,
   },
   freeMemberFeatureItem: {
@@ -2535,7 +2567,7 @@ const styles = StyleSheet.create({
   },
   freeMemberFeatureText: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     lineHeight: 18,
   },
   // 模态框样式
@@ -2545,7 +2577,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '90%',
@@ -2556,12 +2588,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: c.separator,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
   },
   modalCloseButton: {
     padding: 4,
@@ -2572,7 +2604,7 @@ const styles = StyleSheet.create({
   },
   modalCloseButtonText: {
     fontSize: 24,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     lineHeight: 24,
   },
   modalBody: {
@@ -2583,7 +2615,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: c.groupedBg,
     borderRadius: 8,
     marginBottom: 20,
   },
@@ -2594,12 +2626,12 @@ const styles = StyleSheet.create({
   presetNameLarge: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
     marginBottom: 4,
   },
   presetDescriptionSmall: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
   },
   modalField: {
     marginBottom: 0,
@@ -2607,18 +2639,18 @@ const styles = StyleSheet.create({
   modalLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
     marginBottom: 8,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: c.separator,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#000000',
-    backgroundColor: '#F8F9FA',
+    color: c.label,
+    backgroundColor: c.groupedBg,
   },
   modalTextArea: {
     height: 150,
@@ -2632,10 +2664,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: c.groupedBg,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: c.separator,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
@@ -2643,31 +2675,31 @@ const styles = StyleSheet.create({
   documentButtonText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#000000',
+    color: c.label,
   },
   modalFooter: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
+    borderTopColor: c.separator,
   },
   modalCancelButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: c.groupedBg,
     borderRadius: 8,
     marginRight: 12,
   },
   modalCancelButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
   },
   modalSaveButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: '#007AFF',
+    backgroundColor: c.accent,
     borderRadius: 8,
   },
   modalSaveButtonText: {
@@ -2680,11 +2712,11 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F2F2F7',
+    borderTopColor: c.separator,
   },
   quickDirectoryTitle: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     marginBottom: 8,
     fontWeight: '500',
   },
@@ -2696,25 +2728,25 @@ const styles = StyleSheet.create({
   quickDirectoryButton: {
     flex: 1,
     padding: 10,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: c.groupedBg,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: c.separator,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickDirectoryButtonDetecting: {
-    backgroundColor: '#E3F2FD',
-    borderColor: '#2196F3',
+    backgroundColor: c.accentSoft,
+    borderColor: c.accent,
   },
   quickDirectoryButtonText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#007AFF',
+    color: c.accent,
   },
   // 显示设置样式 - 开关面板
   switchPanel: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -2727,7 +2759,7 @@ const styles = StyleSheet.create({
   switchPanelTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
     marginBottom: 12,
   },
   switchGrid: {
@@ -2743,12 +2775,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 8,
     marginBottom: 8,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: c.groupedBg,
     borderRadius: 8,
   },
   switchLabel: {
     fontSize: 15,
-    color: '#000000',
+    color: c.label,
     flex: 1,
   },
   // 紧凑布局样式（用于目录设置中的开关）
@@ -2756,7 +2788,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
+    borderTopColor: c.separator,
   },
   switchItemCompactLeft: {
     flexDirection: 'row',
@@ -2767,13 +2799,13 @@ const styles = StyleSheet.create({
   switchLabelCompact: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#000000',
+    color: c.label,
     flex: 1,
     marginRight: 12,
   },
   switchDescriptionCompact: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     lineHeight: 18,
     marginTop: 4,
   },
@@ -2788,26 +2820,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 12,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: c.groupedBg,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#E5E5EA',
+    borderColor: c.separator,
   },
   languageOptionActive: {
-    backgroundColor: '#E3F2FD',
-    borderColor: '#007AFF',
+    backgroundColor: c.accentSoft,
+    borderColor: c.accent,
   },
   languageOptionText: {
     fontSize: 16,
-    color: '#000000',
+    color: c.label,
   },
   languageOptionTextActive: {
-    color: '#007AFF',
+    color: c.accent,
     fontWeight: '600',
   },
   languageCheckmark: {
     fontSize: 18,
-    color: '#007AFF',
+    color: c.accent,
     fontWeight: 'bold',
     marginLeft: 8,
   },
@@ -2821,20 +2853,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: c.groupedBg,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: c.separator,
   },
   languageButtonInlineActive: {
-    backgroundColor: '#E3F2FD',
-    borderColor: '#007AFF',
+    backgroundColor: c.accentSoft,
+    borderColor: c.accent,
   },
   languageButtonTextInline: {
     fontSize: 14,
-    color: '#666666',
+    color: c.tertiaryLabel,
   },
   languageButtonTextInlineActive: {
-    color: '#007AFF',
+    color: c.accent,
     fontWeight: '600',
   },
 });
