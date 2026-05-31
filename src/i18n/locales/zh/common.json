@@ -263,6 +263,7 @@
     "yearLabel": "{{year}}年",
     "byCity": "按城市",
     "byColor": "按颜色",
+    "moreFilters": "更多筛选",
     "byAttributes": "按属性",
     "byStorage": "目录",
     "byFormat": "格式",
