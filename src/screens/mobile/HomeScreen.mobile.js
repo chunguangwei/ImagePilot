@@ -113,6 +113,50 @@ const TimeCard = React.memo(function TimeCard({ timeKey, label, count, recentIma
   );
 });
 
+/** 分类卡片（与 CityCard/TimeCard 同模式：module-level + React.memo + styles 透传）
+ *  P2 性能改造：原 renderCategoryCard 是闭包，9~10 张卡片会随 HomeScreen 任意 state 变化全量重建。
+ *  抽到 module-level + memo 后，props 浅比较未变即跳过 rerender（典型可避免 8~9 次冗余重建）。
+ *  注意：依赖的 navigation / handleAIClassifyNA / 显示名 / SCREEN_WIDTH / SkeuomorphicCamera
+ *  全部走 props 注入，避免闭包"看似不变实则每次重建"。
+ */
+const CategoryCard = React.memo(function CategoryCard({
+  id, count, color, recentImages, displayName, isNACategory,
+  styles, onPressById, onLongPressNAById, screenWidth,
+}) {
+  // 用 useCallback 把 id 绑入闭包；父级传 stable onPressById/onLongPressNAById 时这两个回调引用稳定，
+  // 配合 React.memo 的浅比较即可避免冗余重建。
+  const handlePress = useCallback(() => {
+    if (onPressById) onPressById(id);
+  }, [id, onPressById]);
+  const handleLongPress = useCallback(() => {
+    if (isNACategory && onLongPressNAById) onLongPressNAById(id);
+  }, [id, isNACategory, onLongPressNAById]);
+  return (
+    <TouchableOpacity style={styles.categoryCard} onPress={handlePress} onLongPress={handleLongPress}>
+      {recentImages && recentImages.length > 0 ? (
+        <Image
+          source={{ uri: getUri(recentImages[0]) || recentImages[0]?.uri }}
+          style={styles.thumbnail}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={[styles.thumbnail, { backgroundColor: color, alignItems: 'center', justifyContent: 'center' }]}>
+          <SkeuomorphicCamera size={Math.round((screenWidth - 28) / 4 * 0.52)} tint="rgba(255,255,255,0.92)" />
+        </View>
+      )}
+      <View style={styles.categoryOverlay}>
+        <Text style={styles.categoryName} numberOfLines={1}>{displayName}</Text>
+        <Text style={styles.categoryCount}>{count}</Text>
+      </View>
+      {isNACategory && count > 0 && (
+        <View style={styles.naCategoryBadge}>
+          <Text style={styles.naCategoryBadgeText}>👆</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+});
+
 // iOS 风格图标（字体已打包）；异常时回退 emoji
 let HomeIonicons = null;
 try { HomeIonicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { HomeIonicons = null; }
@@ -399,6 +443,12 @@ const HomeScreen = ({ navigation }) => {
 
   /**
    * 加载所有数据（第一优先级：立即加载）
+   *
+   * P2 性能改造（方案 B）：原本 setTimeout 内 fire 12 个独立 loadX()，
+   * 每个 loadX 都在自己的微任务里 await 后 setState → 12 次独立 rerender 雪崩。
+   * 改为：在一个 async 函数内 Promise.all 拉数据（纯 fetch，不 setState），
+   * 然后同步连发 13 个 setX —— React 18 auto-batch 会把同一同步任务内的 setState
+   * 合并成 1 次 rerender（13→1）。
    */
   const loadAllData = async () => {
     try {
@@ -407,24 +457,87 @@ const HomeScreen = ({ navigation }) => {
         loadCategories(),
         loadRecentImages(),
       ]);
-      
-      // 延迟加载次要数据（第二优先级）
-      setTimeout(() => {
-        loadTimeData();
-        loadCities();
-        loadSimilarityGroups();
-        loadColors();
-        loadDirectories();
-        loadFormats();
-        loadResolutions();
-        loadOrientations();
-        loadISO();
-        loadAperture();
-        loadShutter();
-        loadFocalLength();
-        }, 100);
-        
-          } catch (error) {
+
+      // 延迟加载次要数据（第二优先级）：先 Promise.all 拿原始数据，再一次性 setState 批处理
+      setTimeout(async () => {
+        try {
+          const cache = GlobalImageCache.getCache();
+          const cityCounts = cache.cityCounts || {};
+          const allImages = cache.allImages || [];
+
+          // 1) 并行拉取（不 setState，只取数据）
+          const [
+            timeCountsData,
+            similarityGroupsData,
+            colorCountsData,
+            directoryCountsData,
+            formatCountsData,
+            resolutionCountsData,
+            orientationCountsData,
+            isoCountsData,
+            apertureCountsData,
+            shutterCountsData,
+            focalLengthCountsData,
+          ] = await Promise.all([
+            UnifiedDataService.readTimeCounts().catch((e) => { logger.error('❌ 加载按时间数据失败:', e); return {}; }),
+            UnifiedDataService.getSimilarityGroupsStats().catch((e) => { logger.error('❌ 加载相似组失败:', e); return []; }),
+            UnifiedDataService.readColorCounts().catch((e) => { logger.error('❌ 加载颜色分类失败:', e); return {}; }),
+            UnifiedDataService.readDirectoryCounts().catch((e) => { logger.error('❌ 加载目录分类失败:', e); return {}; }),
+            UnifiedDataService.readFormatCounts().catch((e) => { logger.error('❌ 加载格式分类失败:', e); return {}; }),
+            UnifiedDataService.readResolutionCounts().catch((e) => { logger.error('❌ 加载分辨率分类失败:', e); return {}; }),
+            UnifiedDataService.readOrientationCounts().catch((e) => { logger.error('❌ 加载方向分类失败:', e); return {}; }),
+            UnifiedDataService.readISOCounts().catch((e) => { logger.error('❌ 加载ISO分类失败:', e); return {}; }),
+            UnifiedDataService.readApertureCounts().catch((e) => { logger.error('❌ 加载光圈分类失败:', e); return {}; }),
+            UnifiedDataService.readShutterCounts().catch((e) => { logger.error('❌ 加载快门分类失败:', e); return {}; }),
+            UnifiedDataService.readFocalLengthCounts().catch((e) => { logger.error('❌ 加载焦距分类失败:', e); return {}; }),
+          ]);
+
+          // 2) 时间桶代表图 + 城市列表（依赖前一步结果，独立加载）
+          const timeKeysWithCount = Object.entries(timeCountsData || {}).filter(([, c]) => c > 0).map(([k]) => k);
+          const timeRecentImagesMap = {};
+          await Promise.all(timeKeysWithCount.map(async (timeKey) => {
+            try {
+              const images = await UnifiedDataService.readRecentImagesByTimeRange(timeKey, 1);
+              timeRecentImagesMap[timeKey] = images;
+            } catch (e) {
+              logger.error(`加载时间桶 ${timeKey} 代表图失败:`, e);
+              timeRecentImagesMap[timeKey] = [];
+            }
+          }));
+
+          const cityList = Object.keys(cityCounts).map((locationId) => {
+            const cityImages = allImages
+              .filter((img) => img.city === locationId)
+              .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            const latestImage = cityImages.length > 0 ? cityImages[0] : null;
+            return {
+              locationId,
+              count: cityCounts[locationId],
+              latestImageUri: latestImage ? getUri(latestImage) : null,
+            };
+          });
+          cityList.sort((a, b) => b.count - a.count);
+
+          // 3) 同步连发所有 setState —— React 18 auto-batch 合并为 1 次 rerender
+          setTimeCounts(timeCountsData || {});
+          setTimeRecentImages(timeRecentImagesMap);
+          setCities(cityList);
+          setSimilarityGroups(similarityGroupsData || []);
+          setColorCounts(colorCountsData);
+          setDirectoryCounts(directoryCountsData);
+          setFormatCounts(formatCountsData);
+          setResolutionCounts(resolutionCountsData);
+          setOrientationCounts(orientationCountsData);
+          setISOCounts(isoCountsData);
+          setApertureCounts(apertureCountsData);
+          setShutterCounts(shutterCountsData);
+          setFocalLengthCounts(focalLengthCountsData);
+        } catch (e) {
+          logger.error('❌ 加载次要数据失败:', e);
+        }
+      }, 100);
+
+    } catch (error) {
       logger.error('❌ 加载数据失败:', error);
       throw error;
     }
@@ -1629,74 +1742,54 @@ const HomeScreen = ({ navigation }) => {
   }, [i18n.language, customCategoryList]);
 
   /**
-   * 渲染分类卡片（与PC端一致的设计）
+   * 分类卡片点击：navigation 在 RN 中引用稳定（StackNavigator 缓存），useCallback 安全。
    */
-  const renderCategoryCard = (category) => {
-    // 动态获取分类名称（根据当前语言）
-    const categoryName = getCategoryDisplayName(category.id);
-    
-    // 检查是否为NA分类（待分类）
-    const isNACategory = category.id === 'NA';
-    
-    return (
-      <TouchableOpacity
-        key={category.id}
-        style={styles.categoryCard}
-        onPress={() => {
-          try {
-            // 🆕 添加空值检查
-            if (!category || !category.id || !navigation) {
-              logger.warn('❌ 分类数据无效或导航对象为空:', { category, navigation: !!navigation });
-              return;
-            }
-            
-            logger.debug('📁 点击分类卡片:', category.id);
-            // 注意：暂存箱不是分类，不会出现在分类列表中，所以这里不需要判断 stagingBox
-            navigation.navigate('Category', {
-              filterType: 'category',
-              filterValue: category.id,
-              fromScreen: 'Home',
-            });
-          } catch (error) {
-            logger.error('❌ 分类卡片点击失败:', error);
-          }
-        }}
-        onLongPress={() => {
-          // 长按NA分类卡片时启动AI分类
-          if (isNACategory) {
-            logger.debug('🤖 长按待分类卡片，启动AI分类');
-            handleAIClassifyNA();
-          }
-        }}
-      >
-        {/* 缩略图占满整个卡片 */}
-        {category.recentImages && category.recentImages.length > 0 ? (
-          <Image
-            source={{ uri: getUri(category.recentImages[0]) || category.recentImages[0]?.uri }}
-            style={styles.thumbnail}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={[styles.thumbnail, { backgroundColor: category.color, alignItems: 'center', justifyContent: 'center' }]}>
-            <SkeuomorphicCamera size={Math.round((SCREEN_WIDTH - 28) / 4 * 0.52)} tint="rgba(255,255,255,0.92)" />
-          </View>
-        )}
-        
-        {/* 覆盖层显示分类信息 */}
-        <View style={styles.categoryOverlay}>
-          <Text style={styles.categoryName} numberOfLines={1}>{categoryName}</Text>
-          <Text style={styles.categoryCount}>{category.count}</Text>
-        </View>
-        
-        {/* NA分类长按提示 - 右上角徽章 */}
-        {isNACategory && category.count > 0 && (
-          <View style={styles.naCategoryBadge}>
-            <Text style={styles.naCategoryBadgeText}>👆</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  };
+  const handleCategoryPressById = useCallback((categoryId) => {
+    try {
+      if (!categoryId || !navigation) {
+        logger.warn('❌ 分类数据无效或导航对象为空:', { categoryId, navigation: !!navigation });
+        return;
+      }
+      logger.debug('📁 点击分类卡片:', categoryId);
+      navigation.navigate('Category', {
+        filterType: 'category',
+        filterValue: categoryId,
+        fromScreen: 'Home',
+      });
+    } catch (error) {
+      logger.error('❌ 分类卡片点击失败:', error);
+    }
+  }, [navigation]);
+
+  // handleAIClassifyNA 是普通 async 函数（每次 render 都重建），用 ref 桥接以保证回调引用稳定。
+  const handleAIClassifyNARef = useRef(null);
+  handleAIClassifyNARef.current = handleAIClassifyNA;
+  const handleCategoryLongPressNAById = useCallback((categoryId) => {
+    if (categoryId === 'NA') {
+      logger.debug('🤖 长按待分类卡片，启动AI分类');
+      const fn = handleAIClassifyNARef.current;
+      if (typeof fn === 'function') fn();
+    }
+  }, []);
+
+  /**
+   * 渲染分类卡片：转用 module-level CategoryCard (React.memo)，传 stable 回调以触发浅比较跳过。
+   */
+  const renderCategoryCard = (category) => (
+    <CategoryCard
+      key={category.id}
+      id={category.id}
+      count={category.count}
+      color={category.color}
+      recentImages={category.recentImages}
+      displayName={getCategoryDisplayName(category.id)}
+      isNACategory={category.id === 'NA'}
+      styles={styles}
+      screenWidth={SCREEN_WIDTH}
+      onPressById={handleCategoryPressById}
+      onLongPressNAById={handleCategoryLongPressNAById}
+    />
+  );
 
   /**
    * 渲染按时间区（图片卡片，与按城市一致，在按内容之前）
