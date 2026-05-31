@@ -12,7 +12,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { SafeAreaView, Icon } from '../../adapters/WebAdapters';
 import configService from '../../services/llm/adapters/UnifiedDataConfigService';
 import UnifiedDataService from '../../services/UnifiedDataService';
@@ -25,6 +26,7 @@ const BUILTIN_IDS = ['single_person', 'social_activities', 'travel_scenery', 'pe
 
 export default function CustomCategoriesScreen({ navigation }) {
   const theme = useIosColors();
+  const { t } = useTranslation('common');
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   // 新增表单
@@ -41,11 +43,12 @@ export default function CustomCategoriesScreen({ navigation }) {
         const cfg = await configService.getAIProviderConfig();
         setList(Array.isArray(cfg.customCategories) ? cfg.customCategories : []);
       } catch (e) {
-        Alert.alert('读取失败', e?.message || String(e));
+        Alert.alert(t('customCategories.loadFailedTitle'), e?.message || String(e));
       } finally {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const persist = async (next) => {
@@ -53,7 +56,7 @@ export default function CustomCategoriesScreen({ navigation }) {
     try {
       await configService.setCustomCategories(next);
     } catch (e) {
-      Alert.alert('保存失败', e?.message || String(e));
+      Alert.alert(t('customCategories.saveFailedTitle'), e?.message || String(e));
     }
   };
 
@@ -61,15 +64,15 @@ export default function CustomCategoriesScreen({ navigation }) {
     const cid = id.trim();
     const cname = name.trim();
     if (!cid || !cname) {
-      Alert.alert('请填写', 'id 和 名称 必填');
+      Alert.alert(t('customCategories.pleaseFillTitle'), t('customCategories.pleaseFillMessage'));
       return;
     }
     if (!/^[a-zA-Z0-9_]+$/.test(cid)) {
-      Alert.alert('id 格式', 'id 只能用字母/数字/下划线（英文，便于大模型输出）');
+      Alert.alert(t('customCategories.idFormatTitle'), t('customCategories.idFormatMessage'));
       return;
     }
     if (BUILTIN_IDS.includes(cid) || list.some((c) => c.id === cid)) {
-      Alert.alert('id 重复', '该 id 与内置或已有自定义分类冲突');
+      Alert.alert(t('customCategories.idDuplicateTitle'), t('customCategories.idDuplicateMessage'));
       return;
     }
     await persist([...list, { id: cid, name: cname, rule: rule.trim(), iconKey }]);
@@ -91,7 +94,7 @@ export default function CustomCategoriesScreen({ navigation }) {
     if (!editing) return;
     const cname = editing.name.trim();
     if (!cname) {
-      Alert.alert('请填写', '名称必填');
+      Alert.alert(t('customCategories.pleaseFillTitle'), t('customCategories.nameRequiredMessage'));
       return;
     }
     const next = list.map((c) =>
@@ -105,12 +108,12 @@ export default function CustomCategoriesScreen({ navigation }) {
   // 避免"删分类→图消失"的体感——图仍在，只是回到待分类等用户/AI 重新归。
   const onDelete = (cid) => {
     Alert.alert(
-      '删除',
-      `删除自定义分类「${cid}」？\n该分类下的照片会回到「待分类」，不会丢失。`,
+      t('customCategories.deleteTitle'),
+      t('customCategories.deleteMessage', { cid }),
       [
-        { text: '取消', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: '删除',
+          text: t('customCategories.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -124,7 +127,7 @@ export default function CustomCategoriesScreen({ navigation }) {
               Haptics.notification('warning');
             } catch (e) {
               Haptics.notification('error');
-              Alert.alert('删除失败', e?.message || String(e));
+              Alert.alert(t('customCategories.deleteFailedTitle'), e?.message || String(e));
             }
           },
         },
@@ -157,36 +160,36 @@ export default function CustomCategoriesScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.label }]}>自定义分类</Text>
+        <Text style={[styles.headerTitle, { color: theme.label }]}>{t('customCategories.screenTitle')}</Text>
         <View style={styles.headerRight} />
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
         <Text style={[styles.tip, { color: theme.secondaryLabel }]}>
-          配置后，使用云端大模型分类时，会按你的「规则」把图片归入对应自定义分类。id 用英文（大模型输出用），创建后不可改。
+          {t('customCategories.tip')}
         </Text>
 
         {/* 新增表单 */}
         <View style={[styles.card, { backgroundColor: theme.card }]}>
-          <Text style={[styles.cardTitle, { color: theme.label }]}>新增分类</Text>
-          <TextInput style={[styles.input, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder="id（英文，如 work_screenshot）" placeholderTextColor={theme.tertiaryLabel} value={id} onChangeText={setId} autoCapitalize="none" />
-          <TextInput style={[styles.input, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder="名称（如 工作截图）" placeholderTextColor={theme.tertiaryLabel} value={name} onChangeText={setName} />
-          <TextInput style={[styles.input, styles.multiline, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder="规则：什么样的图片归入此类（如 含代码/表格/聊天记录的截图）" placeholderTextColor={theme.tertiaryLabel} value={rule} onChangeText={setRule} multiline />
+          <Text style={[styles.cardTitle, { color: theme.label }]}>{t('customCategories.addCardTitle')}</Text>
+          <TextInput style={[styles.input, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder={t('customCategories.idPlaceholder')} placeholderTextColor={theme.tertiaryLabel} value={id} onChangeText={setId} autoCapitalize="none" />
+          <TextInput style={[styles.input, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder={t('customCategories.namePlaceholder')} placeholderTextColor={theme.tertiaryLabel} value={name} onChangeText={setName} />
+          <TextInput style={[styles.input, styles.multiline, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder={t('customCategories.rulePlaceholder')} placeholderTextColor={theme.tertiaryLabel} value={rule} onChangeText={setRule} multiline />
 
-          <Text style={[styles.iconPickerLabel, { color: theme.secondaryLabel }]}>选择图标</Text>
+          <Text style={[styles.iconPickerLabel, { color: theme.secondaryLabel }]}>{t('customCategories.iconPickerLabel')}</Text>
           <IconGrid selectedKey={iconKey} onSelect={setIconKey} />
 
           <TouchableOpacity style={styles.addBtn} onPress={onAdd}>
-            <Text style={styles.addBtnText}>添加</Text>
+            <Text style={styles.addBtnText}>{t('customCategories.addBtn')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* 已有列表 */}
-        <Text style={[styles.cardTitle, { color: theme.label }]}>已定义（{list.length}）</Text>
+        <Text style={[styles.cardTitle, { color: theme.label }]}>{t('customCategories.listTitle', { count: list.length })}</Text>
         {loading ? (
           <ActivityIndicator style={{ marginTop: 20 }} />
         ) : list.length === 0 ? (
-          <Text style={[styles.empty, { color: theme.tertiaryLabel }]}>还没有自定义分类</Text>
+          <Text style={[styles.empty, { color: theme.tertiaryLabel }]}>{t('customCategories.empty')}</Text>
         ) : (
           list.map((c) => {
             const meta = getCategoryIconMeta(c.id, list);
@@ -201,11 +204,11 @@ export default function CustomCategoriesScreen({ navigation }) {
                 </View>
                 <TouchableOpacity onPress={() => onOpenEdit(c)} style={styles.actionBtn} activeOpacity={0.6}>
                   <Icon name="edit" size={18} color="#007AFF" />
-                  <Text style={styles.edit}>编辑</Text>
+                  <Text style={styles.edit}>{t('customCategories.edit')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => onDelete(c.id)} style={styles.actionBtn} activeOpacity={0.6}>
                   <Icon name="delete-outline" size={18} color="#FF3B30" />
-                  <Text style={styles.del}>删除</Text>
+                  <Text style={styles.del}>{t('customCategories.delete')}</Text>
                 </TouchableOpacity>
               </View>
             );
@@ -213,31 +216,39 @@ export default function CustomCategoriesScreen({ navigation }) {
         )}
       </ScrollView>
 
-      {/* 编辑弹窗：id 只读，其余可改 */}
-      <Modal visible={!!editing} animationType="slide" transparent onRequestClose={() => setEditing(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+      {/* 编辑弹窗：id 只读，其余可改
+          —— iOS 上 RN <Modal> 在 visible:true→false 切换偶发不响应 hide（同 SettingsScreen /
+             ImagePreviewScreen 经历），改用 absolute fill inline overlay：setState(null)
+             直接卸载组件，不走原生 modal 生命周期。 */}
+      {!!editing && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 999, justifyContent: 'flex-end' }]}>
+          <TouchableOpacity
+            activeOpacity={1}
+            style={StyleSheet.absoluteFill}
+            onPress={() => setEditing(null)}
+          />
+          <View style={styles.modalCard} pointerEvents="box-none">
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>编辑分类</Text>
+              <Text style={styles.modalTitle}>{t('customCategories.editModalTitle')}</Text>
               <Text style={styles.modalSubtitle}>{editing?.id}</Text>
             </View>
-            <ScrollView contentContainerStyle={{ padding: 16 }}>
+            <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
               <TextInput
                 style={styles.input}
-                placeholder="名称"
+                placeholder={t('customCategories.editNamePlaceholder')}
                 placeholderTextColor="#8E8E93"
                 value={editing?.name || ''}
                 onChangeText={(v) => setEditing((s) => ({ ...s, name: v }))}
               />
               <TextInput
                 style={[styles.input, styles.multiline]}
-                placeholder="规则"
+                placeholder={t('customCategories.editRulePlaceholder')}
                 placeholderTextColor="#8E8E93"
                 value={editing?.rule || ''}
                 onChangeText={(v) => setEditing((s) => ({ ...s, rule: v }))}
                 multiline
               />
-              <Text style={styles.iconPickerLabel}>选择图标</Text>
+              <Text style={styles.iconPickerLabel}>{t('customCategories.iconPickerLabel')}</Text>
               <IconGrid
                 selectedKey={editing?.iconKey}
                 onSelect={(k) => setEditing((s) => ({ ...s, iconKey: k }))}
@@ -245,15 +256,15 @@ export default function CustomCategoriesScreen({ navigation }) {
             </ScrollView>
             <View style={styles.modalFooter}>
               <TouchableOpacity style={[styles.modalBtn, styles.modalBtnGhost]} onPress={() => setEditing(null)}>
-                <Text style={styles.modalBtnGhostText}>取消</Text>
+                <Text style={styles.modalBtnGhostText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={onSaveEdit}>
-                <Text style={styles.modalBtnPrimaryText}>保存</Text>
+                <Text style={styles.modalBtnPrimaryText}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
-      </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -294,8 +305,7 @@ const styles = StyleSheet.create({
   },
   iconCellSelected: { borderWidth: 2, borderColor: '#007AFF' },
 
-  // 编辑弹窗
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  // 编辑弹窗（inline overlay：背景遮罩用 absoluteFill + 内联 style，不再走 RN Modal）
   modalCard: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85%' },
   modalHeader: { padding: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5E5EA' },
   modalTitle: { fontSize: 17, fontWeight: '600', color: '#000000' },
