@@ -38,7 +38,10 @@ clean = {k.replace('module.', ''): v for k, v in state.items()}
 model.load_state_dict(clean)
 model.eval()
 
-# 导出 ONNX
+# 导出 ONNX —— 必须 dynamo=False（legacy TorchScript 导出器）
+# torch 2.9+ 默认 dynamo=True 出来的 ONNX (opset 18 + 新算子) onnxruntime-react-native
+# iOS 端 InferenceSession.create 100% 'Can't load a model: failed to load model'。
+# dynamo=False 出来的 onnx 是 ir_version 9 / opset 17，weights inline，两端都能加载。
 dummy = torch.randn(1, 3, 224, 224)
 torch.onnx.export(
     model, dummy, ONNX_PATH,
@@ -47,6 +50,7 @@ torch.onnx.export(
     dynamic_axes={'input': {0: 'batch'}, 'output': {0: 'batch'}},
     opset_version=17,
     do_constant_folding=True,
+    dynamo=False,
 )
 
 print(f'✅ 导出: {ONNX_PATH}')

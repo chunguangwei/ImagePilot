@@ -125,6 +125,10 @@ vis = VisualOnly(model)
 vis.eval()
 dummy = torch.randn(1, 3, input_size, input_size)
 ONNX_PATH = "mobileclip_image_encoder.onnx"
+# 必须 dynamo=False（legacy TorchScript 导出器）：
+# torch 2.9+ 默认 dynamo=True 出来的 ONNX (opset 18 + 新算子) onnxruntime-react-native
+# iOS 端 InferenceSession.create 100% 'Can't load a model: failed to load model'。
+# dynamo=False 出来的 onnx 是 ir_version 9 / opset 17 / weights inline，两端都能加载。
 torch.onnx.export(
     vis, dummy, ONNX_PATH,
     input_names=["image"],
@@ -132,10 +136,11 @@ torch.onnx.export(
     dynamic_axes={"image": {0: "batch"}, "embedding": {0: "batch"}},
     opset_version=17,
     do_constant_folding=True,
+    dynamo=False,
 )
 print(f"✅ exported {ONNX_PATH}")
 
-# 合并 external data（防止 torch.onnx 把权重单独写文件）
+# 合并 external data（dynamo=False 一般不会写 external，留着兜底）
 import os
 import onnx
 m_onnx = onnx.load(ONNX_PATH, load_external_data=True)
