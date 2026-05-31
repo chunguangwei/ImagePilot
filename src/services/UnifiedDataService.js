@@ -1150,42 +1150,47 @@ class UnifiedDataService {
    */
   async updateImagesCategory(imageIds, newCategory, newConfidence = 'manual') {
     try {
-      logger.debug('批量更新图片分类:', imageIds.length, '张图片 ->', newCategory);
-      
+      const t0 = Date.now();
+      logger.debug(`[updateImagesCategory] start: ${imageIds.length} → ${newCategory}`);
+
       if (!imageIds || imageIds.length === 0) {
         logger.warn('批量更新分类：没有图片ID');
         return { success: true, processed: 0 };
       }
-      
+
       let processed = 0;
       const errors = [];
-      
-      // 批量更新数据库（使用统一接口）
+
+      // 批量更新数据库
+      const t1 = Date.now();
       const result = await this.imageStorageService.batchUpdateImageCategory(imageIds, newCategory, newConfidence);
+      logger.debug(`[updateImagesCategory] DB update done in ${Date.now() - t1}ms, processed=${result.processed}`);
       processed = result.processed;
       if (result.errors) {
         errors.push(...result.errors);
       }
-      
-      // 🔥 批量更新缓存（优化：只重建一次统计）
+
+      // 批量更新缓存（同步操作，但内含 6 个 rebuild* fn）
+      const t2 = Date.now();
       const cacheUpdates = imageIds.map(imageId => ({
         imageId,
         newCategory,
         additionalData: { confidence: newConfidence }
       }));
       const cacheResult = this.imageCache.batchUpdateImageClassification(cacheUpdates);
+      logger.debug(`[updateImagesCategory] cache update done in ${Date.now() - t2}ms`);
       if (!cacheResult.success && cacheResult.errors) {
         logger.warn('批量更新缓存部分失败:', cacheResult.errors);
       }
-      
-      logger.debug('批量更新分类完成:', processed, '张成功');
-      
-      return { 
-        success: errors.length === 0, 
-        processed, 
-        errors: errors.length > 0 ? errors : undefined 
+
+      logger.debug(`[updateImagesCategory] total ${Date.now() - t0}ms, ${processed} 张成功`);
+
+      return {
+        success: errors.length === 0,
+        processed,
+        errors: errors.length > 0 ? errors : undefined
       };
-      
+
     } catch (error) {
       logger.error('批量更新图片分类失败:', error);
       throw error;
