@@ -48,37 +48,66 @@ export async function isModelDownloaded(filename) {
  * @param {string} filename
  * @param {string} url
  * @param {(p:number)=>void} [onProgress] 0~1 下载进度
+ * @param {{ signal?: AbortSignal }} [opts] 可选 AbortSignal；abort 时调 RNFS.stopDownload(jobId)，
+ *                                          并清理 .part 临时文件后 throw E_ABORTED
  */
-export async function ensureModel(filename, url, onProgress) {
+export async function ensureModel(filename, url, onProgress, opts = {}) {
   const dest = modelLocalPath(filename);
   // onnxruntime-react-native 在 Android 需要 file:// 前缀，否则报 "no content provider"。
   // RNFS 文件操作用裸路径(dest)，交给推理引擎的是 file:// URI。
   const asUri = (p) => (p.startsWith('file://') ? p : `file://${p}`);
   if (await isModelDownloaded(filename)) return asUri(dest);
   if (!url) throw new Error('E_NO_MODEL 未配置模型下载地址，请在设置里填写');
+
+  const { signal } = opts;
+  if (signal && signal.aborted) throw new Error('E_ABORTED 下载已取消');
+
   await RNFS.mkdir(modelsDir()).catch(() => {});
   const tmp = `${dest}.part`;
   try { if (await RNFS.exists(tmp)) await RNFS.unlink(tmp); } catch (_) {}
   logger.debug('🟦 开始下载模型', { filename, url });
-  const { promise } = RNFS.downloadFile({
+  const { jobId, promise } = RNFS.downloadFile({
     fromUrl: url,
     toFile: tmp,
     progressInterval: 400,
     progress: (r) => { if (onProgress && r.contentLength > 0) onProgress(Math.min(1, r.bytesWritten / r.contentLength)); },
   });
-  const res = await promise;
-  if (res && res.statusCode && res.statusCode >= 400) {
-    try { await RNFS.unlink(tmp); } catch (_) {}
-    throw new Error('模型下载失败 HTTP ' + res.statusCode);
+
+  // AbortSignal → RNFS.stopDownload(jobId)；abort 后 promise 会以 statusCode 抛错/或正常返回部分文件，
+  // 统一交由 cleanup 分支识别并抛 E_ABORTED
+  let aborted = false;
+  const onAbort = () => {
+    aborted = true;
+    try { RNFS.stopDownload(jobId); } catch (_) {}
+  };
+  if (signal) signal.addEventListener('abort', onAbort);
+
+  try {
+    const res = await promise.catch((e) => {
+      if (aborted) return null;
+      throw e;
+    });
+    if (aborted) {
+      try { if (await RNFS.exists(tmp)) await RNFS.unlink(tmp); } catch (_) {}
+      throw new Error('E_ABORTED 下载已取消');
+    }
+    if (res && res.statusCode && res.statusCode >= 400) {
+      try { await RNFS.unlink(tmp); } catch (_) {}
+      throw new Error('模型下载失败 HTTP ' + res.statusCode);
+    }
+    const st = await RNFS.stat(tmp).catch(() => null);
+    if (!st || Number(st.size) < 100000) {
+      try { await RNFS.unlink(tmp); } catch (_) {}
+      throw new Error('E_CORRUPT 模型下载不完整，请重试');
+    }
+    await RNFS.moveFile(tmp, dest);
+    logger.debug('✅ 模型下载完成', { filename, size: st.size });
+    return asUri(dest);
+  } finally {
+    if (signal) {
+      try { signal.removeEventListener('abort', onAbort); } catch (_) {}
+    }
   }
-  const st = await RNFS.stat(tmp).catch(() => null);
-  if (!st || Number(st.size) < 100000) {
-    try { await RNFS.unlink(tmp); } catch (_) {}
-    throw new Error('E_CORRUPT 模型下载不完整，请重试');
-  }
-  await RNFS.moveFile(tmp, dest);
-  logger.debug('✅ 模型下载完成', { filename, size: st.size });
-  return asUri(dest);
 }
 
 /**

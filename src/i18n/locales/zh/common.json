@@ -724,7 +724,58 @@
     "wechat": "微信",
     "qq": "QQ",
     "camera": "相机",
-    "screenshots": "截图"
+    "screenshots": "截图",
+    "customCategories": {
+      "title": "自定义分类",
+      "desc": "定义你自己的分类规则，云端大模型按规则把图片归入"
+    },
+    "backupRestore": {
+      "title": "分类备份与还原",
+      "desc": "导出当前分类索引到本地，换机/重装/清数据后可一键还原，不必再走云端"
+    },
+    "iosPhotoAuth": {
+      "title": "iOS 相册访问",
+      "authorized": "已允许完全访问",
+      "limited": "仅部分访问 · 点击调整可见照片",
+      "denied": "已拒绝 · 点击去系统设置开启",
+      "restricted": "系统限制（家长控制等）· 点击查看",
+      "notDetermined": "尚未请求 · 首次扫描时会弹窗",
+      "detecting": "检测中…"
+    },
+    "classifierModel": {
+      "title": "分类模型",
+      "desc": "设备端分类引擎，按需下载、随时切换。照片不上传。",
+      "downloaded": "已下载",
+      "downloadSize": "下载 {{size}}MB",
+      "redownload": "重新下载",
+      "delete": "删除",
+      "comingSoon": "即将上线",
+      "comingSoonDesc": "{{label}} 推理引擎尚未接入。",
+      "downloadFailed": "下载失败",
+      "downloadComplete": "下载完成",
+      "ready": "{{label}} 模型已就绪。",
+      "deleteTitle": "删除模型",
+      "deleteConfirm": "删除 {{label}} 的本地模型？下次使用需重新下载 {{size}}MB。",
+      "deleteFailed": "删除失败",
+      "cancelDownload": "取消"
+    },
+    "superRes": {
+      "title": "AI 增强模型",
+      "desc": "模型按需下载（不占安装包）。大模型更清晰但更慢更大。",
+      "iosNote": "iOS 首次默认走「大」。",
+      "iosIncompatible": "（iOS 不兼容，请选大）",
+      "customUrl": "自定义链接（.onnx）",
+      "downloading": "下载中 {{percent}}%",
+      "download": "下载模型",
+      "redownload": "重新下载",
+      "customUrlMissing": "请先填写自定义模型链接",
+      "downloaded": "模型已下载，可用于 AI 增强",
+      "downloadedStatus": "✓ 已下载",
+      "notDownloaded": "未下载",
+      "downloadFailed": "下载失败",
+      "cancelDownload": "取消",
+      "presetsDesc": "AI 修图的预设方案，可自定义提示词"
+    }
   },
   "directoryPicker": {
     "selectScanDirectory": "选择扫描目录",

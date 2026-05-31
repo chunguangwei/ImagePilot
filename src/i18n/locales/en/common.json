@@ -724,7 +724,58 @@
     "wechat": "WeChat",
     "qq": "QQ",
     "camera": "Camera",
-    "screenshots": "Screenshots"
+    "screenshots": "Screenshots",
+    "customCategories": {
+      "title": "Custom categories",
+      "desc": "Define your own classification rules; the cloud model groups images by them"
+    },
+    "backupRestore": {
+      "title": "Backup & restore categories",
+      "desc": "Export the current category index locally so you can restore in one tap after reinstall or data wipe"
+    },
+    "iosPhotoAuth": {
+      "title": "iOS Photo Library Access",
+      "authorized": "Full access granted",
+      "limited": "Limited access · tap to adjust visible photos",
+      "denied": "Denied · tap to open Settings",
+      "restricted": "Restricted (Parental Controls etc.) · tap to view",
+      "notDetermined": "Not requested yet · prompt appears on first scan",
+      "detecting": "Detecting…"
+    },
+    "classifierModel": {
+      "title": "Classification Model",
+      "desc": "On-device classification engine, download on demand and switch anytime. Photos stay on the device.",
+      "downloaded": "Downloaded",
+      "downloadSize": "Download {{size}}MB",
+      "redownload": "Re-download",
+      "delete": "Delete",
+      "comingSoon": "Coming Soon",
+      "comingSoonDesc": "{{label}} engine not wired up yet.",
+      "downloadFailed": "Download Failed",
+      "downloadComplete": "Download Complete",
+      "ready": "{{label}} model ready.",
+      "deleteTitle": "Delete Model",
+      "deleteConfirm": "Delete the local {{label}} model? You'll need to re-download {{size}}MB next time.",
+      "deleteFailed": "Delete Failed",
+      "cancelDownload": "Cancel"
+    },
+    "superRes": {
+      "title": "AI Enhancement Model",
+      "desc": "Downloaded on demand (not bundled in the APK). Larger models look sharper but run slower and weigh more.",
+      "iosNote": "iOS defaults to Large.",
+      "iosIncompatible": "iOS-incompatible; pick Large",
+      "customUrl": "Custom URL (.onnx)",
+      "downloading": "Downloading {{percent}}%",
+      "download": "Download Model",
+      "redownload": "Re-download",
+      "customUrlMissing": "Please enter the custom model URL",
+      "downloaded": "Model ready for AI Enhancement",
+      "downloadedStatus": "✓ Downloaded",
+      "notDownloaded": "Not downloaded",
+      "downloadFailed": "Download Failed",
+      "cancelDownload": "Cancel",
+      "presetsDesc": "Preset enhancement profiles, with custom prompts"
+    }
   },
   "directoryPicker": {
     "selectScanDirectory": "Select Scan Directory",

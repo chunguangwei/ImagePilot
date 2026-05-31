@@ -17,7 +17,6 @@ import {
   Switch,
   ActivityIndicator,
   TextInput,
-  Image,
   Modal,
   Linking,
   Platform,
@@ -27,7 +26,6 @@ import { SafeAreaView, Alert, RNFS, AsyncStorage } from '../../adapters/WebAdapt
 import UnifiedDataService from '../../services/UnifiedDataService';
 import GalleryScannerService from '../../services/GalleryScannerService';
 import ImageStorageService from '../../services/ImageStorageService';
-import WeChatAuthService from '../../services/WeChatAuthService';
 import * as UpdateService from '../../services/UpdateService';
 import DirectoryPicker from '../../components/DirectoryPicker.mobile';
 import { logger } from '../../adapters/WebAdapters';
@@ -82,6 +80,11 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   const [classifierDownloaded, setClassifierDownloaded] = useState({});  // { scene: true/false, ... }
   const [classifierDownloadingKey, setClassifierDownloadingKey] = useState(null); // 哪个 tier 正在下载
   const [classifierDownloadProgress, setClassifierDownloadProgress] = useState(0);
+  // 取消下载用的 AbortController（分类模型/AI 增强模型分别一个）
+  // 关掉时把 controller.abort() → modelSource 内部 RNFS.stopDownload(jobId) + 清 .part
+  const classifierAbortRef = useRef(null);
+  const classifierPrevTierRef = useRef(null); // 取消后回滚到这个档
+  const srAbortRef = useRef(null);
 
   // AI增强预设相关状态
   const [aiEnhancePresets, setAiEnhancePresets] = useState({});
@@ -92,10 +95,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   const [iosPhotoAuth, setIosPhotoAuth] = useState(null);
 
   // 微信授权相关状态
-  const [wechatStatus, setWechatStatus] = useState('checking'); // checking, not_followed, followed_not_member, member
-  const [qrCode, setQrCode] = useState('');
-  const [credits, setCredits] = useState({ total: 0, used: 0, remaining: 0 });
-  const [checkingFollow, setCheckingFollow] = useState(false);
+  // 会员/微信轮询整段已下线，fork 不联第三方后端
 
   // 更新流程相关状态：
   // updateInfoModal —— "发现新版本"弹窗，notes 用 ScrollView 展示清洗后的 markdown
@@ -104,22 +104,11 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   const [updateProgress, setUpdateProgress] = useState(null);
   //   { percent:number 0..1, status:'downloading'|'installing'|'done'|'error', version, error? } | null
 
-  const pollIntervalRef = useRef(null); // 保存轮询ID
-
   // ==================== 初始化 ====================
   useEffect(() => {
     loadSettings();
     detectStorageInfo();
-    checkMembershipStatus();
     refreshIosPhotoAuth();
-
-    // 组件卸载时清理轮询
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-    };
   }, []);
 
   // iOS：刷新 PhotoKit 授权层级（authorized / limited / denied / restricted / notDetermined）
@@ -563,248 +552,10 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     }
   };
 
-  // ==================== 会员服务相关 ====================
-  
-  /**
-   * 检查会员状态
-   */
-  const checkMembershipStatus = async () => {
-    try {
-      logger.debug('🔍 开始检查会员状态和关注状态...');
-      // 统一使用 getCredits 接口获取会员状态和关注状态
-      const creditsResult = await WeChatAuthService.getCredits();
-      const { isFollowed, isMember } = creditsResult;
-      
-      if (isMember) {
-        logger.debug('✅ 用户为会员');
-        setWechatStatus('member');
-        setCredits({
-          total: creditsResult.total,
-          used: creditsResult.used,
-          remaining: creditsResult.remaining
-        });
-      } else if (isFollowed) {
-        logger.debug('🔍 用户已关注但未付费');
-        setWechatStatus('followed_not_member');
-        setCredits({
-          total: creditsResult.total,
-          used: creditsResult.used,
-          remaining: creditsResult.remaining
-        });
-        // 已关注但未付费时，不需要生成二维码，只启动轮询等待付费
-        // 不调用 generateQrCode()，避免显示二维码
-      } else {
-        logger.debug('🔍 用户未关注公众号');
-        setWechatStatus('not_followed');
-        await generateQrCode();
-      }
-    } catch (error) {
-      // 查询会员状态失败，使用debug日志（不输出error）
-      logger.debug('查询会员状态失败:', error);
-      setWechatStatus('not_followed');
-      await generateQrCode();
-    }
-  };
-  
-  /**
-   * 生成二维码
-   */
-  const generateQrCode = async () => {
-    try {
-      // 如果已有轮询在运行，先清理
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-      
-      setCheckingFollow(true);
-      const { qrcode } = await WeChatAuthService.generateQrCode();
-      setQrCode(qrcode);
-      
-      // 轮询会员状态和关注状态
-      pollIntervalRef.current = setInterval(async () => {
-        try {
-          const creditsResult = await WeChatAuthService.getCredits();
-          const { isFollowed, isMember } = creditsResult;
-          
-          if (isMember) {
-            setWechatStatus('member');
-            setCredits({
-              total: creditsResult.total,
-              used: creditsResult.used,
-              remaining: creditsResult.remaining
-            });
-            // 防止重复弹窗
-            if (!activationAlertShownRef.current) {
-              activationAlertShownRef.current = true;
-              // 确保使用最新的语言设置：从 i18n 实例获取最新的 t 函数
-              // 因为 setInterval 回调可能捕获旧的闭包，需要显式获取当前语言
-              const currentLang = i18n.language || 'zh';
-              // 使用 i18n 实例的 t 函数，确保使用最新语言
-              Alert.alert(i18n.t('common.success', { lng: currentLang }), i18n.t('settings.memberActivated', { lng: currentLang }));
-            }
-            if (pollIntervalRef.current) {
-              clearInterval(pollIntervalRef.current);
-              pollIntervalRef.current = null;
-            }
-            setCheckingFollow(false);
-          } else if (isFollowed) {
-            // 已关注但未付费，更新状态和额度，继续轮询等待付费
-            setWechatStatus('followed_not_member');
-            setCredits({
-              total: creditsResult.total,
-              used: creditsResult.used,
-              remaining: creditsResult.remaining
-            });
-            // 继续轮询，不停止
-          } else {
-            // 未关注，更新状态，继续轮询等待关注
-            setWechatStatus('not_followed');
-            // 继续轮询，不停止
-          }
-        } catch (e) {
-          logger.debug('⏳ 轮询会员状态中...');
-        }
-      }, 2000);
-    } catch (error) {
-      // 生成二维码失败，使用debug日志（不输出error和弹窗）
-      logger.debug('生成二维码失败:', error);
-      setCheckingFollow(false);
-    }
-  };
-  
-  const activationAlertShownRef = useRef(false);
+  // 会员/微信轮询/二维码逻辑已下线（fork 不联第三方后端）。原 checkMembershipStatus
+  // / generateQrCode / openWeChatScan / openWeChatApp / scanQrCodeAndOpen / loadCredits
+  // 整组函数移除，避免 setInterval 后台偷偷打接口。
 
-  /**
-   * 加载额度信息
-   */
-  const loadCredits = async () => {
-    try {
-      const creditsData = await WeChatAuthService.getCredits();
-      setCredits({
-        total: creditsData.total,
-        used: creditsData.used,
-        remaining: creditsData.remaining
-      });
-    } catch (error) {
-      logger.error('加载额度失败:', error);
-    }
-  };
-  
-  /**
-   * 点击二维码：保存二维码到相册，然后打开微信主界面
-   * 注意：微信限制了直接打开扫一扫的功能，只能打开微信主界面，用户需要手动进入扫一扫
-   */
-  const openWeChatScan = async () => {
-    if (!qrCode) {
-      Alert.alert(t('settings.tip'), t('settings.qrCodeNotGenerated'));
-      return;
-    }
-
-    try {
-      logger.debug('🖼️ 开始保存二维码到相册...');
-      
-      // 先保存二维码到相册
-      let saveResult = null;
-      if (RNFS && typeof RNFS.saveImageToGallery === 'function') {
-        try {
-          const fileName = `微信二维码_${Date.now()}.png`;
-          saveResult = await RNFS.saveImageToGallery(qrCode, fileName);
-          logger.debug('✅ 二维码已保存到相册:', saveResult);
-        } catch (saveError) {
-          logger.error('❌ 保存二维码到相册失败:', saveError);
-          // 即使保存失败，也继续尝试打开微信
-        }
-      } else {
-        logger.warn('⚠️ RNFS.saveImageToGallery 方法不可用');
-      }
-
-      // 保存成功后，弹出提示
-      if (saveResult) {
-        Alert.alert(
-          t('settings.saveSuccess'),
-          t('settings.qrCodeSavedToAlbum'),
-          [
-            { text: t('common.cancel'), style: 'cancel' },
-            {
-              text: t('common.openWeChat'),
-              style: 'default',
-              onPress: async () => {
-                await openWeChatApp();
-              }
-            }
-          ]
-        );
-      } else {
-        // 保存失败，直接尝试打开微信
-        Alert.alert(
-          t('settings.tip'),
-          t('settings.qrCodeSaveFailed'),
-          [
-            { text: t('common.cancel'), style: 'cancel' },
-            {
-              text: t('common.openWeChat'),
-              style: 'default',
-              onPress: async () => {
-                await openWeChatApp();
-              }
-            }
-          ]
-        );
-      }
-    } catch (error) {
-      logger.error('❌ 操作失败:', error);
-      Alert.alert(
-        t('settings.tip'),
-        t('settings.operationError'),
-        [{ text: t('common.gotIt'), style: 'default' }]
-      );
-    }
-  };
-
-  /**
-   * 打开微信应用
-   */
-  const openWeChatApp = async () => {
-    try {
-      logger.debug('📱 正在打开微信...');
-      const weixinMain = 'weixin://';
-      const supported = await Linking.canOpenURL(weixinMain);
-      if (supported) {
-        await Linking.openURL(weixinMain);
-        logger.debug('✅ 已打开微信主界面');
-        Alert.alert(
-          t('settings.tip'),
-          t('settings.openedWeChat'),
-          [{ text: t('common.gotIt'), style: 'default' }]
-        );
-      } else {
-        logger.warn('⚠️ 无法打开微信');
-        Alert.alert(
-          t('settings.tip'),
-          t('settings.cannotOpenWeChat'),
-          [{ text: t('common.gotIt'), style: 'default' }]
-        );
-      }
-    } catch (error) {
-      logger.error('❌ 打开微信失败:', error);
-      Alert.alert(
-        t('settings.tip'),
-        t('settings.cannotOpenWeChatManual'),
-        [{ text: t('common.gotIt'), style: 'default' }]
-      );
-    }
-  };
-
-  /**
-   * 扫描二维码并打开链接（移动端暂不支持自动解析，直接使用保存和调起微信的方式）
-   * 此函数保留用于兼容性，但移动端应该使用 openWeChatScan
-   */
-  const scanQrCodeAndOpen = async () => {
-    // 移动端直接调用保存和调起微信的方法
-    await openWeChatScan();
-  };
-  
   // ==================== AI增强预设管理 ====================
   
   /**
@@ -1103,16 +854,22 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
   // ==================== 渲染函数 ====================
 
-  // iOS 相册授权层级 → 副标描述
+  // iOS 相册授权层级 → 副标描述 + tone（HIG：颜色 + 短文案，不用 emoji）
   const iosPhotoAuthMeta = () => {
     switch (iosPhotoAuth) {
-      case 'authorized': return { desc: '✓ 已允许完全访问' };
-      case 'limited':    return { desc: '⚠️ 仅部分访问 · 点击调整可见照片' };
-      case 'denied':     return { desc: '✗ 已拒绝 · 点击去系统设置开启' };
-      case 'restricted': return { desc: '⛔ 系统限制（家长控制等）· 点击查看' };
-      case 'notDetermined': return { desc: '尚未请求 · 首次扫描时会弹窗' };
-      default: return { desc: '检测中…' };
+      case 'authorized':    return { desc: t('settings.iosPhotoAuth.authorized'), tone: 'success' };
+      case 'limited':       return { desc: t('settings.iosPhotoAuth.limited'), tone: 'warning' };
+      case 'denied':        return { desc: t('settings.iosPhotoAuth.denied'), tone: 'danger' };
+      case 'restricted':    return { desc: t('settings.iosPhotoAuth.restricted'), tone: 'danger' };
+      case 'notDetermined': return { desc: t('settings.iosPhotoAuth.notDetermined'), tone: 'neutral' };
+      default:              return { desc: t('settings.iosPhotoAuth.detecting'), tone: 'neutral' };
     }
+  };
+  const toneColor = (tone) => {
+    if (tone === 'success') return c.success;
+    if (tone === 'warning') return c.warning;
+    if (tone === 'danger')  return c.danger;
+    return c.tertiaryLabel;
   };
 
   // iOS 相册权限入口的点击行为：
@@ -1135,8 +892,10 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
   /**
    * 渲染操作按钮
+   * @param {string} [opts.descColor] 副标自定义颜色（用 c.success/warning/danger 之类，
+   *                                   状态高亮场景；普通描述就别传）
    */
-  const renderActionButton = (icon, title, description, onPress, danger = false) => (
+  const renderActionButton = (icon, title, description, onPress, danger = false, opts = {}) => (
     <TouchableOpacity
       style={[styles.actionButton, { backgroundColor: c.card }]}
       onPress={onPress}
@@ -1147,7 +906,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           <Text style={[styles.actionButtonText, { color: c.label }, danger && styles.dangerText]}>
             {SetIonicons ? <SetIonicons name={icon} size={17} color={danger ? c.danger : c.accent} /> : null} {title}
           </Text>
-          <Text style={[styles.actionButtonDescription, { color: c.tertiaryLabel }]}>{description}</Text>
+          <Text style={[styles.actionButtonDescription, { color: opts.descColor || c.tertiaryLabel }]}>{description}</Text>
         </View>
         {!danger ? <Text style={[styles.actionChevron, { color: c.chevron }]}>›</Text> : null}
       </View>
@@ -1169,18 +928,39 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     setSrVariant('custom');
     await refreshSrStatus();
   };
+  // 用户主动取消的错误识别：消息含 aborted / cancel → 不当作"下载失败"，只 logger + 静默
+  const isAbortError = (e) => {
+    const m = ((e && e.message) || String(e || '')).toLowerCase();
+    return m.includes('abort') || m.includes('cancel');
+  };
+
   const downloadSrModel = async () => {
+    // 旧 controller 残留先 abort 一次（防御 double-click）
+    try { srAbortRef.current?.abort(); } catch (_) {}
+    const controller = new AbortController();
+    srAbortRef.current = controller;
     setSrDownloading(true); setSrProgress(0);
     try {
       const r = await resolveSuperRes();
-      if (!r.url) { Alert.alert(t('common.tip') || '提示', '请先填写自定义模型链接'); return; }
+      if (!r.url) { Alert.alert(t('common.tip'), t('settings.superRes.customUrlMissing')); return; }
       await deleteModel(r.filename).catch(() => {}); // 重新下载：先删旧
-      await ensureModel(r.filename, r.url, (p) => setSrProgress(p));
+      await ensureModel(r.filename, r.url, (p) => setSrProgress(p), { signal: controller.signal });
       setSrDownloaded(true);
-      Alert.alert(t('common.success') || '完成', '模型已下载，可用于 AI 增强');
+      Alert.alert(t('common.success'), t('settings.superRes.downloaded'));
     } catch (e) {
-      Alert.alert('下载失败', (e?.message || String(e)).replace(/^E_\w+\s*/, ''));
-    } finally { setSrDownloading(false); }
+      if (isAbortError(e)) {
+        logger.debug('[SettingsScreen] super-res download aborted by user');
+      } else {
+        Alert.alert(t('settings.superRes.downloadFailed'), (e?.message || String(e)).replace(/^E_\w+\s*/, ''));
+      }
+    } finally {
+      setSrDownloading(false);
+      if (srAbortRef.current === controller) srAbortRef.current = null;
+    }
+  };
+
+  const cancelSrDownload = () => {
+    try { srAbortRef.current?.abort(); } catch (_) {}
   };
 
   // ===== 分类模型三档（basic / scene / clip 都按需下载，统一交互） =====
@@ -1190,7 +970,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     const tier = CLASSIFIER_TIERS[tierKey];
     if (!tier) return;
     if (!tier.readyForUse) {
-      Alert.alert('即将上线', `${tier.label} 推理引擎尚未接入。`);
+      Alert.alert(t('settings.classifierModel.comingSoon'), t('settings.classifierModel.comingSoonDesc', { label: tier.label }));
       return;
     }
     // 已下载 → 立即切档
@@ -1200,11 +980,13 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
       return;
     }
     // 未下载 → 后台下载，完成后自动切档（下载过程乐观高亮当前选择，让用户看到承诺生效）
+    // 记录之前的档位用于取消时回滚 UI
+    classifierPrevTierRef.current = classifierTier;
     setClassifierTier(tierKey);
     try {
       await downloadClassifierModel(tierKey, { switchAfter: true });
     } catch (_) {
-      // downloadClassifierModel 已 Alert，UI 切回之前档由 finally 处理
+      // downloadClassifierModel 已处理（Alert 或静默回滚）
     }
   };
 
@@ -1212,44 +994,75 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     const { switchAfter = false } = opts;
     const tier = CLASSIFIER_TIERS[tierKey];
     if (!tier || !tier.url) return;
+    // 旧 controller 残留先 abort（防御 double-click）
+    try { classifierAbortRef.current?.abort(); } catch (_) {}
+    const controller = new AbortController();
+    classifierAbortRef.current = controller;
     setClassifierDownloadingKey(tierKey);
     setClassifierDownloadProgress(0);
     try {
-      await ensureClassifierModelFile(tier.filename, tier.url, (p) => setClassifierDownloadProgress(p));
+      await ensureClassifierModelFile(
+        tier.filename,
+        tier.url,
+        (p) => setClassifierDownloadProgress(p),
+        { signal: controller.signal },
+      );
       setClassifierDownloaded((prev) => ({ ...prev, [tierKey]: true }));
       if (switchAfter) {
         // 承诺即切：下载完成后落 setting；UI 上 classifierTier 已经乐观高亮
         try { await updateSetting('classifierModelTier', tierKey); } catch (_) {}
       } else {
-        Alert.alert('下载完成', `${tier.label} 模型已就绪。`);
+        Alert.alert(t('settings.classifierModel.downloadComplete'), t('settings.classifierModel.ready', { label: tier.label }));
       }
     } catch (e) {
-      const msg = (e?.message || String(e)).replace(/^E_\w+\s*/, '');
-      Alert.alert('下载失败', msg);
-      if (switchAfter) {
-        // 下载失败：把之前的乐观切档回滚到 settings 里实际记的档
-        try {
-          const s = await UnifiedDataService.readSettings();
-          setClassifierTier(s?.classifierModelTier || DEFAULT_CLASSIFIER_TIER);
-        } catch (_) {}
+      if (isAbortError(e)) {
+        logger.debug('[SettingsScreen] classifier download aborted by user', { tierKey });
+        if (switchAfter) {
+          // 取消：回滚到 prevTier（若没记下来则读 settings 里的实际档）
+          const prev = classifierPrevTierRef.current;
+          if (prev) {
+            setClassifierTier(prev);
+          } else {
+            try {
+              const s = await UnifiedDataService.readSettings();
+              setClassifierTier(s?.classifierModelTier || DEFAULT_CLASSIFIER_TIER);
+            } catch (_) {}
+          }
+        }
+      } else {
+        const msg = (e?.message || String(e)).replace(/^E_\w+\s*/, '');
+        Alert.alert(t('settings.classifierModel.downloadFailed'), msg);
+        if (switchAfter) {
+          // 下载失败：把之前的乐观切档回滚到 settings 里实际记的档
+          try {
+            const s = await UnifiedDataService.readSettings();
+            setClassifierTier(s?.classifierModelTier || DEFAULT_CLASSIFIER_TIER);
+          } catch (_) {}
+        }
       }
       throw e;
     } finally {
       setClassifierDownloadingKey(null);
       setClassifierDownloadProgress(0);
+      if (classifierAbortRef.current === controller) classifierAbortRef.current = null;
+      classifierPrevTierRef.current = null;
     }
+  };
+
+  const cancelClassifierDownload = () => {
+    try { classifierAbortRef.current?.abort(); } catch (_) {}
   };
 
   const deleteClassifierTierModel = async (tierKey) => {
     const tier = CLASSIFIER_TIERS[tierKey];
     if (!tier || tier.bundled) return;
     Alert.alert(
-      '删除模型',
-      `删除 ${tier.label} 的本地模型？下次使用需重新下载 ${tier.sizeMB}MB。`,
+      t('settings.classifierModel.deleteTitle'),
+      t('settings.classifierModel.deleteConfirm', { label: tier.label, size: tier.sizeMB }),
       [
-        { text: '取消', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: '删除',
+          text: t('settings.classifierModel.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -1260,7 +1073,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                 setClassifierTier(DEFAULT_CLASSIFIER_TIER);
                 try { await updateSetting('classifierModelTier', DEFAULT_CLASSIFIER_TIER); } catch (_) {}
               }
-            } catch (e) { Alert.alert('删除失败', e?.message || String(e)); }
+            } catch (e) { Alert.alert(t('settings.classifierModel.deleteFailed'), e?.message || String(e)); }
           },
         },
       ]
@@ -1271,10 +1084,10 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     return (
       <View style={styles.actionButton}>
         <Text style={styles.actionButtonText}>
-          {SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color={c.accent} /> : null} 分类模型
+          {SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color={c.accent} /> : null} {t('settings.classifierModel.title')}
         </Text>
         <Text style={styles.actionButtonDescription}>
-          设备端分类引擎，按需下载、随时切换。照片不上传。
+          {t('settings.classifierModel.desc')}
         </Text>
         <View style={styles.classifierList}>
           {CLASSIFIER_TIER_ORDER.map((tierKey, idx) => {
@@ -1288,7 +1101,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
               tier.speed,
               `${tier.classes} 类`,
             ];
-            if (downloaded) metaParts.push('已下载');
+            if (downloaded) metaParts.push(t('settings.classifierModel.downloaded'));
             return (
               <View key={tierKey}>
                 <TouchableOpacity
@@ -1313,13 +1126,16 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                       <View style={styles.classifierTierRightInner}>
                         <ActivityIndicator size="small" color={c.accent} />
                         <Text style={styles.classifierDlText}>{Math.round(classifierDownloadProgress * 100)}%</Text>
+                        <TouchableOpacity onPress={cancelClassifierDownload} hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}>
+                          <Text style={[styles.classifierFooterBtnText, { color: c.danger }]}>{t('settings.classifierModel.cancelDownload')}</Text>
+                        </TouchableOpacity>
                       </View>
                     ) : isActive ? (
                       SetIonicons
                         ? <SetIonicons name="checkmark" size={22} color={c.accent} />
                         : <Text style={{ color: c.accent, fontSize: 18 }}>✓</Text>
                     ) : !downloaded && !tier.bundled ? (
-                      <Text style={styles.classifierDlSizeHint}>下载 {tier.sizeMB}MB</Text>
+                      <Text style={styles.classifierDlSizeHint}>{t('settings.classifierModel.downloadSize', { size: tier.sizeMB })}</Text>
                     ) : null}
                   </View>
                 </TouchableOpacity>
@@ -1327,11 +1143,11 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                 {downloaded && !tier.bundled && !downloading && (
                   <View style={styles.classifierTierFooter}>
                     <TouchableOpacity onPress={() => downloadClassifierModel(tierKey)} style={styles.classifierFooterBtn}>
-                      <Text style={styles.classifierFooterBtnText}>重新下载</Text>
+                      <Text style={styles.classifierFooterBtnText}>{t('settings.classifierModel.redownload')}</Text>
                     </TouchableOpacity>
                     <Text style={styles.classifierFooterSep}> · </Text>
                     <TouchableOpacity onPress={() => deleteClassifierTierModel(tierKey)} style={styles.classifierFooterBtn}>
-                      <Text style={[styles.classifierFooterBtnText, { color: c.danger }]}>删除</Text>
+                      <Text style={[styles.classifierFooterBtnText, { color: c.danger }]}>{t('settings.classifierModel.delete')}</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -1346,18 +1162,18 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
   const renderSuperResModel = () => {
     // 小模型是 Qualcomm AI Hub 格式，仅 Android 上跑得动；iOS 标注「不兼容」并隐藏推荐
-    const smallSuffix = Platform.OS === 'ios' ? '（iOS 不兼容，请选大）' : '';
+    const smallSuffix = Platform.OS === 'ios' ? `（${t('settings.superRes.iosIncompatible')}）` : '';
     const opts = [
       { key: 'small', label: SUPERRES_VARIANTS.small.label + smallSuffix },
       { key: 'large', label: SUPERRES_VARIANTS.large.label },
-      { key: 'custom', label: '自定义链接（.onnx）' },
+      { key: 'custom', label: t('settings.superRes.customUrl') },
     ];
     return (
       <View style={styles.actionButton}>
         <Text style={styles.actionButtonText}>
-          {SetIonicons ? <SetIonicons name="color-wand-outline" size={17} color={c.accent} /> : null} AI 增强模型
+          {SetIonicons ? <SetIonicons name="color-wand-outline" size={17} color={c.accent} /> : null} {t('settings.superRes.title')}
         </Text>
-        <Text style={styles.actionButtonDescription}>模型按需下载（不占安装包）。大模型更清晰但更慢更大。{Platform.OS === 'ios' ? 'iOS 首次默认走「大」。' : ''}</Text>
+        <Text style={styles.actionButtonDescription}>{t('settings.superRes.desc')}{Platform.OS === 'ios' ? t('settings.superRes.iosNote') : ''}</Text>
         {opts.map((o) => {
           const disabled = Platform.OS === 'ios' && o.key === 'small';
           return (
@@ -1379,7 +1195,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           <View style={styles.srCustomRow}>
             <TextInput
               style={styles.srInput}
-              placeholder="https://.../model.onnx（输入/输出须与 Real-ESRGAN 一致）"
+              placeholder="https://.../model.onnx"
               placeholderTextColor={c.tertiaryLabel}
               value={srCustomUrl}
               onChangeText={setSrCustomUrl}
@@ -1389,15 +1205,23 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           </View>
         )}
         <View style={styles.srStatusRow}>
-          <Text style={styles.srStatusText}>{srDownloaded ? '✓ 已下载' : '未下载'}</Text>
-          <TouchableOpacity
-            style={[styles.srDownloadBtn, srDownloading && { opacity: 0.5 }]}
-            disabled={srDownloading}
-            onPress={downloadSrModel}>
-            <Text style={styles.srDownloadBtnText}>
-              {srDownloading ? `下载中 ${Math.round(srProgress * 100)}%` : (srDownloaded ? '重新下载' : '下载模型')}
-            </Text>
-          </TouchableOpacity>
+          <Text style={styles.srStatusText}>{srDownloaded ? t('settings.superRes.downloadedStatus') : t('settings.superRes.notDownloaded')}</Text>
+          {srDownloading ? (
+            <View style={styles.classifierTierRightInner}>
+              <TouchableOpacity style={[styles.srDownloadBtn, { opacity: 0.6 }]} disabled={true}>
+                <Text style={styles.srDownloadBtnText}>{t('settings.superRes.downloading', { percent: Math.round(srProgress * 100) })}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={cancelSrDownload} hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
+                <Text style={[styles.classifierFooterBtnText, { color: c.danger }]}>{t('settings.superRes.cancelDownload')}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.srDownloadBtn} onPress={downloadSrModel}>
+              <Text style={styles.srDownloadBtnText}>
+                {srDownloaded ? t('settings.superRes.redownload') : t('settings.superRes.download')}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -1490,7 +1314,11 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
       </View>
 
       {/* 设置列表 */}
-      <ScrollView style={styles.scrollView}>
+      <ScrollView
+        style={styles.scrollView}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
         {/* === Section 1：分类引擎 ===
             归口所有"把照片打成分类索引"的设置：
               · iOS 相册权限（iOS-only）/ 在线分类 LLM Key / 自定义分类规则
@@ -1507,13 +1335,17 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           {/* iOS 专属：相册权限层级显示
               · limited → 弹原生 Limited Library Picker（增删可见照片）
               · 其它    → 跳系统设置（Linking.openSettings） */}
-          {Platform.OS === 'ios' && renderActionButton(
-            'images-outline',
-            'iOS 相册访问',
-            iosPhotoAuthMeta().desc,
-            onIosPhotoAuthPress,
-            false
-          )}
+          {Platform.OS === 'ios' && (() => {
+            const meta = iosPhotoAuthMeta();
+            return renderActionButton(
+              'images-outline',
+              t('settings.iosPhotoAuth.title'),
+              meta.desc,
+              onIosPhotoAuthPress,
+              false,
+              { descColor: toneColor(meta.tone) },
+            );
+          })()}
 
           {/* AI 模型设置：配置个人 LLM API Key，启用云端在线分类 */}
           {renderActionButton(
@@ -1527,8 +1359,8 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           {/* 自定义分类：定义规则，云端大模型按规则归类 */}
           {renderActionButton(
             'pricetag-outline',
-            '自定义分类',
-            '定义你自己的分类规则，云端大模型按规则把图片归入',
+            t('settings.customCategories.title'),
+            t('settings.customCategories.desc'),
             () => navigation.navigate('CustomCategories'),
             false
           )}
@@ -1680,7 +1512,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
           {/* 照片创玩预设（原"照片创玩" section 整体挪过来） */}
           <Text style={styles.sectionDescription}>
-            {t('settings.photoEnhancementDesc')}
+            {t('settings.superRes.presetsDesc')}
           </Text>
 
           {Object.entries(aiEnhancePresets)
@@ -1759,8 +1591,8 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           {/* 分类备份与还原：导出 JSON 到 Downloads / 从 Downloads 还原 */}
           {renderActionButton(
             'archive-outline',
-            '分类备份与还原',
-            '导出当前分类索引到本地，换机/重装/清数据后可一键还原，不必再走云端',
+            t('settings.backupRestore.title'),
+            t('settings.backupRestore.desc'),
             () => navigation.navigate('BackupRestore'),
             false
           )}
@@ -1775,93 +1607,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           )}
         </View>
 
-        {/* 会员服务（已按需求隐藏，不向用户展示会员/额度/二维码） */}
-        {false && (
-        <View style={[styles.section, { backgroundColor: c.card }]}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.titleRow}>
-              <Text style={styles.sectionTitle}>💎 {t('settings.membershipService')}</Text>
-            </View>
-          </View>
-          
-          {/* 付费会员 */}
-          <View style={styles.membershipCardPremium}>
-            <View style={styles.membershipHeader}>
-              <Text style={styles.membershipIcon}>💎</Text>
-              <View>
-                <Text style={styles.membershipName}>{t('settings.lifetimeMember')}</Text>
-                <Text style={styles.membershipTagPremium}>
-                  {wechatStatus === 'member' 
-                    ? t('settings.activated') 
-                    : wechatStatus === 'followed_not_member' 
-                    ? t('settings.followedPendingActivation')
-                    : t('settings.notActivated')}
-                </Text>
-              </View>
-            </View>
-
-            {/* 权益列表 */}
-            <View style={styles.membershipFeaturesColumn}>
-              <View style={styles.membershipFeatureItem}>
-                <Text style={styles.membershipFeatureIcon}>✓</Text>
-                <Text style={styles.membershipFeatureText}>{t('settings.lifetimeMemberSmartClassification')}</Text>
-              </View>
-              <View style={styles.membershipFeatureItem}>
-                <Text style={styles.membershipFeatureIcon}>✓</Text>
-                <Text style={styles.membershipFeatureText}>{t('settings.lifetimeMemberPhotoEnhancement')}</Text>
-              </View>
-              
-              {/* 如果已关注（包括已关注未付费和已付费），在AI修图下面显示额度信息 */}
-              {(wechatStatus === 'member' || wechatStatus === 'followed_not_member') && (
-                <View style={styles.creditsInfoInline}>
-                  <Text style={styles.creditsLabelInline}>{t('settings.remainingCredits')}: </Text>
-                  <Text style={styles.creditsValueInline} numberOfLines={1}>
-                    {credits.remaining}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* 免费会员权限声明 */}
-            <View style={styles.freeMemberSection}>
-              <Text style={styles.freeMemberTitle}>{t('settings.freeMember')}</Text>
-              <View style={styles.freeMemberFeatureItem}>
-                <Text style={styles.freeMemberFeatureText}>{t('settings.freeMemberSmartClassification')}</Text>
-              </View>
-              <View style={styles.freeMemberFeatureItem}>
-                <Text style={styles.freeMemberFeatureText}>{t('settings.freeMemberPhotoEnhancement')}</Text>
-              </View>
-            </View>
-
-            {/* 二维码区域（仅未关注时显示） */}
-            {wechatStatus === 'not_followed' && (
-              <View style={styles.membershipQrColumn}>
-                {qrCode ? (
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={openWeChatScan}>
-                    <Image
-                      source={{ uri: qrCode }}
-                      style={styles.membershipQrCode}
-                    />
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.membershipQrButton}
-                    onPress={generateQrCode}>
-                    <Text style={styles.membershipQrButtonText}>
-                      {checkingFollow ? t('settings.generating') : t('settings.generateQrCode')}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                <Text style={styles.membershipQrHint}>
-                  {qrCode ? t('settings.clickQrCodeToOpenWeChat') : t('settings.qrCodeHint')}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-        )}
+        {/* 会员服务（fork 已下线第三方后端，整段移除；微信轮询 / 二维码 / 额度都不再出现） */}
 
         {/* === Section 4：关于 ===
             检查更新挪到版本号旁边（更新和版本是同一类信息）；
@@ -1889,8 +1635,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           {renderLanguageItem()}
         </View>
 
-        {/* 底部空白 */}
-        <View style={{ height: 40 }} />
+        {/* 底部空白由 ScrollView contentContainerStyle 处理 */}
       </ScrollView>
 
       {/* 目录选择器 */}
@@ -1995,10 +1740,10 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                   setShowEditModal(false);
                   setEditingPreset(null);
                 }}>
-                <Text style={styles.modalCancelButtonText}>取消</Text>
+                <Text style={styles.modalCancelButtonText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalSaveButton} onPress={saveEditedPreset}>
-                <Text style={styles.modalSaveButtonText}>保存</Text>
+                <Text style={styles.modalSaveButtonText}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2394,215 +2139,6 @@ const createStyles = (c) => StyleSheet.create({
   presetRight: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  editPresetButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: c.accent,
-    borderRadius: 6,
-    marginRight: 12,
-  },
-  editPresetButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  // 额度显示样式
-  creditsContainer: {
-    margin: 16,
-    padding: 16,
-    backgroundColor: c.groupedBg,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: c.separator,
-  },
-  creditsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: c.label,
-    marginBottom: 12,
-  },
-  creditsInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  creditsLabel: {
-    fontSize: 14,
-    color: c.tertiaryLabel,
-  },
-  creditsValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: c.accent,
-    marginLeft: 8,
-  },
-  creditsDescription: {
-    fontSize: 13,
-    color: c.tertiaryLabel,
-  },
-  // 内联额度显示样式（与PC端对齐）
-  creditsInfoInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: c.separator,
-    flexWrap: 'nowrap',
-    marginLeft: 28, // 与AI修图文案对齐（对号宽度20 + 间距8）
-  },
-  creditsLabelInline: {
-    fontSize: 14,
-    color: c.tertiaryLabel,
-    fontWeight: '500',
-    flexShrink: 0,
-  },
-  creditsValueInline: {
-    fontSize: 14,
-    color: c.success,
-    fontWeight: '600',
-    marginLeft: 4,
-    flexShrink: 0,
-  },
-  // 会员服务样式
-  membershipCard: {
-    margin: 16,
-    padding: 16,
-    backgroundColor: c.groupedBg,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: c.separator,
-  },
-  membershipCardPremium: {
-    margin: 16,
-    padding: 16,
-    backgroundColor: c.warningSoft,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: c.warning,
-  },
-  membershipHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  membershipIcon: {
-    fontSize: 32,
-    marginRight: 12,
-  },
-  membershipName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: c.label,
-    marginBottom: 4,
-  },
-  membershipTag: {
-    fontSize: 13,
-    color: c.success,
-    backgroundColor: c.successSoft,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-  },
-  membershipTagPremium: {
-    fontSize: 13,
-    color: c.warning,
-    backgroundColor: c.warningSoft,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-  },
-  membershipFeaturesColumn: {
-    marginTop: 16,
-  },
-  membershipFeatures: {
-    marginTop: 8,
-  },
-  membershipQrColumn: {
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginTop: 16,
-  },
-  membershipFeatureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  membershipFeatureIcon: {
-    fontSize: 16,
-    color: c.success,
-    minWidth: 20,
-    marginRight: 8,
-  },
-  membershipFeatureText: {
-    fontSize: 14,
-    color: c.tertiaryLabel,
-  },
-  membershipQrCode: {
-    width: 200,
-    height: 200,
-    borderRadius: 8,
-    backgroundColor: c.card,
-    marginBottom: 12,
-  },
-  membershipStatusContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  membershipStatusText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: c.success,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  membershipStatusHint: {
-    fontSize: 13,
-    color: c.tertiaryLabel,
-    textAlign: 'center',
-  },
-  membershipQrHint: {
-    fontSize: 13,
-    color: c.tertiaryLabel,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  membershipQrButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: c.success,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  membershipQrButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  // 免费会员权限声明样式
-  freeMemberSection: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: c.separator,
-  },
-  freeMemberTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: c.secondaryLabel,
-    marginBottom: 8,
-  },
-  freeMemberFeatureItem: {
-    marginTop: 6,
-  },
-  freeMemberFeatureText: {
-    fontSize: 13,
-    color: c.tertiaryLabel,
-    lineHeight: 18,
   },
   // 模态框样式
   modalOverlay: {
