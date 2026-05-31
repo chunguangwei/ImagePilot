@@ -21,6 +21,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
+          # canvas@2.11.2 不兼容 Node 24（node-gyp 编译失败）；先留在 20。
+          # 待 desktop 升级 canvas → 3.x 后可与 Android/macOS 一起升 24。
           node-version: '20'
 
       - name: Cache Node Modules

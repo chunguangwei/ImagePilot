@@ -1119,10 +1119,16 @@ const HomeScreen = ({ navigation }) => {
           permissionText,
           [
             { text: t('common.cancel'), style: 'cancel' },
-            { 
-              text: t('home.goToSettings'), 
-              onPress: () => {
-                // TODO: 打开应用设置页面
+            {
+              text: t('home.goToSettings'),
+              onPress: async () => {
+                // 优先直接跳系统设置 → 本 app 详情页；Linking.openSettings 在
+                // Android/iOS 都可用，失败再回退到文本指引
+                try {
+                  const { Linking: RNLinking } = require('react-native');
+                  await RNLinking.openSettings();
+                  return;
+                } catch (_) { /* 走兜底 */ }
                 const settingText = Platform.Version >= 33
                   ? t('home.permissionSettingGuideAndroid13')
                   : t('home.permissionSettingGuideAndroid12');
