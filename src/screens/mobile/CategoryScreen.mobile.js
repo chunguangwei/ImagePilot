@@ -41,8 +41,16 @@ let CatIonicons = null;
 try { CatIonicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { CatIonicons = null; }
 import { getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation, getDefaultPresets } from '../../i18n';
 import { useIosColors } from '../../ui/ios/theme';
+import Haptics from '../../utils/haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// 时间轴网格（HIG iOS 相册 3 列；用 gap 公式统一边距/间隙）
+const GRID_COLUMNS = 3;
+const GRID_PADDING = 8;        // timelineContainer 左右 padding
+const GRID_GAP = 2;            // 单元格之间 + 行之间 gap
+const TIMELINE_ITEM_SIZE =
+  (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
 
 /** 时间轴某日下的照片相关地点（异步解析 location_id 为显示名） */
 const TimelineLocationLine = React.memo(({ imagesForDate }) => {
@@ -786,6 +794,7 @@ const CategoryScreen = ({ route, navigation }) => {
    */
   const handleLongPress = (image) => {
     if (!selectionMode) {
+      Haptics.impact('light'); // 进入多选 → 轻量触感
       setSelectionMode(true);
       UnifiedDataService.setImageSelection(image.id, true);
       setSelectedCount(calculateSelectedCount());
@@ -1528,7 +1537,12 @@ const CategoryScreen = ({ route, navigation }) => {
             onPress={() => handleBatchAction(action.id)}
           >
             <Text style={styles.actionIcon}>{action.icon}</Text>
-            <Text style={[styles.actionLabel, { color: action.color }]}>
+            <Text
+              style={[styles.actionLabel, { color: action.color }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+            >
               {action.label}
             </Text>
           </TouchableOpacity>
@@ -1603,14 +1617,54 @@ const CategoryScreen = ({ route, navigation }) => {
   };
 
   /**
-   * 渲染空状态
+   * 渲染空状态（按 filterType / filterValue 分场景给 CTA）
+   * - 暂存箱空：返回首页
+   * - 待分类(NA)空：去扫描相册（如有 startSmartScan prop 则触发；否则回 Home）
+   * - 其它：维持「暂无图片」
    */
-  const renderEmpty = () => (
-        <View style={styles.emptyContainer}>
-      {CatIonicons ? <CatIonicons name="file-tray-outline" size={64} color={c.tertiaryLabel} style={{ marginBottom: 16 }} /> : <Text style={styles.emptyIcon}>📭</Text>}
-      <Text style={styles.emptyText}>{t('category.noImages')}</Text>
-        </View>
-      );
+  const renderEmpty = () => {
+    let title = t('category.noImages');
+    let actionLabel = null;
+    let onAction = null;
+
+    if (filterType === 'stagingBox') {
+      title = t('category.emptyCTAStagingTitle');
+      actionLabel = t('category.emptyCTAStagingAction');
+      onAction = () => {
+        if (navigation.canGoBack()) navigation.goBack();
+        else navigation.navigate('Home');
+      };
+    } else if (filterType === 'category' && filterValue === 'NA') {
+      title = t('category.emptyCTAUnclassifiedTitle');
+      actionLabel = t('category.emptyCTAUnclassifiedAction');
+      const startSmartScan = route?.params?.startSmartScan;
+      onAction = () => {
+        if (typeof startSmartScan === 'function') {
+          startSmartScan();
+        } else {
+          navigation.navigate('Home');
+        }
+      };
+    }
+
+    return (
+      <View style={styles.emptyContainer}>
+        {CatIonicons
+          ? <CatIonicons name="file-tray-outline" size={64} color={c.tertiaryLabel} style={{ marginBottom: 16 }} />
+          : <Text style={styles.emptyIcon}>📭</Text>}
+        <Text style={styles.emptyText}>{title}</Text>
+        {actionLabel && (
+          <TouchableOpacity
+            style={[styles.emptyCTAButton, { backgroundColor: c.accent }]}
+            onPress={onAction}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.emptyCTAButtonText}>{actionLabel}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
 
   /**
    * 渲染时间轴视图
@@ -1625,6 +1679,10 @@ const CategoryScreen = ({ route, navigation }) => {
         ref={flatListRef}
         data={Object.keys(groupedImages)}
         keyExtractor={(dateKey) => dateKey}
+        windowSize={5}
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        removeClippedSubviews={true}
         onScrollToIndexFailed={(info) => {
           // 智能回退方案
           if (info.index >= 0 && info.index < Object.keys(groupedImages).length) {
@@ -1734,6 +1792,7 @@ const CategoryScreen = ({ route, navigation }) => {
                     }}
                     onLongPress={() => {
                       if (!selectionMode) {
+                        Haptics.impact('light'); // 进入多选 → 轻量触感
                         enterSelectionMode();
                         toggleImageSelection(image.id);
                       }
@@ -1891,7 +1950,22 @@ const CategoryScreen = ({ route, navigation }) => {
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: c.label }]}>{getPageTitle()}</Text>
-        <View style={styles.headerRight} />
+        {/* 右上角 选择/完成 入口（与长按等价） */}
+        <TouchableOpacity
+          style={styles.headerRight}
+          onPress={() => {
+            if (selectionMode) {
+              exitSelectionMode();
+            } else {
+              Haptics.selection();
+              enterSelectionMode();
+            }
+          }}
+        >
+          <Text style={[styles.headerRightText, { color: c.accent }]} numberOfLines={1}>
+            {selectionMode ? t('category.done') : t('category.select')}
+          </Text>
+        </TouchableOpacity>
           </View>
 
       {/* 选择模式操作栏 */}
@@ -2014,7 +2088,15 @@ const createStyles = (c) => StyleSheet.create({
     textAlign: 'center',
   },
   headerRight: {
-    width: 40,
+    minWidth: 56,
+    height: 40,
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
+  headerRightText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 
   // 选择栏
@@ -2084,10 +2166,21 @@ const createStyles = (c) => StyleSheet.create({
     fontSize: 16,
     color: c.tertiaryLabel,
   },
+  emptyCTAButton: {
+    marginTop: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    borderRadius: 22,
+  },
+  emptyCTAButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
 
   // 时间轴样式
    timelineContainer: {
-     padding: 8,
+     padding: GRID_PADDING,
    },
   timelineSection: {
     marginBottom: 20,
@@ -2133,11 +2226,11 @@ const createStyles = (c) => StyleSheet.create({
      flexDirection: 'row',
      flexWrap: 'wrap',
      justifyContent: 'flex-start',
+     gap: GRID_GAP, // RN 0.71+ 原生支持；同时控制列间距 + 行间距
    },
   timelineItem: {
-    width: (SCREEN_WIDTH - 32) / 4, // 4列布局
-    height: (SCREEN_WIDTH - 32) / 4,
-    margin: 2,
+    width: TIMELINE_ITEM_SIZE,  // 3 列：(SCREEN_WIDTH - padding*2 - gap*(COLS-1)) / COLS
+    height: TIMELINE_ITEM_SIZE, // 正方形
     borderRadius: 8,
     overflow: 'hidden',
     position: 'relative',
@@ -2181,16 +2274,16 @@ const createStyles = (c) => StyleSheet.create({
     position: 'absolute',
     bottom: 4,
     left: 4,
-    backgroundColor: '#FF9500',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    backgroundColor: '#E07B00', // 较 #FF9500 更深，深色背景下对比度更好
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
     borderWidth: 1,
@@ -2198,7 +2291,7 @@ const createStyles = (c) => StyleSheet.create({
   },
   stagingBoxBadgeText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
   },
 
