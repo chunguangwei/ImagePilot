@@ -38,13 +38,15 @@ export const CLASSIFIER_TIERS = {
     key: 'scene',
     label: '场景识别',
     sublabel: '推荐 · 按需下载',
-    sizeMB: 20,
+    sizeMB: 45,
     speed: '快',
     bundled: false,
-    filename: 'mobilenetv3_places365.onnx',
-    url: `${BASE}/mobilenetv3_places365.onnx`,
+    // P1 实测模型：ResNet18-Places365 (CSAILVision)，标准 ONNX 转换
+    // 用户需要上传 onnx 到 GitHub Release models-v1 才能下载
+    filename: 'resnet18_places365.onnx',
+    url: `${BASE}/resnet18_places365.onnx`,
     engine: 'places365',
-    readyForUse: false,        // P1：模型 + 推理引擎还没接入
+    readyForUse: true,         // P1：推理引擎已接入，模型按需下载
     desc: '识别拍摄场景：厨房 / 海滩 / 办公室 / 教室 等 365 类',
     weak: '不识别具体物品',
     classes: 365,

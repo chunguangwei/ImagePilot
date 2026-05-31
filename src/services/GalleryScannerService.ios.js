@@ -23,6 +23,7 @@ import UnifiedDataService from './UnifiedDataService';
 import ImageClassifierService from './ImageClassifierService';
 import ImageProcessor from './ImageProcessor';
 import { getUri } from '../adapters/WebAdapters';
+import { classifyImageByTier, readActiveTier } from './classify/classifyByTier';
 
 const { PhotoKitModule } = NativeModules;
 
@@ -323,20 +324,26 @@ class GalleryScannerService {
       for (let i = 0; i < naImages.length; i += BATCH) {
         const batch = naImages.slice(i, i + BATCH);
         const classificationDataArray = [];
+        // 当前批次共用一个 tier（每批读 settings 一次，避免单图 IO）
+        const activeTier = await readActiveTier();
         for (const image of batch) {
           try {
             const imageUri = getUri(image) || image?.uri;
             if (!imageUri) { failedCount++; continue; }
-            const r = await this.imageClassifier.classifyImageWithMobileNetV3(imageUri);
-            const top = r && r.success ? r.topPrediction : null;
-            const conf = (r && typeof r.confidence === 'number') ? r.confidence : 0;
+            // P1: 按 tier 路由（basic→ImageNet / scene→Places365 / clip→未接入回退）
+            const r = await classifyImageByTier(imageUri, activeTier, { imageClassifier: this.imageClassifier });
+            const top = r?.topPrediction || null;
+            const conf = (typeof r?.confidence === 'number') ? r.confidence : 0;
             let category;
-            if (top && conf >= MOBILENET_MAP_THRESHOLD && typeof this.imageClassifier.mapMobileNetV3ToAppCategory === 'function') {
-              category = this.imageClassifier.mapMobileNetV3ToAppCategory(top.class) || 'other';
+            // basic 引擎的 appCategory 经 mapMobileNetV3ToAppCategory 已得到；
+            // places365 引擎的 appCategory 直接来自 PLACES365_CLASSES 表。
+            // 两端都低于阈值时落 other（仅 basic 需要阈值，places365 准度更高，
+            // 但保留同阈值兼容）。
+            if (top && conf >= MOBILENET_MAP_THRESHOLD) {
+              category = top.appCategory || 'other';
             } else {
-              // 置信度太低（噪声）或映射缺失 → 落 other 兜底，并打日志方便诊断
               if (top && conf < MOBILENET_MAP_THRESHOLD) {
-                logger.debug(`[iOS] 本地分类 conf=${conf.toFixed(3)} < ${MOBILENET_MAP_THRESHOLD}，top="${top.class}" 落 other`);
+                logger.debug(`[iOS] ${r?.engine || '?'} conf=${conf.toFixed(3)} < ${MOBILENET_MAP_THRESHOLD}，top="${top?.name}" 落 other`);
               }
               category = 'other';
             }
