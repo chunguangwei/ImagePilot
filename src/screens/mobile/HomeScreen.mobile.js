@@ -27,6 +27,7 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView, Platform, PermissionsAndroid, Alert, RNFS, NativeModules } from '../../adapters/WebAdapters';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import WeChatAuthService from '../../services/WeChatAuthService';
 import { useFocusEffect } from '@react-navigation/native';
 import UnifiedDataService from '../../services/UnifiedDataService';
@@ -59,8 +60,8 @@ const COLOR_NAME_TO_HEX = {
   'Black': '#212121', 'White': '#FFFFFF',
 };
 
-/** 城市卡片（与 PC 端一致：根据 locationId + i18n.language 自行获取显示名称） */
-const CityCard = ({ locationId, count, latestImageUri, onPress }) => {
+/** 城市卡片（styles 由 HomeScreen 透传，因为 styles 已经改成 createStyles(c) 工厂模式） */
+const CityCard = ({ locationId, count, latestImageUri, onPress, styles }) => {
   const { i18n } = useTranslation('common');
   const [cityName, setCityName] = useState(locationId);
   const currentLanguage = useMemo(() => i18n.language || 'zh', [i18n.language]);
@@ -90,7 +91,7 @@ const CityCard = ({ locationId, count, latestImageUri, onPress }) => {
 };
 
 /** 按时间卡片（与 CityCard 同结构：缩略图 + 覆盖层文案 + 数量） */
-const TimeCard = ({ timeKey, label, count, recentImages, onPress }) => {
+const TimeCard = ({ timeKey, label, count, recentImages, onPress, styles }) => {
   const imageUri = (recentImages && recentImages.length > 0 && getUri(recentImages[0])) || null;
   return (
     <TouchableOpacity style={styles.categoryCard} onPress={() => onPress && onPress(timeKey)}>
@@ -123,7 +124,10 @@ let _launchUpdateChecked = false;
 const HomeScreen = ({ navigation }) => {
   const { t, i18n } = useTranslation('common');
   const c = useIosColors();
-  // 主题动态色叠加到 StyleSheet 上（避免改写所有 styles 表）
+  const insets = useSafeAreaInsets();
+  // 工厂模式：把颜色 token 注入到 StyleSheet，使整页跟随 light/dark 主题切换
+  const styles = React.useMemo(() => createStyles(c), [c]);
+  // 主题动态色叠加到 StyleSheet 上（部分组件保留 inline 覆盖以便简化合并）
   const dynSection = { backgroundColor: c.card };
   const dynSectionTitle = { color: c.label };
 
@@ -171,8 +175,8 @@ const HomeScreen = ({ navigation }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [isSimilarityDetecting, setIsSimilarityDetecting] = useState(false); // 相似度检测状态
   
-  // 消息提示
-  const [globalMessage, setGlobalMessage] = useState(t('home.ready'));
+  // 消息提示（空字符串 = 首扫前，不渲染 banner，避免占空高度）
+  const [globalMessage, setGlobalMessage] = useState('');
   
   // 防抖定时器引用（用于避免频繁刷新数据）
   const loadDataDebounceTimerRef = useRef(null);
@@ -267,6 +271,9 @@ const HomeScreen = ({ navigation }) => {
         try { iosIncrementalScanner.stopIncrementalSync(); } catch (_) { /* 静默 */ }
       }
     };
+    // 该 effect 故意只在挂载时跑一次（初始化数据 + 注册 i18n/iOS 增量监听 + 启动时静默查更新）；
+    // 不能把 loadAllData/loadCategories 等列入依赖，否则会把启动初始化重复跑、把更新弹窗反复弹。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /**
@@ -319,6 +326,9 @@ const HomeScreen = ({ navigation }) => {
         loadAllData();
         loadLastScanTime();
       }
+      // 该回调只随 loading/isScanning 变化重建；loadAllData/loadLastScanTime 是组件作用域内函数，
+      // 列入依赖会让 useCallback 每次渲染都新建，反而触发 useFocusEffect 频繁重订阅。
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loading, isScanning])
   );
   
@@ -944,16 +954,16 @@ const HomeScreen = ({ navigation }) => {
         setGlobalMessage(t('home.lastScanInfo', { time: formattedTime, count: totalImages, size: formattedSize, duration: durationText }));
       } else {
         logger.debug('⚠️ 没有扫描完成记录');
-        // 如果 preserveCurrentMessage 为 true，不更新消息，保持当前消息
+        // 首扫前：清空消息，banner 不渲染（避免占空高度）
         if (!preserveCurrentMessage) {
-          setGlobalMessage('图片分类应用已就绪');
+          setGlobalMessage('');
         }
       }
     } catch (error) {
       logger.error('加载最近扫描时间失败:', error);
-      // 如果 preserveCurrentMessage 为 true，不更新消息，保持当前消息
+      // 失败也清空，让 banner 不占位
       if (!preserveCurrentMessage) {
-        setGlobalMessage('图片分类应用已就绪');
+        setGlobalMessage('');
       }
       throw error; // 重新抛出错误，让调用方知道失败了
     }
@@ -1703,6 +1713,7 @@ const HomeScreen = ({ navigation }) => {
               label={getTimeLabel(timeKey)}
               count={timeCounts[timeKey] || 0}
               recentImages={timeRecentImages[timeKey] || []}
+              styles={styles}
               onPress={(key) => {
                 if (!navigation) return;
                 navigation.navigate('Category', {
@@ -2089,6 +2100,7 @@ const HomeScreen = ({ navigation }) => {
       locationId={city.locationId}
       count={city.count}
       latestImageUri={city.latestImageUri}
+      styles={styles}
       onPress={() => {
         if (!city?.locationId || !navigation) return;
         navigation.navigate('Category', {
@@ -2336,9 +2348,9 @@ const HomeScreen = ({ navigation }) => {
    */
   const renderFAB = () => (
     <>
-      {/* 扫描按钮 */}
+      {/* 扫描按钮：bottom = 16(常规边距) + 安全区底距 + 49(底部 Tab 栏) */}
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, { bottom: 16 + insets.bottom + 49 }]}
         onPress={handleScan}
         disabled={isScanning}
       >
@@ -2383,10 +2395,12 @@ const HomeScreen = ({ navigation }) => {
         </Pressable>
       </View>
 
-      {/* 消息提示区 */}
-      <View style={styles.messageBanner}>
-        <Text style={[styles.messageText, { color: c.secondaryLabel }]}>{globalMessage}</Text>
+      {/* 消息提示区（首扫前 globalMessage 为空 → 整条不渲染，避免占空高度） */}
+      {globalMessage ? (
+        <View style={styles.messageBanner}>
+          <Text style={[styles.messageText, { color: c.secondaryLabel }]}>{globalMessage}</Text>
         </View>
+      ) : null}
 
       {/* 主内容区 */}
       <ScrollView
@@ -2417,10 +2431,14 @@ const HomeScreen = ({ navigation }) => {
 
 // ==================== 样式 ====================
 
-const styles = StyleSheet.create({
+// 工厂模式：把颜色 token c 注入到 StyleSheet，使整页跟随系统 light/dark 主题切换。
+// 布局（margin/padding/width/height/borderRadius/fontSize/fontWeight）一律不动，
+// 只把硬编码颜色替换成 c.xxx；纯白覆盖文字 / rgba 半透明 / 阴影色保留不变。
+// 死样式已删除（similarityCard 系列 / citiesList 系列 / scanProgress* / sectionTitleRow / sectionMore / badge / moreButton / moreButtonText / moreGroupsHint 等）。
+const createStyles = (c) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: c.groupedBg,
   },
   loadingContainer: {
     flex: 1,
@@ -2430,13 +2448,13 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
   },
   header: {
     height: 56,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: c.separator,
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
@@ -2446,7 +2464,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000000',
+    color: c.label,
   },
   // 消息提示区样式
   messageBanner: {
@@ -2456,7 +2474,7 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 12,
-    color: '#666666',
+    color: c.secondaryLabel,
     textAlign: 'center',
   },
   scrollView: {
@@ -2465,10 +2483,10 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100, // 为FAB留出空间
   },
-  
+
   // 区块样式（iOS 分组：白底全宽 + 组间留白；保持全宽以兼容网格宽度计算）
   section: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     marginTop: 12,
     paddingVertical: 16,
   },
@@ -2491,7 +2509,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: c.label,
     // 注意：当 sectionTitle 在 sectionHeader 内部时，不需要额外的 padding
     // 当单独使用时，需要通过内联样式添加 paddingHorizontal: 16
   },
@@ -2502,19 +2520,13 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minWidth: 0, // 允许收缩，避免英文长文本时按钮溢出屏幕
   },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
   sectionHint: {
     fontSize: 12,
-    color: '#666666',
+    color: c.secondaryLabel,
     fontWeight: '400',
   },
   countBadge: {
-    backgroundColor: '#007AFF',
+    backgroundColor: c.accent,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -2537,7 +2549,7 @@ const styles = StyleSheet.create({
   toggleButton: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: c.fillTertiary,
     borderRadius: 12,
     minHeight: 24, // 确保最小高度一致
   },
@@ -2545,58 +2557,18 @@ const styles = StyleSheet.create({
     flexShrink: 0, // 防止按钮被压缩，空间不足时换行
   },
   toggleButtonDisabled: {
-    backgroundColor: '#E0E0E0',
+    backgroundColor: c.fillSecondary,
     opacity: 0.5,
   },
   toggleButtonText: {
     fontSize: 11,
-    color: '#666666',
+    color: c.secondaryLabel,
     fontWeight: '500',
-  },
-  moreButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 12,
-    minWidth: 32,
-    minHeight: 24, // 与 toggleButton 保持一致
-    alignItems: 'center',
-    justifyContent: 'center',
-    display: 'flex', // 确保 flex 布局生效
-  },
-  moreButtonText: {
-    fontSize: 16,
-    lineHeight: 20, // 行高略大于字体大小，确保垂直居中
-    color: '#666666',
-    fontWeight: '500',
-    textAlignVertical: 'center', // Android 垂直居中
-    includeFontPadding: false, // Android 移除字体额外 padding
-  },
-  moreGroupsHint: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  moreGroupsHintText: {
-    fontSize: 13,
-    color: '#8E8E93',
-    textAlign: 'center',
   },
   toggleButtonTextDisabled: {
     opacity: 0.5,
   },
-  sectionMore: {
-    fontSize: 14,
-    color: '#007AFF',
-  },
-  
-  badge: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF3B30',
-  },
-  
+
   // 分类卡片（4列网格布局）
   categoriesGrid: {
     flexDirection: 'row',
@@ -2610,7 +2582,7 @@ const styles = StyleSheet.create({
     borderRadius: 12, // iOS 风格更圆润
     overflow: 'hidden',
     position: 'relative',
-    backgroundColor: '#E9E9EE',
+    backgroundColor: c.fillTertiary,
   },
   thumbnail: {
     width: '100%',
@@ -2624,6 +2596,7 @@ const styles = StyleSheet.create({
   },
   // iOS 风格：底部细窄半透明条 + 系统字号；名称 semibold 96% 白，计数 regular 70% 白；
   // 去掉计数胶囊背景，靠透明度区分主次，更接近 Apple Photos 的标签呈现。
+  // 覆盖在缩略图上的半透明黑底 + 白字，light/dark 都用同一套（与图片自身对比）
   categoryOverlay: {
     position: 'absolute',
     bottom: 0,
@@ -2650,7 +2623,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.72)',
     fontVariant: ['tabular-nums'],
   },
-  
+
   // 颜色芯片（无缩略图，色块+名称+数量）
   colorChipsContainer: {
     flexDirection: 'row',
@@ -2663,7 +2636,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 6,
     paddingHorizontal: 10,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: c.fillTertiary,
     borderRadius: 8,
     gap: 6,
     width: (SCREEN_WIDTH - 16 * 2 - 8 * 4) / 5,
@@ -2678,15 +2651,15 @@ const styles = StyleSheet.create({
   colorChipName: {
     flex: 1,
     fontSize: 11,
-    color: '#333',
+    color: c.label,
     fontWeight: '500',
   },
   colorChipCount: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#666',
+    color: c.secondaryLabel,
   },
-  
+
   // 按属性区（存储/格式/分辨率/方向）
   attributesContainer: {
     paddingHorizontal: 16,
@@ -2698,7 +2671,7 @@ const styles = StyleSheet.create({
   attributeSubLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: c.tertiaryLabel,
     paddingHorizontal: 4,
   },
   attributeRow: {
@@ -2708,105 +2681,31 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: c.separator,
     borderRadius: 8,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: c.groupedBg,
   },
   attributeChip: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 6,
     paddingHorizontal: 10,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: c.fillTertiary,
     borderRadius: 8,
     gap: 6,
   },
   attributeChipName: {
     fontSize: 11,
-    color: '#333',
+    color: c.label,
     fontWeight: '500',
     maxWidth: 100,
   },
   attributeChipCount: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#666',
+    color: c.secondaryLabel,
   },
-  
-  // 相似组卡片
-  similarityCard: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 12,
-    backgroundColor: '#F9F9F9',
-    borderRadius: 8,
-  },
-  similarityHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  similarityTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000000',
-  },
-  similaritySimilarity: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#AF52DE',
-  },
-  similarityThumbnails: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  similarityThumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: 4,
-    backgroundColor: '#E5E5EA',
-  },
-  similarityMore: {
-    width: 60,
-    height: 60,
-    borderRadius: 4,
-    backgroundColor: '#E5E5EA',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  similarityMoreText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#8E8E93',
-  },
-  
-  // 城市列表
-  citiesList: {
-    paddingHorizontal: 16,
-  },
-  cityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
-  },
-  cityArrow: {
-    fontSize: 18,
-    color: '#8E8E93',
-    marginRight: 8,
-  },
-  cityName: {
-    flex: 1,
-    fontSize: 16,
-    color: '#000000',
-  },
-  cityCount: {
-    fontSize: 14,
-    color: '#8E8E93',
-  },
-  
+
   // 最近照片网格
   recentGrid: {
     flexDirection: 'row',
@@ -2823,38 +2722,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 4,
-  },
-  
-  // 扫描进度提示框
-  scanProgressContainer: {
-    position: 'absolute',
-    right: 16,
-    bottom: 150, // 在FAB按钮上方
-    maxWidth: SCREEN_WIDTH - 80,
-  },
-  scanProgressBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 122, 255, 0.2)',
-  },
-  scanProgressSpinner: {
-    marginRight: 10,
-  },
-  scanProgressText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#333',
-    lineHeight: 18,
   },
 
   // 扫描浮窗提示样式（贴近扫描按钮）
@@ -2873,16 +2740,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
   },
-  
-  // FAB按钮
+
+  // FAB按钮（bottom 由组件内 insets 动态注入，不在此处声明）
   fab: {
     position: 'absolute',
     right: 16,
-    bottom: 80, // 避开底部Tab栏
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#007AFF',
+    backgroundColor: c.accent,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 6,
@@ -2894,7 +2760,7 @@ const styles = StyleSheet.create({
   fabIcon: {
     fontSize: 24,
   },
-  
+
   // 空数据状态样式
   emptyState: {
     paddingVertical: 40,
@@ -2909,33 +2775,33 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666666',
+    color: c.secondaryLabel,
     marginBottom: 6,
     textAlign: 'center',
   },
   emptyStateSubtext: {
     fontSize: 13,
-    color: '#999999',
+    color: c.tertiaryLabel,
     textAlign: 'center',
     lineHeight: 18,
   },
   // 开始相似度检测按钮样式
   startSimilarityButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: c.accent,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
     marginTop: 16,
     alignSelf: 'center',
-    shadowColor: '#007AFF',
+    shadowColor: c.accent,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 3,
   },
   startSimilarityButtonDisabled: {
-    backgroundColor: '#CCCCCC',
-    shadowColor: '#CCCCCC',
+    backgroundColor: c.fillSecondary,
+    shadowColor: c.fillSecondary,
     shadowOpacity: 0.2,
     opacity: 0.6,
   },
@@ -2946,7 +2812,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   startSimilarityButtonTextDisabled: {
-    color: '#999999',
+    color: c.tertiaryLabel,
   },
   // NA分类长按提示样式 - 右上角徽章
   naCategoryBadge: {
