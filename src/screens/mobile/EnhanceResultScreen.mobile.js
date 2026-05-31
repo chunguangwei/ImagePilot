@@ -2,13 +2,10 @@ import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
   SafeAreaView,
-  ScrollView,
-  DeviceEventEmitter,
   PanResponder,
   Animated,
   ActivityIndicator,
@@ -17,6 +14,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { getDefaultPresets } from '../../i18n';
 import { Alert, RNFS, logger, getUri } from '../../adapters/WebAdapters';
+import { useIosColors } from '../../ui/ios/theme';
 import UnifiedDataService from '../../services/UnifiedDataService';
 import ImageEnhanceService from '../../services/ImageEnhanceService';
 import { isLocalPreset, enhanceImageLocally } from '../../services/enhance/localEnhance';
@@ -24,10 +22,10 @@ import { isLocalPreset, enhanceImageLocally } from '../../services/enhance/local
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 /**
- * 处理中遮罩：spinner + 进度文案 + 经过秒数；让用户清晰看到"还在跑"，
- * 同时顶栏的 ← 保持可用，可随时退出。仅处理中显示秒计时；失败/加载结果分支不计时。
+ * 处理中遮罩：spinner + 进度文案 + 经过秒数；顶栏的 ← 保持可用，可随时退出。
+ * 仅处理中显示秒计时；失败/加载结果分支不计时。
  */
-function ProcessingOverlay({ processing, failed, loadingEnhanced, currentResult, t, lang }) {
+function ProcessingOverlay({ processing, failed, loadingEnhanced, currentResult, t, lang, styles }) {
   const [elapsed, setElapsed] = useState(0);
   const startRef = useRef(0);
   useEffect(() => {
@@ -65,14 +63,16 @@ function ProcessingOverlay({ processing, failed, loadingEnhanced, currentResult,
  * - presetName: string
  * - presetId: string - 预设方案ID（用于提交任务）
  * - selected: Array<{ id: string, uri: string }>
- * - results: Record<string, { status: 'pending'|'processing'|'done'|'failed', enhancedUri?: string }> (可选，用于已存在的结果)
+ * - results: Record<string, { status: 'pending'|'processing'|'done'|'failed', enhancedUri?: string }> (可选)
  * - initialIndex?: number
  */
 export default function EnhanceResultScreen({ route, navigation }) {
   const { t, i18n } = useTranslation('common');
+  const c = useIosColors();
+  const styles = useMemo(() => createStyles(c), [c]);
   const {
     presetName: routePresetName,
-    presetId, // 预设方案ID（必须）
+    presetId,
     selected = [],
     results = {},
     initialIndex = 0,
@@ -87,18 +87,16 @@ export default function EnhanceResultScreen({ route, navigation }) {
         setPresetName(t('enhanceResult.defaultPresetName'));
         return;
       }
-      
+
       try {
-        // 获取当前语言的默认预设
         const currentLang = i18n.language || 'zh';
         const defaultPresets = getDefaultPresets(currentLang);
         const zhDefaults = getDefaultPresets('zh');
         const enDefaults = getDefaultPresets('en');
-        
-        // 从设置中读取预设信息
+
         const settings = await UnifiedDataService.readSettings();
         const settingsPreset = settings?.aiEnhancePresets?.[presetId];
-        
+
         // 判断是否是默认预设（通过比较名称是否等于中文或英文的默认值）
         const defaultPreset = defaultPresets[presetId];
         if (defaultPreset && settingsPreset) {
@@ -106,30 +104,26 @@ export default function EnhanceResultScreen({ route, navigation }) {
             settingsPreset.name === zhDefaults[presetId]?.name ||
             settingsPreset.name === enDefaults[presetId]?.name
           );
-          
-          // 如果是默认预设，使用当前语言的翻译；否则使用用户自定义的名称
+
           if (isDefaultName) {
             setPresetName(defaultPreset.name);
           } else {
             setPresetName(settingsPreset.name);
           }
         } else if (defaultPreset) {
-          // 如果没有设置信息，使用默认预设名称
           setPresetName(defaultPreset.name);
         } else {
-          // 如果都没有，使用路由传入的名称或默认值
           setPresetName(routePresetName || t('enhanceResult.defaultPresetName'));
         }
       } catch (error) {
-        logger.warn('⚠️ 加载预设名称失败，使用默认值:', error);
-        // 出错时使用默认预设名称或路由传入的名称
+        logger.warn('加载预设名称失败，使用默认值:', error);
         const currentLang = i18n.language || 'zh';
         const defaultPresets = getDefaultPresets(currentLang);
         const defaultPreset = defaultPresets[presetId];
         setPresetName(defaultPreset?.name || routePresetName || t('enhanceResult.defaultPresetName'));
       }
     };
-    
+
     loadPresetName();
   }, [presetId, i18n.language, routePresetName, t]);
 
@@ -137,10 +131,10 @@ export default function EnhanceResultScreen({ route, navigation }) {
   const [showEnhanced, setShowEnhanced] = useState(false);
   const [localResults, setLocalResults] = useState(results || {});
   const [savingById, setSavingById] = useState({});
-  const [taskProcessing, setTaskProcessing] = useState(false); // 任务处理状态
-  const abortControllerRef = useRef(null); // 用于取消轮询的 AbortController
+  const [taskProcessing, setTaskProcessing] = useState(false);
+  const abortControllerRef = useRef(null);
   const saveSuccessAnim = useRef(new Animated.Value(0)).current;
-  
+
   // 计算任务键，用于防止重复提交
   const taskKey = useMemo(() => {
     if (!presetId || selected.length === 0) return null;
@@ -180,15 +174,14 @@ export default function EnhanceResultScreen({ route, navigation }) {
       return;
     }
     if (!current) return;
-    // 防重复保存
     if (currentResult?.saved) {
       Alert.alert(t('enhanceResult.tip'), t('enhanceResult.alreadySaved'));
       return;
     }
     try {
       setSavingById((prev) => ({ ...prev, [current.id]: true }));
-      
-      // 2) 先读取原图完整信息（用于获取文件名和复制描述/检测结果）
+
+      // 读取原图完整信息（用于获取文件名和复制描述/检测结果）
       let originalImage = null;
       try {
         if (current.id) {
@@ -197,44 +190,36 @@ export default function EnhanceResultScreen({ route, navigation }) {
       } catch (e) {
         originalImage = null;
       }
-      
-      // 1) 保存到相册（由适配层处理落盘与权限）
+
       // 生成文件名：与PC端保持一致，格式为 原文件名_xt_时间戳.扩展名
-      let fileName = `enhanced_${Date.now()}.jpg`; // 默认文件名
+      let fileName = `enhanced_${Date.now()}.jpg`;
       try {
-        // 优先从原图信息获取文件名
         const originalFileName = originalImage?.fileName || current?.fileName || '';
         if (originalFileName) {
-          // 解析文件名（去除扩展名，获取名称部分）
           const lastDotIndex = originalFileName.lastIndexOf('.');
-          const nameWithoutExt = lastDotIndex > 0 
-            ? originalFileName.substring(0, lastDotIndex) 
+          const nameWithoutExt = lastDotIndex > 0
+            ? originalFileName.substring(0, lastDotIndex)
             : originalFileName;
-          const ext = lastDotIndex > 0 
-            ? originalFileName.substring(lastDotIndex) 
+          const ext = lastDotIndex > 0
+            ? originalFileName.substring(lastDotIndex)
             : '.jpg';
-          
-          // 清理文件名中的特殊字符（避免保存失败）
-          const cleanName = nameWithoutExt.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').substring(0, 100); // 限制长度
-          
+
+          // 清理文件名中的特殊字符（避免保存失败），并限制长度
+          const cleanName = nameWithoutExt.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').substring(0, 100);
+
           const timestamp = Date.now();
           fileName = `${cleanName}_xt_${timestamp}${ext}`;
         }
       } catch (e) {
-        logger.warn('⚠️ 生成文件名失败，使用默认文件名:', e);
+        logger.warn('生成文件名失败，使用默认文件名:', e);
       }
-      
+
       const res = await RNFS.saveImageToGallery(currentResult.enhancedUri, fileName);
 
-      // 3) 组装完整数据并写入数据库（对齐PC：writeImageDetailedInfo + 刷新缓存）
       const now = Date.now();
-      
-      // 移动端：拼装 URI 格式为 contentUri||path（如果有 path）
-      // res.uri 是 MediaStore 返回的 content:// URI（例如：content://media/external/images/media/12345）
-      // res.path 是文件系统路径，可能是：
-      // - Android 9及以下：绝对路径（如 /storage/emulated/0/Pictures/ImagePilot/image.jpg）
-      // - Android 10+：可能为 null（因为使用 MediaStore API，不直接暴露文件路径）
-      // 如果有 path，拼装成 contentUri||path 格式；如果没有 path，只使用 contentUri
+
+      // 移动端 URI 拼装为 contentUri||path 格式（如果有 path）。
+      // Android 10+ 走 MediaStore，path 可能为 null，此时只用 contentUri。
       const contentUri = res.uri || '';
       const path = res.path || '';
       const newImageUri = path ? `${contentUri}||${path}` : contentUri;
@@ -246,48 +231,38 @@ export default function EnhanceResultScreen({ route, navigation }) {
         }
       } catch {}
 
-      // 从原图获取尺寸信息（readImageDetailsById 返回的数据已包含 width 和 height）
       const width = originalImage?.width || null;
       const height = originalImage?.height || null;
-      
+
       // 复制原图的所有元数据，只改变 uri 指向新保存的图片
       const completeImageData = {
-        uri: newImageUri, // 新保存的图片 URI
-        fileName: res.fileName || fileName || 'enhanced.jpg', // 优先使用返回的文件名，否则使用我们生成的
-        // 复制原图的所有元数据
-        category: originalImage?.category || 'other', // 保持原图的分类，如果没有则默认为 other
-        confidence: originalImage?.confidence ?? 1.0, // 保持原图的置信度，如果没有则默认为 1.0
-        timestamp: now, // 文件时间戳使用新保存的时间
-        takenAt: originalImage?.takenAt || now, // 保持原图的拍摄时间，如果没有则使用当前时间
-        size: fileSize, // 新保存图片的文件大小
-        // 🔥 设置 width 和 height（必需字段）
+        uri: newImageUri,
+        fileName: res.fileName || fileName || 'enhanced.jpg',
+        category: originalImage?.category || 'other',
+        confidence: originalImage?.confidence ?? 1.0,
+        timestamp: now,
+        takenAt: originalImage?.takenAt || now,
+        size: fileSize,
         width: width,
         height: height,
-        // 复制原图的所有检测结果和描述信息
         idCardDetections: originalImage?.idCardDetections || [],
         generalDetections: originalImage?.generalDetections || [],
         mobileNetV3Detections: originalImage?.mobileNetV3Detections || null,
         message: originalImage?.message || null,
-        // 复制原图的其他元数据
         ...(originalImage?.imageDimensions && { imageDimensions: originalImage.imageDimensions }),
         ...(originalImage?.city && { city: originalImage.city }),
         ...(originalImage?.color && { color: originalImage.color }),
       };
-      
+
       // 验证必要字段
       if (!completeImageData.category) {
-        logger.warn('⚠️ 图片数据缺少category，自动设置为other');
         completeImageData.category = 'other';
       }
       if (!completeImageData.timestamp) {
-        logger.warn('⚠️ 图片数据缺少timestamp，使用当前时间');
         completeImageData.timestamp = now;
       }
-      // 🔥 验证 width 和 height（必需字段）
       if (!completeImageData.width || !completeImageData.height) {
-        logger.warn(`⚠️ 图片数据缺少width或height: width=${completeImageData.width}, height=${completeImageData.height}`);
-        // 如果缺少尺寸，尝试从新保存的图片中读取（移动端可能需要使用 ImageProcessor）
-        // 但为了不阻塞保存流程，先使用默认值或从原图获取
+        logger.warn(`图片数据缺少width或height: width=${completeImageData.width}, height=${completeImageData.height}`);
         if (!completeImageData.width) completeImageData.width = 0;
         if (!completeImageData.height) completeImageData.height = 0;
       }
@@ -295,7 +270,6 @@ export default function EnhanceResultScreen({ route, navigation }) {
       // 使用 writeImageDetailedInfo 保存图片数据（服务层会自动刷新缓存）
       await UnifiedDataService.writeImageDetailedInfo([completeImageData], true);
 
-      // 4) 标记本地结果为已保存
       Animated.sequence([
         Animated.timing(saveSuccessAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
         Animated.timing(saveSuccessAnim, { toValue: 0, duration: 220, delay: 180, useNativeDriver: true }),
@@ -307,7 +281,7 @@ export default function EnhanceResultScreen({ route, navigation }) {
       }));
 
     } catch (e) {
-      logger.error('❌ 保存增强图片失败:', e);
+      logger.error('保存增强图片失败:', e);
       Alert.alert(t('enhanceResult.saveFailedTitle'), e?.message || t('enhanceResult.saveFailed'));
     } finally {
       setSavingById((prev) => {
@@ -316,23 +290,16 @@ export default function EnhanceResultScreen({ route, navigation }) {
         return next;
       });
     }
-  }, [enhancedReady, current, currentResult]);
+  }, [enhancedReady, current, currentResult, saveSuccessAnim, t]);
 
   const toggleShow = () => {
     if (!enhancedReady) return;
-    try {
-      const from = showEnhanced ? (currentResult?.enhancedUri || current?.uri) : current?.uri;
-      const to = !showEnhanced ? (currentResult?.enhancedUri || current?.uri) : current?.uri;
-      console.log('🟡 切换原/增强', { from, to });
-    } catch (e) {}
     userToggleRef.current = true;
     setShowEnhanced((v) => !v);
   };
 
   // 提交任务并开始轮询（如果传递了 presetId 且结果为空，说明需要提交新任务）
   useEffect(() => {
-    // 如果已经有结果或者没有 taskKey，不执行任务提交
-    // 检查初始的 results（从路由参数传入），如果已经有结果就不提交
     if (!taskKey || Object.keys(results).length > 0) {
       return;
     }
@@ -361,7 +328,7 @@ export default function EnhanceResultScreen({ route, navigation }) {
             [img.id]: { ...(prev[img.id] || {}), status: 'done', enhancedUri: dataUrl },
           }));
         } catch (e) {
-          logger.error('❌ 本地增强失败:', e);
+          logger.error('本地增强失败:', e);
           const raw = e?.message || String(e);
           // 把内部错误码转成友好提示；其余直接透传原始报错
           const msg = /E_TIMEOUT/.test(raw)
@@ -387,35 +354,29 @@ export default function EnhanceResultScreen({ route, navigation }) {
       }
       try {
         logger.debug('开始提交增强任务', { presetId, count: selected.length });
-        
-        // 初始化所有图片为 processing 状态
+
         const initialResults = {};
         selected.forEach((item) => {
           initialResults[item.id] = { status: 'processing' };
         });
         setLocalResults(initialResults);
         setTaskProcessing(true);
-        
-        // 创建 AbortController 用于取消轮询
+
         abortControllerRef.current = new AbortController();
-        
-        // 读取图片URI（使用 getUri 获取正确的 URI）
+
         const uris = selected.map((img) => {
-          // 如果 img 是一个对象且有 uri 属性，使用 getUri
-          // 如果 img.uri 已经是完整的 URI 字符串，也尝试使用 getUri 处理
           return getUri(img) || img.uri;
         }).filter(Boolean);
-        
+
         if (uris.length === 0) {
           Alert.alert(t('common.error'), t('enhanceResult.noValidImages'));
           setTaskProcessing(false);
           return;
         }
 
-        // 1) 预处理图片
         const prepared = await ImageEnhanceService.prepareImagesForEnhance(uris);
         const validPrepared = prepared.filter(p => !p.error);
-        
+
         if (validPrepared.length === 0) {
           Alert.alert(t('common.error'), t('enhanceResult.preprocessFailed'));
           setTaskProcessing(false);
@@ -425,32 +386,29 @@ export default function EnhanceResultScreen({ route, navigation }) {
           return;
         }
 
-        // 2) 提交任务
         const submit = await ImageEnhanceService.submitEnhanceTask(validPrepared, presetId);
         const taskId = submit.task_id;
 
-        // 3) 轮询任务状态
         const onProgress = (status) => {
           try {
             if (status && Array.isArray(status.results)) {
-              // 更新每个图片的状态（过滤掉 null 值）
               status.results
-                .filter(r => r != null) // 过滤掉 null 值
+                .filter(r => r != null)
                 .forEach((r) => {
                   const idx = typeof r.index === 'number' ? r.index : null;
                   const img = idx != null && idx < selected.length ? selected[idx] : null;
                   if (!img) {
-                    logger.warn('⚠️ 进度更新：找不到对应的图片', { index: idx, total: selected.length });
+                    logger.warn('进度更新：找不到对应的图片', { index: idx, total: selected.length });
                     return;
                   }
 
                   setLocalResults((prev) => {
-                    const newStatus = r.status === 'completed' ? 'done' : 
+                    const newStatus = r.status === 'completed' ? 'done' :
                                      r.status === 'failed' ? 'failed' : 'processing';
                     return {
                       ...prev,
                       [img.id]: {
-                        ...prev[img.id], // 保留所有原有属性，包括 saved 状态
+                        ...prev[img.id], // 保留 saved 等所有原有属性
                         status: newStatus,
                         enhancedUri: r.result_url || prev[img.id]?.enhancedUri,
                         error: r.error || prev[img.id]?.error,
@@ -470,27 +428,24 @@ export default function EnhanceResultScreen({ route, navigation }) {
           abortControllerRef.current?.signal
         );
 
-        // 处理最终状态
         if (finalStatus && Array.isArray(finalStatus.results)) {
-          // 过滤掉 null 值，只处理有效的结果
           const validResults = finalStatus.results.filter(r => r != null);
-          
+
           selected.forEach((img, idx) => {
             const r = validResults.find((it) => it.index === idx);
             if (r) {
-              const newStatus = r.status === 'completed' ? 'done' : 
+              const newStatus = r.status === 'completed' ? 'done' :
                                r.status === 'failed' ? 'failed' : 'processing';
               setLocalResults((prev) => ({
                 ...prev,
                 [img.id]: {
-                  ...prev[img.id], // 保留所有原有属性，包括 saved 状态
+                  ...prev[img.id], // 保留 saved 等所有原有属性
                   status: newStatus,
                   enhancedUri: r.result_url || prev[img.id]?.enhancedUri,
                   error: r.error || prev[img.id]?.error,
                 }
               }));
             } else {
-              // 如果没有找到对应的结果，检查是否还在处理中
               setLocalResults((prev) => ({
                 ...prev,
                 [img.id]: {
@@ -502,7 +457,6 @@ export default function EnhanceResultScreen({ route, navigation }) {
           });
         }
 
-        // 检查是否所有任务都完成了（过滤掉 null 值）
         const validResultsForCheck = finalStatus?.results?.filter(r => r != null) || [];
         const allCompleted = selected.every((s, idx) => {
           const result = validResultsForCheck.find((r) => r.index === idx);
@@ -513,13 +467,11 @@ export default function EnhanceResultScreen({ route, navigation }) {
           setTaskProcessing(false);
         }
 
-        // 清理 AbortController
         if (abortControllerRef.current) {
           abortControllerRef.current = null;
         }
 
       } catch (error) {
-        // 清理 AbortController
         if (abortControllerRef.current) {
           abortControllerRef.current = null;
         }
@@ -527,14 +479,13 @@ export default function EnhanceResultScreen({ route, navigation }) {
 
         // 如果是用户取消操作，不显示错误提示
         if (error.message && error.message.includes('轮询已被用户取消')) {
-          logger.debug('🛑 用户取消了增强任务');
+          logger.debug('用户取消了增强任务');
           return;
         }
 
         logger.error('提交/轮询增强任务失败:', error);
         Alert.alert(t('common.error'), error.message || t('enhanceResult.submitFailed'));
-        
-        // 将所有图片标记为失败
+
         setLocalResults((prev) => {
           const updated = { ...prev };
           selected.forEach((img) => {
@@ -551,25 +502,22 @@ export default function EnhanceResultScreen({ route, navigation }) {
 
     submitAndPoll();
 
-    // 清理函数：组件卸载时取消任务
+    // 组件卸载时取消任务
     return () => {
       if (abortControllerRef.current) {
-        logger.debug('🛑 组件卸载，取消轮询任务');
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taskKey]); // 只依赖 taskKey，避免重复执行。taskKey 只在 presetId 或 selected 变化时变化
-  
+  }, [taskKey]);
+
   // 拦截返回操作：如果任务还在处理中，显示确认提示并取消任务
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      // 如果任务还在处理中，阻止返回并显示提示
       if (taskProcessing && abortControllerRef.current) {
-        // 阻止默认返回行为
         e.preventDefault();
-        
+
         Alert.alert(
           t('enhanceResult.confirmBack'),
           t('enhanceResult.taskProcessingMessage'),
@@ -577,22 +525,17 @@ export default function EnhanceResultScreen({ route, navigation }) {
             {
               text: t('enhanceResult.continueWaiting'),
               style: 'cancel',
-              onPress: () => {
-                // 用户选择继续等待，不返回（已经通过 preventDefault 阻止了）
-              }
+              onPress: () => {},
             },
             {
               text: t('enhanceResult.confirmBackButton'),
               style: 'destructive',
               onPress: () => {
-                // 用户确认返回，取消轮询任务
                 if (abortControllerRef.current) {
-                  logger.debug('🛑 用户确认返回，取消轮询任务');
                   abortControllerRef.current.abort();
                   abortControllerRef.current = null;
                 }
                 setTaskProcessing(false);
-                // 移除监听器后执行返回操作
                 unsubscribe();
                 navigation.dispatch(e.data.action);
               }
@@ -601,14 +544,13 @@ export default function EnhanceResultScreen({ route, navigation }) {
         );
       } else if (abortControllerRef.current) {
         // 即使没有 taskProcessing 标记，如果有 abortController，也取消它（防止遗漏）
-        logger.debug('🛑 检测到返回操作，取消可能的轮询任务');
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
     });
 
     return unsubscribe;
-  }, [navigation, taskProcessing]);
+  }, [navigation, taskProcessing, t]);
 
   // 当切换到新的图片时，根据当前结果默认展示增强图（仅在未手动切换前）
   useEffect(() => {
@@ -668,12 +610,11 @@ export default function EnhanceResultScreen({ route, navigation }) {
       {/* 图片区域 */}
       <View style={styles.imageContainer} {...panResponder.panHandlers}>
         {current ? (() => {
-          // 使用 getUri 获取原始图片 URI，增强后的 URI 直接使用（来自服务器）
           const originalUri = getUri(current) || current.uri;
-          const displayUri = enhancedReady && showEnhanced 
+          const displayUri = enhancedReady && showEnhanced
             ? (currentResult.enhancedUri || originalUri)
             : originalUri;
-          
+
           return displayUri ? (
             <Animated.Image
               source={{ uri: displayUri }}
@@ -696,23 +637,20 @@ export default function EnhanceResultScreen({ route, navigation }) {
             currentResult={currentResult}
             t={t}
             lang={i18n.language}
+            styles={styles}
           />
         )}
 
         {/* 左右切换区域（简化实现：点击左右区域）*/}
         <TouchableOpacity style={styles.leftZone} onPress={goPrev} />
         <TouchableOpacity style={styles.rightZone} onPress={goNext} />
-
-        {/* 浮动切换按钮已移除，统一放到底部操作栏 */}
       </View>
 
       {/* 底部栏：序号/总数 + 保存 */}
       <View style={styles.footer}>
-        {/* 左：序号 */}
         <View style={styles.footerLeft}>
           <Text style={styles.indexText}>{index + 1} / {total}</Text>
         </View>
-        {/* 中：保存到相册 */}
         <View style={styles.footerCenter}>
           <Animated.View style={[
             styles.saveButtonWrapper,
@@ -734,7 +672,6 @@ export default function EnhanceResultScreen({ route, navigation }) {
             </TouchableOpacity>
           </Animated.View>
         </View>
-        {/* 右：原图/增强 */}
         <View style={styles.footerRight}>
           {enhancedReady && (
             <TouchableOpacity style={styles.toggleFooterButton} onPress={toggleShow}>
@@ -747,7 +684,9 @@ export default function EnhanceResultScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+// 整屏为全黑图片画布（StatusBar light-content）：container/header/footer 上的
+// 白字 + 半透明边线属于"黑底 chrome"，不随主题切换；只把品牌强调色挂到 c.accent。
+const createStyles = (c) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
@@ -774,13 +713,6 @@ const styles = StyleSheet.create({
   processingText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   processingSub: { color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 4, fontVariant: ['tabular-nums'] },
   processingHint: { color: 'rgba(255,255,255,0.55)', fontSize: 12, marginTop: 10 },
-  toggleButton: {
-    position: 'absolute', right: 12, bottom: 12,
-    backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
-    zIndex: 10,
-  },
-  toggleText: { color: '#fff', fontSize: 12 },
   leftZone: { position: 'absolute', left: 0, top: 0, bottom: 0, width: SCREEN_WIDTH / 2, zIndex: 1 },
   rightZone: { position: 'absolute', right: 0, top: 0, bottom: 0, width: SCREEN_WIDTH / 2, zIndex: 1 },
   footer: {
@@ -796,7 +728,6 @@ const styles = StyleSheet.create({
   footerLeft: { width: 80 },
   footerCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   footerRight: { width: 140, alignItems: 'flex-end', justifyContent: 'center' },
-  footerActions: { flexDirection: 'row', alignItems: 'center' },
   toggleFooterButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
@@ -810,9 +741,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   toggleFooterText: { color: '#fff', fontSize: 14 },
-  saveButton: { backgroundColor: '#007AFF', borderRadius: 12, height: 40, paddingHorizontal: 16, paddingVertical: 0, alignItems: 'center', justifyContent: 'center' },
+  saveButton: { backgroundColor: c.accent, borderRadius: 12, height: 40, paddingHorizontal: 16, paddingVertical: 0, alignItems: 'center', justifyContent: 'center' },
   saveButtonDisabled: { backgroundColor: '#2C2C2E' },
   saveText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });
-
-
