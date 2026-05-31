@@ -63,6 +63,18 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
   const sharedClassifier = opts.imageClassifier;
 
   if (tierCfg.engine === 'imagenet') {
+    // basic 现在也走 Release 按需下载（同 scene/clip 一致；APK/.ipa 不打包模型）
+    const downloaded = await isClassifierModelDownloaded(tierCfg.filename);
+    if (!downloaded) {
+      logger.warn(`[classifyByTier] basic 档模型未下载`);
+      return {
+        engine: 'imagenet',
+        topPrediction: null,
+        confidence: 0,
+        predictions: [],
+        fallback: 'no-model',
+      };
+    }
     return await runImageNet(imageUri, sharedClassifier);
   }
   if (tierCfg.engine === 'places365') {
@@ -137,7 +149,14 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
 
 async function runImageNet(imageUri, sharedClassifier) {
   const ic = getImageClassifier(sharedClassifier);
-  const r = await ic.classifyImageWithMobileNetV3(imageUri);
+  let r;
+  try {
+    r = await ic.classifyImageWithMobileNetV3(imageUri);
+  } catch (e) {
+    // 下载失败 / 模型损坏 / 推理崩 — 统一空结果，上层 scanner 会落 unclassified
+    logger.warn(`[classifyByTier] basic 推理失败: ${e?.message || e}`);
+    return { engine: 'imagenet', topPrediction: null, confidence: 0, predictions: [], fallback: 'engine-error' };
+  }
   if (!r || !r.success) {
     return { engine: 'imagenet', topPrediction: null, confidence: 0, predictions: [] };
   }

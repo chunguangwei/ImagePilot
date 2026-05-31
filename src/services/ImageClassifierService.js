@@ -169,10 +169,32 @@ class ImageClassifierService {
 
         // MobileNetV3类别已在初始化时加载，无需重复加载
 
-        // 🆕 确保模型文件存在（仅在移动端需要从 assets 复制）
-        if (typeof ModelPathAdapter.ensureModelExists === 'function') {
+        // ⛅ MobileNetV3 也已经搬到 GH Release 按需下载（APK/.ipa 不再打包模型）
+        //    桌面端跑 web 走 public/models 原路径不变；移动端用 classifierModelSource
+        //    走下载流程，第一次没下载会抛 E_NO_MODEL，scanner 上层会处理为"未分类"。
+        if (Platform.OS === 'ios' || Platform.OS === 'android') {
           const modelFileName = modelConfig.path.split('/').pop();
-          await ModelPathAdapter.ensureModelExists(modelFileName);
+          // eslint-disable-next-line global-require
+          const { ensureClassifierModel } = require('./classify/classifierModelSource');
+          // eslint-disable-next-line global-require
+          const { CLASSIFIER_TIERS } = require('./classify/classifierModelTiers');
+          const url = CLASSIFIER_TIERS.basic && CLASSIFIER_TIERS.basic.url;
+          // 老用户兜底：把 Documents/models/<filename> 一次性挪到 classify_models/<filename>
+          try {
+            const RNFS = require('react-native-fs');
+            const oldP = `${RNFS.DocumentDirectoryPath}/models/${modelFileName}`;
+            const newP = `${RNFS.DocumentDirectoryPath}/classify_models/${modelFileName}`;
+            if ((await RNFS.exists(oldP)) && !(await RNFS.exists(newP))) {
+              await RNFS.mkdir(`${RNFS.DocumentDirectoryPath}/classify_models`).catch(() => {});
+              await RNFS.moveFile(oldP, newP);
+              logger.debug(`迁移老 basic 模型: ${oldP} → ${newP}`);
+            }
+          } catch (_) { /* 忽略迁移失败 */ }
+          // 真正下载/拿本地路径
+          const localUri = await ensureClassifierModel(modelFileName, url);
+          // 改 modelConfig.path 为下载后的真实路径（带 file://，ONNX Runtime 两端兼容）
+          modelConfig.path = localUri.replace(/^file:\/\//, '');
+          logger.debug(`basic 模型路径: ${modelConfig.path}`);
         }
 
         // 加载ONNX模型
@@ -505,10 +527,16 @@ class ImageClassifierService {
     try {
       // ImageNet类别已在初始化时加载
 
-      // 🆕 确保模型文件存在（仅在移动端需要从 assets 复制）
-      if (typeof ModelPathAdapter.ensureModelExists === 'function') {
+      // ⛅ MobileNetV3 也已经搬到 GH Release 按需下载（loadModel 走的也是这条）
+      if (Platform.OS === 'ios' || Platform.OS === 'android') {
         const modelFileName = modelConfig.path.split('/').pop();
-        await ModelPathAdapter.ensureModelExists(modelFileName);
+        // eslint-disable-next-line global-require
+        const { ensureClassifierModel } = require('./classify/classifierModelSource');
+        // eslint-disable-next-line global-require
+        const { CLASSIFIER_TIERS } = require('./classify/classifierModelTiers');
+        const url = CLASSIFIER_TIERS.basic && CLASSIFIER_TIERS.basic.url;
+        const localUri = await ensureClassifierModel(modelFileName, url);
+        modelConfig.path = localUri.replace(/^file:\/\//, '');
       }
 
       // 使用统一的ONNX Runtime实例
