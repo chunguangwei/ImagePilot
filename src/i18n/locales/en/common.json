@@ -263,6 +263,7 @@
     "yearLabel": "{{year}}",
     "byCity": "By City",
     "byColor": "By Color",
+    "moreFilters": "More Filters",
     "byAttributes": "By Attributes",
     "byStorage": "Directory",
     "byFormat": "Format",

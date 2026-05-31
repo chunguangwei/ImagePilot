@@ -60,8 +60,11 @@ const COLOR_NAME_TO_HEX = {
   'Black': '#212121', 'White': '#FFFFFF',
 };
 
-/** 城市卡片（styles 由 HomeScreen 透传，因为 styles 已经改成 createStyles(c) 工厂模式） */
-const CityCard = ({ locationId, count, latestImageUri, onPress, styles }) => {
+/** 城市卡片（styles 由 HomeScreen 透传，因为 styles 已经改成 createStyles(c) 工厂模式）
+ *  React.memo：props 浅比较；同一 locationId/count/latestImageUri 时跳过重渲染。
+ *  注意：styles 对象由 createStyles(c) 工厂在主题切换时新建，主题切换会触发整列卡片重渲染（预期）。
+ */
+const CityCard = React.memo(function CityCard({ locationId, count, latestImageUri, onPress, styles }) {
   const { i18n } = useTranslation('common');
   const [cityName, setCityName] = useState(locationId);
   const currentLanguage = useMemo(() => i18n.language || 'zh', [i18n.language]);
@@ -88,10 +91,10 @@ const CityCard = ({ locationId, count, latestImageUri, onPress, styles }) => {
       </View>
     </TouchableOpacity>
   );
-};
+});
 
 /** 按时间卡片（与 CityCard 同结构：缩略图 + 覆盖层文案 + 数量） */
-const TimeCard = ({ timeKey, label, count, recentImages, onPress, styles }) => {
+const TimeCard = React.memo(function TimeCard({ timeKey, label, count, recentImages, onPress, styles }) {
   const imageUri = (recentImages && recentImages.length > 0 && getUri(recentImages[0])) || null;
   return (
     <TouchableOpacity style={styles.categoryCard} onPress={() => onPress && onPress(timeKey)}>
@@ -108,7 +111,7 @@ const TimeCard = ({ timeKey, label, count, recentImages, onPress, styles }) => {
       </View>
     </TouchableOpacity>
   );
-};
+});
 
 // iOS 风格图标（字体已打包）；异常时回退 emoji
 let HomeIonicons = null;
@@ -185,6 +188,12 @@ const HomeScreen = ({ navigation }) => {
   
   // 隐藏空分类设置（默认隐藏空分类）
   const [hideEmptyCategories, setHideEmptyCategories] = useState(true);
+
+  // 「更多筛选」（按属性 + 按拍摄参数）默认折叠，减少首屏视觉噪声
+  const [advancedExpanded, setAdvancedExpanded] = useState(false);
+
+  // 是否已完成至少一次扫描（用于"相似照片" / "按城市" 等无意义空态的条件渲染）
+  const [hasScanned, setHasScanned] = useState(false);
 
   // ==================== 初始化加载 ====================
   useEffect(() => {
@@ -918,6 +927,9 @@ const HomeScreen = ({ navigation }) => {
         lastScanDuration: settings?.lastScanDurationSeconds
       });
       
+      // 是否扫描过：用于决定"相似照片/按城市"等无意义空态是否渲染
+      setHasScanned(!!(settings && settings.lastScanTime));
+
       if (settings && settings.lastScanTime) {
         // 统一时间格式：月-日 时：分：秒（中文和英文都一样）
         const date = new Date(settings.lastScanTime);
@@ -1868,8 +1880,12 @@ const HomeScreen = ({ navigation }) => {
 
   /**
    * 渲染相似照片区（与"按内容"保持一致：4列网格布局）
+   * 首扫之前：若数据为空，整段不渲染（连标题都不出来），避免无意义空态占位。
+   * 扫完后即使为空也继续展示 CTA，引导用户启动相似度检测。
    */
   const renderSimilarityGroupsSection = () => {
+    const hasGroups = similarityGroups && similarityGroups.length > 0;
+    if (!hasScanned && !hasGroups) return null;
     return (
       <View style={[styles.section, dynSection]}>
         <View style={styles.sectionHeader}>
@@ -2180,14 +2196,18 @@ const HomeScreen = ({ navigation }) => {
 
   /**
    * 渲染按城市区（与"按内容"保持一致：4列网格布局）
+   * 首扫之前：若没有任何城市，整段不渲染（连标题都不出来）。
+   * 扫完后即使为空也继续展示 CTA，引导用户启动定位补全。
    */
   const renderCitiesSection = () => {
+    const hasCities = cities && cities.length > 0;
+    if (!hasScanned && !hasCities) return null;
     // 按照片数量降序排列，显示最多的城市在前
-    const sortedCities = cities && cities.length > 0
+    const sortedCities = hasCities
       ? [...cities].sort((a, b) => (b.count || 0) - (a.count || 0))
       : [];
     const displayCities = showAllCities ? sortedCities : sortedCities.slice(0, 8);
-    
+
     return (
       <View style={[styles.section, dynSection]}>
         <View style={styles.sectionHeader}>
@@ -2418,8 +2438,41 @@ const HomeScreen = ({ navigation }) => {
         {renderCategoriesSection()}
         {renderCitiesSection()}
         {renderSimilarityGroupsSection()}
-        {renderAttributesSection()}
-        {renderShootingParamsSection()}
+        {(() => {
+          // 「按属性」+「按拍摄参数」默认折叠为「更多筛选」一行；点击展开。
+          // 内部两段在数据为空时各自 return null，因此若全空则整个折叠区也不渲染（避免空 section）。
+          const attributesNode = renderAttributesSection();
+          const shootingNode = renderShootingParamsSection();
+          if (!attributesNode && !shootingNode) return null;
+          return (
+            <>
+              <View style={[styles.section, dynSection]}>
+                <TouchableOpacity
+                  style={[styles.sectionHeader, { marginBottom: 0 }]}
+                  onPress={() => setAdvancedExpanded((v) => !v)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: advancedExpanded }}
+                >
+                  <View style={styles.sectionTitleContainer}>
+                    <Text style={[styles.sectionTitle, dynSectionTitle, { marginTop: 0, marginBottom: 0 }]}>
+                      <SectionIcon name="options-outline" emoji="🔧" /> {t('home.moreFilters')}
+                    </Text>
+                  </View>
+                  <Text style={[styles.sectionTitle, dynSectionTitle, { marginTop: 0, marginBottom: 0 }]}>
+                    {advancedExpanded ? '▾' : '›'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {advancedExpanded ? (
+                <>
+                  {attributesNode}
+                  {shootingNode}
+                </>
+              ) : null}
+            </>
+          );
+        })()}
         {renderRecentPhotos()}
       </ScrollView>
 
@@ -2507,8 +2560,10 @@ const createStyles = (c) => StyleSheet.create({
     minWidth: 0, // 允许 flex 子项收缩到小于内容宽度
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 24,
+    marginBottom: 8,
     color: c.label,
     // 注意：当 sectionTitle 在 sectionHeader 内部时，不需要额外的 padding
     // 当单独使用时，需要通过内联样式添加 paddingHorizontal: 16
@@ -2524,6 +2579,7 @@ const createStyles = (c) => StyleSheet.create({
     fontSize: 12,
     color: c.secondaryLabel,
     fontWeight: '400',
+    marginBottom: 12,
   },
   countBadge: {
     backgroundColor: c.accent,
