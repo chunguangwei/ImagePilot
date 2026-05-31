@@ -1183,42 +1183,57 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     } finally { setSrDownloading(false); }
   };
 
-  // ===== 分类模型三档（basic 已内置；scene 按需下载；clip 等 P2 接入） =====
+  // ===== 分类模型三档（basic / scene / clip 都按需下载，统一交互） =====
+  // 「承诺即切」：用户点击 = 已经表达选择意图。模型缺则后台下载，完成后自动切档；
+  // 不再二次问"立即下载"，避免下载完还要再点一次的反复确认。
   const selectClassifierTier = async (tierKey) => {
     const tier = CLASSIFIER_TIERS[tierKey];
     if (!tier) return;
     if (!tier.readyForUse) {
-      Alert.alert('即将上线', `${tier.label} 推理引擎尚未接入（P2 计划中）。`);
+      Alert.alert('即将上线', `${tier.label} 推理引擎尚未接入。`);
       return;
     }
-    // 非内置档：模型未下载 → 提示先下载
-    if (!tier.bundled && !classifierDownloaded[tierKey]) {
-      Alert.alert(
-        '需要下载模型',
-        `${tier.label} 模型未下载（${tier.sizeMB}MB）。下载完成后才能切换到此档。`,
-        [
-          { text: '取消', style: 'cancel' },
-          { text: '立即下载', onPress: () => downloadClassifierModel(tierKey) },
-        ],
-      );
+    // 已下载 → 立即切档
+    if (classifierDownloaded[tierKey]) {
+      setClassifierTier(tierKey);
+      try { await updateSetting('classifierModelTier', tierKey); } catch (_) {}
       return;
     }
+    // 未下载 → 后台下载，完成后自动切档（下载过程乐观高亮当前选择，让用户看到承诺生效）
     setClassifierTier(tierKey);
-    try { await updateSetting('classifierModelTier', tierKey); } catch (_) {}
+    try {
+      await downloadClassifierModel(tierKey, { switchAfter: true });
+    } catch (_) {
+      // downloadClassifierModel 已 Alert，UI 切回之前档由 finally 处理
+    }
   };
 
-  const downloadClassifierModel = async (tierKey) => {
+  const downloadClassifierModel = async (tierKey, opts = {}) => {
+    const { switchAfter = false } = opts;
     const tier = CLASSIFIER_TIERS[tierKey];
-    if (!tier || tier.bundled || !tier.url) return;
+    if (!tier || !tier.url) return;
     setClassifierDownloadingKey(tierKey);
     setClassifierDownloadProgress(0);
     try {
       await ensureClassifierModelFile(tier.filename, tier.url, (p) => setClassifierDownloadProgress(p));
       setClassifierDownloaded((prev) => ({ ...prev, [tierKey]: true }));
-      Alert.alert('下载完成', `${tier.label} 模型已就绪，可切换为当前分类档。`);
+      if (switchAfter) {
+        // 承诺即切：下载完成后落 setting；UI 上 classifierTier 已经乐观高亮
+        try { await updateSetting('classifierModelTier', tierKey); } catch (_) {}
+      } else {
+        Alert.alert('下载完成', `${tier.label} 模型已就绪。`);
+      }
     } catch (e) {
       const msg = (e?.message || String(e)).replace(/^E_\w+\s*/, '');
       Alert.alert('下载失败', msg);
+      if (switchAfter) {
+        // 下载失败：把之前的乐观切档回滚到 settings 里实际记的档
+        try {
+          const s = await UnifiedDataService.readSettings();
+          setClassifierTier(s?.classifierModelTier || DEFAULT_CLASSIFIER_TIER);
+        } catch (_) {}
+      }
+      throw e;
     } finally {
       setClassifierDownloadingKey(null);
       setClassifierDownloadProgress(0);
@@ -1259,63 +1274,72 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           {SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color={c.accent} /> : null} 分类模型
         </Text>
         <Text style={styles.actionButtonDescription}>
-          三种风格的设备端分类模型，按需下载、可随时切换。模型只在设备运行，照片不上传。
+          设备端分类引擎，按需下载、随时切换。照片不上传。
         </Text>
-        {CLASSIFIER_TIER_ORDER.map((tierKey) => {
-          const tier = CLASSIFIER_TIERS[tierKey];
-          const isActive = classifierTier === tierKey;
-          const downloaded = !!classifierDownloaded[tierKey];
-          const downloading = classifierDownloadingKey === tierKey;
-          const sizeText = tier.bundled
-            ? `${tier.sizeMB}MB · 已内置`
-            : `${tier.sizeMB}MB · 离线 · ${tier.speed}` + (downloaded ? ' · 已下载' : '');
-          return (
-            <TouchableOpacity
-              key={tierKey}
-              style={[
-                styles.classifierTierRow,
-                isActive && styles.classifierTierRowActive,
-                !tier.readyForUse && { opacity: 0.55 },
-              ]}
-              onPress={() => selectClassifierTier(tierKey)}
-              activeOpacity={0.6}
-            >
-              <View style={styles.classifierTierHead}>
-                {SetIonicons
-                  ? <SetIonicons name={isActive ? 'radio-button-on' : 'radio-button-off'} size={20} color={isActive ? c.accent : c.separator} />
-                  : <Text>{isActive ? '●' : '○'}</Text>}
-                <Text style={styles.classifierTierTitle}>
-                  {tier.label}
-                  <Text style={styles.classifierTierSublabel}>  {tier.sublabel}{tier.readyForUse ? '' : '（适配中）'}</Text>
-                </Text>
-              </View>
-              <Text style={styles.classifierTierMeta}>{sizeText} · {tier.classes} 类</Text>
-              <Text style={styles.classifierTierDesc}>{tier.desc}</Text>
-              <Text style={styles.classifierTierWeak}>限制：{tier.weak}</Text>
-              {/* 下载/删除/进度按钮（仅非内置档） */}
-              {!tier.bundled && tier.readyForUse && (
-                <View style={styles.classifierDlBar}>
-                  {downloading ? (
-                    <Text style={styles.classifierDlText}>下载中 {Math.round(classifierDownloadProgress * 100)}%…</Text>
-                  ) : downloaded ? (
-                    <>
-                      <TouchableOpacity onPress={() => downloadClassifierModel(tierKey)} style={styles.classifierDlBtn}>
-                        <Text style={styles.classifierDlBtnText}>重新下载</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => deleteClassifierTierModel(tierKey)} style={[styles.classifierDlBtn, styles.classifierDlBtnDanger]}>
-                        <Text style={styles.classifierDlBtnDangerText}>删除</Text>
-                      </TouchableOpacity>
-                    </>
-                  ) : (
-                    <TouchableOpacity onPress={() => downloadClassifierModel(tierKey)} style={[styles.classifierDlBtn, styles.classifierDlBtnPrimary]}>
-                      <Text style={styles.classifierDlBtnPrimaryText}>下载 {tier.sizeMB}MB</Text>
+        <View style={styles.classifierList}>
+          {CLASSIFIER_TIER_ORDER.map((tierKey, idx) => {
+            const tier = CLASSIFIER_TIERS[tierKey];
+            const isActive = classifierTier === tierKey;
+            const downloaded = !!classifierDownloaded[tierKey];
+            const downloading = classifierDownloadingKey === tierKey;
+            const isLast = idx === CLASSIFIER_TIER_ORDER.length - 1;
+            const metaParts = [
+              `${tier.sizeMB}MB`,
+              tier.speed,
+              `${tier.classes} 类`,
+            ];
+            if (downloaded) metaParts.push('已下载');
+            return (
+              <View key={tierKey}>
+                <TouchableOpacity
+                  style={[
+                    styles.classifierTierRow,
+                    !tier.readyForUse && { opacity: 0.55 },
+                  ]}
+                  onPress={() => selectClassifierTier(tierKey)}
+                  activeOpacity={0.6}
+                  disabled={downloading}
+                >
+                  <View style={styles.classifierTierMain}>
+                    <Text style={styles.classifierTierTitle}>
+                      {tier.label}
+                      {tier.readyForUse ? null : <Text style={styles.classifierTierSublabel}>  （适配中）</Text>}
+                    </Text>
+                    <Text style={styles.classifierTierMeta}>{metaParts.join(' · ')}</Text>
+                    <Text style={styles.classifierTierDesc} numberOfLines={2}>{tier.desc}</Text>
+                  </View>
+                  <View style={styles.classifierTierRight}>
+                    {downloading ? (
+                      <View style={styles.classifierTierRightInner}>
+                        <ActivityIndicator size="small" color={c.accent} />
+                        <Text style={styles.classifierDlText}>{Math.round(classifierDownloadProgress * 100)}%</Text>
+                      </View>
+                    ) : isActive ? (
+                      SetIonicons
+                        ? <SetIonicons name="checkmark" size={22} color={c.accent} />
+                        : <Text style={{ color: c.accent, fontSize: 18 }}>✓</Text>
+                    ) : !downloaded && !tier.bundled ? (
+                      <Text style={styles.classifierDlSizeHint}>下载 {tier.sizeMB}MB</Text>
+                    ) : null}
+                  </View>
+                </TouchableOpacity>
+                {/* 已下载的非内置档：长按或单独的"删除"按钮藏在 row 下半 footer */}
+                {downloaded && !tier.bundled && !downloading && (
+                  <View style={styles.classifierTierFooter}>
+                    <TouchableOpacity onPress={() => downloadClassifierModel(tierKey)} style={styles.classifierFooterBtn}>
+                      <Text style={styles.classifierFooterBtnText}>重新下载</Text>
                     </TouchableOpacity>
-                  )}
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
+                    <Text style={styles.classifierFooterSep}> · </Text>
+                    <TouchableOpacity onPress={() => deleteClassifierTierModel(tierKey)} style={styles.classifierFooterBtn}>
+                      <Text style={[styles.classifierFooterBtnText, { color: c.danger }]}>删除</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {!isLast && <View style={styles.classifierTierSeparator} />}
+              </View>
+            );
+          })}
+        </View>
       </View>
     );
   };
@@ -1534,7 +1558,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
             {/* 相似度检测阈值 - 子区块 */}
             <View style={styles.switchItemCompact}>
-              <Text style={styles.switchLabelCompact}>🔗 {t('settings.similarityThreshold')}</Text>
+              <Text style={styles.switchLabelCompact}>{SetIonicons ? <SetIonicons name="git-compare-outline" size={15} color={c.accent} /> : null} {t('settings.similarityThreshold')}</Text>
               <Text style={styles.switchDescriptionCompact}>
                 {t('settings.similarityThresholdDesc')}
               </Text>
@@ -1690,7 +1714,12 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
               return (
                 <View key={presetId} style={styles.presetItem}>
-                  <View style={styles.presetLeft}>
+                  {/* 左侧 + 中间 整块点击进编辑（不含 Switch / chevron，省得误触） */}
+                  <TouchableOpacity
+                    style={styles.presetLeft}
+                    activeOpacity={0.6}
+                    onPress={() => openEditPreset(presetId)}
+                  >
                     {SetIonicons
                       ? <SetIonicons name={presetIcon(presetId)} size={24} color={c.accent} style={styles.presetIcon} />
                       : <Text style={styles.presetIcon}>{preset.icon}</Text>}
@@ -1700,20 +1729,18 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                         {displayPrompt || t('settings.noPromptSet')}
                       </Text>
                     </View>
-                  </View>
-                <View style={styles.presetRight}>
-                  <TouchableOpacity
-                    style={styles.editPresetButton}
-                    onPress={() => openEditPreset(presetId)}>
-                    <Text style={styles.editPresetButtonText}>{t('settings.editPreset')}</Text>
                   </TouchableOpacity>
-                  <Switch
-                    value={preset.enabled}
-                    onValueChange={() => togglePresetEnabled(presetId)}
-                    trackColor={{ false: c.separator, true: c.success }}
-                  />
+                  <View style={styles.presetRight}>
+                    <Switch
+                      value={preset.enabled}
+                      onValueChange={() => togglePresetEnabled(presetId)}
+                      trackColor={{ false: c.separator, true: c.success }}
+                    />
+                    <TouchableOpacity onPress={() => openEditPreset(presetId)} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
+                      <Text style={[styles.actionChevron, { color: c.chevron, marginLeft: 8 }]}>›</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
               );
             })}
 
@@ -1934,7 +1961,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                             const idCardPrompt = t('settings.idCardPrompt');
                             setEditingPreset({ ...editingPreset, prompt: idCardPrompt });
                           }}>
-                          <Text style={styles.documentButtonText}>🆔 {t('settings.idCard')}</Text>
+                          <Text style={styles.documentButtonText}>{SetIonicons ? <SetIonicons name="card-outline" size={14} color={c.accent} /> : null} {t('settings.idCard')}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -1943,7 +1970,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                             const passportPrompt = t('settings.passportPrompt');
                             setEditingPreset({ ...editingPreset, prompt: passportPrompt });
                           }}>
-                          <Text style={styles.documentButtonText}>📘 {t('settings.passport')}</Text>
+                          <Text style={styles.documentButtonText}>{SetIonicons ? <SetIonicons name="book-outline" size={14} color={c.accent} /> : null} {t('settings.passport')}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -2197,20 +2224,21 @@ const createStyles = (c) => StyleSheet.create({
     flex: 1,
   },
 
-  // 分组
+  // 分组（iOS Settings 原生 section header：小字 / 全大写 / 灰，弱化分组装饰）
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '400',
     color: c.secondaryLabel,
     paddingHorizontal: 0,
     paddingTop: 0,
     paddingBottom: 0,
     flex: 1,
     textAlignVertical: 'center',
+    letterSpacing: 0.2,
   },
   section: {
     backgroundColor: c.card,
-    marginTop: 8,
+    marginTop: 28,    // iOS Settings section 之间 ~35pt 间距，给眼睛喘息
   },
 
   // 操作按钮（iOS 风格：纯白圆角单元格 + 右侧箭头）
@@ -2249,27 +2277,33 @@ const createStyles = (c) => StyleSheet.create({
   srOptionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 9 },
   srOptionLabel: { fontSize: 15, color: c.label, marginLeft: 10 },
 
-  // 分类模型三档卡片样式
-  classifierTierRow: {
-    paddingVertical: 10, paddingHorizontal: 10, marginVertical: 4,
-    borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: c.separator,
-    backgroundColor: c.groupedBg,
+  // 分类模型三档 —— iOS inline picker：cell + 右侧 checkmark + 下面 footer 链接
+  classifierList: {
+    marginTop: 10,
+    borderRadius: 10,
+    backgroundColor: c.fillTertiary,
+    overflow: 'hidden',
   },
-  classifierTierRowActive: { borderColor: c.accent, backgroundColor: c.accentSoft },
-  classifierTierHead: { flexDirection: 'row', alignItems: 'center' },
-  classifierTierTitle: { fontSize: 15, fontWeight: '600', color: c.label, marginLeft: 8 },
+  classifierTierRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  classifierTierMain: { flex: 1 },
+  classifierTierRight: { marginLeft: 10, minWidth: 60, alignItems: 'flex-end' },
+  classifierTierRightInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  classifierTierTitle: { fontSize: 15, fontWeight: '600', color: c.label },
   classifierTierSublabel: { fontSize: 13, fontWeight: '400', color: c.tertiaryLabel },
-  classifierTierMeta: { fontSize: 13, color: c.secondaryLabel, marginTop: 4, marginLeft: 28, fontVariant: ['tabular-nums'] },
-  classifierTierDesc: { fontSize: 13, color: c.secondaryLabel, marginTop: 4, marginLeft: 28, lineHeight: 18 },
-  classifierTierWeak: { fontSize: 12, color: c.tertiaryLabel, marginTop: 3, marginLeft: 28 },
-  classifierDlBar: { flexDirection: 'row', alignItems: 'center', marginTop: 8, marginLeft: 28, gap: 8 },
+  classifierTierMeta: { fontSize: 12, color: c.secondaryLabel, marginTop: 2, fontVariant: ['tabular-nums'] },
+  classifierTierDesc: { fontSize: 12, color: c.tertiaryLabel, marginTop: 4, lineHeight: 16 },
+  classifierTierFooter: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 10, marginTop: -4 },
+  classifierFooterBtn: { paddingVertical: 2, paddingHorizontal: 2 },
+  classifierFooterBtnText: { fontSize: 12, color: c.accent, fontWeight: '500' },
+  classifierFooterSep: { fontSize: 12, color: c.tertiaryLabel },
+  classifierTierSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: c.separator, marginLeft: 14 },
   classifierDlText: { fontSize: 12, color: c.accent, fontVariant: ['tabular-nums'] },
-  classifierDlBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: c.fillTertiary },
-  classifierDlBtnText: { fontSize: 12, color: c.label, fontWeight: '500' },
-  classifierDlBtnPrimary: { backgroundColor: c.accent },
-  classifierDlBtnPrimaryText: { fontSize: 12, color: '#FFFFFF', fontWeight: '600' },
-  classifierDlBtnDanger: { backgroundColor: c.dangerSoft },
-  classifierDlBtnDangerText: { fontSize: 12, color: c.danger, fontWeight: '600' },
+  classifierDlSizeHint: { fontSize: 12, color: c.tertiaryLabel },
   srCustomRow: { marginTop: 4, marginBottom: 4 },
   srInput: { borderWidth: StyleSheet.hairlineWidth, borderColor: c.separator, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 13, color: c.label, backgroundColor: c.groupedBg },
   srStatusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
