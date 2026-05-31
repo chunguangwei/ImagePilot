@@ -282,15 +282,9 @@ export default function App() {
       await UnifiedDataService.initialize();
       console.log('✅ UnifiedDataService 初始化完成');
       
-      // 3. 后台复制模型文件（移动端）
-      console.log('📋 [3/3] 复制模型文件...');
-      if (ModelPathAdapter && ModelPathAdapter.ensureModelExists) {
-        const models = ['mobilenetv3_rw_Opset17.onnx'];
-        for (const model of models) {
-          await ModelPathAdapter.ensureModelExists(model);
-        }
-        console.log('✅ 模型文件初始化完成');
-      }
+      // 3. 模型不再随包打包（移动端走 GH Release 按需下载，basic/scene/clip 各档统一）
+      //    需要的时候在 Settings 里下载；ImageClassifierService 加载时会触发首次下载。
+      console.log('📋 [3/3] 模型按需下载（不在启动时强制拉）');
       
       console.log('🎉 应用核心服务初始化完成！');
       setIsServiceReady(true);

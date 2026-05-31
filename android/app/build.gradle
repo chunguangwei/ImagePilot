@@ -150,14 +150,9 @@ android {
         }
     }
     
-    // 复制 ONNX 模型文件到 assets 目录
-    sourceSets {
-        main {
-            assets {
-                srcDirs = ['src/main/assets', '../../public']
-            }
-        }
-    }
+    // 模型不再随 APK 打包 —— 全部走 GH Release 按需下载（classifierModelSource）
+    // public/ 里 initialSettings.json 已被 ConfigService 以 ES import 内联进 JS bundle，
+    // 不需要再作为 Android assets 源，srcDirs 回到默认。
 }
 
 dependencies {
