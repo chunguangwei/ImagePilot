@@ -30,7 +30,7 @@ import * as UpdateService from '../../services/UpdateService';
 import DirectoryPicker from '../../components/DirectoryPicker.mobile';
 import { logger } from '../../adapters/WebAdapters';
 import { presetIcon } from '../../ui/ios/presetIcons';
-import { useIosColors } from '../../ui/ios/theme';
+import { useIosColors, ThemeContext } from '../../ui/ios/theme';
 import { SUPERRES_VARIANTS, ensureModel, isModelDownloaded, resolveSuperRes, deleteModel } from '../../services/enhance/modelSource';
 import { CLASSIFIER_TIERS, CLASSIFIER_TIER_ORDER, DEFAULT_CLASSIFIER_TIER } from '../../services/classify/classifierModelTiers';
 import {
@@ -48,6 +48,8 @@ import { changeLanguage, getCurrentLanguage, getDefaultPresets } from '../../i18
 const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   const { t, i18n } = useTranslation('common');
   const c = useIosColors();
+  // 主题选择（'system' | 'light' | 'dark'）：来自 Provider，setScheme 即时全屏生效
+  const { scheme: themeScheme, setScheme: setThemeScheme } = React.useContext(ThemeContext);
   // 颜色 token 一变（系统切 light/dark），整页 StyleSheet 重建一次；
   // 同一渲染周期内复用同一份 styles，避免每次 render 重新 create。
   const styles = React.useMemo(() => createStyles(c), [c]);
@@ -1608,6 +1610,55 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         </View>
 
         {/* 会员服务（fork 已下线第三方后端，整段移除；微信轮询 / 二维码 / 额度都不再出现） */}
+
+        {/* === Section 3.5：外观 ===
+            主题三档：system / light / dark。
+            点击 row：setThemeScheme 立即写 Provider state → 全屏 useThemeColors 重渲染；
+            同时 updateSetting('colorScheme', value) 持久化，下次启动 App.js 读回来。 */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.titleRow}>
+              <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">{SetIonicons ? <SetIonicons name="contrast-outline" size={17} color={c.accent} /> : null} {t('settings.appearance.title')}</Text>
+            </View>
+          </View>
+
+          <View style={styles.actionButton}>
+            <View style={styles.classifierList}>
+              {[
+                { key: 'system', label: t('settings.appearance.system') },
+                { key: 'light', label: t('settings.appearance.light') },
+                { key: 'dark', label: t('settings.appearance.dark') },
+              ].map((opt, idx, arr) => {
+                const isActive = themeScheme === opt.key;
+                const isLast = idx === arr.length - 1;
+                return (
+                  <View key={opt.key}>
+                    <TouchableOpacity
+                      style={styles.classifierTierRow}
+                      onPress={async () => {
+                        setThemeScheme(opt.key);
+                        try { await updateSetting('colorScheme', opt.key); } catch (_) {}
+                      }}
+                      activeOpacity={0.6}
+                    >
+                      <View style={styles.classifierTierMain}>
+                        <Text style={styles.classifierTierTitle}>{opt.label}</Text>
+                      </View>
+                      <View style={styles.classifierTierRight}>
+                        {isActive ? (
+                          SetIonicons
+                            ? <SetIonicons name="checkmark" size={22} color={c.accent} />
+                            : <Text style={{ color: c.accent, fontSize: 18 }}>✓</Text>
+                        ) : null}
+                      </View>
+                    </TouchableOpacity>
+                    {!isLast && <View style={styles.classifierTierSeparator} />}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        </View>
 
         {/* === Section 4：关于 ===
             检查更新挪到版本号旁边（更新和版本是同一类信息）；

@@ -583,6 +583,12 @@
     "displaySettings": "显示设置",
     "photoEnhancement": "AI修图",
     "photoEnhancementDesc": "配置AI修图的预设方案，可自定义提示词",
+    "appearance": {
+      "title": "外观",
+      "system": "跟随系统",
+      "light": "浅色",
+      "dark": "深色"
+    },
     "appInfo": "应用信息",
     "version": "版本",
     "buildVersion": "构建版本",

@@ -583,6 +583,12 @@
     "displaySettings": "Display Settings",
     "photoEnhancement": "AI Enhancement",
     "photoEnhancementDesc": "Configure AI enhancement presets, customizable prompts",
+    "appearance": {
+      "title": "Appearance",
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
     "appInfo": "App Info",
     "version": "Version",
     "buildVersion": "Build Version",
