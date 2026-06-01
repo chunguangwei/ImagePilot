@@ -36,3 +36,6 @@ project(':react-native-sqlite-storage').projectDir = new File(rootProject.projec
 include ':onnxruntime-react-native'
 project(':onnxruntime-react-native').projectDir = new File(rootProject.projectDir, '../node_modules/onnxruntime-react-native/android')
 
+include ':react-native-community-blur'
+project(':react-native-community-blur').projectDir = new File(rootProject.projectDir, '../node_modules/@react-native-community/blur/android')
+
