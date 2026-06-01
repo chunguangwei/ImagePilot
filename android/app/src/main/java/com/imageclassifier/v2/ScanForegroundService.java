@@ -76,7 +76,7 @@ public class ScanForegroundService extends Service {
             Notification simpleNotification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Starting...")
                 .setContentText("Starting scan...")
-                .setSmallIcon(android.R.drawable.ic_menu_upload)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .build();
@@ -222,7 +222,7 @@ public class ScanForegroundService extends Service {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(notificationTitle)
             .setContentText(progressText)
-            .setSmallIcon(android.R.drawable.ic_menu_upload)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT) // 改为 DEFAULT，确保通知能及时更新
