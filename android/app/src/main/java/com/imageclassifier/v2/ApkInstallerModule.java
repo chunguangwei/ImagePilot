@@ -13,6 +13,8 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 
 /**
  * ApkInstaller — App 内拉起系统安装器安装已下载的 APK（更新方案2）。
@@ -57,6 +59,49 @@ public class ApkInstallerModule extends ReactContextBaseJavaModule {
       promise.resolve(true);
     } catch (Exception e) {
       promise.reject("E_SETTINGS", e.getMessage());
+    }
+  }
+
+  /**
+   * 二进制追加：把 srcPath 的字节流追加到 dstPath 末尾。
+   *
+   * 用于 UpdateService 的断点续传：Range request 把剩余字节下到 .part.chunk，
+   * 这里 native 把 chunk 字节追加到 .part，避免 RNFS base64 round-trip 168MB
+   * 的性能问题（实测耗时 30s+ vs native FileChannel 不到 1s）。
+   *
+   * 用 8KB buffer 流式拷贝；不一次性读到内存（防 OOM）。
+   */
+  @ReactMethod
+  public void appendFile(String srcPath, String dstPath, Promise promise) {
+    FileInputStream in = null;
+    FileOutputStream out = null;
+    try {
+      String s = srcPath;
+      if (s != null && s.startsWith("file://")) s = s.substring(7);
+      String d = dstPath;
+      if (d != null && d.startsWith("file://")) d = d.substring(7);
+      File src = new File(s);
+      File dst = new File(d);
+      if (!src.exists()) {
+        promise.reject("E_NO_SRC", "src 不存在: " + s);
+        return;
+      }
+      in = new FileInputStream(src);
+      out = new FileOutputStream(dst, /* append = */ true);
+      byte[] buf = new byte[8192];
+      int n;
+      long total = 0;
+      while ((n = in.read(buf)) > 0) {
+        out.write(buf, 0, n);
+        total += n;
+      }
+      out.flush();
+      promise.resolve((double) total);
+    } catch (Exception e) {
+      promise.reject("E_APPEND", e.getMessage());
+    } finally {
+      try { if (in != null) in.close(); } catch (Exception ignored) {}
+      try { if (out != null) out.close(); } catch (Exception ignored) {}
     }
   }
 

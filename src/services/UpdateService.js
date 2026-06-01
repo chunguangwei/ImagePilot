@@ -50,6 +50,15 @@ export function isNewer(a, b) {
  * 网络/解析失败时抛错，由调用方决定是否静默处理。
  */
 export async function checkForUpdate() {
+  // eslint-disable-next-line global-require
+  const { Platform } = require('react-native');
+  const isIOS = Platform.OS === 'ios';
+  // iOS 拿不到也用不了 .apk（系统禁 sideload）。Release 现阶段也没出 .ipa，
+  // 直接返回"无更新"，避免给 iOS 用户推一个跑去 Android 包的链接。
+  // 后续 iOS 有 TestFlight / Ad Hoc 分发后，这里可以放开 + apkUrl 改成对应分发链接。
+  if (isIOS) {
+    return { hasUpdate: false, latestVersion: null, currentVersion: BUILD_VERSION, notes: '', apkUrl: null, pageUrl: RELEASES_PAGE };
+  }
   // 主路径：api.github.com（能拿到 APK 直链与更新说明）
   try {
     const res = await fetch(RELEASES_API, { headers: GH_HEADERS });
@@ -170,45 +179,102 @@ export async function downloadAndInstall(apkUrl, onProgress) {
     throw new Error('ApkInstaller 原生模块不可用');
   }
   const dest = `${RNFS.CachesDirectoryPath}/imagepilot-update.apk`;
-  try {
-    if (await RNFS.exists(dest)) await RNFS.unlink(dest);
-  } catch (_) { /* 忽略旧文件清理失败 */ }
+  const part = `${dest}.part`;
 
-  // 把 github.com/...download/<tag>/app-release.apk 的重定向跑掉，给 RNFS 一个最终直链
+  // 跑掉重定向，给 RNFS 一个最终直链
   const directUrl = await resolveRedirects(apkUrl);
 
-  // 记录服务端声明的总大小，下载完成后用于校验是否被中途截断
-  let expectedTotal = 0;
-  const { promise } = RNFS.downloadFile({
-    fromUrl: directUrl,
-    toFile: dest,
-    // 部分 Android ROM 对默认 OkHttp UA 不友好，显式带上自己的 UA + Accept
-    headers: { 'User-Agent': 'ImagePilot-App', Accept: '*/*' },
-    progressInterval: 300,
-    begin: (res) => {
-      if (res && res.contentLength > 0) expectedTotal = res.contentLength;
-    },
-    progress: (res) => {
-      if (res && res.contentLength > 0) expectedTotal = res.contentLength;
-      if (onProgress && res.contentLength > 0) {
-        onProgress(Math.min(1, res.bytesWritten / res.contentLength));
+  // === 断点续传 ===
+  // 实测 168MB APK 在不稳定网络下经常中断，每次重头下太痛。
+  //
+  // 策略：
+  // 1) HEAD/Range 1B 拿到 Content-Length 作 expectedTotal
+  // 2) 若 .part 存在且 size > 0 且 < expectedTotal → 用 Range: bytes=<size>- 续传
+  //    把剩余字节先下到 .part.chunk，再 native 追加（ApkInstaller.appendBytes）到 .part
+  //    appendBytes 是新加的 Java 原生模块，避免 base64 round-trip 168MB
+  // 3) 若 .part size == expectedTotal → 直接走完整性校验 + 安装
+  // 4) 服务器不返 206（Partial Content）→ 回退全量重下，删 .part
+  //
+  // 失败时**不删 .part**，让用户下次还能续。
+
+  let expectedTotal = await headContentLength(directUrl);
+  let partSize = 0;
+  try { if (await RNFS.exists(part)) partSize = Number((await RNFS.stat(part)).size) || 0; } catch (_) {}
+
+  // 已下完直接进校验
+  if (expectedTotal > 0 && partSize === expectedTotal) {
+    if (onProgress) onProgress(1);
+    try { if (await RNFS.exists(dest)) await RNFS.unlink(dest); } catch (_) {}
+    await RNFS.moveFile(part, dest);
+  } else {
+    // 决定起点：能续传 → 走 Range，不能 → 重头
+    const canResume = expectedTotal > 0 && partSize > 0 && partSize < expectedTotal;
+    if (!canResume) {
+      try { if (await RNFS.exists(part)) await RNFS.unlink(part); } catch (_) {}
+      partSize = 0;
+    }
+    const tmp = canResume ? `${dest}.part.chunk` : part;
+    try { if (await RNFS.exists(tmp)) await RNFS.unlink(tmp); } catch (_) {}
+
+    const headers = { 'User-Agent': 'ImagePilot-App', Accept: '*/*' };
+    if (canResume) headers.Range = `bytes=${partSize}-`;
+
+    let serverDeclined206 = false; // 服务器不支持 Range → 回退全量
+    const { promise } = RNFS.downloadFile({
+      fromUrl: directUrl,
+      toFile: tmp,
+      headers,
+      progressInterval: 300,
+      begin: (res) => {
+        if (canResume && res && res.statusCode === 200) {
+          // 服务器忽略了 Range，返了全量 200 → 后面回退处理
+          serverDeclined206 = true;
+        }
+        if (res && res.contentLength > 0) {
+          // canResume 时 contentLength 是剩余字节，否则是全量
+          if (!expectedTotal) expectedTotal = (canResume ? partSize : 0) + res.contentLength;
+        }
+      },
+      progress: (res) => {
+        if (!onProgress) return;
+        const total = expectedTotal || (res.contentLength > 0 ? (canResume ? partSize : 0) + res.contentLength : 0);
+        const done = (canResume && !serverDeclined206 ? partSize : 0) + (res.bytesWritten || 0);
+        if (total > 0) onProgress(Math.min(1, done / total));
+        else if (done > 0) onProgress(0.01);
+      },
+    });
+    const result = await promise;
+    if (result && result.statusCode && result.statusCode >= 400) {
+      // 失败不删 .part，让下次还能续
+      throw new Error('下载失败 HTTP ' + result.statusCode);
+    }
+
+    // 续传分支：服务器返了 206 → 追加 chunk 到 .part；返了 200 → 整个 tmp 替换 .part
+    if (canResume) {
+      if (serverDeclined206) {
+        // 服务器忽略 Range，tmp 是全量 → 替换 .part
+        try { if (await RNFS.exists(part)) await RNFS.unlink(part); } catch (_) {}
+        await RNFS.moveFile(tmp, part);
+      } else {
+        // 真续传：把 chunk 追加到 .part
+        try {
+          await appendFileToFile(RNFS, ApkInstaller, tmp, part);
+        } finally {
+          try { if (await RNFS.exists(tmp)) await RNFS.unlink(tmp); } catch (_) {}
+        }
       }
-    },
-  });
-  const result = await promise;
-  if (result && result.statusCode && result.statusCode >= 400) {
-    throw new Error('下载失败 HTTP ' + result.statusCode);
+    }
+    // !canResume 分支：tmp === part，已经直接下到 .part 里了
+
+    // 落定 dest
+    try { if (await RNFS.exists(dest)) await RNFS.unlink(dest); } catch (_) {}
+    await RNFS.moveFile(part, dest);
   }
 
-  // 完整性校验：RNFS 在连接中断时仍可能以 200 resolve，得到截断文件
-  // （安装时即报「解析软件包失败」）。这里主动验大小 + APK(ZIP) 魔数。
+  // === 完整性校验 ===
   let actualSize = 0;
-  try {
-    const stat = await RNFS.stat(dest);
-    actualSize = Number(stat.size) || 0;
-  } catch (_) { /* stat 失败按 0 处理，下方会判定为损坏 */ }
-
-  const tooSmall = actualSize < 1024 * 1024; // APK 不可能 < 1MB
+  try { actualSize = Number((await RNFS.stat(dest)).size) || 0; } catch (_) {}
+  const tooSmall = actualSize < 1024 * 1024;
   const truncated = expectedTotal > 0 && actualSize < expectedTotal;
   let badMagic = false;
   try {
@@ -217,14 +283,50 @@ export async function downloadAndInstall(apkUrl, onProgress) {
   } catch (_) { badMagic = true; }
 
   if (tooSmall || truncated || badMagic) {
+    // 校验失败 → dest 删，但 .part 已 move 走了；放回 dest 给下次（半成品保留意义不大，就删）
     try { await RNFS.unlink(dest); } catch (_) {}
     const got = (actualSize / 1048576).toFixed(1);
     const exp = expectedTotal > 0 ? (expectedTotal / 1048576).toFixed(1) : '?';
     throw new Error(`E_CORRUPT 安装包下载不完整（${got}MB/${exp}MB），请重试或用浏览器下载`);
   }
 
-  await ApkInstaller.install(dest); // 未授权会 reject E_NEED_PERMISSION（已引导去设置）
+  await ApkInstaller.install(dest); // 未授权会 reject E_NEED_PERMISSION
   return dest;
+}
+
+/** HEAD 拿 Content-Length（GitHub Releases 支持 HEAD；用 GET Range:0-0 兜底） */
+async function headContentLength(url) {
+  try {
+    const r = await fetch(url, { method: 'HEAD', headers: { 'User-Agent': 'ImagePilot-App' } });
+    const cl = r && r.headers && r.headers.get && r.headers.get('content-length');
+    if (cl) return Number(cl) || 0;
+  } catch (_) {}
+  // HEAD 失败试 Range
+  try {
+    const r = await fetch(url, { method: 'GET', headers: { 'User-Agent': 'ImagePilot-App', Range: 'bytes=0-0' } });
+    const cr = r && r.headers && r.headers.get && r.headers.get('content-range');
+    if (cr) { const m = /\/(\d+)$/.exec(cr); if (m) return Number(m[1]) || 0; }
+  } catch (_) {}
+  return 0;
+}
+
+/**
+ * 大文件追加（src → 末尾 dst），不能走 RNFS base64 read+write（168MB round-trip 太慢）。
+ * 优先调原生 ApkInstaller.appendBytes（Java FileInputStream + FileOutputStream(append=true)），
+ * 没该方法就回退 base64 分块（5MB chunk，仍然慢但能完成）。
+ */
+async function appendFileToFile(RNFS, ApkInstaller, srcPath, dstPath) {
+  if (ApkInstaller && typeof ApkInstaller.appendFile === 'function') {
+    return ApkInstaller.appendFile(srcPath, dstPath);
+  }
+  // 回退：base64 分块（5MB），慢但纯 JS
+  const CHUNK = 5 * 1024 * 1024;
+  const total = Number((await RNFS.stat(srcPath)).size) || 0;
+  for (let pos = 0; pos < total; pos += CHUNK) {
+    const len = Math.min(CHUNK, total - pos);
+    const b64 = await RNFS.read(srcPath, len, pos, 'base64');
+    await RNFS.appendFile(dstPath, b64, 'base64');
+  }
 }
 
 export default { checkForUpdate, openDownload, openReleasesPage, downloadAndInstall, isNewer, CURRENT_VERSION, UPDATE_REPO, RELEASES_PAGE };
