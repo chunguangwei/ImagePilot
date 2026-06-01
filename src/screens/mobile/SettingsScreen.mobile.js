@@ -39,6 +39,7 @@ import {
   deleteClassifierModel as deleteClassifierModelFile,
 } from '../../services/classify/classifierModelSource';
 import { BUILD_DATE, BUILD_VERSION, BUILD_VERSION_CODE } from '../../config/BuildInfo';
+import { ActionButton, InfoItem } from './settings/widgets';
 
 // iOS 单色图标（字体已打包）；异常时回退 emoji
 let SetIonicons = null;
@@ -897,24 +898,6 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
    * @param {string} [opts.descColor] 副标自定义颜色（用 c.success/warning/danger 之类，
    *                                   状态高亮场景；普通描述就别传）
    */
-  const renderActionButton = (icon, title, description, onPress, danger = false, opts = {}) => (
-    <TouchableOpacity
-      style={[styles.actionButton, { backgroundColor: c.card }]}
-      onPress={onPress}
-      activeOpacity={0.6}
-    >
-      <View style={styles.actionButtonRow}>
-        <View style={styles.actionButtonMain}>
-          <Text style={[styles.actionButtonText, { color: c.label }, danger && styles.dangerText]}>
-            {SetIonicons ? <SetIonicons name={icon} size={17} color={danger ? c.danger : c.accent} /> : null} {title}
-          </Text>
-          <Text style={[styles.actionButtonDescription, { color: opts.descColor || c.tertiaryLabel }]}>{description}</Text>
-        </View>
-        {!danger ? <Text style={[styles.actionChevron, { color: c.chevron }]}>›</Text> : null}
-      </View>
-    </TouchableOpacity>
-  );
-
   // ===== 超分(AI增强)模型：小/大/自定义 + 按需下载 =====
   const refreshSrStatus = async () => {
     try { const r = await resolveSuperRes(); setSrDownloaded(await isModelDownloaded(r.filename)); } catch (_) {}
@@ -1246,13 +1229,6 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   /**
    * 渲染信息项
    */
-  const renderInfoItem = (label, value) => (
-    <View style={styles.infoItem}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
-    </View>
-  );
-
   /**
    * 渲染语言选择项（应用信息部分）
    */
@@ -1302,13 +1278,6 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     </View>
   );
 
-  /**
-   * 渲染分组标题
-   */
-  const renderSectionTitle = (title) => (
-    <Text style={styles.sectionTitle}>{title}</Text>
-  );
-
   // ==================== 主渲染 ====================
 
   if (loading) {
@@ -1353,33 +1322,38 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
               · 其它    → 跳系统设置（Linking.openSettings） */}
           {Platform.OS === 'ios' && (() => {
             const meta = iosPhotoAuthMeta();
-            return renderActionButton(
-              'images-outline',
-              t('settings.iosPhotoAuth.title'),
-              meta.desc,
-              onIosPhotoAuthPress,
-              false,
-              { descColor: toneColor(meta.tone) },
+            return (
+              <ActionButton
+                styles={styles}
+                c={c}
+                icon="images-outline"
+                title={t('settings.iosPhotoAuth.title')}
+                description={meta.desc}
+                onPress={onIosPhotoAuthPress}
+                descColor={toneColor(meta.tone)}
+              />
             );
           })()}
 
           {/* AI 模型设置：配置个人 LLM API Key，启用云端在线分类 */}
-          {renderActionButton(
-            'cloud-outline',
-            t('settings.aiModelConfig') || 'AI 模型设置（在线分类）',
-            t('settings.aiModelConfigDesc') || '配置 OpenAI / Kimi 等大模型 API Key，启用云端在线分类',
-            () => navigation.navigate('AIModelConfig'),
-            false
-          )}
+          <ActionButton
+            styles={styles}
+            c={c}
+            icon="cloud-outline"
+            title={t('settings.aiModelConfig') || 'AI 模型设置（在线分类）'}
+            description={t('settings.aiModelConfigDesc') || '配置 OpenAI / Kimi 等大模型 API Key，启用云端在线分类'}
+            onPress={() => navigation.navigate('AIModelConfig')}
+          />
 
           {/* 自定义分类：定义规则，云端大模型按规则归类 */}
-          {renderActionButton(
-            'pricetag-outline',
-            t('settings.customCategories.title'),
-            t('settings.customCategories.desc'),
-            () => navigation.navigate('CustomCategories'),
-            false
-          )}
+          <ActionButton
+            styles={styles}
+            c={c}
+            icon="pricetag-outline"
+            title={t('settings.customCategories.title')}
+            description={t('settings.customCategories.desc')}
+            onPress={() => navigation.navigate('CustomCategories')}
+          />
 
           {/* 分类模型：basic / scene / clip 三档（按需下载 + 推荐说明） */}
           {renderClassifierModel()}
@@ -1605,22 +1579,25 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           </View>
 
           {/* 分类备份与还原：导出 JSON 到 Downloads / 从 Downloads 还原 */}
-          {renderActionButton(
-            'archive-outline',
-            t('settings.backupRestore.title'),
-            t('settings.backupRestore.desc'),
-            () => navigation.navigate('BackupRestore'),
-            false
-          )}
+          <ActionButton
+            styles={styles}
+            c={c}
+            icon="archive-outline"
+            title={t('settings.backupRestore.title')}
+            description={t('settings.backupRestore.desc')}
+            onPress={() => navigation.navigate('BackupRestore')}
+          />
 
           {/* 清空相册信息（destructive；按 HIG 放最底，独立一项） */}
-          {renderActionButton(
-            'trash-outline',
-            t('settings.clearAlbumInfo'),
-            t('settings.clearAlbumInfoDesc'),
-            handleClearData,
-            true
-          )}
+          <ActionButton
+            styles={styles}
+            c={c}
+            icon="trash-outline"
+            title={t('settings.clearAlbumInfo')}
+            description={t('settings.clearAlbumInfoDesc')}
+            onPress={handleClearData}
+            danger
+          />
         </View>
 
         {/* 会员服务（fork 已下线第三方后端，整段移除；微信轮询 / 二维码 / 额度都不再出现） */}
@@ -1685,18 +1662,19 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           </View>
 
           {/* 检查更新：从 GitHub Releases 升级到客户端（紧贴 version，同一类信息） */}
-          {renderActionButton(
-            'cloud-download-outline',
-            t('settings.checkUpdate'),
-            t('settings.checkUpdateDesc', { version: UpdateService.CURRENT_VERSION }),
-            handleCheckUpdate,
-            false
-          )}
+          <ActionButton
+            styles={styles}
+            c={c}
+            icon="cloud-download-outline"
+            title={t('settings.checkUpdate')}
+            description={t('settings.checkUpdateDesc', { version: UpdateService.CURRENT_VERSION })}
+            onPress={handleCheckUpdate}
+          />
 
           {/* 版本与构建版本合并：大版本(构建版本)，去掉日期时间；移除"平台"项 */}
-          {renderInfoItem(t('settings.version'), `${BUILD_VERSION} (${BUILD_VERSION_CODE})`)}
-          {renderInfoItem(t('settings.storageType'), storageType)}
-          {renderInfoItem(t('settings.storageSize'), storageSize)}
+          <InfoItem styles={styles} label={t('settings.version')} value={`${BUILD_VERSION} (${BUILD_VERSION_CODE})`} />
+          <InfoItem styles={styles} label={t('settings.storageType')} value={storageType} />
+          <InfoItem styles={styles} label={t('settings.storageSize')} value={storageSize} />
           {renderLanguageItem()}
         </View>
 
