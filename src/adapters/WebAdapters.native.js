@@ -879,8 +879,30 @@ export const RNFS = {
         logger.error(`[Android] 保存图片到相册失败:`, error);
         throw error;
       }
+    } else if (Platform.OS === 'ios') {
+      // iOS：走自家 PhotoKitModule.saveImageToGallery
+      // —— Swift 里用 PHAssetCreationRequest.addResource 原样落盘，保留 HEIC/EXIF 元数据。
+      // 不支持 http/https/data URI 直传，先 JS 侧落到本地再调（修图链路本来就在本地）。
+      try {
+        const { PhotoKitModule } = NativeModules;
+        if (!PhotoKitModule || typeof PhotoKitModule.saveImageToGallery !== 'function') {
+          throw new Error('PhotoKitModule.saveImageToGallery 方法不可用（请重装 app 让 iOS 拿到新版原生模块）');
+        }
+        if (!imageUrl || typeof imageUrl !== 'string') {
+          throw new Error('imageUrl 不能为空');
+        }
+        if (/^(https?:|data:)/i.test(imageUrl)) {
+          throw new Error('iOS 保存到相册只接受本地文件路径，请先把数据落到磁盘');
+        }
+        logger.debug(`[iOS] PhotoKit.saveImageToGallery: ${imageUrl}`);
+        const result = await PhotoKitModule.saveImageToGallery(imageUrl, fileName || null);
+        logger.debug(`[iOS] 图片保存成功:`, result);
+        return result;
+      } catch (error) {
+        logger.error(`[iOS] 保存图片到相册失败:`, error);
+        throw error;
+      }
     } else {
-      // iOS或其他平台：暂不支持
       throw new Error(`当前平台 ${Platform.OS} 不支持保存图片到相册`);
     }
   },

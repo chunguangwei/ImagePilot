@@ -113,7 +113,24 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
       lowerName.hasSuffix(".heic") ? "image/heic" :
       lowerName.hasSuffix(".gif") ? "image/gif" :
       "image/jpeg"
-    return [
+
+    // GPS：PHAsset.location 是 CLLocation?，由系统从原图 EXIF 抽好缓存在 Photos DB 里——
+    // 拿它比我们自己解 EXIF 快几个数量级（不用打开图像数据）。
+    // horizontalAccuracy < 0 时坐标是无效的（CoreLocation 约定），按缺失处理。
+    var lat: NSNumber? = nil
+    var lng: NSNumber? = nil
+    var alt: NSNumber? = nil
+    var acc: NSNumber? = nil
+    if let loc = asset.location, loc.horizontalAccuracy >= 0 {
+      lat = NSNumber(value: loc.coordinate.latitude)
+      lng = NSNumber(value: loc.coordinate.longitude)
+      if loc.verticalAccuracy >= 0 {
+        alt = NSNumber(value: loc.altitude)
+      }
+      acc = NSNumber(value: loc.horizontalAccuracy)
+    }
+
+    var dict: [String: Any] = [
       "id": asset.localIdentifier,
       "uri": "ph://\(asset.localIdentifier)",
       "localIdentifier": asset.localIdentifier,
@@ -131,6 +148,12 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
       "isDepthEffect": isDepthEffect,
       "isBurst": isBurst,
     ]
+    // 把 nil 字段交给 JS 层默认值（toImageRecord），不在 dict 里塞 NSNull
+    if let lat = lat { dict["latitude"] = lat }
+    if let lng = lng { dict["longitude"] = lng }
+    if let alt = alt { dict["altitude"] = alt }
+    if let acc = acc { dict["accuracy"] = acc }
+    return dict
   }
 
   // MARK: - 授权
@@ -267,6 +290,90 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
           let code = (error as NSError?)?.code == 3072 ? "E_USER_CANCELLED" : "E_DELETE_FAILED"
           reject(code, error?.localizedDescription ?? "delete failed", error)
         }
+      }
+    }
+  }
+
+  // MARK: - 保存到相册（修图/AI 增强结果写回照片库）
+
+  /// 把本地文件保存到照片库。Android 端用 MediaStoreModule.saveImageToGallery 干同样的事；
+  /// iOS 这边没有等价 RN 库，所以走自家原生：PHAssetCreationRequest.addResource(.photo, fileURL:)
+  /// —— 系统会自动保留 EXIF/HEIC 元数据，并把新照片放到「相机胶卷」里。
+  ///
+  /// 入参：
+  ///   sourcePath — 本地路径，支持 "file://..." 前缀；其它任何形式（http/data URI）请先 JS 侧落到本地再调
+  ///   fileName   — 可选；iOS 系统按 EXIF/创建时间自己起名，这个字段只用于回报，不影响实际存储
+  /// 出参：{ uri, fileName, localIdentifier } —— 与 Android 端形状对齐
+  @objc(saveImageToGallery:fileName:resolver:rejecter:)
+  func saveImageToGallery(_ sourcePath: String,
+                          fileName: String?,
+                          resolver resolve: @escaping RCTPromiseResolveBlock,
+                          rejecter reject: @escaping RCTPromiseRejectBlock) {
+    // 兼容 "file://" 前缀；其它形式拒绝（不在 iOS 这层做下载/解码）
+    let trimmed = sourcePath.hasPrefix("file://") ? String(sourcePath.dropFirst(7)) : sourcePath
+    if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") || trimmed.hasPrefix("data:") {
+      reject("E_UNSUPPORTED_URI", "saveImageToGallery 只接受本地文件路径，请先把数据落到磁盘", nil)
+      return
+    }
+    guard FileManager.default.fileExists(atPath: trimmed) else {
+      reject("E_FILE_NOT_FOUND", "源文件不存在: \(trimmed)", nil)
+      return
+    }
+    let fileURL = URL(fileURLWithPath: trimmed)
+    let finalName = fileName ?? fileURL.lastPathComponent
+
+    let proceed = {
+      var placeholder: PHObjectPlaceholder?
+      PHPhotoLibrary.shared().performChanges({
+        // 用 addResource 而不是 creationRequestForAssetFromImage —— 后者会先解码再重编码
+        // 成 JPEG，HEIC/PNG 元数据/质量会丢；addResource 原样落盘，跟 Android 端 MediaStore
+        // 拷字节的行为一致。
+        let req = PHAssetCreationRequest.forAsset()
+        req.addResource(with: .photo, fileURL: fileURL, options: nil)
+        placeholder = req.placeholderForCreatedAsset
+      }) { success, error in
+        DispatchQueue.main.async {
+          if success, let id = placeholder?.localIdentifier {
+            resolve([
+              "uri": "ph://\(id)",
+              "fileName": finalName,
+              "localIdentifier": id,
+            ])
+          } else {
+            reject("E_SAVE_FAILED", error?.localizedDescription ?? "save failed", error)
+          }
+        }
+      }
+    }
+
+    // iOS 14+：用 .addOnly 精细权限弹「只允许添加」，比 .readWrite 体验好（不需要读权限）
+    if #available(iOS 14, *) {
+      let status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+      switch status {
+      case .authorized, .limited:
+        proceed()
+      case .notDetermined:
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { newStatus in
+          if newStatus == .authorized || newStatus == .limited {
+            proceed()
+          } else {
+            reject("E_PERMISSION_DENIED", "未授予相册写入权限（系统设置 → ImagePilot → 照片 → 添加照片）", nil)
+          }
+        }
+      default:
+        reject("E_PERMISSION_DENIED", "未授予相册写入权限（系统设置 → ImagePilot → 照片 → 添加照片）", nil)
+      }
+    } else {
+      let status = PHPhotoLibrary.authorizationStatus()
+      if status == .authorized {
+        proceed()
+      } else if status == .notDetermined {
+        PHPhotoLibrary.requestAuthorization { newStatus in
+          if newStatus == .authorized { proceed() }
+          else { reject("E_PERMISSION_DENIED", "未授予相册访问权限", nil) }
+        }
+      } else {
+        reject("E_PERMISSION_DENIED", "未授予相册访问权限", nil)
       }
     }
   }

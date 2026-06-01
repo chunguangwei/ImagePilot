@@ -22,6 +22,9 @@ import { logger, RNFS } from '../adapters/WebAdapters';
 import UnifiedDataService from './UnifiedDataService';
 import ImageClassifierService from './ImageClassifierService';
 import ImageProcessor from './ImageProcessor';
+import ImageSimilarityService from './ImageSimilarityService';
+import cityLocationService from './CityLocationService';
+import { similarityDetectionPhase as sharedSimilarityDetection } from './similarityDetectionPhase';
 import { getUri } from '../adapters/WebAdapters';
 import { classifyImageByTier, readActiveTier } from './classify/classifyByTier';
 import { mergeScannerRecords } from './classify/mergeScannerRecord';
@@ -57,6 +60,12 @@ function categoryFromSubtype(asset) {
 /** PHAsset → 业务层 image 记录（与 Android 形状对齐，category 默认 'NA'）*/
 function toImageRecord(asset) {
   const systemCat = categoryFromSubtype(asset);
+  // PhotoKit 已从原图 EXIF 解出 GPS 并缓存在 Photos DB 里——native 直接读出来传上来，
+  // 比 JS 侧再解 EXIF 快几个数量级。null 表示这张图本来就没 GPS 元数据。
+  const lat = (typeof asset.latitude === 'number') ? asset.latitude : null;
+  const lng = (typeof asset.longitude === 'number') ? asset.longitude : null;
+  const alt = (typeof asset.altitude === 'number') ? asset.altitude : null;
+  const acc = (typeof asset.accuracy === 'number') ? asset.accuracy : null;
   return {
     id: asset.id,
     uri: asset.uri, // "ph://<localIdentifier>" —— RN <Image> 与 react-native-image-resizer 都能消费
@@ -71,9 +80,9 @@ function toImageRecord(asset) {
     confidence: systemCat ? 'system' : null,
     message: null,
     background_color: null,
-    latitude: null, longitude: null, altitude: null, accuracy: null,
+    latitude: lat, longitude: lng, altitude: alt, accuracy: acc,
     address: null, city: null, country: null, province: null, district: null, street: null,
-    locationSource: null, cityDistance: null,
+    locationSource: (lat != null && lng != null) ? 'photokit' : null, cityDistance: null,
     idCardDetections: null, generalDetections: null, mobileNetV3Detections: null,
     imageDimensions: JSON.stringify({ width: asset.width || 0, height: asset.height || 0 }),
     cameraSettings: null,
@@ -89,6 +98,8 @@ class GalleryScannerService {
     this.totalImagesToBeClassified = 0;
     // 共享分类器实例，避免重复加载 ONNX 模型（initialize 是幂等的）
     this.imageClassifier = new ImageClassifierService();
+    // 相似度检测共享实例——initialize 幂等，特征向量缓存在内部
+    this.similarityService = new ImageSimilarityService();
     // 增量监听（PHPhotoLibraryChangeObserver）相关
     this._changeEmitter = null;
     this._changeSub = null;
@@ -99,6 +110,12 @@ class GalleryScannerService {
     if (!IS_NATIVE_AVAILABLE) {
       logger.warn('[iOS] PhotoKitModule 不可用——可能是 Pods 没装好或原生模块未编进 app');
       return false;
+    }
+    try {
+      await this.similarityService.initialize();
+    } catch (e) {
+      // 相似度检测初始化失败不阻断扫描；similarityDetectionPhase 调用时会再次尝试
+      logger.warn('[iOS] similarityService.initialize 失败（相似度检测会受影响）:', e?.message || e);
     }
     logger.debug('[iOS] GalleryScannerService.initialize OK');
     return true;
@@ -546,18 +563,144 @@ class GalleryScannerService {
     return await this._classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg);
   }
 
-  /** M2/M3 不做相似检测；返回空让上层流程跑通 */
-  async similarityDetectionPhase() {
-    return { success: true, groups: [] };
+  /**
+   * 相似度检测——和 Android 共享 similarityDetectionPhase 模块（颜色直方图 + 滑窗比对）。
+   * GPS/相似都是 iOS 端首版没接的，现在补齐保持双端一致。
+   */
+  async similarityDetectionPhase(_scanStartTime = null, _candidateImages = []) {
+    const settings = await UnifiedDataService.readSettings();
+    let similarityThreshold = (settings.similarityThreshold != null
+        && settings.similarityThreshold >= 0
+        && settings.similarityThreshold <= 1)
+      ? settings.similarityThreshold
+      : 0.8;
+    // 下限 0.8——再低的阈值在 ImageSimilarityService 里会触发 spammy false-positive，
+    // Android 端也是同样兜底；不重复推理 UX，保持双端一致。
+    if (similarityThreshold < 0.8) similarityThreshold = 0.8;
+
+    try {
+      await this.similarityService.initialize();
+    } catch (e) {
+      logger.warn('[iOS] similarityService.initialize 失败:', e?.message || e);
+    }
+
+    await sharedSimilarityDetection({
+      sendProgressMessage: this.sendProgressMessage.bind(this),
+      similarityService: this.similarityService,
+      similarityThreshold,
+      totalImagesToBeClassified: this.totalImagesToBeClassified,
+    });
+    return { success: true };
   }
 
-  /** M3 不做位置富化；后续接 EXIF + cityLocationService */
+  /**
+   * 位置信息补全——把 PhotoKit 已带的 GPS 反查成 city/country 并落库。
+   *
+   * 与 Android 实现的区别：Android 在同一阶段交错跑 MobileNetV3 推理流水线，
+   * 因为 Android 的扫描+分类是一条线；iOS 把分类拆到了 _classifyAllNAImagesByLocalOnnxJS
+   * 里独立跑，所以这里只做位置反查，不再嵌推理——代码短一截，逻辑更清晰。
+   *
+   * 反查走 cityLocationService.getLocationsBatch：先查本地 SQLite 缓存，本地没的离线
+   * 用内置 cityData 做最近城市估算（CityLocationService 已彻底切到离线，不会再连
+   * api.aifuture.net.cn——iOS 端同样遵循"分类阶段绝不连第三方服务器"的承诺）。
+   */
   async enrichLocationInfo() {
-    return true;
+    logger.info('📍 [iOS] 开始位置信息补全');
+    try {
+      const allImages = await UnifiedDataService.readAllImages();
+
+      // 排除截图 / 二维码——这两类即便有 GPS 也不该按城市归档
+      const validImages = (allImages || []).filter((img) => {
+        const c = img.category || 'NA';
+        return c !== 'screenshot' && c !== 'qrcode';
+      });
+
+      const needLocation = validImages.filter((img) => {
+        if (typeof img.latitude !== 'number' || typeof img.longitude !== 'number') return false;
+        const hasCity = img.city && String(img.city).trim() !== '';
+        const hasCountry = img.country && String(img.country).trim() !== '';
+        return !hasCity || !hasCountry;
+      });
+
+      const totalFoundThisPhase = validImages.length;
+      logger.info(`📍 [iOS] 位置补全统计: 总图=${allImages?.length || 0}, 有效=${validImages.length}, 待补全=${needLocation.length}`);
+      await this.sendProgressMessage('location_enrichment', 0, totalFoundThisPhase, this.imagesClassified, this.totalImagesToBeClassified);
+
+      if (needLocation.length === 0) {
+        logger.info('📍 [iOS] 没有需要补全位置的图片，跳过');
+        await this.sendProgressMessage('location_enrichment', totalFoundThisPhase, totalFoundThisPhase, this.imagesClassified, this.totalImagesToBeClassified);
+        return true;
+      }
+
+      // 接口最多支持 500 个坐标——分批 400 与 Android 端一致，给 IO/解析留余量
+      const BATCH = 400;
+      let processed = 0;
+      let savedTotal = 0;
+      for (let i = 0; i < needLocation.length; i += BATCH) {
+        const slice = needLocation.slice(i, i + BATCH);
+        const coords = slice.map((img) => ({
+          id: img.uri, // cityLocationService 用 id 回填，下游按 uri 关联回图片
+          latitude: img.latitude,
+          longitude: img.longitude,
+        }));
+        let results = [];
+        try {
+          results = await cityLocationService.getLocationsBatch(coords, { skipRemote: false });
+        } catch (e) {
+          logger.warn(`⚠️ [iOS] 位置批量查询失败 (${i}-${i + slice.length}):`, e?.message || e);
+        }
+
+        const uriToLocId = new Map();
+        for (const r of results || []) {
+          const locId = r?.location_id || r?.city?.location_id || null;
+          if (r?.success && locId && r.id) uriToLocId.set(r.id, locId);
+        }
+
+        const cityDataArray = [];
+        for (const img of slice) {
+          const locId = uriToLocId.get(img.uri);
+          if (locId) {
+            cityDataArray.push({
+              uri: img.uri,
+              id: img.id,
+              city: locId,
+              latitude: img.latitude,
+              longitude: img.longitude,
+            });
+          }
+        }
+        if (cityDataArray.length > 0) {
+          try {
+            const r = await UnifiedDataService.updateImagesCity(cityDataArray, false);
+            if (r && r.success) {
+              savedTotal += r.updatedCount || cityDataArray.length;
+            }
+          } catch (e) {
+            logger.warn('[iOS] 批量落库 city 失败:', e?.message || e);
+          }
+        }
+        processed += slice.length;
+        await this.sendProgressMessage('location_enrichment', Math.min(processed, totalFoundThisPhase), totalFoundThisPhase, this.imagesClassified, this.totalImagesToBeClassified);
+      }
+
+      // 一次性刷 GlobalImageCache，避免上层 HomeScreen 读到老数据看不到新城市分布
+      try {
+        await UnifiedDataService.imageCache.refreshCache();
+      } catch (e) {
+        logger.warn('[iOS] 位置补全后刷新 GlobalImageCache 失败:', e?.message || e);
+      }
+      logger.info(`✅ [iOS] 位置信息补全完成：共补全 ${savedTotal} 张`);
+      await this.sendProgressMessage('completed', totalFoundThisPhase, totalFoundThisPhase, this.imagesClassified, this.totalImagesToBeClassified);
+      return true;
+    } catch (e) {
+      logger.error('❌ [iOS] 位置信息补全失败:', e?.message || e);
+      await this.sendProgressMessage('error', 0, 0, this.imagesClassified, this.totalImagesToBeClassified);
+      throw e;
+    }
   }
 
   getScanVersion() {
-    return 'ios-m3-1.0.0';
+    return 'ios-m4-1.0.0'; // M4：补齐 GPS + 城市反查 + 相似度检测，与 Android 形状对齐
   }
 
   isUsingNativeScan() {
