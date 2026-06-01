@@ -26,6 +26,7 @@ import com.imageclassifier.v2.SharePackage;
 import com.imageclassifier.v2.ScanServicePackage;
 import com.imageclassifier.v2.GalleryScanPackage;
 import com.imageclassifier.v2.NativeLogExportPackage;
+import com.reactnativecommunity.blurview.BlurViewPackage;
 
 public class MainApplication extends Application implements ReactApplication {
 
@@ -57,7 +58,8 @@ public class MainApplication extends Application implements ReactApplication {
             new ScanServicePackage(),  // 添加扫描服务原生模块
             new GalleryScanPackage(),  // 添加相册扫描原生模块
             new NativeLogExportPackage(),  // 添加原生日志导出模块
-            new ApkInstallerPackage()  // App 内更新安装（方案2）
+            new ApkInstallerPackage(),  // App 内更新安装（方案2）
+            new BlurViewPackage()  // ImagePreview 沉浸式 chrome 磨砂玻璃效果
           );
         }
 

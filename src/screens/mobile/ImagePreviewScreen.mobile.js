@@ -30,7 +30,12 @@ import {
   StatusBar,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { BlurView } from '@react-native-community/blur';
 import { getDefaultPresets, getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
+
+// 给 BlurView 加 Animated 包装 —— chrome 显隐动画走 opacity，BlurView 必须是 Animated.View
+// 才能接 Animated.Value（与原 Animated.View 行为一致）。
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 import { LOCAL_EXTRA_PRESETS } from '../../services/enhance/localEnhance';
 import { presetIcon, ACTION_ICONS } from '../../ui/ios/presetIcons';
 import { SafeAreaView, Alert } from '../../adapters/WebAdapters';
@@ -1142,7 +1147,10 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     // 如果是暂存箱，显示"暂存箱 (6/20)"格式
     if (currentFilterType === 'stagingBox') {
       return (
-        <Animated.View
+        <AnimatedBlurView
+          blurType="dark"
+          blurAmount={20}
+          reducedTransparencyFallbackColor="#1C1C1E"
           style={[styles.header, { opacity: chromeOpacityAnim }]}
           pointerEvents={chromeVisible ? 'auto' : 'none'}
         >
@@ -1157,7 +1165,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           <TouchableOpacity onPress={() => setShowInfo(!showInfo)} style={styles.headerButton}>
             {PvIonicons ? <PvIonicons name="information-circle-outline" size={26} color="#FFFFFF" /> : <Text style={styles.headerIcon}>ℹ️</Text>}
           </TouchableOpacity>
-        </Animated.View>
+        </AnimatedBlurView>
       );
     }
     
@@ -1218,7 +1226,10 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     }
 
     return (
-      <Animated.View
+      <AnimatedBlurView
+        blurType="dark"
+        blurAmount={20}
+        reducedTransparencyFallbackColor="#1C1C1E"
         style={[styles.header, { opacity: chromeOpacityAnim }]}
         pointerEvents={chromeVisible ? 'auto' : 'none'}
       >
@@ -1238,7 +1249,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         <TouchableOpacity onPress={() => setShowInfo(!showInfo)} style={styles.headerButton}>
           {PvIonicons ? <PvIonicons name="information-circle-outline" size={26} color="#FFFFFF" /> : <Text style={styles.headerIcon}>ℹ️</Text>}
         </TouchableOpacity>
-      </Animated.View>
+      </AnimatedBlurView>
     );
   };
 
@@ -1670,7 +1681,10 @@ const ImagePreviewScreen = ({ route, navigation }) => {
 
   const renderActions = () => {
     return (
-      <Animated.View
+      <AnimatedBlurView
+        blurType="dark"
+        blurAmount={20}
+        reducedTransparencyFallbackColor="#1C1C1E"
         style={[styles.actionsBar, { opacity: chromeOpacityAnim }]}
         pointerEvents={chromeVisible ? 'auto' : 'none'}
       >
@@ -1718,7 +1732,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           {actIcon('share', '📤')}
           <Text style={styles.actionLabel}>{t('category.share')}</Text>
         </TouchableOpacity>
-      </Animated.View>
+      </AnimatedBlurView>
     );
   };
 
@@ -1929,14 +1943,15 @@ const createStyles = (c) => StyleSheet.create({
     backgroundColor: '#000000', // 沉浸式照片画布：永远黑底，与主题无关
   },
 
-  // 头部：常驻深色半透明叠在图片上层，文字/图标固定白色（与系统主题无关）
+  // 头部：iOS Photos 风格磨砂玻璃 chrome（BlurView 提供半透明 + 模糊照片底）。
+  // 文字/图标固定白色，与系统主题无关；BlurView 之前是 rgba(28,28,30,0.9) 兜底色。
+  // 此处不再写 backgroundColor —— AnimatedBlurView 自身处理底色 + reducedTransparencyFallback。
   header: {
     height: 56,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 8,
-    backgroundColor: 'rgba(28, 28, 30, 0.9)',
   },
   headerButton: {
     width: 44,
@@ -2095,13 +2110,13 @@ const createStyles = (c) => StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // 操作栏
+  // 操作栏：iOS Photos 磨砂玻璃 chrome；BlurView 自带半透明 + 模糊，不设 backgroundColor。
+  // 顶部 hairline 保留（iOS toolbar 标志性分隔线），用半透明白以适配深色 blur 底。
   actionsBar: {
     position: 'relative',
     flexDirection: 'row',
-    backgroundColor: c.card,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: c.separator,
+    borderTopColor: 'rgba(255, 255, 255, 0.15)',
     paddingTop: 10,
     paddingBottom: 16,
     paddingHorizontal: 8,
@@ -2117,9 +2132,10 @@ const createStyles = (c) => StyleSheet.create({
     fontSize: 23,
     marginBottom: 3,
   },
+  // chrome 永远是深色 blur 底（即使 light mode）—— label 常驻白色保持对比
   actionLabel: {
     fontSize: 11,
-    color: c.label,
+    color: '#FFFFFF',
   },
 
   // Modal 样式
