@@ -657,182 +657,11 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  /**
-   * 加载按时间分类数据（时间桶数量 + 各桶代表图，用于按时间卡片）
-   */
-  const loadTimeData = async () => {
-    try {
-      const counts = await UnifiedDataService.readTimeCounts();
-      setTimeCounts(counts || {});
-      const keysWithCount = Object.entries(counts || {}).filter(([, c]) => c > 0).map(([k]) => k);
-      const map = {};
-      await Promise.all(keysWithCount.map(async (timeKey) => {
-        try {
-          const images = await UnifiedDataService.readRecentImagesByTimeRange(timeKey, 1);
-          map[timeKey] = images;
-        } catch (e) {
-          logger.error(`加载时间桶 ${timeKey} 代表图失败:`, e);
-          map[timeKey] = [];
-        }
-      }));
-      setTimeRecentImages(map);
-    } catch (error) {
-      logger.error('❌ 加载按时间数据失败:', error);
-    }
-  };
-
-  /**
-   * 加载城市列表（仅 locationId、count、latestImageUri）
-   * 城市显示名称由 CityCard 组件根据 i18n.language 自行获取（与 PC 端一致）
-   */
-  const loadCities = async () => {
-    try {
-      const cache = GlobalImageCache.getCache();
-      const cityCounts = cache.cityCounts || {};
-      const allImages = cache.allImages || [];
-      
-      const cityList = Object.keys(cityCounts).map((locationId) => {
-        const cityImages = allImages
-          .filter(img => img.city === locationId)
-          .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        const latestImage = cityImages.length > 0 ? cityImages[0] : null;
-        return {
-          locationId,
-          count: cityCounts[locationId],
-          latestImageUri: latestImage ? getUri(latestImage) : null,
-        };
-      });
-      cityList.sort((a, b) => b.count - a.count);
-      setCities(cityList);
-      
-    } catch (error) {
-      logger.error('❌ 加载城市列表失败:', error);
-    }
-  };
-
-  /**
-   * 加载颜色分类数据
-   */
-  const loadColors = async () => {
-    try {
-      const colorCountsData = await UnifiedDataService.readColorCounts();
-      setColorCounts(colorCountsData);
-    } catch (error) {
-      logger.error('❌ 加载颜色分类失败:', error);
-    }
-  };
-
-  /**
-   * 加载目录分类数据（按属性区无缩略图，仅加载数量）
-   */
-  const loadDirectories = async () => {
-    try {
-      const data = await UnifiedDataService.readDirectoryCounts();
-      setDirectoryCounts(data);
-    } catch (error) {
-      logger.error('❌ 加载目录分类失败:', error);
-    }
-  };
-
-  /**
-   * 加载格式分类数据（按属性区无缩略图，仅加载数量）
-   */
-  const loadFormats = async () => {
-    try {
-      const data = await UnifiedDataService.readFormatCounts();
-      setFormatCounts(data);
-    } catch (error) {
-      logger.error('❌ 加载格式分类失败:', error);
-    }
-  };
-
-  /**
-   * 加载分辨率分类数据（按属性区无缩略图，仅加载数量）
-   */
-  const loadResolutions = async () => {
-    try {
-      const data = await UnifiedDataService.readResolutionCounts();
-      setResolutionCounts(data);
-    } catch (error) {
-      logger.error('❌ 加载分辨率分类失败:', error);
-    }
-  };
-
-  /**
-   * 加载方向分类数据（按属性区无缩略图，仅加载数量）
-   */
-  const loadOrientations = async () => {
-    try {
-      const data = await UnifiedDataService.readOrientationCounts();
-      setOrientationCounts(data);
-    } catch (error) {
-      logger.error('❌ 加载方向分类失败:', error);
-    }
-  };
-
-  /**
-   * 加载ISO分类数据（按拍摄参数区无缩略图，仅加载数量）
-   */
-  const loadISO = async () => {
-    try {
-      const data = await UnifiedDataService.readISOCounts();
-      setISOCounts(data);
-    } catch (error) {
-      logger.error('❌ 加载ISO分类失败:', error);
-    }
-  };
-
-  /**
-   * 加载光圈分类数据（按拍摄参数区无缩略图，仅加载数量）
-   */
-  const loadAperture = async () => {
-    try {
-      const data = await UnifiedDataService.readApertureCounts();
-      setApertureCounts(data);
-    } catch (error) {
-      logger.error('❌ 加载光圈分类失败:', error);
-    }
-  };
-
-  /**
-   * 加载快门分类数据（按拍摄参数区无缩略图，仅加载数量）
-   */
-  const loadShutter = async () => {
-    try {
-      const data = await UnifiedDataService.readShutterCounts();
-      setShutterCounts(data);
-    } catch (error) {
-      logger.error('❌ 加载快门分类失败:', error);
-    }
-  };
-
-  /**
-   * 加载焦距分类数据（按拍摄参数区无缩略图，仅加载数量）
-   */
-  const loadFocalLength = async () => {
-    try {
-      const data = await UnifiedDataService.readFocalLengthCounts();
-      setFocalLengthCounts(data);
-    } catch (error) {
-      logger.error('❌ 加载焦距分类失败:', error);
-    }
-  };
-
-  /**
-   * 加载相似组
-   */
-  const loadSimilarityGroups = async () => {
-    try {
-      // 使用 PC 端相同的方法获取相似组统计（与 PC 端保持一致）
-      // 加载所有相似组，而不是只加载前8个，这样才能正确显示MORE按钮
-      const allGroups = await UnifiedDataService.getSimilarityGroupsStats();
-      setSimilarityGroups(allGroups || []);
-      
-      
-    } catch (error) {
-      logger.error('❌ 加载相似组失败:', error);
-    }
-  };
+  // [P3 cleanup] 删除 12 个 dead loadX 函数（loadTimeData / loadCities / loadColors /
+  // loadDirectories / loadFormats / loadResolutions / loadOrientations / loadISO /
+  // loadAperture / loadShutter / loadFocalLength / loadSimilarityGroups）。
+  // P2 已将 loadAllData 重写为单 async 内联编排（Promise.all + setState 批处理），
+  // 这些独立函数 0 引用，约 175 行；如需历史实现见 git blame。
 
   /**
    * 加载新发现的照片（从上次扫描之后新发现的照片）
@@ -2527,6 +2356,21 @@ const HomeScreen = ({ navigation }) => {
           />
         }
       >
+        {/* 首扫前欢迎卡（从未扫过 + 无任何数据）：在 HomeScreen P0「空消息条不渲染」之上补一个引导入口 */}
+        {(!hasScanned && recentImagesTotal === 0 && categories.every((cat) => (cat.count || 0) === 0)) ? (
+          <View style={styles.welcomeCard}>
+            <Text style={styles.welcomeTitle}>{t('home.welcomeTitle')}</Text>
+            <Text style={styles.welcomeSub}>{t('home.welcomeSub')}</Text>
+            <TouchableOpacity
+              style={styles.welcomeBtn}
+              onPress={handleScan}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+            >
+              <Text style={styles.welcomeBtnText}>{t('home.welcomeAction')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
         {renderTimeSection()}
         {renderCategoriesSection()}
         {renderCitiesSection()}
@@ -2628,6 +2472,42 @@ const createStyles = (c) => StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 100, // 为FAB留出空间
+  },
+
+  // 首扫前欢迎卡（仅在 hasScanned===false 且全空时渲染；引导用户点 FAB 之外的扫描入口）
+  welcomeCard: {
+    backgroundColor: c.card,
+    marginTop: 12,
+    marginHorizontal: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  welcomeTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: c.label,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  welcomeSub: {
+    fontSize: 14,
+    color: c.secondaryLabel,
+    marginBottom: 20,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  welcomeBtn: {
+    backgroundColor: c.accent,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  welcomeBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
 
   // 区块样式（iOS 分组：白底全宽 + 组间留白；保持全宽以兼容网格宽度计算）
