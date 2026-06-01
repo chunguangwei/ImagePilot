@@ -17,6 +17,9 @@
   注意：本文件由 CocoaPods 的 Privacy Manifest Aggregation 维护，pod install
   时会把所安装 Pods 的 reason 自动并入。手工只在这里记隐私承诺与 ImagePilot
   自身代码用到的 reason；不要手动删除被 CocoaPods 写入的条目。
+
+  已知：pod install 会把本注释块整个吃掉。每次 pod install 后手动恢复一次即可
+  （或忽略，plist 数据本身不受影响，注释只是给人看的文档）。
 -->
 <plist version="1.0">
 <dict>
