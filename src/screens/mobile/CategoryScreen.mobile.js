@@ -174,6 +174,60 @@ const CategoryScreen = ({ route, navigation }) => {
   const pageType = filterType || null;
   const isStaging = filterType === 'stagingBox';
 
+  // ==================== 页面形状配置 ====================
+  // 所有 filterType 派生的"页面行为"集中在这里，避免 if-isStaging 散落 8 处。
+  // - actionButtons / emptyState: 数据形态在这里定义，JSX 渲染时直接读
+  // - requiresFilterValue: 校验规则（stagingBox 不需要 filterValue，其它都需要）
+  // - trackStagingMembership: 是否同步 stagingBoxImageIds 集合（用于"已暂存"badge）
+  // 注：computed 在 render 阶段，依赖 filterType / filterValue / t / navigation / route，
+  //     这些每次都会重算成本可忽略；不放 useMemo 以保持可读性。
+  const screenConfig = (() => {
+    const requiresFilterValue = !isStaging;
+    const trackStagingMembership = !isStaging;
+
+    // 操作按钮：暂存箱有"移出"，其它有"暂存"，其余动作相同
+    const actionButtons = isStaging
+      ? [
+          { id: 'removeFromStaging', label: t('category.removeFromStagingLabel'), icon: '➡️', color: '#FF9500' },
+          { id: 'delete', label: t('common.delete'), icon: '🗑️', color: '#FF3B30' },
+          { id: 'enhance', label: t('category.enhance'), icon: '✨', color: '#9C27B0' },
+          { id: 'changeCategory', label: t('category.changeCategory'), icon: '🏷️', color: '#007AFF' },
+          { id: 'share', label: t('category.share'), icon: '📤', color: '#34C759' },
+        ]
+      : [
+          { id: 'staging', label: t('category.staging'), icon: '📦', color: '#FF9500' },
+          { id: 'delete', label: t('common.delete'), icon: '🗑️', color: '#FF3B30' },
+          { id: 'enhance', label: t('category.enhance'), icon: '✨', color: '#9C27B0' },
+          { id: 'changeCategory', label: t('category.changeCategory'), icon: '📁', color: '#007AFF' },
+          { id: 'share', label: t('category.share'), icon: '📤', color: '#34C759' },
+        ];
+
+    // 空状态 CTA：返回 { title, actionLabel, onAction }，actionLabel 为 null 则不渲染按钮
+    let emptyState = { title: t('category.noImages'), actionLabel: null, onAction: null };
+    if (isStaging) {
+      emptyState = {
+        title: t('category.emptyCTAStagingTitle'),
+        actionLabel: t('category.emptyCTAStagingAction'),
+        onAction: () => {
+          if (navigation.canGoBack()) navigation.goBack();
+          else navigation.navigate('Home');
+        },
+      };
+    } else if (filterType === 'category' && filterValue === 'NA') {
+      const startSmartScan = route?.params?.startSmartScan;
+      emptyState = {
+        title: t('category.emptyCTAUnclassifiedTitle'),
+        actionLabel: t('category.emptyCTAUnclassifiedAction'),
+        onAction: () => {
+          if (typeof startSmartScan === 'function') startSmartScan();
+          else navigation.navigate('Home');
+        },
+      };
+    }
+
+    return { requiresFilterValue, trackStagingMembership, actionButtons, emptyState };
+  })();
+
   // 照片创玩（增强方案）
   const [showEnhancePresets, setShowEnhancePresets] = useState(false);
   const [enhancePresets, setEnhancePresets] = useState({});
@@ -307,31 +361,6 @@ const CategoryScreen = ({ route, navigation }) => {
       default:
         return t('category.imageList');
     }
-  };
-
-  /**
-   * 获取操作按钮配置
-   */
-  const getActionButtons = () => {
-    if (isStaging) {
-      // 暂存箱（stagingBox）：移出、删除、创玩、分类、分享
-      return [
-        { id: 'removeFromStaging', label: t('category.removeFromStagingLabel'), icon: '➡️', color: '#FF9500' },
-        { id: 'delete', label: t('common.delete'), icon: '🗑️', color: '#FF3B30' },
-        { id: 'enhance', label: t('category.enhance'), icon: '✨', color: '#9C27B0' },
-        { id: 'changeCategory', label: t('category.changeCategory'), icon: '🏷️', color: '#007AFF' },
-        { id: 'share', label: t('category.share'), icon: '📤', color: '#34C759' },
-      ];
-    }
-    
-    // 所有非暂存箱的情况（普通分类、城市、相似组）：暂存、删除、创玩、分类、分享
-    return [
-      { id: 'staging', label: t('category.staging'), icon: '📦', color: '#FF9500' },
-      { id: 'delete', label: t('common.delete'), icon: '🗑️', color: '#FF3B30' },
-      { id: 'enhance', label: t('category.enhance'), icon: '✨', color: '#9C27B0' },
-      { id: 'changeCategory', label: t('category.changeCategory'), icon: '📁', color: '#007AFF' },
-      { id: 'share', label: t('category.share'), icon: '📤', color: '#34C759' },
-    ];
   };
 
   // ==================== 选择模式相关函数 ====================
@@ -680,9 +709,8 @@ const CategoryScreen = ({ route, navigation }) => {
         logger.error('没有有效的上下文参数');
         filteredImages = [];
       } else {
-        // 🆕 防御性检查：某些 filterType 需要 filterValue
-        if (filterType !== 'stagingBox') {
-          // stagingBox 不需要 filterValue，其他类型都需要
+        // 防御性检查：暂存箱以外的 filterType 都需要 filterValue（screenConfig 统一判断）
+        if (screenConfig.requiresFilterValue) {
           if (!filterValue || (typeof filterValue === 'string' && filterValue.trim() === '')) {
             logger.warn(`filterType=${filterType} 需要 filterValue，但 filterValue 为空，返回空数组`);
             filteredImages = [];
@@ -721,8 +749,8 @@ const CategoryScreen = ({ route, navigation }) => {
         setGroupedImages({});
       }
       
-      // 如果不是暂存箱页面，加载暂存箱图片ID列表（用于显示"已暂存"标签）
-      if (!isStaging) {
+      // 非暂存箱页面才需要"已暂存"badge 来源（screenConfig.trackStagingMembership 统一判断）
+      if (screenConfig.trackStagingMembership) {
         try {
           const stagingBoxImages = await UnifiedDataService.getStagingBoxImages();
           const stagingBoxIds = new Set(stagingBoxImages.map(img => img.id));
@@ -732,7 +760,6 @@ const CategoryScreen = ({ route, navigation }) => {
           setStagingBoxImageIds(new Set());
         }
       } else {
-        // 暂存箱页面不需要加载
         setStagingBoxImageIds(new Set());
       }
       
@@ -1310,7 +1337,7 @@ const CategoryScreen = ({ route, navigation }) => {
               });
               
               // 5. 更新暂存箱图片ID集合（用于显示"已暂存"标签）
-              if (!isStaging) {
+              if (screenConfig.trackStagingMembership) {
                 setStagingBoxImageIds(prev => {
                   const newSet = new Set(prev);
                   imageIds.forEach(id => newSet.add(id));
@@ -1366,7 +1393,7 @@ const CategoryScreen = ({ route, navigation }) => {
               });
               
               // 5. 更新暂存箱图片ID集合（用于显示"已暂存"标签）
-              if (!isStaging) {
+              if (screenConfig.trackStagingMembership) {
                 setStagingBoxImageIds(prev => {
                   const newSet = new Set(prev);
                   imageIds.forEach(id => newSet.delete(id));
@@ -1526,7 +1553,7 @@ const CategoryScreen = ({ route, navigation }) => {
   const renderBottomBar = () => {
     if (!selectionMode || selectedCount === 0) return null;
     
-    const actions = getActionButtons();
+    const actions = screenConfig.actionButtons;
 
     return (
       <View style={[styles.actionBar, { paddingBottom: 8 + insets.bottom }]}>
@@ -1617,36 +1644,10 @@ const CategoryScreen = ({ route, navigation }) => {
   };
 
   /**
-   * 渲染空状态（按 filterType / filterValue 分场景给 CTA）
-   * - 暂存箱空：返回首页
-   * - 待分类(NA)空：去扫描相册（如有 startSmartScan prop 则触发；否则回 Home）
-   * - 其它：维持「暂无图片」
+   * 渲染空状态（数据来自 screenConfig.emptyState）
    */
   const renderEmpty = () => {
-    let title = t('category.noImages');
-    let actionLabel = null;
-    let onAction = null;
-
-    if (filterType === 'stagingBox') {
-      title = t('category.emptyCTAStagingTitle');
-      actionLabel = t('category.emptyCTAStagingAction');
-      onAction = () => {
-        if (navigation.canGoBack()) navigation.goBack();
-        else navigation.navigate('Home');
-      };
-    } else if (filterType === 'category' && filterValue === 'NA') {
-      title = t('category.emptyCTAUnclassifiedTitle');
-      actionLabel = t('category.emptyCTAUnclassifiedAction');
-      const startSmartScan = route?.params?.startSmartScan;
-      onAction = () => {
-        if (typeof startSmartScan === 'function') {
-          startSmartScan();
-        } else {
-          navigation.navigate('Home');
-        }
-      };
-    }
-
+    const { title, actionLabel, onAction } = screenConfig.emptyState;
     return (
       <View style={styles.emptyContainer}>
         {CatIonicons

@@ -24,6 +24,7 @@ import ImageClassifierService from './ImageClassifierService';
 import ImageProcessor from './ImageProcessor';
 import { getUri } from '../adapters/WebAdapters';
 import { classifyImageByTier, readActiveTier } from './classify/classifyByTier';
+import { mergeScannerRecords } from './classify/mergeScannerRecord';
 
 const { PhotoKitModule } = NativeModules;
 
@@ -174,47 +175,10 @@ class GalleryScannerService {
         return { success: true, total: 0 };
       }
 
-      // 🔥 关键：保留已分类图的 category / classification 等字段
-      // toImageRecord 只从 PHAsset 拿到 category（默认 'NA'，除非有 systemCat 兜底如
-      // screenshot/panorama/depth）。如果直接 INSERT OR REPLACE，会把用户手动分类、
-      // 云端 LLM 分类、本地 MobileNetV3/CLIP 分类全清成 'NA'。
-      //
-      // 策略：读现有库，按 id 合并。如果已存在记录的 category 不是 'NA'（已分类过），
-      // 保留已有的 category / confidence / idCardDetections / generalDetections /
-      // mobileNetV3Detections / message / 位置字段。systemCat（screenshot/panorama）
-      // 只在原库还是 'NA' 时才生效。
+      // 保留已分类图的 category / classification 等字段（见 mergeScannerRecord 注释）。
       const fresh = items.map(toImageRecord);
       const existing = await UnifiedDataService.readAllImages().catch(() => []);
-      const existingById = new Map((existing || []).map((e) => [e.id, e]));
-      const records = fresh.map((r) => {
-        const prev = existingById.get(r.id);
-        if (!prev) return r;
-        // 已分类 → 完全保留分类相关字段，只更新 PhotoKit 元数据（size/dimensions/takenAt）
-        const keepCategory = prev.category && prev.category !== 'NA';
-        return {
-          ...r,
-          category: keepCategory ? prev.category : (r.category || 'NA'),
-          confidence: keepCategory ? prev.confidence : r.confidence,
-          idCardDetections: prev.idCardDetections || r.idCardDetections,
-          generalDetections: prev.generalDetections || r.generalDetections,
-          mobileNetV3Detections: prev.mobileNetV3Detections || r.mobileNetV3Detections,
-          message: prev.message || r.message,
-          background_color: prev.background_color || r.background_color,
-          // 位置字段保留（之前已 reverse geocode 出来的城市等）
-          latitude: prev.latitude ?? r.latitude,
-          longitude: prev.longitude ?? r.longitude,
-          altitude: prev.altitude ?? r.altitude,
-          accuracy: prev.accuracy ?? r.accuracy,
-          address: prev.address || r.address,
-          city: prev.city || r.city,
-          country: prev.country || r.country,
-          province: prev.province || r.province,
-          district: prev.district || r.district,
-          street: prev.street || r.street,
-          locationSource: prev.locationSource || r.locationSource,
-          cityDistance: prev.cityDistance ?? r.cityDistance,
-        };
-      });
+      const records = mergeScannerRecords(fresh, existing);
       emit({ stage: 'saving', message: `落库 ${records.length} 张…`, processed: 0, total: records.length });
       await UnifiedDataService.writeImageDetailedInfo(records, true);
 
@@ -293,38 +257,10 @@ class GalleryScannerService {
     logger.debug(`[iOS] 增量变更 +${inserted.length} ~${changed.length} -${removed.length}`);
 
     if (inserted.length || changed.length) {
-      // 同 scanGalleryWithProgress：toImageRecord 返回的 category='NA'（除非系统兜底），
-      // 这里要按 id 合并已有库的分类相关字段，否则用户 edit 一张已分类图就清空分类。
+      // 同 scanGalleryWithProgress：按 id 合并已有库的分类字段（防 edit 清空分类）。
       const fresh = [...inserted, ...changed].map(toImageRecord);
       const existing = await UnifiedDataService.readAllImages().catch(() => []);
-      const existingById = new Map((existing || []).map((e) => [e.id, e]));
-      const upserts = fresh.map((r) => {
-        const prev = existingById.get(r.id);
-        if (!prev) return r;
-        const keepCategory = prev.category && prev.category !== 'NA';
-        return {
-          ...r,
-          category: keepCategory ? prev.category : (r.category || 'NA'),
-          confidence: keepCategory ? prev.confidence : r.confidence,
-          idCardDetections: prev.idCardDetections || r.idCardDetections,
-          generalDetections: prev.generalDetections || r.generalDetections,
-          mobileNetV3Detections: prev.mobileNetV3Detections || r.mobileNetV3Detections,
-          message: prev.message || r.message,
-          background_color: prev.background_color || r.background_color,
-          latitude: prev.latitude ?? r.latitude,
-          longitude: prev.longitude ?? r.longitude,
-          altitude: prev.altitude ?? r.altitude,
-          accuracy: prev.accuracy ?? r.accuracy,
-          address: prev.address || r.address,
-          city: prev.city || r.city,
-          country: prev.country || r.country,
-          province: prev.province || r.province,
-          district: prev.district || r.district,
-          street: prev.street || r.street,
-          locationSource: prev.locationSource || r.locationSource,
-          cityDistance: prev.cityDistance ?? r.cityDistance,
-        };
-      });
+      const upserts = mergeScannerRecords(fresh, existing);
       await UnifiedDataService.writeImageDetailedInfo(upserts, false);
     }
     if (removed.length) {
