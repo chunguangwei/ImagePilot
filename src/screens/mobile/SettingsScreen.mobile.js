@@ -1493,7 +1493,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.titleRow}>
-              <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">{SetIonicons ? <SetIonicons name="sparkles-outline" size={17} color={c.accent} /> : null} {t('settings.imageEngine') || '修图引擎'}</Text>
+              <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">{SetIonicons ? <SetIonicons name="color-wand-outline" size={17} color={c.accent} /> : null} {t('settings.imageEngine') || '修图引擎'}</Text>
             </View>
           </View>
 

@@ -3,12 +3,12 @@ import './polyfills';
 
 // 🌐 初始化i18n
 import './i18n';
-import { loadSavedLanguage } from './i18n';
+import i18n, { loadSavedLanguage } from './i18n';
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { View, Text, StyleSheet, StatusBar, Platform, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, I18nextProvider } from 'react-i18next';
 
 console.log('📦 App.js: 开始导入模块...');
 
@@ -384,10 +384,15 @@ console.log('📦 App.js: App 组件定义完成');
 // 启动 initializeApp 里读到 settings.colorScheme 后 setScheme 同步到 Provider，
 // 之后所有 useThemeColors 会自动重渲染——主题切换全屏即时生效。
 export default function App() {
+  // I18nextProvider 显式挂 i18n instance —— react-i18next 16 严格了，
+  // 不再容忍 getI18n() 单例时序的 NO_I18NEXT_INSTANCE warning。
+  // 模块层 .use(initReactI18next).init(...) 实际功能照常，但 dev 模式每次 render 都会喊。
   return (
-    <ThemeProvider initialScheme="system">
-      <AppInner />
-    </ThemeProvider>
+    <I18nextProvider i18n={i18n}>
+      <ThemeProvider initialScheme="system">
+        <AppInner />
+      </ThemeProvider>
+    </I18nextProvider>
   );
 }
 
