@@ -66,11 +66,20 @@ export async function ensureModel(filename, url, onProgress, opts = {}) {
   const tmp = `${dest}.part`;
   try { if (await RNFS.exists(tmp)) await RNFS.unlink(tmp); } catch (_) {}
   logger.debug('🟦 开始下载模型', { filename, url });
+  // GitHub Release 第一帧 contentLength 可能为 0（302 重定向到 S3），
+  // 用 begin 回调拿到真正的总长度；progress 用 begin 拿到的值作分母兜底
+  let totalBytes = 0;
   const { jobId, promise } = RNFS.downloadFile({
     fromUrl: url,
     toFile: tmp,
     progressInterval: 400,
-    progress: (r) => { if (onProgress && r.contentLength > 0) onProgress(Math.min(1, r.bytesWritten / r.contentLength)); },
+    begin: (r) => { if (r && r.contentLength > 0) totalBytes = r.contentLength; },
+    progress: (r) => {
+      if (!onProgress) return;
+      const denom = totalBytes || r.contentLength;
+      if (denom > 0) onProgress(Math.min(1, r.bytesWritten / denom));
+      else if (r.bytesWritten > 0) onProgress(0.01); // 出 1% 让用户知道在下，不卡 0%
+    },
   });
 
   // AbortSignal → RNFS.stopDownload(jobId)；abort 后 promise 会以 statusCode 抛错/或正常返回部分文件，

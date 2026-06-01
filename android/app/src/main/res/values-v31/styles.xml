@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ (API 31+) Splash Screen API
+         系统接管启动屏：windowSplashScreenBackground 是底色，
+         windowSplashScreenAnimatedIcon 是中央图标（240dp 透明边里 icon 居中）
+         夜间模式有 values-night-v31/styles.xml 覆盖。 -->
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:windowSplashScreenBackground">@color/ic_launcher_background_color</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+    </style>
+</resources>

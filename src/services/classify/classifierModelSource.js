@@ -55,11 +55,19 @@ export async function ensureClassifierModel(filename, url, onProgress, opts = {}
   try { if (await RNFS.exists(tmp)) await RNFS.unlink(tmp); } catch (_) {}
 
   logger.debug(`[classifierModelSource] 开始下载: ${filename} from ${url}`);
+  // GitHub Release 第一帧 contentLength 可能为 0（302 重定向到 S3），用 begin 兜底
+  let totalBytes = 0;
   const { jobId, promise } = RNFS.downloadFile({
     fromUrl: url,
     toFile: tmp,
     progressInterval: 400,
-    progress: (r) => { if (onProgress && r.contentLength > 0) onProgress(Math.min(1, r.bytesWritten / r.contentLength)); },
+    begin: (r) => { if (r && r.contentLength > 0) totalBytes = r.contentLength; },
+    progress: (r) => {
+      if (!onProgress) return;
+      const denom = totalBytes || r.contentLength;
+      if (denom > 0) onProgress(Math.min(1, r.bytesWritten / denom));
+      else if (r.bytesWritten > 0) onProgress(0.01); // 至少出 1%，不卡 0%
+    },
   });
 
   // AbortSignal → RNFS.stopDownload(jobId)；abort 后 promise 会以 statusCode 抛错/或正常返回部分文件，

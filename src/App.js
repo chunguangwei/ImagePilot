@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 
 console.log('📦 App.js: 开始导入模块...');
 
-import { ThemeProvider, ThemeContext } from './ui/ios/theme';
+import { ThemeProvider, ThemeContext, useThemeColors } from './ui/ios/theme';
 import { NavigationContainer } from './adapters/WebAdapters';
 import { createStackNavigator } from './adapters/WebAdapters';
 import { createBottomTabNavigator } from './adapters/WebAdapters';
@@ -86,7 +86,8 @@ console.log('📦 App.js: Tab Navigator 创建成功');
 // 主标签导航器
 const MainTabNavigator = ({ stagingBoxCount }) => {
   const { t } = useTranslation('common');
-  
+  // tab bar 颜色跟主题（之前硬编码 #FFFFFF 在 dark 模式露白底）
+  const c = useThemeColors();
   return (
   <Tab.Navigator
     screenOptions={({ route }) => ({
@@ -106,7 +107,7 @@ const MainTabNavigator = ({ stagingBoxCount }) => {
                 position: 'absolute',
                 top: -5,
                 right: -10,
-                backgroundColor: '#FF3B30',
+                backgroundColor: c.danger,
                 borderRadius: 10,
                 minWidth: 18,
                 height: 18,
@@ -114,7 +115,7 @@ const MainTabNavigator = ({ stagingBoxCount }) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderWidth: 2,
-                borderColor: '#FFFFFF',
+                borderColor: c.card, // cutout 边跟 tab bar 底，与 light/dark 一致
               }}>
                 <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>
                   {stagingBoxCount > 99 ? '99+' : stagingBoxCount}
@@ -125,12 +126,12 @@ const MainTabNavigator = ({ stagingBoxCount }) => {
         }
         return iconNode;
       },
-      tabBarActiveTintColor: '#007AFF',
-      tabBarInactiveTintColor: '#8E8E93',
+      tabBarActiveTintColor: c.accent,
+      tabBarInactiveTintColor: c.tertiaryLabel,
       tabBarStyle: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: c.card,
         borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: '#C6C6C8',
+        borderTopColor: c.separator,
         // 不写 height，让 React Navigation 自适应 home-indicator 安全区
         // iOS 标准 49pt + 底部安全区；Android 用默认值
         paddingTop: 6,
