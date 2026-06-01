@@ -75,6 +75,11 @@ target 'ImagePilot' do
         extra_cflags = '-Wno-deprecated-literal-operator -Wno-nullability-completeness -Wno-non-modular-include-in-framework-module'
         config.build_settings['OTHER_CFLAGS']   = "$(inherited) #{extra_cflags}"
         config.build_settings['OTHER_CPLUSPLUSFLAGS'] = "$(inherited) #{extra_cflags}"
+        # Xcode 14.3+ 默认开 User Script Sandboxing；Xcode 26 在 macOS Tahoe 上
+        # 会让 [CP] Copy Pods Resources 阶段 rsync 没权限拷 .framework 目录，
+        # 报 "mkstempat: 'double-conversion.framework/...'" + "unexpected end of file"。
+        # pod targets 和主 project 都得关（主 project 在 xcodeproj/project.pbxproj 已改）。
+        config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
       end
     end
   end
