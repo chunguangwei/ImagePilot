@@ -160,10 +160,41 @@ const CategoryCard = React.memo(function CategoryCard({
 // iOS 风格图标（字体已打包）；异常时回退 emoji
 let HomeIonicons = null;
 try { HomeIonicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { HomeIonicons = null; }
-// 区块标题前缀图标：iOS 单色线性（蓝），无 Ionicons 时回退 emoji。可内嵌于 <Text>。
-const SectionIcon = ({ name, emoji }) => (HomeIonicons
-  ? <HomeIonicons name={name} size={16} color="#007AFF" />
-  : <Text>{emoji}</Text>);
+
+/**
+ * 区块标题色块图标 —— iOS Settings/Mail/Photos 的标准做法：
+ *   24×24 的圆角彩色方块 + 内嵌白色 SF 风格线性图标。
+ *
+ * 配色策略（见 SECTION_TINTS）：
+ *   - 主要三段（按时间 / 按内容 / 按城市）— 鲜艳系统色（orange/blue/green），互相区分
+ *   - 次要段（相似 / 属性 / 拍参 / 最近 / 更多过滤）— 灰或冷紫，让主次层级一眼分得清
+ *
+ * 注：以前是 inline 单色 Ionicon 嵌在 <Text> 里；现在改成 View（带背景色），
+ *     必须从 <Text> 中移出来作为 sectionTitleContainer 的兄弟节点（否则 Android 渲染异常）。
+ */
+const SectionIcon = ({ name, emoji, tint = '#007AFF' }) => (
+  <View style={{
+    width: 24, height: 24, borderRadius: 6,
+    backgroundColor: tint,
+    alignItems: 'center', justifyContent: 'center',
+  }}>
+    {HomeIonicons
+      ? <HomeIonicons name={name} size={14} color="#FFFFFF" />
+      : <Text style={{ fontSize: 14, lineHeight: 16 }}>{emoji}</Text>}
+  </View>
+);
+
+/** 区块色块配色 —— iOS 系统色，呼应 SF Symbols 默认调板 */
+const SECTION_TINTS = {
+  time: '#FF9500',         // systemOrange — 时间/近期
+  content: '#007AFF',      // systemBlue — 内容/标签（品牌主色）
+  city: '#34C759',         // systemGreen — 地点/地图
+  similarity: '#AF52DE',   // systemPurple — 分组/去重
+  attributes: '#8E8E93',   // systemGray — 工具类
+  shooting: '#FF2D55',     // systemPink — 拍摄参数/相机
+  recent: '#5AC8FA',       // systemTeal — 新发现
+  more: '#8E8E93',         // systemGray — 工具
+};
 
 // 每个 app 会话只在启动时静默检查一次更新（避免重复弹窗）
 let _launchUpdateChecked = false;
@@ -1636,7 +1667,8 @@ const HomeScreen = ({ navigation }) => {
       <View style={[styles.section, dynSection]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleContainer}>
-            <Text style={[styles.sectionTitle, dynSectionTitle]}><SectionIcon name="calendar-outline" emoji="📅" /> {t('home.byTime')}</Text>
+            <SectionIcon name="calendar-outline" emoji="📅" tint={SECTION_TINTS.time} />
+            <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>{t('home.byTime')}</Text>
           </View>
         </View>
         <View style={styles.categoriesGrid}>
@@ -1681,7 +1713,10 @@ const HomeScreen = ({ navigation }) => {
       <View style={[styles.section, dynSection]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleColumn}>
-            <Text style={[styles.sectionTitle, dynSectionTitle]}><SectionIcon name="pricetags-outline" emoji="🏷️" /> {t('home.byContent')}</Text>
+            <View style={styles.sectionTitleRow}>
+              <SectionIcon name="pricetags-outline" emoji="🏷️" tint={SECTION_TINTS.content} />
+              <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>{t('home.byContent')}</Text>
+            </View>
             {hasUnclassifiedPhotos && (
               <Text style={styles.sectionHint}>{t('home.longPressUnclassifiedHint')}</Text>
             )}
@@ -1812,7 +1847,8 @@ const HomeScreen = ({ navigation }) => {
       <View style={[styles.section, dynSection]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleContainer}>
-            <Text style={[styles.sectionTitle, dynSectionTitle]}><SectionIcon name="copy-outline" emoji="🔗" /> {t('home.similarPhotos')}</Text>
+            <SectionIcon name="copy-outline" emoji="🔗" tint={SECTION_TINTS.similarity} />
+            <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>{t('home.similarPhotos')}</Text>
           </View>
           {similarityGroups && similarityGroups.length > 0 && (
             <View style={styles.headerButtonsContainer}>
@@ -1986,7 +2022,10 @@ const HomeScreen = ({ navigation }) => {
 
     return (
       <View style={[styles.section, dynSection]}>
-        <Text style={[styles.sectionTitle, dynSectionTitle, { marginBottom: 12, paddingHorizontal: 16 }]}><SectionIcon name="list-outline" emoji="📋" /> {t('home.byAttributes')}</Text>
+        <View style={[styles.sectionTitleRow, { paddingHorizontal: 16, marginBottom: 12 }]}>
+          <SectionIcon name="list-outline" emoji="📋" tint={SECTION_TINTS.attributes} />
+          <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>{t('home.byAttributes')}</Text>
+        </View>
         <View style={styles.attributesContainer}>
           {hasDir && (
             <View style={styles.attributeSubBlock}>
@@ -2077,7 +2116,10 @@ const HomeScreen = ({ navigation }) => {
 
     return (
       <View style={[styles.section, dynSection]}>
-        <Text style={[styles.sectionTitle, dynSectionTitle, { marginBottom: 12, paddingHorizontal: 16 }]}><SectionIcon name="aperture-outline" emoji="📸" /> {t('home.byShootingParams')}</Text>
+        <View style={[styles.sectionTitleRow, { paddingHorizontal: 16, marginBottom: 12 }]}>
+          <SectionIcon name="aperture-outline" emoji="📸" tint={SECTION_TINTS.shooting} />
+          <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>{t('home.byShootingParams')}</Text>
+        </View>
         <View style={styles.attributesContainer}>
           {hasISO && (
             <View style={styles.attributeSubBlock}>
@@ -2134,7 +2176,8 @@ const HomeScreen = ({ navigation }) => {
       <View style={[styles.section, dynSection]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleContainer}>
-            <Text style={[styles.sectionTitle, dynSectionTitle]}><SectionIcon name="location-outline" emoji="🏙️" /> {t('home.byCity')}</Text>
+            <SectionIcon name="location-outline" emoji="🏙️" tint={SECTION_TINTS.city} />
+            <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>{t('home.byCity')}</Text>
           </View>
           {cities && cities.length > 0 && (
             <View style={styles.headerButtonsContainer}>
@@ -2234,7 +2277,8 @@ const HomeScreen = ({ navigation }) => {
       <View style={[styles.section, dynSection]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleContainer}>
-            <Text style={[styles.sectionTitle, dynSectionTitle]}><SectionIcon name="images-outline" emoji="📸" /> {t('home.recentDiscoveredPhotos')}</Text>
+            <SectionIcon name="images-outline" emoji="📸" tint={SECTION_TINTS.recent} />
+            <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>{t('home.recentDiscoveredPhotos')}</Text>
             {recentImagesTotal > 0 && (
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>{recentImagesTotal}</Text>
@@ -2392,8 +2436,9 @@ const HomeScreen = ({ navigation }) => {
                   accessibilityState={{ expanded: advancedExpanded }}
                 >
                   <View style={styles.sectionTitleContainer}>
-                    <Text style={[styles.sectionTitle, dynSectionTitle, { marginTop: 0, marginBottom: 0 }]}>
-                      <SectionIcon name="options-outline" emoji="🔧" /> {t('home.moreFilters')}
+                    <SectionIcon name="options-outline" emoji="🔧" tint={SECTION_TINTS.more} />
+                    <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline, { marginTop: 0, marginBottom: 0 }]}>
+                      {t('home.moreFilters')}
                     </Text>
                   </View>
                   <Text style={[styles.sectionTitle, dynSectionTitle, { marginTop: 0, marginBottom: 0 }]}>
@@ -2540,6 +2585,18 @@ const createStyles = (c) => StyleSheet.create({
     color: c.label,
     // 注意：当 sectionTitle 在 sectionHeader 内部时，不需要额外的 padding
     // 当单独使用时，需要通过内联样式添加 paddingHorizontal: 16
+  },
+  // 用在 SectionIcon 旁边时，清掉 marginTop/marginBottom 让色块和文字按行居中对齐
+  // （SectionIcon 是 24×24 View；不清边距文字会被推下去出现 baseline 错位）
+  sectionTitleInline: {
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  // 当区块标题没有外层 sectionTitleContainer/Column 时用这个：色块 + 标题的横排
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   sectionTitleColumn: {
     flexDirection: 'column',
