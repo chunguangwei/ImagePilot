@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 
 console.log('📦 App.js: 开始导入模块...');
 
+import { ThemeProvider, ThemeContext } from './ui/ios/theme';
 import { NavigationContainer } from './adapters/WebAdapters';
 import { createStackNavigator } from './adapters/WebAdapters';
 import { createBottomTabNavigator } from './adapters/WebAdapters';
@@ -220,12 +221,14 @@ const checkAppPermissions = async () => {
 
 console.log('📦 App.js: 定义 App 组件...');
 
-export default function App() {
+function AppInner() {
   console.log('📦 App.js: App 组件开始渲染');
   const { t } = useTranslation('common');
-  // 跟随系统外观切 StatusBar 风格（light: 黑字白底 / dark: 白字黑底）
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { scheme, setScheme } = React.useContext(ThemeContext);
+  // 跟随"用户主题选择 > 系统外观"切 StatusBar 风格（light: 黑字白底 / dark: 白字黑底）
+  const sysScheme = useColorScheme();
+  const effectiveScheme = scheme === 'system' ? sysScheme : scheme;
+  const isDark = effectiveScheme === 'dark';
   const sbStyle = isDark ? 'light-content' : 'dark-content';
   const sbBg = isDark ? '#000000' : '#ffffff';
 
@@ -281,6 +284,18 @@ export default function App() {
       console.log('📋 [2/3] 初始化 UnifiedDataService...');
       await UnifiedDataService.initialize();
       console.log('✅ UnifiedDataService 初始化完成');
+
+      // 2b. 读取持久化的主题选择，同步到 ThemeContext（Provider state 变化会让所有
+      //     useThemeColors 立即重渲染）。settings.colorScheme: 'system' | 'light' | 'dark'
+      try {
+        const savedSettings = await UnifiedDataService.readSettings();
+        const saved = savedSettings && savedSettings.colorScheme;
+        if (saved === 'light' || saved === 'dark' || saved === 'system') {
+          setScheme(saved);
+        }
+      } catch (e) {
+        console.warn('读取 colorScheme 失败，沿用默认 system:', e?.message || e);
+      }
       
       // 3. 模型不再随包打包（移动端走 GH Release 按需下载，basic/scene/clip 各档统一）
       //    需要的时候在 Settings 里下载；ImageClassifierService 加载时会触发首次下载。
@@ -363,6 +378,17 @@ export default function App() {
 }
 
 console.log('📦 App.js: App 组件定义完成');
+
+// 默认导出：用 ThemeProvider 包一层，初始为 'system'（与历史行为一致）。
+// 启动 initializeApp 里读到 settings.colorScheme 后 setScheme 同步到 Provider，
+// 之后所有 useThemeColors 会自动重渲染——主题切换全屏即时生效。
+export default function App() {
+  return (
+    <ThemeProvider initialScheme="system">
+      <AppInner />
+    </ThemeProvider>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {

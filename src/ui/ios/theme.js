@@ -13,6 +13,7 @@
  * 想跟随系统主题切换的页面统一改 useIosColors() 拿动态版本。
  */
 
+import React, { useState } from 'react';
 import { useColorScheme } from 'react-native';
 
 // === 浅色（iOS Light Appearance）===
@@ -77,16 +78,38 @@ export const darkColors = {
 export const colors = lightColors;
 
 /**
- * 按系统外观返回当前调色板（跨端：iOS + Android 都用同一钩子）。
- * - useColorScheme() → 'light' | 'dark' | null（用户没明确选；按 null 走 light）
+ * 主题 Context：让用户在 Settings 里手动覆盖系统外观（'system' | 'light' | 'dark'）。
+ * - 'system'：跟随 useColorScheme()（默认，向后兼容历史行为）
+ * - 'light' / 'dark'：强制覆盖，无视系统
+ *
+ * 默认值兜底为 'system' + 空 setter，使 useThemeColors 在 Provider 外仍可用
+ * （走系统外观，不会抛 null context 错）。
+ */
+export const ThemeContext = React.createContext({ scheme: 'system', setScheme: () => {} });
+
+export function ThemeProvider({ children, initialScheme = 'system' }) {
+  const [scheme, setScheme] = useState(initialScheme);
+  return (
+    <ThemeContext.Provider value={{ scheme, setScheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+/**
+ * 按当前主题（用户选择 > 系统外观）返回调色板。
+ * - useColorScheme() → 'light' | 'dark' | null（系统外观；null 按 light）
+ * - context.scheme === 'system' 时跟随系统，否则强制为 'light' / 'dark'
  *
  * 跨端注意：Android 要让原生 Activity theme 走 DayNight 才能让
  * StatusBar / 系统 chrome 跟 light/dark 切；JS 侧的 useColorScheme 在两端都自动跟
  * 系统外观（android/values/styles.xml 改 AppTheme parent 之后生效）。
  */
 export function useThemeColors() {
-  const scheme = useColorScheme();
-  return scheme === 'dark' ? darkColors : lightColors;
+  const sysScheme = useColorScheme();
+  const { scheme } = React.useContext(ThemeContext);
+  const effective = scheme === 'system' ? (sysScheme === 'dark' ? 'dark' : 'light') : scheme;
+  return effective === 'dark' ? darkColors : lightColors;
 }
 
 // 旧名 useIosColors 保留为别名（之前 7 个屏在用）；新代码统一用 useThemeColors。
