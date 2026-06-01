@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#6200EE</color>
-    <color name="colorPrimaryDark">#3700B3</color>
-    <color name="colorAccent">#03DAC5</color>
+    <!-- 品牌色：iOS systemBlue 对齐（之前是 Material 紫 #6200EE / 青 #03DAC5 不符品牌）。 -->
+    <color name="colorPrimary">#007AFF</color>
+    <color name="colorPrimaryDark">#0A84FF</color>
+    <color name="colorAccent">#007AFF</color>
+
+    <!-- Adaptive icon background：用 iOS systemGray6 浅灰中性底（dark mode 有 -night 覆盖）。 -->
+    <color name="ic_launcher_background_color">#F2F2F7</color>
 </resources>

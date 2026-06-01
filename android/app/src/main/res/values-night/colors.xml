@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 夜间 chrome 色：iOS dark accent 稍亮蓝 + adaptive icon 黑底 -->
+    <color name="colorPrimary">#0A84FF</color>
+    <color name="colorPrimaryDark">#0A84FF</color>
+    <color name="colorAccent">#0A84FF</color>
+
+    <!-- 夜间 adaptive icon 底色：iOS dark systemGroupedBackground -->
+    <color name="ic_launcher_background_color">#000000</color>
+</resources>

@@ -962,7 +962,12 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   };
 
   const cancelSrDownload = () => {
+    // 直接重置 UI 状态，不等 promise 自己结算 —— iOS 上 RNFS.stopDownload 后
+    // download promise 有时不会及时 reject，导致 UI 卡 "下载中" 永不复位。
     try { srAbortRef.current?.abort(); } catch (_) {}
+    srAbortRef.current = null;
+    setSrDownloading(false);
+    setSrProgress(0);
   };
 
   // ===== 分类模型三档（basic / scene / clip 都按需下载，统一交互） =====
@@ -1052,7 +1057,16 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   };
 
   const cancelClassifierDownload = () => {
+    // 同 cancelSrDownload：直接重置 UI 状态，不等 promise 自己结算
     try { classifierAbortRef.current?.abort(); } catch (_) {}
+    classifierAbortRef.current = null;
+    setClassifierDownloadingKey(null);
+    setClassifierDownloadProgress(0);
+    // 乐观切档回滚：用户取消下载，回到之前选中的档位
+    try {
+      const prev = classifierPrevTierRef.current;
+      if (prev) setClassifierTier(prev);
+    } catch (_) {}
   };
 
   const deleteClassifierTierModel = async (tierKey) => {
