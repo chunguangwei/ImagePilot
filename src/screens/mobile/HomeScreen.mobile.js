@@ -248,6 +248,7 @@ const HomeScreen = ({ navigation }) => {
   // 最近照片
   const [recentImages, setRecentImages] = useState([]);
   const [recentImagesTotal, setRecentImagesTotal] = useState(0); // 新发现照片的总数
+  const [isRefreshingRecent, setIsRefreshingRecent] = useState(false); // 「重新检测」按钮 loading 态
   
   // 扫描状态
   const [isScanning, setIsScanning] = useState(false);
@@ -711,17 +712,29 @@ const HomeScreen = ({ navigation }) => {
   };
 
   /**
-   * 刷新新发现照片
+   * 刷新新发现照片 ——「重新检测」按钮入口。
+   *
+   * 之前无任何视觉反馈：tap → 静默 fetch → 用户「感觉没反应」。
+   * 现在用 isRefreshingRecent 状态做象征性 loading（按钮 ActivityIndicator 或换文字），
+   * 至少 300ms 给手感（即使本地查询很快），不弹任何 toast——没新照片就空着没新照片。
    */
   const refreshNewDiscoveredImages = useCallback(async () => {
+    if (isRefreshingRecent) return;
+    setIsRefreshingRecent(true);
+    const startedAt = Date.now();
     try {
       const result = await UnifiedDataService.readNewDiscoveredImages(12);
       setRecentImages(result.images || []);
       setRecentImagesTotal(result.total || 0);
     } catch (error) {
       logger.error('刷新新发现照片失败:', error);
+    } finally {
+      // 至少 300ms 的"检测感"——读 SQL 太快用户感觉不到动作
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < 300) await new Promise((r) => setTimeout(r, 300 - elapsed));
+      setIsRefreshingRecent(false);
     }
-  }, []);
+  }, [isRefreshingRecent]);
 
   /**
    * 启动相似度检测
@@ -885,6 +898,50 @@ const HomeScreen = ({ navigation }) => {
       if (typeof window !== 'undefined') {
         window.isScanning = false;
       }
+    }
+  }, [isScanning, loadAllData, t]);
+
+  /**
+   * 启动 EXIF 拍参提取（iOS 专用）—— Android 在扫描阶段已经一并提取，无需此入口。
+   * iOS PHAsset 不暴露拍参，需走 PhotoKitModule.fetchAssetsExif 单独提一遍。
+   */
+  const handleStartExifEnrichment = useCallback(async () => {
+    if (isScanning) {
+      Alert.alert(t('common.tip'), t('home.scanAlreadyInProgress'));
+      return;
+    }
+    try {
+      logger.debug('开始 EXIF 拍参提取');
+      setIsScanning(true);
+      if (typeof window !== 'undefined') { window.isScanning = true; }
+      setGlobalMessage(t('home.exifEnrichmentInProgress'));
+
+      const wakeLockAcquired = await WakeLockService.acquire(30 * 60 * 1000);
+      if (wakeLockAcquired) logger.info('🔋 已获取唤醒锁（EXIF 提取期间防休眠）');
+
+      const galleryScannerService = new GalleryScannerService();
+      await galleryScannerService.initialize();
+      galleryScannerService.onProgress = (progress) => {
+        if (!progress) return;
+        const message = progress.simpleMessage || progress.message || t('home.exifEnrichmentInProgress');
+        setGlobalMessage(message);
+        if (progress.shouldRefresh) {
+          setTimeout(async () => {
+            try { await loadAllData(); } catch (e) { logger.error('❌ 刷新页面数据失败:', e); }
+          }, 0);
+        }
+      };
+      await galleryScannerService.enrichExifInfo();
+      // 提完一次性刷数据
+      await loadAllData();
+    } catch (error) {
+      logger.error('EXIF 提取失败:', error);
+      setGlobalMessage(t('home.exifEnrichmentFailed', { error: error.message }));
+      Alert.alert(t('home.exifEnrichmentFailed', { error: '' }), error.message);
+    } finally {
+      await WakeLockService.release();
+      setIsScanning(false);
+      if (typeof window !== 'undefined') { window.isScanning = false; }
     }
   }, [isScanning, loadAllData, t]);
 
@@ -2111,8 +2168,13 @@ const HomeScreen = ({ navigation }) => {
     const hasAperture = apertureItems.length > 0;
     const hasShutter = shutterItems.length > 0;
     const hasFocalLength = focalLengthItems.length > 0;
+    const hasAny = hasISO || hasAperture || hasShutter || hasFocalLength;
 
-    if (!hasISO && !hasAperture && !hasShutter && !hasFocalLength) return null;
+    // iOS 特例：扫描时不自动提 EXIF（PHAsset 不暴露拍参，需读原图字节），所以扫完后这 4
+    // 个 counts 都是空。Android 扫描内联了 EXIF，counts 直接有数。
+    // → iOS 上 hasScanned && 空 → 显示 section 头 + CTA「提取拍摄参数」让用户触发。
+    const isIos = Platform.OS === 'ios';
+    if (!hasAny && !(isIos && hasScanned)) return null;
 
     return (
       <View style={[styles.section, dynSection]}>
@@ -2151,6 +2213,29 @@ const HomeScreen = ({ navigation }) => {
               <View style={styles.attributeRow}>
                 {focalLengthItems.map(([focalLength]) => renderAttributeChip('focalLength', focalLength, getCameraSettingsCategoryTranslation('focalLength', focalLength, currentLang) || focalLength, focalLengthCounts[focalLength] || 0))}
               </View>
+            </View>
+          )}
+          {/* iOS 空态 CTA：拍参数据需要额外的「读原图 EXIF」阶段，提示用户触发 */}
+          {!hasAny && isIos && hasScanned && (
+            <View style={styles.emptyState}>
+              {HomeIonicons ? <HomeIonicons name="aperture-outline" size={48} color="#C7C7CC" style={{ marginBottom: 12 }} /> : <Text style={styles.emptyStateIcon}>📸</Text>}
+              <Text style={styles.emptyStateText}>{t('home.exifEmptyTitle')}</Text>
+              <Text style={styles.emptyStateSubtext}>{t('home.exifEmptyHint')}</Text>
+              <TouchableOpacity
+                style={[
+                  styles.startSimilarityButton,
+                  isScanning && styles.startSimilarityButtonDisabled,
+                ]}
+                onPress={handleStartExifEnrichment}
+                disabled={isScanning}
+              >
+                <Text style={[
+                  styles.startSimilarityButtonText,
+                  isScanning && styles.startSimilarityButtonTextDisabled,
+                ]}>
+                  {isScanning ? t('home.exifEnrichmentInProgress') : t('home.exifStartAction')}
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -2285,14 +2370,17 @@ const HomeScreen = ({ navigation }) => {
               </View>
             )}
           </View>
-          <TouchableOpacity 
-            style={styles.toggleButton}
+          <TouchableOpacity
+            style={[styles.toggleButton, isRefreshingRecent && styles.toggleButtonDisabled]}
             onPress={refreshNewDiscoveredImages}
+            disabled={isRefreshingRecent}
           >
-            <Text style={styles.toggleButtonText}>{t('home.recheck')}</Text>
+            {isRefreshingRecent
+              ? <ActivityIndicator size="small" color={c.accent} />
+              : <Text style={styles.toggleButtonText}>{t('home.recheck')}</Text>}
           </TouchableOpacity>
         </View>
-        
+
         {recentImages.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={{ marginBottom: 10 }}><SkeuomorphicCamera size={60} scheme="onLight" /></View>
