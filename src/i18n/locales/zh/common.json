@@ -260,6 +260,7 @@
     "welcomeTitle": "欢迎使用 ImagePilot",
     "welcomeSub": "智能分类你的相册，所有处理只在本机进行",
     "welcomeAction": "扫描相册开始",
+    "welcomeHint": "点击右下角 ↻ 按钮开始扫描",
     "goToSettings": "进入设置 →",
     "byContent": "按内容",
     "byTime": "按时间",

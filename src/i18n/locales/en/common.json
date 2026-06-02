@@ -260,6 +260,7 @@
     "welcomeTitle": "Welcome to ImagePilot",
     "welcomeSub": "Smart-classify your photos. All processing runs on-device.",
     "welcomeAction": "Scan album to start",
+    "welcomeHint": "Tap the ↻ button at the bottom-right to scan",
     "goToSettings": "Go to Settings →",
     "byContent": "By Content",
     "byTime": "By Time",
