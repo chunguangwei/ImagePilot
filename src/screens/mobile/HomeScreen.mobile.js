@@ -2400,19 +2400,13 @@ const HomeScreen = ({ navigation }) => {
           />
         }
       >
-        {/* 首扫前欢迎卡（从未扫过 + 无任何数据）：在 HomeScreen P0「空消息条不渲染」之上补一个引导入口 */}
+        {/* 首扫前欢迎卡（从未扫过 + 无任何数据）：纯介绍文案，指向右下角 FAB 扫描按钮。
+            之前这里有「扫描相册开始」按钮，跟 FAB 是同一个动作（handleScan），冗余被用户反馈。 */}
         {(!hasScanned && recentImagesTotal === 0 && categories.every((cat) => (cat.count || 0) === 0)) ? (
           <View style={styles.welcomeCard}>
             <Text style={styles.welcomeTitle}>{t('home.welcomeTitle')}</Text>
             <Text style={styles.welcomeSub}>{t('home.welcomeSub')}</Text>
-            <TouchableOpacity
-              style={styles.welcomeBtn}
-              onPress={handleScan}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-            >
-              <Text style={styles.welcomeBtnText}>{t('home.welcomeAction')}</Text>
-            </TouchableOpacity>
+            <Text style={styles.welcomeHint}>{t('home.welcomeHint')}</Text>
           </View>
         ) : null}
         {renderTimeSection()}
@@ -2539,20 +2533,16 @@ const createStyles = (c) => StyleSheet.create({
   welcomeSub: {
     fontSize: 14,
     color: c.secondaryLabel,
-    marginBottom: 20,
+    marginBottom: 12,
     textAlign: 'center',
     lineHeight: 20,
   },
-  welcomeBtn: {
-    backgroundColor: c.accent,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-  },
-  welcomeBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
+  // 指向右下角 FAB 的提示行（取代原"扫描相册开始"按钮——与 FAB 同动作冗余）
+  welcomeHint: {
+    fontSize: 13,
+    color: c.tertiaryLabel,
+    textAlign: 'center',
+    marginTop: 4,
   },
 
   // 区块样式（iOS 分组：白底全宽 + 组间留白；保持全宽以兼容网格宽度计算）

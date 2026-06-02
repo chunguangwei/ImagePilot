@@ -35,7 +35,10 @@ import { getDefaultPresets, getColorNameTranslation, getOrientationNameTranslati
 
 // 给 BlurView 加 Animated 包装 —— chrome 显隐动画走 opacity，BlurView 必须是 Animated.View
 // 才能接 Animated.Value（与原 Animated.View 行为一致）。
-const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+// 注意：曾经用 Animated.createAnimatedComponent(BlurView) 把 BlurView 当 header/actionsBar
+// 的可动画容器，但 iOS 上 UIVisualEffectView 会拦截子 view 的 touch（BlurView 4.x 没把
+// 子节点放进 contentView）。现在改成 Animated.View 做动画容器、BlurView 用 absoluteFill
+// 当背景层，TouchableOpacity 作为 Animated.View 的普通子节点接 touch。
 import { LOCAL_EXTRA_PRESETS } from '../../services/enhance/localEnhance';
 import { presetIcon, ACTION_ICONS } from '../../ui/ios/presetIcons';
 import { SafeAreaView, Alert } from '../../adapters/WebAdapters';
@@ -1147,13 +1150,19 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     // 如果是暂存箱，显示"暂存箱 (6/20)"格式
     if (currentFilterType === 'stagingBox') {
       return (
-        <AnimatedBlurView
-          blurType="dark"
-          blurAmount={20}
-          reducedTransparencyFallbackColor="#1C1C1E"
+        // iOS: UIVisualEffectView 会拦掉子 view 的 touch（BlurView 4.x 没把子节点放进 contentView）。
+        // 把 BlurView 收为 absoluteFill 背景，TouchableOpacity 改放在 Animated.View 的普通子节点位置，
+        // 这样 touch 走容器，不再被 blur 吃掉。
+        <Animated.View
           style={[styles.header, { opacity: chromeOpacityAnim }]}
           pointerEvents={chromeVisible ? 'auto' : 'none'}
         >
+          <BlurView
+            blurType="dark"
+            blurAmount={20}
+            reducedTransparencyFallbackColor="#1C1C1E"
+            style={StyleSheet.absoluteFill}
+          />
           <TouchableOpacity onPress={goBack} style={styles.headerButton}>
             <Text style={styles.headerIcon}>‹</Text>
           </TouchableOpacity>
@@ -1165,7 +1174,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           <TouchableOpacity onPress={() => setShowInfo(!showInfo)} style={styles.headerButton}>
             {PvIonicons ? <PvIonicons name="information-circle-outline" size={26} color="#FFFFFF" /> : <Text style={styles.headerIcon}>ℹ️</Text>}
           </TouchableOpacity>
-        </AnimatedBlurView>
+        </Animated.View>
       );
     }
     
@@ -1226,13 +1235,17 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     }
 
     return (
-      <AnimatedBlurView
-        blurType="dark"
-        blurAmount={20}
-        reducedTransparencyFallbackColor="#1C1C1E"
+      // 同 stagingBox header：BlurView 改 absoluteFill 背景层，避免 iOS 拦 touch（详见上方注释）
+      <Animated.View
         style={[styles.header, { opacity: chromeOpacityAnim }]}
         pointerEvents={chromeVisible ? 'auto' : 'none'}
       >
+        <BlurView
+          blurType="dark"
+          blurAmount={20}
+          reducedTransparencyFallbackColor="#1C1C1E"
+          style={StyleSheet.absoluteFill}
+        />
         <TouchableOpacity onPress={goBack} style={styles.headerButton}>
           <Text style={styles.headerIcon}>‹</Text>
         </TouchableOpacity>
@@ -1249,7 +1262,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         <TouchableOpacity onPress={() => setShowInfo(!showInfo)} style={styles.headerButton}>
           {PvIonicons ? <PvIonicons name="information-circle-outline" size={26} color="#FFFFFF" /> : <Text style={styles.headerIcon}>ℹ️</Text>}
         </TouchableOpacity>
-      </AnimatedBlurView>
+      </Animated.View>
     );
   };
 
@@ -1674,20 +1687,27 @@ const ImagePreviewScreen = ({ route, navigation }) => {
   /**
    * 渲染底部操作栏
    */
-  // 操作栏图标：优先 Ionicons（iOS 单色），回退 emoji
+  // 操作栏图标：优先 Ionicons（iOS 单色），回退 emoji。
+  // 颜色固定白色 —— chrome 永远是深色 blur 底，cTheme.label 在 light mode 是黑色，
+  // 黑底黑字会看不见（之前的 bug：iOS 真机用户反映"图标看不清"）。
   const actIcon = (key, emoji) => (PvIonicons
-    ? <PvIonicons name={ACTION_ICONS[key]} size={24} color={cTheme.label} style={styles.actionIcon} />
+    ? <PvIonicons name={ACTION_ICONS[key]} size={24} color="#FFFFFF" style={styles.actionIcon} />
     : <Text style={styles.actionIcon}>{emoji}</Text>);
 
   const renderActions = () => {
     return (
-      <AnimatedBlurView
-        blurType="dark"
-        blurAmount={20}
-        reducedTransparencyFallbackColor="#1C1C1E"
+      // 同 header：BlurView 改 absoluteFill 背景层，TouchableOpacity 作为 Animated.View 子节点接 touch。
+      // 之前 AnimatedBlurView 直接包 TouchableOpacity，iOS 上点了没反应（UIVisualEffectView 吃 touch）。
+      <Animated.View
         style={[styles.actionsBar, { opacity: chromeOpacityAnim }]}
         pointerEvents={chromeVisible ? 'auto' : 'none'}
       >
+        <BlurView
+          blurType="dark"
+          blurAmount={20}
+          reducedTransparencyFallbackColor="#1C1C1E"
+          style={StyleSheet.absoluteFill}
+        />
         {/* 暂存/移出按钮 */}
         {!isInStagingBox ? (
           <TouchableOpacity style={styles.actionButton} onPress={handleStaging}>
@@ -1732,7 +1752,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           {actIcon('share', '📤')}
           <Text style={styles.actionLabel}>{t('category.share')}</Text>
         </TouchableOpacity>
-      </AnimatedBlurView>
+      </Animated.View>
     );
   };
 

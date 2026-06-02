@@ -188,6 +188,11 @@ class GalleryScannerService {
       logger.debug(`[iOS] PhotoKit 返回 ${items.length} 张照片`);
 
       if (items.length === 0) {
+        // 即便相册为空也要记 lastScanTime，否则 hasScanned 永远 false（HomeScreen
+        // 会以为没扫过，把"按城市/相似照片"section 整段跳过，连引导 CTA 都看不见）
+        try {
+          await this._saveScanCompletionInfo(Date.now() - this.scanStartTimestamp.getTime());
+        } catch (_) { /* 不阻断收尾 */ }
         emit({ stage: 'completed', message: '相册为空', processed: 0, total: 0, shouldRefresh: true });
         return { success: true, total: 0 };
       }
@@ -200,6 +205,14 @@ class GalleryScannerService {
       await UnifiedDataService.writeImageDetailedInfo(records, true);
 
       const duration = Date.now() - this.scanStartTimestamp.getTime();
+      // 标记本次扫描完成 —— HomeScreen 通过 settings.lastScanTime 判断 hasScanned，
+      // 决定要不要渲染「按城市」「相似照片」section 的入口（即便为空也给 CTA 引导用户启动）。
+      // 之前 iOS 漏写这个字段，导致两段 section 永远跳过渲染，用户根本没有触发入口。
+      try {
+        await this._saveScanCompletionInfo(duration);
+      } catch (e) {
+        logger.warn('[iOS] 保存扫描完成时间失败（不阻断扫描收尾）:', e?.message || e);
+      }
       emit({ stage: 'completed', message: `完成（${duration}ms）`, processed: records.length, total: records.length, shouldRefresh: true });
       logger.debug(`[iOS] 扫描 + 落库完成，共 ${records.length} 张，耗时 ${duration}ms`);
 
@@ -216,6 +229,25 @@ class GalleryScannerService {
 
   async startScan(_options = {}, onProgress = null) {
     return this.scanGalleryWithProgress(onProgress);
+  }
+
+  /**
+   * 记录本次扫描完成时间到 settings（与 Android saveScanCompletionInfo 对齐）。
+   *
+   * HomeScreen 在 _checkScanInfo 里读 settings.lastScanTime 决定：
+   *   - hasScanned 标志位（控制「按城市/相似照片」section 是否渲染入口）
+   *   - 顶部最近扫描耗时信息条
+   *
+   * iOS 端原本漏写——城市/相似两段 section 永远 return null，连 CTA 都看不到。
+   */
+  async _saveScanCompletionInfo(totalScanDurationMs) {
+    const settings = await UnifiedDataService.readSettings();
+    settings.lastScanTime = new Date().toISOString();
+    settings.lastScanDuration = totalScanDurationMs;
+    settings.lastScanDurationSeconds = Math.round(totalScanDurationMs / 1000);
+    settings.lastScanDurationMinutes = Math.round(totalScanDurationMs / 1000 / 60);
+    await UnifiedDataService.writeSettings(settings);
+    logger.info(`💾 [iOS] 已保存扫描完成信息: 耗时 ${settings.lastScanDurationSeconds}秒`);
   }
 
   /** ============ 增量监听（PHPhotoLibraryChangeObserver）============
