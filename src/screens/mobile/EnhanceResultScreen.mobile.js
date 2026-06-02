@@ -674,7 +674,9 @@ export default function EnhanceResultScreen({ route, navigation }) {
             },
           ]}>
             <TouchableOpacity style={[styles.saveButton, (!canSave) && styles.saveButtonDisabled]} onPress={onSave} disabled={!canSave}>
-              <Text style={styles.saveText}>{currentResult?.saved ? t('enhanceResult.saved') : (isSaving ? t('enhanceResult.saving') : t('enhanceResult.saveToGallery'))}</Text>
+              <Text style={styles.saveText} numberOfLines={1} ellipsizeMode="tail">
+                {currentResult?.saved ? t('enhanceResult.saved') : (isSaving ? t('enhanceResult.saving') : t('enhanceResult.saveToGallery'))}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         </View>

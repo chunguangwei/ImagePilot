@@ -33,12 +33,28 @@ import { useTranslation } from 'react-i18next';
 import { BlurView } from '@react-native-community/blur';
 import { getDefaultPresets, getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
 
-// 给 BlurView 加 Animated 包装 —— chrome 显隐动画走 opacity，BlurView 必须是 Animated.View
-// 才能接 Animated.Value（与原 Animated.View 行为一致）。
-// 注意：曾经用 Animated.createAnimatedComponent(BlurView) 把 BlurView 当 header/actionsBar
-// 的可动画容器，但 iOS 上 UIVisualEffectView 会拦截子 view 的 touch（BlurView 4.x 没把
-// 子节点放进 contentView）。现在改成 Animated.View 做动画容器、BlurView 用 absoluteFill
-// 当背景层，TouchableOpacity 作为 Animated.View 的普通子节点接 touch。
+// chrome 背景层渲染策略：
+//   iOS  — 用 UIVisualEffectView（BlurView absoluteFill 当背景，TouchableOpacity 是
+//          Animated.View 的普通子节点接 touch；曾经用 createAnimatedComponent(BlurView)
+//          直接包，子 view 的 touch 被 UIVisualEffectView 吃，所以现在改了结构）。
+//   Android — BlurView 4.x 在 Android 上的实现极其不稳定：StyleSheet.absoluteFill
+//             与 row flex 同框时容易触发 measure 死循环或子节点位置错乱（用户实测：
+//             actionsBar 内容在 chrome 顶部重复显示+图片整片"灰蒙蒙"）。
+//             所以 Android 直接走纯色半透明 backgroundColor 兜底——视觉上略逊于
+//             iOS 磨砂，但稳定性是第一位。
+const CHROME_BG_DARK = 'rgba(28, 28, 30, 0.92)'; // Android 兜底底色（接近 iOS dark blur tint）
+const USE_BLUR_VIEW = Platform.OS === 'ios';
+function ChromeBackdrop() {
+  if (!USE_BLUR_VIEW) return null; // Android：父级 Animated.View 已经有 backgroundColor 兜底
+  return (
+    <BlurView
+      blurType="dark"
+      blurAmount={20}
+      reducedTransparencyFallbackColor="#1C1C1E"
+      style={StyleSheet.absoluteFill}
+    />
+  );
+}
 import { LOCAL_EXTRA_PRESETS } from '../../services/enhance/localEnhance';
 import { presetIcon, ACTION_ICONS } from '../../ui/ios/presetIcons';
 import { SafeAreaView, Alert } from '../../adapters/WebAdapters';
@@ -1150,19 +1166,13 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     // 如果是暂存箱，显示"暂存箱 (6/20)"格式
     if (currentFilterType === 'stagingBox') {
       return (
-        // iOS: UIVisualEffectView 会拦掉子 view 的 touch（BlurView 4.x 没把子节点放进 contentView）。
-        // 把 BlurView 收为 absoluteFill 背景，TouchableOpacity 改放在 Animated.View 的普通子节点位置，
-        // 这样 touch 走容器，不再被 blur 吃掉。
+        // iOS：BlurView absoluteFill 当背景；Android：父级 backgroundColor 兜底，跳过 BlurView
+        // （Android BlurView 4.x 与 absoluteFill + row flex 同框会拖崩布局，详见文件顶 ChromeBackdrop 注释）
         <Animated.View
-          style={[styles.header, { opacity: chromeOpacityAnim }]}
+          style={[styles.header, !USE_BLUR_VIEW && { backgroundColor: CHROME_BG_DARK }, { opacity: chromeOpacityAnim }]}
           pointerEvents={chromeVisible ? 'auto' : 'none'}
         >
-          <BlurView
-            blurType="dark"
-            blurAmount={20}
-            reducedTransparencyFallbackColor="#1C1C1E"
-            style={StyleSheet.absoluteFill}
-          />
+          <ChromeBackdrop />
           <TouchableOpacity onPress={goBack} style={styles.headerButton}>
             <Text style={styles.headerIcon}>‹</Text>
           </TouchableOpacity>
@@ -1235,17 +1245,11 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     }
 
     return (
-      // 同 stagingBox header：BlurView 改 absoluteFill 背景层，避免 iOS 拦 touch（详见上方注释）
       <Animated.View
-        style={[styles.header, { opacity: chromeOpacityAnim }]}
+        style={[styles.header, !USE_BLUR_VIEW && { backgroundColor: CHROME_BG_DARK }, { opacity: chromeOpacityAnim }]}
         pointerEvents={chromeVisible ? 'auto' : 'none'}
       >
-        <BlurView
-          blurType="dark"
-          blurAmount={20}
-          reducedTransparencyFallbackColor="#1C1C1E"
-          style={StyleSheet.absoluteFill}
-        />
+        <ChromeBackdrop />
         <TouchableOpacity onPress={goBack} style={styles.headerButton}>
           <Text style={styles.headerIcon}>‹</Text>
         </TouchableOpacity>
@@ -1696,18 +1700,11 @@ const ImagePreviewScreen = ({ route, navigation }) => {
 
   const renderActions = () => {
     return (
-      // 同 header：BlurView 改 absoluteFill 背景层，TouchableOpacity 作为 Animated.View 子节点接 touch。
-      // 之前 AnimatedBlurView 直接包 TouchableOpacity，iOS 上点了没反应（UIVisualEffectView 吃 touch）。
       <Animated.View
-        style={[styles.actionsBar, { opacity: chromeOpacityAnim }]}
+        style={[styles.actionsBar, !USE_BLUR_VIEW && { backgroundColor: CHROME_BG_DARK }, { opacity: chromeOpacityAnim }]}
         pointerEvents={chromeVisible ? 'auto' : 'none'}
       >
-        <BlurView
-          blurType="dark"
-          blurAmount={20}
-          reducedTransparencyFallbackColor="#1C1C1E"
-          style={StyleSheet.absoluteFill}
-        />
+        <ChromeBackdrop />
         {/* 暂存/移出按钮 */}
         {!isInStagingBox ? (
           <TouchableOpacity style={styles.actionButton} onPress={handleStaging}>
