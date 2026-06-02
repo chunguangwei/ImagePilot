@@ -96,6 +96,7 @@ ImagePilot支持**8大分类维度**，从多个角度智能管理您的照片�
 - 支持的服务商：**OpenAI、Kimi（Moonshot）、Claude（Anthropic）、Gemini（Google）、Azure（OpenAI 兼容/自定义 Custom）、Ollama（PC）**。
 - 填写 Base URL / 模型名称 / API Key 即可（API Key 安全存储）。所选模型若不支持图像，会提示改用多模态模型。
 - 数据只发往您选择的服务商，不经任何作者/第三方服务器。本项目不存在作者后端、会员或额度系统。
+- **图片上传规格（压缩后传，不传原图）**：上传前每张图统一压成 **长边 768px / JPEG 质量 85**（保宽高比，小图不放大）。视觉大模型内部本就会把图降采样到 ~768 的 tile 再编码，传更大几乎不增准度、纯浪费带宽与时间；768/q85 单张约 80~200KB，比原图（手机 HEIC 常 4~12MB）上传体积小一个量级，大图也不会卡。常量见 `CLOUD_LLM_MAX_EDGE` / `CLOUD_LLM_JPEG_QUALITY`（Android/iOS scanner 各一份，保持一致）。
 
 ### 🏷️ 自定义分类
 
