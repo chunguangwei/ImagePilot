@@ -534,7 +534,8 @@
     "saving": "保存中…",
     "saveToGallery": "保存到相册",
     "showOriginal": "显示原图",
-    "showEnhanced": "显示{{preset}}"
+    "showEnhanced": "显示{{preset}}",
+    "showEnhancedShort": "显示效果"
   },
   "settings": {
     "title": "设置",

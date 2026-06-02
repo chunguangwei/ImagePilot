@@ -652,41 +652,40 @@ export default function EnhanceResultScreen({ route, navigation }) {
         <TouchableOpacity style={styles.rightZone} onPress={goNext} />
       </View>
 
-      {/* 底部栏：序号/总数 + 保存 */}
+      {/* 底部栏：iOS Photos 风格 — 主 CTA 几何居中，索引/对比按钮绝对定位在两侧。
+          之前用 flex 行布局，长 toggle 文案把中间 save 挤出几何中心还触发 ellipsis；
+          现改成 absolute 定位：center 不受两侧元素长度影响，永远在屏幕正中。*/}
       <View style={styles.footer}>
-        <View style={styles.footerLeft}>
-          <Text style={styles.indexText}>{index + 1} / {total}</Text>
-        </View>
-        <View style={styles.footerCenter}>
-          <Animated.View style={[
-            styles.saveButtonWrapper,
-            {
-              transform: [{
-                scale: currentResult?.saved ? saveSuccessAnim.interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: [1, 1.06, 1],
-                }) : 1,
-              }],
-              opacity: currentResult?.saved ? saveSuccessAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 0.94],
+        <Text style={styles.indexText} numberOfLines={1}>{index + 1} / {total}</Text>
+        <Animated.View style={[
+          styles.saveButtonWrapper,
+          {
+            transform: [{
+              scale: currentResult?.saved ? saveSuccessAnim.interpolate({
+                inputRange: [0, 0.5, 1],
+                outputRange: [1, 1.06, 1],
               }) : 1,
-            },
-          ]}>
-            <TouchableOpacity style={[styles.saveButton, (!canSave) && styles.saveButtonDisabled]} onPress={onSave} disabled={!canSave}>
-              <Text style={styles.saveText} numberOfLines={1} ellipsizeMode="tail">
-                {currentResult?.saved ? t('enhanceResult.saved') : (isSaving ? t('enhanceResult.saving') : t('enhanceResult.saveToGallery'))}
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-        <View style={styles.footerRight}>
-          {enhancedReady && (
-            <TouchableOpacity style={styles.toggleFooterButton} onPress={toggleShow}>
-              <Text style={styles.toggleFooterText}>{showEnhanced ? t('enhanceResult.showOriginal') : t('enhanceResult.showEnhanced', { preset: presetName || t('enhanceResult.defaultPresetName') })}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+            }],
+            opacity: currentResult?.saved ? saveSuccessAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [1, 0.94],
+            }) : 1,
+          },
+        ]}>
+          <TouchableOpacity style={[styles.saveButton, (!canSave) && styles.saveButtonDisabled]} onPress={onSave} disabled={!canSave}>
+            <Text style={styles.saveText} numberOfLines={1}>
+              {currentResult?.saved ? t('enhanceResult.saved') : (isSaving ? t('enhanceResult.saving') : t('enhanceResult.saveToGallery'))}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+        {enhancedReady && (
+          <TouchableOpacity style={styles.toggleFooterButton} onPress={toggleShow}>
+            {/* toggle 文案保持简短 — 之前带 preset name "(人像美颜)" 一长串把 save 挤出中心 */}
+            <Text style={styles.toggleFooterText} numberOfLines={1}>
+              {showEnhanced ? t('enhanceResult.showOriginal') : t('enhanceResult.showEnhancedShort')}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -733,26 +732,38 @@ const createStyles = (c) => StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.08)'
   },
-  indexText: { color: '#fff', fontSize: 14 },
-  // 左右两侧用 flex:1 等宽——之前 left:80 / right:140 让中间保存按钮偏左 30px
-  // 不视觉居中（用户反馈）。两侧 flex:1 + 中间自适应宽，保存按钮就在屏幕几何中心。
-  footerLeft: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
-  footerCenter: { alignItems: 'center', justifyContent: 'center' },
-  footerRight: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
+  // 索引「1/1」绝对定位左侧，永远不挤压 save 按钮
+  indexText: {
+    position: 'absolute', left: 16, top: 0, bottom: 0,
+    textAlignVertical: 'center', includeFontPadding: false,
+    color: '#fff', fontSize: 14, lineHeight: 56,
+  },
+  // saveButtonWrapper：absolute fill 让 save 按钮总在父级几何中心
+  // （之前用 flex 列布局，toggle 长文案会把 save 挤出中心 + 触发 ellipsis）
+  saveButtonWrapper: {
+    position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  // toggle 也绝对定位右侧，maxWidth 限宽——之前没限宽 + 带长 preset 名，行 flex 算到中间挤掉 save
   toggleFooterButton: {
+    position: 'absolute', right: 16, top: 8, bottom: 8,
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.35)',
     borderRadius: 12,
-    height: 40,
-    paddingHorizontal: 16,
-    paddingVertical: 0,
-    marginRight: 12,
+    paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    maxWidth: 120,
   },
-  toggleFooterText: { color: '#fff', fontSize: 14 },
-  saveButton: { backgroundColor: c.accent, borderRadius: 12, height: 40, paddingHorizontal: 16, paddingVertical: 0, alignItems: 'center', justifyContent: 'center' },
+  toggleFooterText: { color: '#fff', fontSize: 13 },
+  // 主 CTA：minWidth 兜底防 numberOfLines 触发 ellipsis（之前 width 不足把"保存到相册"截成"保存到..."）
+  saveButton: {
+    backgroundColor: c.accent, borderRadius: 12, height: 40,
+    paddingHorizontal: 20, paddingVertical: 0,
+    minWidth: 132,
+    alignItems: 'center', justifyContent: 'center',
+  },
   saveButtonDisabled: { backgroundColor: '#2C2C2E' },
   saveText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });

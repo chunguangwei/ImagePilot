@@ -534,7 +534,8 @@
     "saving": "Saving...",
     "saveToGallery": "Save to Gallery",
     "showOriginal": "Show Original",
-    "showEnhanced": "Show {{preset}}"
+    "showEnhanced": "Show {{preset}}",
+    "showEnhancedShort": "Show result"
   },
   "settings": {
     "title": "Settings",
