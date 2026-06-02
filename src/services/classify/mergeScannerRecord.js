@@ -49,6 +49,14 @@ export function mergeScannerRecord(fresh, prev) {
     street: prev.street || fresh.street,
     locationSource: prev.locationSource || fresh.locationSource,
     cityDistance: prev.cityDistance ?? fresh.cityDistance,
+    // 拍摄参数（iOS enrichExifInfo 提取后落库）：toImageRecord 重扫时 cameraSettings 恒为
+    // null，不保留会把已提取的 EXIF 冲掉，「按拍摄参数」section 一刷新就空（用户反馈）。
+    // 连同 4 个 *Category 列一起保（writeImageDetailedInfo 落库时直接沿用，不必重算）。
+    cameraSettings: prev.cameraSettings || fresh.cameraSettings,
+    isoCategory: prev.isoCategory || fresh.isoCategory,
+    apertureCategory: prev.apertureCategory || fresh.apertureCategory,
+    shutterCategory: prev.shutterCategory || fresh.shutterCategory,
+    focalLengthCategory: prev.focalLengthCategory || fresh.focalLengthCategory,
   };
 }
 

@@ -109,6 +109,31 @@ describe('mergeScannerRecord — 单条合并', () => {
     expect(out.city).toBe('上海');
     expect(out.address).toBe('南京路');
   });
+
+  test('拍摄参数：重扫(fresh.cameraSettings=null)保留 prev 已提取的 EXIF + 分类列', () => {
+    // 回归：iOS 提取拍参后重扫(点 FAB ↻)，toImageRecord 的 cameraSettings 恒 null，
+    // 不保留就会把「按拍摄参数」section 冲空
+    const fresh = baseFresh({ cameraSettings: null });
+    const prev = {
+      id: 'asset-1', category: 'travel_scenery',
+      cameraSettings: JSON.stringify({ iso: 100, aperture: 2.8, shutterSpeed: 0.008, focalLength: 50 }),
+      isoCategory: '100', apertureCategory: '2.8', shutterCategory: '1/125', focalLengthCategory: '50',
+    };
+    const out = mergeScannerRecord(fresh, prev);
+    expect(out.cameraSettings).toBe(prev.cameraSettings);
+    expect(out.isoCategory).toBe('100');
+    expect(out.apertureCategory).toBe('2.8');
+    expect(out.shutterCategory).toBe('1/125');
+    expect(out.focalLengthCategory).toBe('50');
+  });
+
+  test('拍摄参数：prev 无 EXIF 时用 fresh 的（新图首扫不报错）', () => {
+    const fresh = baseFresh({ cameraSettings: null });
+    const prev = { id: 'asset-1', category: 'travel_scenery' };
+    const out = mergeScannerRecord(fresh, prev);
+    expect(out.cameraSettings).toBeNull();
+    expect(out.isoCategory == null).toBe(true);
+  });
 });
 
 describe('mergeScannerRecords — 批量合并', () => {
