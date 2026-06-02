@@ -882,7 +882,10 @@ export const RNFS = {
     } else if (Platform.OS === 'ios') {
       // iOS：走自家 PhotoKitModule.saveImageToGallery
       // —— Swift 里用 PHAssetCreationRequest.addResource 原样落盘，保留 HEIC/EXIF 元数据。
-      // 不支持 http/https/data URI 直传，先 JS 侧落到本地再调（修图链路本来就在本地）。
+      // 修图链路（人像美颜/色彩优化/AI 增强/抠图/物体消除/文档扫描/滤镜）出的是
+      // data:image/jpeg;base64,... data URL。PhotoKit 只接文件 URL，所以这里先把
+      // data URL 落到 CachesDirectory 临时文件，再调 native，保存完后清理。
+      // http(s) URL 仍拒绝（修图链路不会出这种）。
       try {
         const { PhotoKitModule } = NativeModules;
         if (!PhotoKitModule || typeof PhotoKitModule.saveImageToGallery !== 'function') {
@@ -891,13 +894,37 @@ export const RNFS = {
         if (!imageUrl || typeof imageUrl !== 'string') {
           throw new Error('imageUrl 不能为空');
         }
-        if (/^(https?:|data:)/i.test(imageUrl)) {
-          throw new Error('iOS 保存到相册只接受本地文件路径，请先把数据落到磁盘');
+
+        let pathToSave = imageUrl;
+        let tmpPath = null;
+        if (/^data:/i.test(imageUrl)) {
+          // 解析 data URL：data:[mime];base64,<payload>
+          const m = imageUrl.match(/^data:([^;,]+)?(?:;base64)?,(.+)$/i);
+          if (!m) throw new Error('无效的 data URL');
+          const mime = (m[1] || 'image/jpeg').toLowerCase();
+          const payload = m[2];
+          const ext = mime.includes('png') ? 'png' : mime.includes('heic') ? 'heic' : 'jpg';
+          const ts = Date.now();
+          tmpPath = `${RNFS_Native.CachesDirectoryPath}/save-${ts}.${ext}`;
+          await RNFS_Native.writeFile(tmpPath, payload, 'base64');
+          pathToSave = `file://${tmpPath}`;
+          logger.debug(`[iOS] data URL → 临时文件 ${tmpPath}`);
+        } else if (/^https?:/i.test(imageUrl)) {
+          throw new Error('iOS 保存到相册不接受网络 URL，请先把数据下到本地');
         }
-        logger.debug(`[iOS] PhotoKit.saveImageToGallery: ${imageUrl}`);
-        const result = await PhotoKitModule.saveImageToGallery(imageUrl, fileName || null);
-        logger.debug(`[iOS] 图片保存成功:`, result);
-        return result;
+
+        logger.debug(`[iOS] PhotoKit.saveImageToGallery: ${pathToSave}`);
+        try {
+          const result = await PhotoKitModule.saveImageToGallery(pathToSave, fileName || null);
+          logger.debug(`[iOS] 图片保存成功:`, result);
+          return result;
+        } finally {
+          // 清理临时文件——save 成功 / 失败都清，避免占满 CachesDirectory
+          if (tmpPath) {
+            try { if (await RNFS_Native.exists(tmpPath)) await RNFS_Native.unlink(tmpPath); }
+            catch (e) { logger.debug(`[iOS] 清理临时文件失败（忽略）: ${e?.message || e}`); }
+          }
+        }
       } catch (error) {
         logger.error(`[iOS] 保存图片到相册失败:`, error);
         throw error;
