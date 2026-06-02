@@ -39,6 +39,7 @@ import { logger, getUri } from '../../adapters/WebAdapters';
 // iOS 单色图标（字体已打包）；异常时回退 emoji
 let CatIonicons = null;
 try { CatIonicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { CatIonicons = null; }
+import { ACTION_ICONS } from '../../ui/ios/presetIcons';
 import { getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation, getDefaultPresets } from '../../i18n';
 import { useIosColors } from '../../ui/ios/theme';
 import Haptics from '../../utils/haptics';
@@ -185,21 +186,24 @@ const CategoryScreen = ({ route, navigation }) => {
     const requiresFilterValue = !isStaging;
     const trackStagingMembership = !isStaging;
 
-    // 操作按钮：暂存箱有"移出"，其它有"暂存"，其余动作相同
+    // 操作按钮：暂存箱有"移出"，其它有"暂存"，其余动作相同。
+    // 用 iconKey 对齐 ACTION_ICONS（与 ImagePreview 底部栏同款单色 Ionicons），
+    // emoji 留作 Ionicons 加载失败的兜底；之前的彩色边框已废弃——参考 iOS Photos
+    // 多选工具栏：纯图标+文字，destructive(删除)用红，其余统一蓝主题色。
     const actionButtons = isStaging
       ? [
-          { id: 'removeFromStaging', label: t('category.removeFromStagingLabel'), icon: '➡️', color: '#FF9500' },
-          { id: 'delete', label: t('common.delete'), icon: '🗑️', color: '#FF3B30' },
-          { id: 'enhance', label: t('category.enhance'), icon: '✨', color: '#9C27B0' },
-          { id: 'changeCategory', label: t('category.changeCategory'), icon: '🏷️', color: '#007AFF' },
-          { id: 'share', label: t('category.share'), icon: '📤', color: '#34C759' },
+          { id: 'removeFromStaging', label: t('category.removeFromStagingLabel'), iconKey: 'remove', emoji: '➡️' },
+          { id: 'delete', label: t('common.delete'), iconKey: 'delete', emoji: '🗑️', danger: true },
+          { id: 'enhance', label: t('category.enhance'), iconKey: 'enhance', emoji: '✨' },
+          { id: 'changeCategory', label: t('category.changeCategory'), iconKey: 'category', emoji: '🏷️' },
+          { id: 'share', label: t('category.share'), iconKey: 'share', emoji: '📤' },
         ]
       : [
-          { id: 'staging', label: t('category.staging'), icon: '📦', color: '#FF9500' },
-          { id: 'delete', label: t('common.delete'), icon: '🗑️', color: '#FF3B30' },
-          { id: 'enhance', label: t('category.enhance'), icon: '✨', color: '#9C27B0' },
-          { id: 'changeCategory', label: t('category.changeCategory'), icon: '📁', color: '#007AFF' },
-          { id: 'share', label: t('category.share'), icon: '📤', color: '#34C759' },
+          { id: 'staging', label: t('category.staging'), iconKey: 'stage', emoji: '📦' },
+          { id: 'delete', label: t('common.delete'), iconKey: 'delete', emoji: '🗑️', danger: true },
+          { id: 'enhance', label: t('category.enhance'), iconKey: 'enhance', emoji: '✨' },
+          { id: 'changeCategory', label: t('category.changeCategory'), iconKey: 'category', emoji: '📁' },
+          { id: 'share', label: t('category.share'), iconKey: 'share', emoji: '📤' },
         ];
 
     // 空状态 CTA：返回 { title, actionLabel, onAction }，actionLabel 为 null 则不渲染按钮
@@ -1548,32 +1552,42 @@ const CategoryScreen = ({ route, navigation }) => {
   };
 
   /**
-   * 渲染底部操作栏
+   * 渲染底部操作栏 —— iOS Photos 风格的多选工具栏：
+   * 纯 Ionicons 单色 + 文字，不再用彩色 emoji + 彩色边框（之前的 5 个圆角彩色矩形
+   * 视觉上与 app 整体风格脱节，用户反馈"不太符合整体设计风格"）。
+   * destructive(删除) 用 c.danger 红，其余统一 c.accent 蓝。
    */
   const renderBottomBar = () => {
     if (!selectionMode || selectedCount === 0) return null;
-    
+
     const actions = screenConfig.actionButtons;
 
     return (
       <View style={[styles.actionBar, { paddingBottom: 8 + insets.bottom }]}>
-        {actions.map(action => (
-          <TouchableOpacity
-            key={action.id}
-            style={[styles.actionButton, { borderColor: action.color }]}
-            onPress={() => handleBatchAction(action.id)}
-          >
-            <Text style={styles.actionIcon}>{action.icon}</Text>
-            <Text
-              style={[styles.actionLabel, { color: action.color }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.85}
+        {actions.map(action => {
+          const tint = action.danger ? c.danger : c.accent;
+          const iconName = ACTION_ICONS[action.iconKey] || null;
+          return (
+            <TouchableOpacity
+              key={action.id}
+              style={styles.actionButton}
+              onPress={() => handleBatchAction(action.id)}
+              activeOpacity={0.6}
             >
-              {action.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              {CatIonicons && iconName
+                ? <CatIonicons name={iconName} size={24} color={tint} style={styles.actionIcon} />
+                : <Text style={[styles.actionIcon, { color: tint }]}>{action.emoji}</Text>}
+              <Text
+                style={[styles.actionLabel, { color: tint }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
+              >
+                {action.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     );
   };
@@ -2125,31 +2139,29 @@ const createStyles = (c) => StyleSheet.create({
     color: c.accent,
   },
 
-  // 操作栏（底部 paddingBottom 由调用处加 safe-area insets）
+  // 多选工具栏（底部 paddingBottom 由调用处加 safe-area insets）
+  // —— 风格对齐 iOS Photos：纯图标+文字，无边框、无背景色块，整体跟 app 其它栏一致。
   actionBar: {
     flexDirection: 'row',
     backgroundColor: c.card,
-    paddingTop: 12,
-    paddingHorizontal: 16,
-    gap: 12,
-    borderTopWidth: 1,
+    paddingTop: 10,
+    paddingHorizontal: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: c.separator,
   },
   actionButton: {
     flex: 1,
-    flexDirection: 'column',
     alignItems: 'center',
-    padding: 8,
-    borderRadius: 8,
-    borderWidth: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
   },
   actionIcon: {
-    fontSize: 20,
-    marginBottom: 4,
+    fontSize: 22, // emoji 兜底字号；Ionicons 在 JSX 里固定 size=24
+    marginBottom: 3,
   },
   actionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '500',
   },
 
   // 空状态
