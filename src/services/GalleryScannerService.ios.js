@@ -731,8 +731,112 @@ class GalleryScannerService {
     }
   }
 
+  /**
+   * EXIF 拍参提取（ISO/光圈/快门/焦距）——与 Android scanner 的拍参提取对齐。
+   *
+   * 背景：PHAsset 本身不暴露拍参字段（不像 GPS 那样 system 缓存好了）；要拿到拍参必须
+   * 读原图字节再用 CGImageSource 解 EXIF。所以这是一个相对耗时的阶段，独立于扫描，
+   * 用户从 Settings 主动触发（v1.5.6 在 Settings 加入口）。一次提完入库后未来扫描复用，
+   * 新照片由本方法过滤"没拍参"再增量提。
+   *
+   * 流程：
+   *   1) readAllImages → 筛 cameraSettings 为空 + 非 screenshot 的（截图 EXIF 不含拍参）
+   *   2) 按 BATCH 调 PhotoKitModule.fetchAssetsExif，拿 { iso, aperture, shutterSpeed, focalLength }
+   *   3) 把 cameraSettings 字符串化 + 算 isoCategory/apertureCategory/... 写回 DB
+   *   4) 刷 GlobalImageCache，让 HomeScreen「按拍参」section 显示
+   */
+  async enrichExifInfo() {
+    logger.info('📸 [iOS] 开始 EXIF 拍参提取');
+    if (!PhotoKitModule || typeof PhotoKitModule.fetchAssetsExif !== 'function') {
+      const e = new Error('PhotoKitModule.fetchAssetsExif 不可用（请重装 app 让 iOS 拿到新版原生模块）');
+      e.code = 'E_NATIVE_UNAVAILABLE';
+      throw e;
+    }
+    try {
+      const all = await UnifiedDataService.readAllImages();
+      // 截图/二维码没拍参（系统截屏 EXIF 通常空）；已经有 cameraSettings 的也跳过
+      const need = (all || []).filter((img) => {
+        const c = img.category || 'NA';
+        if (c === 'screenshot' || c === 'qrcode') return false;
+        const cs = img.cameraSettings;
+        if (!cs) return true;
+        if (typeof cs === 'string') {
+          try {
+            const parsed = JSON.parse(cs);
+            return !parsed || Object.keys(parsed).length === 0;
+          } catch (_) { return true; }
+        }
+        return typeof cs === 'object' && Object.keys(cs).length === 0;
+      });
+
+      const total = need.length;
+      logger.info(`📸 [iOS] EXIF 提取统计: 总图=${all?.length || 0}, 待提取=${total}`);
+      await this.sendProgressMessage('exif_enrichment', 0, total, this.imagesClassified, this.totalImagesToBeClassified);
+
+      if (total === 0) {
+        await this.sendProgressMessage('completed', 0, 0, this.imagesClassified, this.totalImagesToBeClassified);
+        return true;
+      }
+
+      // BATCH 50：单张约 30~100ms，50/批是「能看到进度」与「调原生开销低」的折中
+      const BATCH = 50;
+      let processed = 0;
+      let savedTotal = 0;
+      for (let i = 0; i < need.length; i += BATCH) {
+        const batch = need.slice(i, i + BATCH);
+        const ids = batch.map((img) => img.id);
+        let result;
+        try {
+          result = await PhotoKitModule.fetchAssetsExif(ids);
+        } catch (e) {
+          logger.warn(`⚠️ [iOS] EXIF 批量提取失败 (${i}-${i + batch.length}):`, e?.message || e);
+          processed += batch.length;
+          await this.sendProgressMessage('exif_enrichment', Math.min(processed, total), total, this.imagesClassified, this.totalImagesToBeClassified);
+          continue;
+        }
+        const exifMap = (result && result.results) || {};
+
+        // 给有结果的图组装"更新记录"——按 writeImageDetailedInfo 的 schema（含全部已有字段
+        // 不丢分类/位置/相似度等已落库数据）。cameraSettings 字符串化以匹配 SQL TEXT 列。
+        const updates = [];
+        for (const img of batch) {
+          const exif = exifMap[img.id];
+          if (!exif || Object.keys(exif).length === 0) continue;
+          updates.push({
+            ...img,
+            cameraSettings: JSON.stringify(exif),
+          });
+        }
+        if (updates.length > 0) {
+          try {
+            await UnifiedDataService.writeImageDetailedInfo(updates, false);
+            savedTotal += updates.length;
+          } catch (e) {
+            logger.warn('[iOS] EXIF 落库失败:', e?.message || e);
+          }
+        }
+        processed += batch.length;
+        await this.sendProgressMessage('exif_enrichment', Math.min(processed, total), total, this.imagesClassified, this.totalImagesToBeClassified);
+      }
+
+      // 一次性刷 GlobalImageCache，让 HomeScreen「按拍参」section 出现
+      try {
+        await UnifiedDataService.imageCache.refreshCache();
+      } catch (e) {
+        logger.warn('[iOS] EXIF 提取后刷新 GlobalImageCache 失败:', e?.message || e);
+      }
+      logger.info(`✅ [iOS] EXIF 拍参提取完成：共补 ${savedTotal} 张`);
+      await this.sendProgressMessage('completed', total, total, this.imagesClassified, this.totalImagesToBeClassified);
+      return true;
+    } catch (e) {
+      logger.error('❌ [iOS] EXIF 提取失败:', e?.message || e);
+      await this.sendProgressMessage('error', 0, 0, this.imagesClassified, this.totalImagesToBeClassified);
+      throw e;
+    }
+  }
+
   getScanVersion() {
-    return 'ios-m4-1.0.0'; // M4：补齐 GPS + 城市反查 + 相似度检测，与 Android 形状对齐
+    return 'ios-m5-1.0.0'; // M5：补 EXIF 拍参提取
   }
 
   isUsingNativeScan() {

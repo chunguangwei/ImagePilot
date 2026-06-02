@@ -32,4 +32,8 @@ RCT_EXTERN_METHOD(saveImageToGallery:(NSString *)sourcePath
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(fetchAssetsExif:(NSArray *)identifiers
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end

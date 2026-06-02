@@ -21,6 +21,7 @@
 //
 
 import Foundation
+import ImageIO
 import Photos
 import PhotosUI
 import React
@@ -374,6 +375,90 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
         }
       } else {
         reject("E_PERMISSION_DENIED", "未授予相册访问权限", nil)
+      }
+    }
+  }
+
+  // MARK: - EXIF 拍参提取（光圈/快门/ISO/焦距）—— 与 Android GalleryScanService 对齐
+
+  /// 批量读 PHAsset EXIF：每张走 PHImageManager.requestImageDataAndOrientation 拿原图数据，
+  /// 再用 CGImageSource 解 EXIF 字典。**这是 PhotoKit 提取拍参的标准路径**——PHAsset
+  /// 本身不暴露拍参（只有 location / mediaSubtypes 等），所以必须读原图字节。
+  ///
+  /// 性能：单张约 30~100ms（HEIC 主要在 CGImageSource 解码 header）。原生侧串行（同步选项 +
+  /// background queue），JS 侧建议每 50 张一批走、给进度回调，避免长时间无反馈。
+  ///
+  /// 入参：identifiers — 一批 PHAsset.localIdentifier
+  /// 出参：
+  ///   { results: { <localId>: { iso, aperture, shutterSpeed, focalLength } }, total, success, missing }
+  ///   只回填实际能读到的字段；4 个字段都缺则 results 不带该 localId。
+  @objc(fetchAssetsExif:resolver:rejecter:)
+  func fetchAssetsExif(_ identifiers: [String],
+                       resolver resolve: @escaping RCTPromiseResolveBlock,
+                       rejecter reject: @escaping RCTPromiseRejectBlock) {
+    if identifiers.isEmpty {
+      resolve(["results": [String: Any](), "total": 0, "success": 0, "missing": 0])
+      return
+    }
+    DispatchQueue.global(qos: .userInitiated).async {
+      let assets = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
+      var resultDict: [String: [String: Any]] = [:]
+      var missing = 0
+
+      let manager = PHImageManager.default()
+      let opts = PHImageRequestOptions()
+      opts.version = .original         // 原图字节（含 EXIF），不带 Photos 编辑链上的转码
+      opts.deliveryMode = .highQualityFormat
+      opts.isNetworkAccessAllowed = false // 不主动下 iCloud，避免悄悄 burn 流量；JS 上层提示用户
+      opts.isSynchronous = true        // 已在 background queue，串行即可
+
+      assets.enumerateObjects { (asset, _, _) in
+        var got = false
+        manager.requestImageDataAndOrientation(for: asset, options: opts) { (data, _, _, _) in
+          guard let data = data,
+                let src = CGImageSourceCreateWithData(data as CFData, nil),
+                let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
+                let exif = props[kCGImagePropertyExifDictionary] as? [CFString: Any] else {
+            return
+          }
+
+          var settings: [String: Any] = [:]
+          // ISO：EXIF 给数组（系统拍摄一般 1 个值），取首
+          if let isoArr = exif[kCGImagePropertyExifISOSpeedRatings] as? [NSNumber], let first = isoArr.first?.intValue, first > 0 {
+            settings["iso"] = first
+          } else if let isoSingle = exif[kCGImagePropertyExifISOSpeedRatings] as? NSNumber, isoSingle.intValue > 0 {
+            settings["iso"] = isoSingle.intValue
+          }
+          // 光圈 fNumber：CFNumber double
+          if let f = exif[kCGImagePropertyExifFNumber] as? NSNumber {
+            let v = f.doubleValue
+            if v > 0 { settings["aperture"] = v }
+          }
+          // 快门 ExposureTime：秒（如 1/125 → 0.008）
+          if let t = exif[kCGImagePropertyExifExposureTime] as? NSNumber {
+            let v = t.doubleValue
+            if v > 0 { settings["shutterSpeed"] = v }
+          }
+          // 焦距 FocalLength：mm
+          if let fl = exif[kCGImagePropertyExifFocalLength] as? NSNumber {
+            let v = fl.doubleValue
+            if v > 0 { settings["focalLength"] = v }
+          }
+          if !settings.isEmpty {
+            resultDict[asset.localIdentifier] = settings
+            got = true
+          }
+        }
+        if !got { missing += 1 }
+      }
+
+      DispatchQueue.main.async {
+        resolve([
+          "results": resultDict,
+          "total": assets.count,
+          "success": resultDict.count,
+          "missing": missing,
+        ])
       }
     }
   }
