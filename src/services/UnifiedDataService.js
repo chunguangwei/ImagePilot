@@ -518,28 +518,38 @@ class UnifiedDataService {
       if (Platform.OS === 'web') {
         // PC端：遍历文件系统，查找 mtime >= lastScanTime 的图片文件
         return await this._readNewDiscoveredImagesFromFileSystem(sinceTime, limit, settings.scanPaths || []);
+      } else if (Platform.OS === 'ios') {
+        // iOS：PhotoKit 没有「自上次扫描以来新增」的原生筛选 API，但增量监听
+        // (PHPhotoLibraryChangeObserver) 已经把新照片插进 DB 了。从已落库的全量按
+        // takenAt（≈ PHAsset.creationDate）过滤，足以反映「新拍/新导入」的图。
+        // 实际成本：~万级一次内存过滤 ≈ 几 ms，没必要走原生。
+        const all = await this.readAllImages();
+        const recent = (Array.isArray(all) ? all : [])
+          .filter((img) => (img.takenAt || img.timestamp || 0) >= sinceTime)
+          .sort((a, b) => (b.takenAt || b.timestamp || 0) - (a.takenAt || a.timestamp || 0));
+        return { total: recent.length, images: recent.slice(0, limit) };
       } else {
-        // 移动端：使用 MediaStore API
+        // Android：使用 MediaStore API（PC 端、iOS 都不走这条路径）
         const mediaStoreService = require('./MediaStoreService').default;
-        
+
         if (!mediaStoreService.checkAvailability()) {
           logger.warn('MediaStore 不可用，无法查询新发现的照片');
           return { total: 0, images: [] };
         }
-        
+
         // 先查询所有新照片（不限制数量）以获取总数
         const allResult = await mediaStoreService.getImagesSinceTime({
           sinceTime: sinceTime,
           limit: 0, // 0表示不限制
           offset: 0
         });
-        
+
         const allImages = mediaStoreService.convertBatchToCompatibleFormat(allResult.images || []);
         const total = allImages.length;
-        
+
         // 只返回前limit张用于显示
         const images = allImages.slice(0, limit);
-        
+
         return { total, images };
       }
       
