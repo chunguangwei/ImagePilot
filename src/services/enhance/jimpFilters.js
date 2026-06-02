@@ -72,7 +72,11 @@ export async function applyBeautyToBase64(base64, intensity = 0.8) {
   const clean = base64.startsWith('data:') ? base64.split(',')[1] : base64;
   const img = await Jimp.read(Buffer.from(clean, 'base64'));
   const radius = Math.max(2, Math.round(2 + intensity * 4));
+  // blur() 是整图同步操作（jimp 内部多趟扫描），1024px 图能阻塞 0.5~1s 且无内部让步点。
+  // 前后各让一次，确保「处理中」计时器/返回手势在 blur 边界能跑。
+  await yieldToEventLoop();
   const blurred = img.clone().blur(radius);
+  await yieldToEventLoop();
   const keep = 0.5 - 0.28 * intensity; // 保留的高频细节比例（越小越磨）
   const od = img.bitmap.data;
   const bd = blurred.bitmap.data;
@@ -90,6 +94,7 @@ export async function applyBeautyToBase64(base64, intensity = 0.8) {
   }
   img.brightness(0.05 * intensity); // 提亮
   img.color([{ apply: 'red', params: [5 * intensity] }, { apply: 'saturate', params: [6 * intensity] }]); // 暖肤+气色
+  await yieldToEventLoop(); // getBase64Async 编码同样阻塞，前面让一次给计时器收尾
   return img.getBase64Async(Jimp.MIME_JPEG);
 }
 
@@ -164,6 +169,7 @@ export async function applyDocumentScanToBase64(base64, intensity = 0.9) {
 
   img.contrast(0.18 * intensity);                 // 文字更分明
   img.color([{ apply: 'saturate', params: [10 * intensity] }]); // 彩色证件更鲜
+  await yieldToEventLoop(); // 编码前让一次给计时器/返回手势
   return img.getBase64Async(Jimp.MIME_JPEG);
 }
 
@@ -210,6 +216,7 @@ export async function applyColorEnhanceToBase64(base64, intensity = 0.85) {
     }
     if (chunkEnd < d.length) await yieldToEventLoop();
   }
+  await yieldToEventLoop(); // 编码前让一次给计时器/返回手势
   return img.getBase64Async(Jimp.MIME_JPEG);
 }
 
