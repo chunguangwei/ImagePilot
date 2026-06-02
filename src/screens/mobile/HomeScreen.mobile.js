@@ -2400,12 +2400,21 @@ const HomeScreen = ({ navigation }) => {
           />
         }
       >
-        {/* 首扫前欢迎卡（从未扫过 + 无任何数据）：纯介绍文案，指向右下角 FAB 扫描按钮。
-            之前这里有「扫描相册开始」按钮，跟 FAB 是同一个动作（handleScan），冗余被用户反馈。 */}
+        {/* 首扫前欢迎卡（从未扫过 + 无任何数据）：保留主 CTA + FAB 提示双入口。
+            之前一度去掉了 CTA 按钮（用户觉得跟 FAB 重复），但数据清空场景下没显式按钮
+            体验不顺手——已恢复，与 FAB 同动作 handleScan，两者都能用。 */}
         {(!hasScanned && recentImagesTotal === 0 && categories.every((cat) => (cat.count || 0) === 0)) ? (
           <View style={styles.welcomeCard}>
             <Text style={styles.welcomeTitle}>{t('home.welcomeTitle')}</Text>
             <Text style={styles.welcomeSub}>{t('home.welcomeSub')}</Text>
+            <TouchableOpacity
+              style={styles.welcomeBtn}
+              onPress={handleScan}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+            >
+              <Text style={styles.welcomeBtnText}>{t('home.welcomeAction')}</Text>
+            </TouchableOpacity>
             <Text style={styles.welcomeHint}>{t('home.welcomeHint')}</Text>
           </View>
         ) : null}
@@ -2533,16 +2542,27 @@ const createStyles = (c) => StyleSheet.create({
   welcomeSub: {
     fontSize: 14,
     color: c.secondaryLabel,
-    marginBottom: 12,
+    marginBottom: 20,
     textAlign: 'center',
     lineHeight: 20,
   },
-  // 指向右下角 FAB 的提示行（取代原"扫描相册开始"按钮——与 FAB 同动作冗余）
+  welcomeBtn: {
+    backgroundColor: c.accent,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  welcomeBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  // FAB 提示作为次要 CTA，跟在主按钮下方
   welcomeHint: {
-    fontSize: 13,
+    fontSize: 12,
     color: c.tertiaryLabel,
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 10,
   },
 
   // 区块样式（iOS 分组：白底全宽 + 组间留白；保持全宽以兼容网格宽度计算）
