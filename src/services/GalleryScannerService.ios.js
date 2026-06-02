@@ -802,8 +802,14 @@ class GalleryScannerService {
         for (const img of batch) {
           const exif = exifMap[img.id];
           if (!exif || Object.keys(exif).length === 0) continue;
+          // ⚠️ 必须剥掉 4 个 *Category 字段：ImageStorageService 落库时若发现记录已带
+          // isoCategory/apertureCategory（哪怕是 null），就直接沿用、不从 cameraSettings
+          // 重算分类。而「按拍摄参数」section 读的正是这几个 *Category 列。{...img} 会把
+          // DB 里的 null category 带进来 → 分类永远算不出 → section 一直空（这就是用户
+          // 反馈"提取拍摄参数没用"的根因）。剥掉后 storage 走 calculateCameraSettingsCategories。
+          const { isoCategory, apertureCategory, shutterCategory, focalLengthCategory, ...rest } = img;
           updates.push({
-            ...img,
+            ...rest,
             cameraSettings: JSON.stringify(exif),
           });
         }
