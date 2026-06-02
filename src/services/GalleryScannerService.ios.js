@@ -42,6 +42,14 @@ const IS_NATIVE_AVAILABLE = !!(PhotoKitModule && PhotoKitModule.fetchAllPhotos);
 const MOBILENET_MAP_THRESHOLD = 0.15;
 
 /**
+ * 云端 LLM 分类的图片上传规格：长边 768px / JPEG q85（与 Android 端一致）。
+ * 视觉 LLM 内部本就把图降采样到 ~768 tile 再编码，传更大几乎不增准度、纯浪费带宽。
+ * 768/q85 比原来的 1024/q90 上传体积小近一半，识别准度实测基本不变。
+ */
+const CLOUD_LLM_MAX_EDGE = 768;
+const CLOUD_LLM_JPEG_QUALITY = 85;
+
+/**
  * PHAsset mediaSubtypes → 应用分类映射（系统给的硬信号，比 ML 模型更可靠）
  * - photoScreenshot → screenshot（已有）
  * - photoPanorama   → travel_scenery（全景照基本都是风景/建筑）
@@ -495,8 +503,8 @@ class GalleryScannerService {
           try {
             const sourceUri = getUri(image) || image?.uri;
             if (!sourceUri) { failedCount++; continue; }
-            const resized = await ImageProcessor.resizeImage(sourceUri, 1024, 1024, {
-              maintainAspectRatio: true, outputFormat: 'jpeg', quality: 90,
+            const resized = await ImageProcessor.resizeImage(sourceUri, CLOUD_LLM_MAX_EDGE, CLOUD_LLM_MAX_EDGE, {
+              maintainAspectRatio: true, outputFormat: 'jpeg', quality: CLOUD_LLM_JPEG_QUALITY,
             });
             const resizedUri = resized?.uri;
             if (!resizedUri) { failedCount++; continue; }
