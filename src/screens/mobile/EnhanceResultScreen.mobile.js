@@ -734,9 +734,11 @@ const createStyles = (c) => StyleSheet.create({
     borderTopColor: 'rgba(255,255,255,0.08)'
   },
   indexText: { color: '#fff', fontSize: 14 },
-  footerLeft: { width: 80 },
-  footerCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  footerRight: { width: 140, alignItems: 'flex-end', justifyContent: 'center' },
+  // 左右两侧用 flex:1 等宽——之前 left:80 / right:140 让中间保存按钮偏左 30px
+  // 不视觉居中（用户反馈）。两侧 flex:1 + 中间自适应宽，保存按钮就在屏幕几何中心。
+  footerLeft: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
+  footerCenter: { alignItems: 'center', justifyContent: 'center' },
+  footerRight: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
   toggleFooterButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
