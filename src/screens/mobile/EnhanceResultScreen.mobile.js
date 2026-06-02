@@ -600,7 +600,13 @@ export default function EnhanceResultScreen({ route, navigation }) {
       <StatusBar barStyle="light-content" />
       {/* 顶部栏 */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        {/* 处理中 jimp 像素循环会堵 JS 线程几秒，期间 navigation.goBack 排队等不到执行；
+            加大 hitSlop 至少保证手指落到合理区域内都能 register；真正的 yield 在 jimpFilters 里做 */}
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={styles.backTouchable}
+        >
           <Text style={styles.back}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.title} numberOfLines={1}>{presetName}</Text>
@@ -698,6 +704,7 @@ const createStyles = (c) => StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 12,
   },
+  backTouchable: { paddingHorizontal: 8, paddingVertical: 8 }, // 实际触摸区域 56x56，配合 hitSlop 还会更大
   back: { color: '#fff', fontSize: 32, fontWeight: 'bold', width: 40, textAlign: 'center' },
   title: { color: '#fff', fontSize: 16, fontWeight: '600', flex: 1, textAlign: 'center' },
   progress: { color: '#8E8E93', fontSize: 14, width: 64, textAlign: 'right' },

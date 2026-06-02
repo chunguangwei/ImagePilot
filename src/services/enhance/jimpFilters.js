@@ -8,6 +8,19 @@
 
 import Jimp from './jimpCustom.js'; // RN/Hermes 下可用、带 .read 的定制 Jimp（见该文件说明）
 
+// 像素扫描分块上限：Hermes 单批跑完 ~256K 像素需要 200~400ms。每跑一批 await macrotask
+// 让 JS 线程喘一口气——否则用户在「人像美颜/色彩优化/文档扫描」处理中点返回按钮，
+// goBack() / Alert 都被排在持续运行的循环后面，UI 看起来"完全不响应"。
+// 这个上限取得偏小是为了让 1024×1024 的图（~1M 像素）大约 4 次让出，60FPS 用户体感顺滑。
+const PIXEL_LOOP_YIELD_CHUNK = 256 * 1024;
+async function yieldToEventLoop() {
+  // setImmediate 在 RN Hermes 上等价于 macrotask（不可用时回退 setTimeout 0）
+  await new Promise((resolve) => {
+    if (typeof setImmediate === 'function') setImmediate(resolve);
+    else setTimeout(resolve, 0);
+  });
+}
+
 // ── 基于像素扫描的色调工具（jimp 无内置 LUT/曲线，用 scan 实现）──
 /** 抬黑：把暗部整体抬升 lift（0..255），营造"褪色胶片"感 */
 function liftBlacks(img, lift) {
@@ -63,11 +76,17 @@ export async function applyBeautyToBase64(base64, intensity = 0.8) {
   const keep = 0.5 - 0.28 * intensity; // 保留的高频细节比例（越小越磨）
   const od = img.bitmap.data;
   const bd = blurred.bitmap.data;
-  for (let k = 0; k < od.length; k += 4) {
-    for (let c = 0; c < 3; c++) {
-      const v = bd[k + c] + (od[k + c] - bd[k + c]) * keep;
-      od[k + c] = v < 0 ? 0 : v > 255 ? 255 : v;
+  // 分块扫描 + 让出事件循环——让用户「处理中」期间点返回箭头时 goBack/Alert 能跑（见 jimpFilters 顶部注释）
+  const chunkBytes = PIXEL_LOOP_YIELD_CHUNK * 4; // 每像素 RGBA 4 字节
+  for (let chunkStart = 0; chunkStart < od.length; chunkStart += chunkBytes) {
+    const chunkEnd = Math.min(chunkStart + chunkBytes, od.length);
+    for (let k = chunkStart; k < chunkEnd; k += 4) {
+      for (let c = 0; c < 3; c++) {
+        const v = bd[k + c] + (od[k + c] - bd[k + c]) * keep;
+        od[k + c] = v < 0 ? 0 : v > 255 ? 255 : v;
+      }
     }
+    if (chunkEnd < od.length) await yieldToEventLoop();
   }
   img.brightness(0.05 * intensity); // 提亮
   img.color([{ apply: 'red', params: [5 * intensity] }, { apply: 'saturate', params: [6 * intensity] }]); // 暖肤+气色
@@ -112,27 +131,35 @@ export async function applyDocumentScanToBase64(base64, intensity = 0.9) {
   bg.resize(W, H);
   const bd = bg.bitmap.data;
 
-  // 背景目标均值（亮度）
+  // 背景目标均值（亮度）—— 分块求和 + 让出事件循环
   let sum = 0;
   const n = W * H;
-  for (let i = 0; i < n; i++) {
-    const k = i * 4;
-    sum += 0.299 * bd[k] + 0.587 * bd[k + 1] + 0.114 * bd[k + 2];
+  for (let i = 0; i < n; i += PIXEL_LOOP_YIELD_CHUNK) {
+    const end = Math.min(i + PIXEL_LOOP_YIELD_CHUNK, n);
+    for (let j = i; j < end; j++) {
+      const k = j * 4;
+      sum += 0.299 * bd[k] + 0.587 * bd[k + 1] + 0.114 * bd[k + 2];
+    }
+    if (end < n) await yieldToEventLoop();
   }
   const meanBg = sum / n || 1;
 
-  // 逐像素增益：把局部光照拉到目标均值；限幅避免洗白内容
+  // 逐像素增益：把局部光照拉到目标均值；限幅避免洗白内容（同样分块让步）
   const od = img.bitmap.data;
-  for (let i = 0; i < n; i++) {
-    const k = i * 4;
-    const lumBg = 0.299 * bd[k] + 0.587 * bd[k + 1] + 0.114 * bd[k + 2] || 1;
-    let gain = meanBg / lumBg;
-    if (gain < 0.6) gain = 0.6; else if (gain > 1.8) gain = 1.8;
-    gain = 1 + (gain - 1) * intensity; // 用强度在"原图"和"全归一"之间插值
-    for (let c = 0; c < 3; c++) {
-      const v = od[k + c] * gain;
-      od[k + c] = v > 255 ? 255 : v < 0 ? 0 : v;
+  for (let i = 0; i < n; i += PIXEL_LOOP_YIELD_CHUNK) {
+    const end = Math.min(i + PIXEL_LOOP_YIELD_CHUNK, n);
+    for (let j = i; j < end; j++) {
+      const k = j * 4;
+      const lumBg = 0.299 * bd[k] + 0.587 * bd[k + 1] + 0.114 * bd[k + 2] || 1;
+      let gain = meanBg / lumBg;
+      if (gain < 0.6) gain = 0.6; else if (gain > 1.8) gain = 1.8;
+      gain = 1 + (gain - 1) * intensity;
+      for (let c = 0; c < 3; c++) {
+        const v = od[k + c] * gain;
+        od[k + c] = v > 255 ? 255 : v < 0 ? 0 : v;
+      }
     }
+    if (end < n) await yieldToEventLoop();
   }
 
   img.contrast(0.18 * intensity);                 // 文字更分明
@@ -164,18 +191,24 @@ export async function applyColorEnhanceToBase64(base64, intensity = 0.85) {
   const con = 0.12 * intensity;         // 对比度增益（温和）
   const bri = 0.03 * intensity;         // 亮度增益（轻微）
   const d = img.bitmap.data;
-  for (let k = 0; k < d.length; k += 4) {
-    const r = d[k], g = d[k + 1], b = d[k + 2];
-    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-    let nr = lum + (r - lum) * sat;
-    let ng = lum + (g - lum) * sat;
-    let nb = lum + (b - lum) * sat;
-    nr = (nr - 128) * (1 + con) + 128 + bri * 255;
-    ng = (ng - 128) * (1 + con) + 128 + bri * 255;
-    nb = (nb - 128) * (1 + con) + 128 + bri * 255;
-    d[k]     = nr < 0 ? 0 : nr > 255 ? 255 : nr;
-    d[k + 1] = ng < 0 ? 0 : ng > 255 ? 255 : ng;
-    d[k + 2] = nb < 0 ? 0 : nb > 255 ? 255 : nb;
+  // 分块扫描 + 让出事件循环（同 applyBeautyToBase64 注释）
+  const chunkBytes = PIXEL_LOOP_YIELD_CHUNK * 4;
+  for (let chunkStart = 0; chunkStart < d.length; chunkStart += chunkBytes) {
+    const chunkEnd = Math.min(chunkStart + chunkBytes, d.length);
+    for (let k = chunkStart; k < chunkEnd; k += 4) {
+      const r = d[k], g = d[k + 1], b = d[k + 2];
+      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+      let nr = lum + (r - lum) * sat;
+      let ng = lum + (g - lum) * sat;
+      let nb = lum + (b - lum) * sat;
+      nr = (nr - 128) * (1 + con) + 128 + bri * 255;
+      ng = (ng - 128) * (1 + con) + 128 + bri * 255;
+      nb = (nb - 128) * (1 + con) + 128 + bri * 255;
+      d[k]     = nr < 0 ? 0 : nr > 255 ? 255 : nr;
+      d[k + 1] = ng < 0 ? 0 : ng > 255 ? 255 : ng;
+      d[k + 2] = nb < 0 ? 0 : nb > 255 ? 255 : nb;
+    }
+    if (chunkEnd < d.length) await yieldToEventLoop();
   }
   return img.getBase64Async(Jimp.MIME_JPEG);
 }
