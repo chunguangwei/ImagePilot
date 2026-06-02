@@ -1883,6 +1883,8 @@ const ImagePreviewScreen = ({ route, navigation }) => {
               <Pressable
                 style={[styles.imagePage, { width: viewportW }]}
                 onPress={toggleChrome}
+                android_ripple={null}
+                android_disableSound={true}
               >
                 <View style={[styles.imagePageClip, { width: viewportW }]}>
                 {itemUri ? (
@@ -1893,6 +1895,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                           source={{ uri: itemUri }}
                           style={[styles.image, { width: viewportW }]}
                           resizeMode="contain"
+                          fadeDuration={0}
                           onError={(e) => {
                             logger.error(`❌ 图片[${index}]加载失败: ${e.nativeEvent.error}`);
                           }}
