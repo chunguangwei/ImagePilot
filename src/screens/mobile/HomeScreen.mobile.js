@@ -2393,9 +2393,19 @@ const HomeScreen = ({ navigation }) => {
               const directoryName = getDirectoryName(image);
               
               return (
-                <View
+                <TouchableOpacity
                   key={image.id || image.uri || index}
                   style={styles.recentGridItem}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    if (!navigation) return;
+                    navigation.navigate('ImagePreview', {
+                      image,
+                      allImages: recentImages,
+                      currentIndex: index,
+                      fromScreen: 'Home',
+                    });
+                  }}
                 >
                   <Image
                     source={{ uri: getUri(image) || image?.uri }}
@@ -2408,7 +2418,7 @@ const HomeScreen = ({ navigation }) => {
                       {directoryName}
                     </Text>
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })}
           </View>
