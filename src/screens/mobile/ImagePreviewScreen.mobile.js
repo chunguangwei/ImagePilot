@@ -24,11 +24,11 @@ import {
   Share,
   NativeModules,
   Animated,
-  PanResponder,
   Platform,
   Pressable,
   StatusBar,
 } from 'react-native';
+import { PinchGestureHandler, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
 import { BlurView } from '@react-native-community/blur';
 import { getDefaultPresets, getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
@@ -78,11 +78,6 @@ const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 
 const clampScale = (v) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, v));
-const getTouchDistance = (touches) => {
-  if (!touches || touches.length < 2) return 0;
-  const [a, b] = touches;
-  return Math.hypot(a.pageX - b.pageX, a.pageY - b.pageY) || 1;
-};
 
 const ImagePreviewScreen = ({ route, navigation }) => {
   const { t, i18n } = useTranslation('common');
@@ -181,7 +176,10 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     return () => { alive = false; };
   }, []);
 
-  // 手势缩放/平移（RN Animated + PanResponder，不依赖 Reanimated 以兼容部分 Android 环境）
+  // 手势缩放/平移（react-native-gesture-handler + RN Animated，不依赖 Reanimated）。
+  // 旧实现用 JS PanResponder，嵌在横向 pagingEnabled 的 FlatList 里：iOS 上原生
+  // ScrollView 的 pan 手势会抢走双指事件，导致「双指完全没反应」（用户实测）。
+  // 改用 GestureHandler 的 Pinch/Pan，二者与底层 ScrollView 原生共存，双指能正常触发。
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const translateXAnim = useRef(new Animated.Value(0)).current;
   const translateYAnim = useRef(new Animated.Value(0)).current;
@@ -189,10 +187,12 @@ const ImagePreviewScreen = ({ route, navigation }) => {
   const savedTranslateXRef = useRef(0);
   const savedTranslateYRef = useRef(0);
   const lastScaleRef = useRef(1);
-  const initialPinchDistanceRef = useRef(null);
-  const gestureModeRef = useRef(null); // 'pinch' | 'pan'
+  const pinchRef = useRef(null);
+  const panRef = useRef(null);
+  // 放大后（scale>1）才允许单指平移并禁用 FlatList 横向翻页，避免两者抢手势
+  const [zoomed, setZoomed] = useState(false);
 
-  useEffect(() => {
+  const resetZoom = useCallback(() => {
     scaleAnim.setValue(1);
     translateXAnim.setValue(0);
     translateYAnim.setValue(0);
@@ -200,76 +200,54 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     savedTranslateXRef.current = 0;
     savedTranslateYRef.current = 0;
     lastScaleRef.current = 1;
-    initialPinchDistanceRef.current = null;
-  }, [currentImageIndex, scaleAnim, translateXAnim, translateYAnim]);
+    setZoomed(false);
+  }, [scaleAnim, translateXAnim, translateYAnim]);
 
-  const panResponder = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => false,
-    onStartShouldSetPanResponderCapture: () => false,
-    onMoveShouldSetPanResponder: (evt) => {
-      const n = evt.nativeEvent.touches.length;
-      if (n >= 2) return true;
-      if (n === 1 && savedScaleRef.current > 1) return true;
-      return false;
-    },
-    onMoveShouldSetPanResponderCapture: (evt) => evt.nativeEvent.touches.length >= 2,
-    onPanResponderGrant: (evt) => {
-      if (evt.nativeEvent.touches.length === 2) {
-        gestureModeRef.current = 'pinch';
-        initialPinchDistanceRef.current = getTouchDistance(evt.nativeEvent.touches);
+  useEffect(() => {
+    // 切换图片时复位缩放/平移状态
+    resetZoom();
+  }, [currentImageIndex, resetZoom]);
+
+  const onPinchGestureEvent = useCallback((e) => {
+    const next = clampScale(savedScaleRef.current * e.nativeEvent.scale);
+    lastScaleRef.current = next;
+    scaleAnim.setValue(next);
+  }, [scaleAnim]);
+
+  const onPinchStateChange = useCallback((e) => {
+    const { oldState } = e.nativeEvent;
+    if (oldState === State.ACTIVE) {
+      const finalScale = clampScale(lastScaleRef.current);
+      savedScaleRef.current = finalScale;
+      if (finalScale <= 1) {
+        // 缩回原始大小：归零平移并恢复翻页
+        savedScaleRef.current = 1;
+        lastScaleRef.current = 1;
+        scaleAnim.setValue(1);
+        translateXAnim.setValue(0);
+        translateYAnim.setValue(0);
+        savedTranslateXRef.current = 0;
+        savedTranslateYRef.current = 0;
+        setZoomed(false);
+      } else {
+        setZoomed(true);
       }
-    },
-    onPanResponderMove: (evt, g) => {
-      const touches = evt.nativeEvent.touches;
-      if (touches.length >= 2) {
-        gestureModeRef.current = 'pinch';
-        if (initialPinchDistanceRef.current == null) {
-          initialPinchDistanceRef.current = getTouchDistance(touches) || 1;
-        }
-        const d = getTouchDistance(touches) || 1;
-        const newScale = clampScale(savedScaleRef.current * (d / initialPinchDistanceRef.current));
-        lastScaleRef.current = newScale;
-        scaleAnim.setValue(newScale);
-        if (newScale <= 1) {
-          translateXAnim.setValue(0);
-          translateYAnim.setValue(0);
-          savedTranslateXRef.current = 0;
-          savedTranslateYRef.current = 0;
-        }
-      } else if (touches.length === 1 && savedScaleRef.current > 1) {
-        gestureModeRef.current = 'pan';
-        const tx = savedTranslateXRef.current + g.dx;
-        const ty = savedTranslateYRef.current + g.dy;
-        translateXAnim.setValue(tx);
-        translateYAnim.setValue(ty);
-      }
-    },
-    onPanResponderRelease: (evt, g) => {
-      if (evt.nativeEvent.touches.length < 2) {
-        if (gestureModeRef.current === 'pinch') {
-          savedScaleRef.current = lastScaleRef.current;
-          if (savedScaleRef.current <= 1) {
-            savedTranslateXRef.current = 0;
-            savedTranslateYRef.current = 0;
-          }
-        } else if (gestureModeRef.current === 'pan') {
-          savedTranslateXRef.current = savedTranslateXRef.current + g.dx;
-          savedTranslateYRef.current = savedTranslateYRef.current + g.dy;
-        } else {
-          // P1：PanResponder 抢到事件但既不是 pinch 也不是 pan（如缩放态下的轻触），
-          // 几乎无位移 + 短时长 视为 tap，切换 chrome（与外层 Pressable 形成双保险）
-          const dx = Math.abs(g.dx);
-          const dy = Math.abs(g.dy);
-          const dur = (g.x0 != null && evt.nativeEvent.timestamp && g.t0) ? (evt.nativeEvent.timestamp - g.t0) : 0;
-          if (dx < 5 && dy < 5 && (dur === 0 || dur < 200)) {
-            toggleChrome();
-          }
-        }
-        initialPinchDistanceRef.current = null;
-        gestureModeRef.current = null;
-      }
-    },
-  }), [scaleAnim, translateXAnim, translateYAnim, toggleChrome]);
+    }
+  }, [scaleAnim, translateXAnim, translateYAnim]);
+
+  const onPanGestureEvent = useCallback((e) => {
+    if (savedScaleRef.current > 1) {
+      translateXAnim.setValue(savedTranslateXRef.current + e.nativeEvent.translationX);
+      translateYAnim.setValue(savedTranslateYRef.current + e.nativeEvent.translationY);
+    }
+  }, [translateXAnim, translateYAnim]);
+
+  const onPanStateChange = useCallback((e) => {
+    if (e.nativeEvent.oldState === State.ACTIVE && savedScaleRef.current > 1) {
+      savedTranslateXRef.current += e.nativeEvent.translationX;
+      savedTranslateYRef.current += e.nativeEvent.translationY;
+    }
+  }, []);
 
   const zoomableStyle = useMemo(() => ({
     transform: [
@@ -1849,6 +1827,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           extraData={viewportW}
           horizontal
           pagingEnabled
+          scrollEnabled={!zoomed}
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item, index) => item.id || `image-${index}`}
           getItemLayout={(data, index) => ({
@@ -1877,9 +1856,9 @@ const ImagePreviewScreen = ({ route, navigation }) => {
             const isCurrentPage = index === currentImageIndex;
             const showZoomable = isCurrentPage && !!itemUri;
             return (
-              // P1：Pressable 外层捕获 tap → 切换 chrome（不打断 PanResponder：
-              // PanResponder 在 imageWrap 上，只有 2 指 / 已放大 1 指拖动 才会抢事件，
-              // 单指轻触会冒泡到 Pressable）
+              // P1：Pressable 外层捕获 tap → 切换 chrome（不打断手势缩放：
+              // Pinch/Pan GestureHandler 在内层，只有 2 指 / 已放大 1 指拖动 才会激活，
+              // 单指轻触不触发手势，会冒泡到 Pressable）
               <Pressable
                 style={[styles.imagePage, { width: viewportW }]}
                 onPress={toggleChrome}
@@ -1889,19 +1868,35 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                 <View style={[styles.imagePageClip, { width: viewportW }]}>
                 {itemUri ? (
                   showZoomable ? (
-                    <View style={[styles.imageWrap, { width: viewportW }]} {...panResponder.panHandlers}>
-                      <Animated.View style={[styles.imageWrap, { width: viewportW }, zoomableStyle]}>
-                        <Image
-                          source={{ uri: itemUri }}
-                          style={[styles.image, { width: viewportW }]}
-                          resizeMode="contain"
-                          fadeDuration={0}
-                          onError={(e) => {
-                            logger.error(`❌ 图片[${index}]加载失败: ${e.nativeEvent.error}`);
-                          }}
-                        />
-                      </Animated.View>
-                    </View>
+                    <PinchGestureHandler
+                      ref={pinchRef}
+                      simultaneousHandlers={panRef}
+                      onGestureEvent={onPinchGestureEvent}
+                      onHandlerStateChange={onPinchStateChange}
+                    >
+                      <PanGestureHandler
+                        ref={panRef}
+                        simultaneousHandlers={pinchRef}
+                        enabled={zoomed}
+                        minPointers={1}
+                        maxPointers={1}
+                        avgTouches
+                        onGestureEvent={onPanGestureEvent}
+                        onHandlerStateChange={onPanStateChange}
+                      >
+                        <Animated.View style={[styles.imageWrap, { width: viewportW }, zoomableStyle]}>
+                          <Image
+                            source={{ uri: itemUri }}
+                            style={[styles.image, { width: viewportW }]}
+                            resizeMode="contain"
+                            fadeDuration={0}
+                            onError={(e) => {
+                              logger.error(`❌ 图片[${index}]加载失败: ${e.nativeEvent.error}`);
+                            }}
+                          />
+                        </Animated.View>
+                      </PanGestureHandler>
+                    </PinchGestureHandler>
                   ) : (
                     <Image
                       source={{ uri: itemUri }}
