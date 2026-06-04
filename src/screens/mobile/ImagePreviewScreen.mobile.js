@@ -138,6 +138,9 @@ const ImagePreviewScreen = ({ route, navigation }) => {
   const [currentImage, setCurrentImage] = useState(initialImage); // 当前图片完整信息
   const [allImagesState, setAllImagesState] = useState(allImages); // 可变的图片列表
   const [showInfo, setShowInfo] = useState(false);
+  // 底部操作栏实测高度：信息面板(infoPanel)的 bottom 跟随它，避免「分类」等最后一行被操作栏
+  // 遮挡（操作栏含图标+标签+padding 实际 80~95px，不同机型/字号会变，写死必踩坑）。
+  const [actionsBarHeight, setActionsBarHeight] = useState(90);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showEnhancePresets, setShowEnhancePresets] = useState(false);
   const [enhancePresets, setEnhancePresets] = useState({});
@@ -1264,7 +1267,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     const imageDimensions = currentImage.imageDimensions;
 
   return (
-      <View style={styles.infoPanel}>
+      <View style={[styles.infoPanel, { bottom: actionsBarHeight }]}>
         <View style={styles.infoPanelHeader}>
           <Text style={styles.infoPanelTitle}>{t('imagePreview.fileInfo')}</Text>
           <TouchableOpacity onPress={() => setShowInfo(false)}>
@@ -1272,7 +1275,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         </TouchableOpacity>
       </View>
 
-        <ScrollView style={styles.infoContent}>
+        <ScrollView style={styles.infoContent} contentContainerStyle={styles.infoContentContainer}>
           {/* 基本信息 */}
             <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{t('imagePreview.takenTime')}:</Text>
@@ -1687,6 +1690,10 @@ const ImagePreviewScreen = ({ route, navigation }) => {
       <Animated.View
         style={[styles.actionsBar, !USE_BLUR_VIEW && { backgroundColor: CHROME_BG_DARK }, { opacity: chromeOpacityAnim }]}
         pointerEvents={chromeVisible ? 'auto' : 'none'}
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          if (h > 0 && Math.abs(h - actionsBarHeight) > 1) setActionsBarHeight(h);
+        }}
       >
         <ChromeBackdrop />
         {/* 暂存/移出按钮 */}
@@ -2071,6 +2078,10 @@ const createStyles = (c) => StyleSheet.create({
   },
   infoContent: {
     padding: 16,
+  },
+  // 滚动内容底部留白：让「分类」等最后一行与面板圆角底边之间有呼吸空间，不顶到边
+  infoContentContainer: {
+    paddingBottom: 12,
   },
   infoRow: {
     flexDirection: 'row',
