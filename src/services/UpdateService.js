@@ -107,9 +107,12 @@ async function checkViaAtom() {
     latestVersion,
     currentVersion: BUILD_VERSION,
     notes: '',
-    // atom 拿不到资产列表，按约定拼出 APK 直链（资产名固定 app-release.apk，走 github.com 下载域）
-    apkUrl: `https://github.com/${UPDATE_REPO}/releases/download/${latestVersion}/app-release.apk`,
-    pageUrl: RELEASES_PAGE,
+    // atom 拿不到资产列表，故没有 APK 直链。旧实现硬编码 `app-release.apk` 拼直链——但
+    // Release 里的资产名实际是 `<产品名>-android-arm-<版本>.apk`，从来不叫 app-release.apk，
+    // 必然 404（用户实测「跳到下载链接但不存在」）。改为 apkUrl=null → openDownload 回退到
+    // 该 Release 页，用户在页面手动下载，永不 404，也不受安装包改名影响。
+    apkUrl: null,
+    pageUrl: `https://github.com/${UPDATE_REPO}/releases/tag/${latestVersion}`,
   };
 }
 

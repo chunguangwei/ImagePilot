@@ -110,7 +110,7 @@ function getLogPath() {
 }
 function ensureLogFile() {
   if (logFilePath) return;
-  const logsDir = app.getPath('logs'); // 应用标准日志目录，如 ~/Library/Logs/XinTuAlbum (macOS)
+  const logsDir = app.getPath('logs'); // 应用标准日志目录，如 ~/Library/Logs/ImagePilot (macOS)
   const candidates = [
     path.join(logsDir, 'main.log'),
     path.join(os.tmpdir(), 'xintualbum-main.log')
@@ -315,7 +315,7 @@ function createWindow() {
       : process.platform === 'win32'
         ? path.join(__dirname, './icon.ico')  // Windows 使用 ICO 格式
         : path.join(__dirname, './icon.png'), // Linux 使用 PNG 格式
-    title: process.platform === 'darwin' ? '' : '芯图相册-智能分类，便捷管理，仅你可见',
+    title: process.platform === 'darwin' ? '' : 'ImagePilot-智能分类，便捷管理，仅你可见',
     autoHideMenuBar: true,  // 隐藏默认菜单栏
     // 混合模式：titleBarOverlay 留出空间给自定义标题栏（设置、暂存箱等）；macOS 上隐藏 overlay 内的图标和标题文字
     titleBarStyle: 'hidden',
@@ -460,9 +460,9 @@ function createWindow() {
       const totalSize = stats.totalSize ? (stats.totalSize / 1024 / 1024).toFixed(1) : '0';
       // macOS 上标题栏不显示标题，只用于 Cmd+Tab 显示简短名称；Windows/Linux 显示完整统计
       if (process.platform === 'darwin') {
-        mainWindow.setTitle('芯图相册');
+        mainWindow.setTitle('ImagePilot');
       } else {
-        mainWindow.setTitle(`芯图相册-智能分类，便捷管理，仅你可见 | 总照片: ${totalImages} | 已分类: ${classified} | 大小: ${totalSize}MB`);
+        mainWindow.setTitle(`ImagePilot-智能分类，便捷管理，仅你可见 | 总照片: ${totalImages} | 已分类: ${classified} | 大小: ${totalSize}MB`);
       }
     } catch (error) {
       logger.error(L.titlebarStatsFail, error);

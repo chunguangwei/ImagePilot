@@ -1,7 +1,7 @@
 name: macOS Build
 
 # macOS 构建现在使用原始文件名作为制品名称
-# 制品名称格式: XinTuAlbum-${version} 或 XinTuAlbum-${version}-${arch}
+# 制品名称格式: ImagePilot-${version} 或 ImagePilot-${version}-${arch}
 on:
   workflow_call:
     inputs:
@@ -96,7 +96,7 @@ jobs:
               ARCH="intel"
             fi
             
-            NEW_NAME="XinTuAlbum-mac-$ARCH-$VERSION.dmg"
+            NEW_NAME="ImagePilot-mac-$ARCH-$VERSION.dmg"
             NEW_PATH="$DIRNAME/$NEW_NAME"
             
             if [ "$(basename "$DMG_FILE")" != "$NEW_NAME" ]; then
@@ -120,11 +120,11 @@ jobs:
       - name: Find macOS artifacts
         id: build
         run: |
-          # macOS 只构建 DMG（已重命名为统一格式: XinTuAlbum-mac-{arch}-{version}.dmg）
-          DMG_FILE=$(find pc-version-final/dist -name "XinTuAlbum-mac-*.dmg" -type f | head -n 1)
+          # macOS 只构建 DMG（已重命名为统一格式: ImagePilot-mac-{arch}-{version}.dmg）
+          DMG_FILE=$(find pc-version-final/dist -name "ImagePilot-mac-*.dmg" -type f | head -n 1)
           if [ -z "$DMG_FILE" ]; then
             echo "No DMG found in pc-version-final/dist/"
-            echo "Looking for: XinTuAlbum-mac-*.dmg"
+            echo "Looking for: ImagePilot-mac-*.dmg"
             find pc-version-final/dist -name "*.dmg" -type f || echo "No DMG files found"
             exit 1
           fi

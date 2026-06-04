@@ -4,11 +4,11 @@
 !macroend
 
 !macro customInit
-  !insertmacro _KillProcess "XinTuAlbum.exe"
-  !insertmacro _KillProcess "XinTuAlbum Helper.exe"
-  !insertmacro _KillProcess "XinTuAlbum Helper (Renderer).exe"
-  !insertmacro _KillProcess "XinTuAlbum Helper (GPU).exe"
-  !insertmacro _KillProcess "XinTuAlbum Helper (Plugin).exe"
-  !insertmacro _KillProcess "XinTuAlbum Updater.exe"
+  !insertmacro _KillProcess "ImagePilot.exe"
+  !insertmacro _KillProcess "ImagePilot Helper.exe"
+  !insertmacro _KillProcess "ImagePilot Helper (Renderer).exe"
+  !insertmacro _KillProcess "ImagePilot Helper (GPU).exe"
+  !insertmacro _KillProcess "ImagePilot Helper (Plugin).exe"
+  !insertmacro _KillProcess "ImagePilot Updater.exe"
 !macroend
 
