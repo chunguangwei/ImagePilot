@@ -101,161 +101,65 @@ jobs:
           echo "Debug: secrets_configured output will be:"
           cat $GITHUB_OUTPUT | grep secrets_configured || echo "secrets_configured not found in output"
 
-      - name: Build unsigned Android Release APK
+      - name: Restore release keystore from secret
         run: |
-          cd android
-          ./gradlew clean
-          # 先构建未签名版本
-          ./gradlew assembleRelease --no-daemon
-          
-          # 保存未签名版本到临时目录并重命名为统一格式
-          APK_DIR="app/build/outputs/apk/release"
-          UNSIGNED_APK=$(find "$APK_DIR" -name "*.apk" -type f | head -n 1)
-          if [ -n "$UNSIGNED_APK" ]; then
-            mkdir -p ../artifacts
-            # 从 build.gradle 读取版本号（versionName）
-            VERSION=$(grep -oP 'versionName\s+"\K[^"]+' app/build.gradle | head -n 1)
-            if [ -z "$VERSION" ]; then
-              # 回退：从 package.json 读取
-              VERSION=$(node -p "require('../package.json').version")
-            fi
-            echo "Android version: $VERSION"
-            NEW_NAME="ImagePilot-android-arm-$VERSION.apk"
-            cp "$UNSIGNED_APK" "../artifacts/$NEW_NAME"
-            echo "Unsigned APK saved: ../artifacts/$NEW_NAME"
+          echo "🔐 Restoring release keystore from secret..."
+          if [ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "❌ ANDROID_KEYSTORE_BASE64 未配置——无法产出签名 Release APK。"
+            echo "   请在 仓库 Settings → Secrets and variables → Actions 配置 4 个 secret："
+            echo "   ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD"
+            exit 1
           fi
-        env:
-          JAVA_OPTS: '-Xmx2048m'
-
-      - name: Debug check-secrets output
-        run: |
-          echo "Debug: check-secrets.outputs.secrets_configured = '${{ steps.check-secrets.outputs.secrets_configured }}'"
-          echo "Debug: Condition check: steps.check-secrets.outputs.secrets_configured == 'true'"
-          if [ "${{ steps.check-secrets.outputs.secrets_configured }}" == "true" ]; then
-            echo "✅ Condition is TRUE - Setup signing step should run"
-          else
-            echo "❌ Condition is FALSE - Setup signing step will be skipped"
-          fi
-
-      - name: Setup signing (if secrets are configured)
-        if: steps.check-secrets.outputs.secrets_configured == 'true'
-        run: |
-          echo "🔐 Setting up signing keystore..."
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
           chmod 600 android/app/release.keystore
-          if [ -f "android/app/release.keystore" ]; then
-            echo "✅ Keystore file created successfully"
-            ls -lh android/app/release.keystore
-          else
-            echo "❌ Failed to create keystore file"
-            exit 1
-          fi
+          ls -lh android/app/release.keystore
 
-      - name: Build signed Android Release APK (if secrets configured)
-        if: steps.check-secrets.outputs.secrets_configured == 'true'
+      - name: Build signed Android Release APK
         run: |
-          echo "🔐 Building signed Android Release APK..."
           cd android
-          
-          # 验证 keystore 文件存在（相对于 android/ 目录）
-          if [ ! -f "app/release.keystore" ]; then
-            echo "❌ Error: release.keystore not found at app/release.keystore"
-            echo "Current directory: $(pwd)"
-            echo "Files in app directory:"
-            ls -la app/ || echo "app directory not found"
-            exit 1
-          fi
-          echo "✅ Keystore file found at app/release.keystore"
-          
-          # 清理后重新构建签名版本
           ./gradlew clean
+          # 单条签名构建：keystore + 密码全部来自 GitHub Secrets（不再依赖仓库内 keystore）
           ./gradlew assembleRelease --no-daemon \
             -PMYAPP_RELEASE_STORE_FILE=release.keystore \
             -PMYAPP_RELEASE_STORE_PASSWORD="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
             -PMYAPP_RELEASE_KEY_ALIAS="${{ secrets.ANDROID_KEY_ALIAS }}" \
             -PMYAPP_RELEASE_KEY_PASSWORD="${{ secrets.ANDROID_KEY_PASSWORD }}"
-          
-          if [ $? -ne 0 ]; then
-            echo "❌ Error: Signed APK build failed"
+
+          APK_DIR="app/build/outputs/apk/release"
+          BUILT_APK=$(find "$APK_DIR" -name "*.apk" -type f | head -n 1)
+          if [ -z "$BUILT_APK" ]; then
+            echo "❌ Error: 未产出 APK"
+            find "$APK_DIR" -type f || echo "目录不存在"
             exit 1
           fi
-          
-          echo "✅ Signed APK build completed"
-          
-          # 保存签名版本到临时目录并重命名为统一格式
-          APK_DIR="app/build/outputs/apk/release"
-          SIGNED_APK=$(find "$APK_DIR" -name "*.apk" -type f | head -n 1)
-          if [ -n "$SIGNED_APK" ]; then
-            mkdir -p ../artifacts
-            # 从 build.gradle 读取版本号（versionName）
-            VERSION=$(grep -oP 'versionName\s+"\K[^"]+' app/build.gradle | head -n 1)
-            if [ -z "$VERSION" ]; then
-              # 回退：从 package.json 读取
-              VERSION=$(node -p "require('../package.json').version")
-            fi
-            echo "Android version: $VERSION"
-            NEW_NAME="ImagePilot-android-arm-signed-$VERSION.apk"
-            cp "$SIGNED_APK" "../artifacts/$NEW_NAME"
-            echo "Signed APK saved: ../artifacts/$NEW_NAME"
-            ls -lh "../artifacts/$NEW_NAME"
-          else
-            echo "⚠️ Warning: Signed APK not found in $APK_DIR"
-            echo "Available files:"
-            find "$APK_DIR" -type f || echo "Directory not found"
-          fi
+          mkdir -p ../artifacts
+          VERSION=$(grep -oP 'versionName\s+"\K[^"]+' app/build.gradle | head -n 1)
+          [ -z "$VERSION" ] && VERSION=$(node -p "require('../package.json').version")
+          echo "Android version: $VERSION"
+          cp "$BUILT_APK" "../artifacts/ImagePilot-android-arm-$VERSION.apk"
+          echo "Signed APK saved: ../artifacts/ImagePilot-android-arm-$VERSION.apk"
+          ls -lh "../artifacts/ImagePilot-android-arm-$VERSION.apk"
         env:
           JAVA_OPTS: '-Xmx2048m'
 
-      - name: Find APKs
+      - name: Find APK
         id: build
         run: |
-          # 确保 artifacts 目录存在
-          mkdir -p artifacts
-          
-          # 从 build.gradle 读取版本号（versionName）
           VERSION=$(grep -oP 'versionName\s+"\K[^"]+' android/app/build.gradle | head -n 1)
-          if [ -z "$VERSION" ]; then
-            # 回退：从 package.json 读取
-            VERSION=$(node -p "require('./package.json').version")
-          fi
-          echo "Android version: $VERSION"
-          
-          # 检查 artifacts 目录中的 APK 文件（统一格式）
-          UNSIGNED_APK="artifacts/ImagePilot-android-arm-$VERSION.apk"
-          SIGNED_APK="artifacts/ImagePilot-android-arm-signed-$VERSION.apk"
-          
-          if [ -f "$UNSIGNED_APK" ]; then
-            echo "unsigned_apk=$UNSIGNED_APK" >> $GITHUB_OUTPUT
-            echo "Found unsigned APK: $UNSIGNED_APK"
-          else
-            echo "⚠️ Warning: unsigned APK not found: $UNSIGNED_APK"
-          fi
-          
-          if [ -f "$SIGNED_APK" ]; then
-            echo "signed_apk=$SIGNED_APK" >> $GITHUB_OUTPUT
-            echo "apk_path=$SIGNED_APK" >> $GITHUB_OUTPUT
-            echo "Found signed APK: $SIGNED_APK"
-          elif [ -f "$UNSIGNED_APK" ]; then
-            echo "apk_path=$UNSIGNED_APK" >> $GITHUB_OUTPUT
-            echo "Using unsigned APK as default"
-          else
-            echo "❌ Error: No APK found in artifacts directory"
-            echo "Looking for: $UNSIGNED_APK or $SIGNED_APK"
-            ls -la artifacts/ || echo "artifacts directory not found"
+          [ -z "$VERSION" ] && VERSION=$(node -p "require('./package.json').version")
+          [ -z "$VERSION" ] && VERSION="unknown"
+          APK="artifacts/ImagePilot-android-arm-$VERSION.apk"
+          if [ ! -f "$APK" ]; then
+            echo "❌ Error: 未找到 APK：$APK"
+            ls -la artifacts/ || echo "artifacts 目录不存在"
             exit 1
           fi
-          [ -z "$VERSION" ] && VERSION="unknown"
+          echo "apk_path=$APK" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Found signed APK: $APK"
 
-      - name: Upload unsigned APK
+      - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
           name: ImagePilot-android-arm-${{ steps.build.outputs.version }}
-          path: ${{ steps.build.outputs.unsigned_apk }}
-
-      - name: Upload signed APK (if available)
-        if: steps.check-secrets.outputs.secrets_configured == 'true' && steps.build.outputs.signed_apk != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: ImagePilot-android-arm-signed-${{ steps.build.outputs.version }}
-          path: ${{ steps.build.outputs.signed_apk }}
+          path: ${{ steps.build.outputs.apk_path }}

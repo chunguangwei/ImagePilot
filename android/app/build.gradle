@@ -97,7 +97,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode getVersionCode()
-        versionName "1.5.11"
+        versionName "1.5.12"
     }
 
     splits {
@@ -114,20 +114,26 @@ android {
             // 使用默认的debug配置
         }
         release {
-            // 支持通过 Gradle 属性或环境变量配置签名
-            // 本地构建：使用 android-release-key.keystore
-            // CI 构建：通过 Gradle 属性传递
-            if (project.hasProperty('MYAPP_RELEASE_STORE_FILE')) {
-                storeFile file(MYAPP_RELEASE_STORE_FILE)
-                storePassword MYAPP_RELEASE_STORE_PASSWORD
-                keyAlias MYAPP_RELEASE_KEY_ALIAS
-                keyPassword MYAPP_RELEASE_KEY_PASSWORD
-            } else if (file('../android-release-key.keystore').exists()) {
-                // 本地构建：使用默认的 keystore 文件（位于 android/ 目录）
-                storeFile file('../android-release-key.keystore')
-                storePassword project.findProperty('MYAPP_RELEASE_STORE_PASSWORD') ?: 'image123'
-                keyAlias project.findProperty('MYAPP_RELEASE_KEY_ALIAS') ?: 'imageclassifier'
-                keyPassword project.findProperty('MYAPP_RELEASE_KEY_PASSWORD') ?: 'image123'
+            // 凭据来源（优先级）：gradle 属性 MYAPP_RELEASE_* > 环境变量 > 本地默认 keystore 文件。
+            // 密码/别名不再硬编码进仓库：CI 由 GitHub Secrets 经 -PMYAPP_RELEASE_* 注入；
+            // 本地放 ~/.gradle/gradle.properties（不进 git）。凭据不全时不应用签名配置
+            // （storeFile 保持 null → 下方 buildTypes.release 不签名，构建不报错）。
+            def storeFilePath = project.findProperty('MYAPP_RELEASE_STORE_FILE') ?: System.getenv('MYAPP_RELEASE_STORE_FILE')
+            def storePw = project.findProperty('MYAPP_RELEASE_STORE_PASSWORD') ?: System.getenv('MYAPP_RELEASE_STORE_PASSWORD')
+            def keyAls  = project.findProperty('MYAPP_RELEASE_KEY_ALIAS') ?: System.getenv('MYAPP_RELEASE_KEY_ALIAS')
+            def keyPw   = project.findProperty('MYAPP_RELEASE_KEY_PASSWORD') ?: System.getenv('MYAPP_RELEASE_KEY_PASSWORD')
+            // storeFile 路径未显式给出时，回退到本地默认 keystore（若仍存在；CI 走 Secrets 不依赖它）
+            def resolvedStore = storeFilePath ? file(storeFilePath) : (file('../android-release-key.keystore').exists() ? file('../android-release-key.keystore') : null)
+            if (resolvedStore != null && storePw && keyAls && keyPw) {
+                storeFile resolvedStore
+                storePassword storePw
+                keyAlias keyAls
+                keyPassword keyPw
+                // 显式开启 v1+v2+v3 全签名：v1(JAR) 兼容 Android 7.0 以下；v2 现代完整性校验；
+                // v3 支持后续密钥轮换(lineage)。之前默认只产出 v2，部分老机型/完整性检测不友好。
+                enableV1Signing true
+                enableV2Signing true
+                enableV3Signing true
             }
         }
     }
