@@ -120,7 +120,7 @@ jobs:
               VERSION=$(node -p "require('../package.json').version")
             fi
             echo "Android version: $VERSION"
-            NEW_NAME="XinTuAlbum-android-arm-$VERSION.apk"
+            NEW_NAME="ImagePilot-android-arm-$VERSION.apk"
             cp "$UNSIGNED_APK" "../artifacts/$NEW_NAME"
             echo "Unsigned APK saved: ../artifacts/$NEW_NAME"
           fi
@@ -194,7 +194,7 @@ jobs:
               VERSION=$(node -p "require('../package.json').version")
             fi
             echo "Android version: $VERSION"
-            NEW_NAME="XinTuAlbum-android-arm-signed-$VERSION.apk"
+            NEW_NAME="ImagePilot-android-arm-signed-$VERSION.apk"
             cp "$SIGNED_APK" "../artifacts/$NEW_NAME"
             echo "Signed APK saved: ../artifacts/$NEW_NAME"
             ls -lh "../artifacts/$NEW_NAME"
@@ -221,8 +221,8 @@ jobs:
           echo "Android version: $VERSION"
           
           # 检查 artifacts 目录中的 APK 文件（统一格式）
-          UNSIGNED_APK="artifacts/XinTuAlbum-android-arm-$VERSION.apk"
-          SIGNED_APK="artifacts/XinTuAlbum-android-arm-signed-$VERSION.apk"
+          UNSIGNED_APK="artifacts/ImagePilot-android-arm-$VERSION.apk"
+          SIGNED_APK="artifacts/ImagePilot-android-arm-signed-$VERSION.apk"
           
           if [ -f "$UNSIGNED_APK" ]; then
             echo "unsigned_apk=$UNSIGNED_APK" >> $GITHUB_OUTPUT
@@ -250,12 +250,12 @@ jobs:
       - name: Upload unsigned APK
         uses: actions/upload-artifact@v4
         with:
-          name: XinTuAlbum-android-arm-${{ steps.build.outputs.version }}
+          name: ImagePilot-android-arm-${{ steps.build.outputs.version }}
           path: ${{ steps.build.outputs.unsigned_apk }}
 
       - name: Upload signed APK (if available)
         if: steps.check-secrets.outputs.secrets_configured == 'true' && steps.build.outputs.signed_apk != ''
         uses: actions/upload-artifact@v4
         with:
-          name: XinTuAlbum-android-arm-signed-${{ steps.build.outputs.version }}
+          name: ImagePilot-android-arm-signed-${{ steps.build.outputs.version }}
           path: ${{ steps.build.outputs.signed_apk }}

@@ -1,7 +1,7 @@
 {
   "name": "imageclassifier-app",
-  "version": "1.5.10",
-  "description": "芯图相册-智能分类，便捷管理，仅你可见",
+  "version": "1.5.11",
+  "description": "ImagePilot-智能分类，便捷管理，仅你可见",
   "author": "ImageClassifier Team",
   "main": "public/electron.js",
   "homepage": "./",
@@ -66,7 +66,7 @@
   },
   "build": {
     "appId": "com.imageclassifier.app",
-    "productName": "XinTuAlbum",
+    "productName": "ImagePilot",
     "directories": {
       "output": "dist"
     },
@@ -103,11 +103,11 @@
       "requestedExecutionLevel": "asInvoker"
     },
     "appx": {
-      "displayName": "芯图相册",
+      "displayName": "ImagePilot",
       "publisher": "CN=03F46D22-3B0F-4788-A8BF-351A4DF78D3D",
       "publisherDisplayName": "智语未来软件",
       "identityName": "E8546D00.75903E98454E",
-      "applicationId": "XinTuAlbum",
+      "applicationId": "ImagePilot",
       "backgroundColor": "transparent",
       "showNameOnTiles": true,
       "artifactName": "${productName}-win-amd-${version}.${ext}",
@@ -150,7 +150,7 @@
       "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "dmg": {
-      "title": "芯图相册",
+      "title": "ImagePilot",
       "icon": "public/icon.icns",
       "contents": [
         {
@@ -180,7 +180,7 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "芯图相册",
+      "shortcutName": "ImagePilot",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true,
       "include": "installer/installer.nsh",

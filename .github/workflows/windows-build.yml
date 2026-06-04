@@ -67,10 +67,10 @@ jobs:
           
           Write-Host "Renaming Windows artifacts to unified format..."
           
-          # 重命名 NSIS 安装程序: XinTuAlbum-win-amd-setup-${version}.exe
+          # 重命名 NSIS 安装程序: ImagePilot-win-amd-setup-${version}.exe
           $nsisFiles = Get-ChildItem -Path $distPath -Recurse -Include "*Setup*.exe" -ErrorAction SilentlyContinue
           foreach ($file in $nsisFiles) {
-              $newName = "XinTuAlbum-win-amd-setup-$version.exe"
+              $newName = "ImagePilot-win-amd-setup-$version.exe"
               $newPath = Join-Path $file.DirectoryName $newName
               if ($file.Name -ne $newName) {
                   Write-Host "Renaming: $($file.Name) -> $newName"
@@ -78,11 +78,11 @@ jobs:
               }
           }
           
-          # 重命名 Portable EXE: XinTuAlbum-win-amd-portable-${version}.exe
+          # 重命名 Portable EXE: ImagePilot-win-amd-portable-${version}.exe
           $portableFiles = Get-ChildItem -Path $distPath -Recurse -Include "*.exe" -ErrorAction SilentlyContinue | 
-                          Where-Object { $_.Name -notlike "*Setup*" -and $_.Name -like "XinTuAlbum*.exe" }
+                          Where-Object { $_.Name -notlike "*Setup*" -and $_.Name -like "ImagePilot*.exe" }
           foreach ($file in $portableFiles) {
-              $newName = "XinTuAlbum-win-amd-portable-$version.exe"
+              $newName = "ImagePilot-win-amd-portable-$version.exe"
               $newPath = Join-Path $file.DirectoryName $newName
               if ($file.Name -ne $newName) {
                   Write-Host "Renaming: $($file.Name) -> $newName"
@@ -90,21 +90,21 @@ jobs:
               }
           }
           
-          # 重命名 APPX (未签名): XinTuAlbum-win-amd-${version}.appx
+          # 重命名 APPX (未签名): ImagePilot-win-amd-${version}.appx
           $unsignedAppx = Get-ChildItem -Path $distPath -Recurse -Include "*.appx" -ErrorAction SilentlyContinue | 
                          Where-Object { $_.Name -notlike "*-signed.appx" }
           foreach ($file in $unsignedAppx) {
-              $newName = "XinTuAlbum-win-amd-$version.appx"
+              $newName = "ImagePilot-win-amd-$version.appx"
               if ($file.Name -ne $newName) {
                   Write-Host "Renaming: $($file.Name) -> $newName"
                   Rename-Item -Path $file.FullName -NewName $newName -ErrorAction SilentlyContinue
               }
           }
           
-          # 重命名 APPX (签名): XinTuAlbum-win-amd-signed-${version}.appx
+          # 重命名 APPX (签名): ImagePilot-win-amd-signed-${version}.appx
           $signedAppx = Get-ChildItem -Path $distPath -Recurse -Include "*-signed.appx" -ErrorAction SilentlyContinue
           foreach ($file in $signedAppx) {
-              $newName = "XinTuAlbum-win-amd-signed-$version.appx"
+              $newName = "ImagePilot-win-amd-signed-$version.appx"
               if ($file.Name -ne $newName) {
                   Write-Host "Renaming: $($file.Name) -> $newName"
                   Rename-Item -Path $file.FullName -NewName $newName -ErrorAction SilentlyContinue
@@ -122,8 +122,8 @@ jobs:
           Write-Host "Version from package.json: $version"
           Write-Host "Searching for Windows build artifacts in: $distPath"
           
-          # NSIS Installer: XinTuAlbum-win-amd-setup-${version}.exe
-          $nsisInstallers = Get-ChildItem -Path $distPath -Recurse -Include "XinTuAlbum-win-amd-setup-*.exe" -ErrorAction SilentlyContinue
+          # NSIS Installer: ImagePilot-win-amd-setup-${version}.exe
+          $nsisInstallers = Get-ChildItem -Path $distPath -Recurse -Include "ImagePilot-win-amd-setup-*.exe" -ErrorAction SilentlyContinue
           if ($nsisInstallers) {
               Write-Host "Found NSIS installers:"
               $nsisPaths = @()
@@ -136,8 +136,8 @@ jobs:
               "EOF" >> $env:GITHUB_OUTPUT
           }
           
-          # Portable EXE: XinTuAlbum-win-amd-portable-${version}.exe
-          $portableExes = Get-ChildItem -Path $distPath -Recurse -Include "XinTuAlbum-win-amd-portable-*.exe" -ErrorAction SilentlyContinue
+          # Portable EXE: ImagePilot-win-amd-portable-${version}.exe
+          $portableExes = Get-ChildItem -Path $distPath -Recurse -Include "ImagePilot-win-amd-portable-*.exe" -ErrorAction SilentlyContinue
           
           if ($portableExes) {
               Write-Host "Found Portable EXEs:"
@@ -152,11 +152,11 @@ jobs:
           }
           
           # APPX packages - 分别处理未签名和签名版本
-          # 未签名: XinTuAlbum-win-amd-${version}.appx
-          # 签名: XinTuAlbum-win-amd-signed-${version}.appx
-          $unsignedAppx = Get-ChildItem -Path $distPath -Recurse -Include "XinTuAlbum-win-amd-*.appx" -ErrorAction SilentlyContinue | 
+          # 未签名: ImagePilot-win-amd-${version}.appx
+          # 签名: ImagePilot-win-amd-signed-${version}.appx
+          $unsignedAppx = Get-ChildItem -Path $distPath -Recurse -Include "ImagePilot-win-amd-*.appx" -ErrorAction SilentlyContinue | 
                           Where-Object { $_.Name -notlike "*-signed.appx" }
-          $signedAppx = Get-ChildItem -Path $distPath -Recurse -Include "XinTuAlbum-win-amd-signed-*.appx" -ErrorAction SilentlyContinue
+          $signedAppx = Get-ChildItem -Path $distPath -Recurse -Include "ImagePilot-win-amd-signed-*.appx" -ErrorAction SilentlyContinue
           
           if ($unsignedAppx) {
               Write-Host "Found unsigned APPX:"
@@ -205,26 +205,26 @@ jobs:
         if: steps.build.outputs.nsis_paths != ''
         uses: actions/upload-artifact@v4
         with:
-          name: XinTuAlbum-win-amd-setup-${{ steps.build.outputs.version }}
+          name: ImagePilot-win-amd-setup-${{ steps.build.outputs.version }}
           path: ${{ steps.build.outputs.nsis_paths }}
 
       - name: Upload Portable EXE
         if: steps.build.outputs.portable_paths != ''
         uses: actions/upload-artifact@v4
         with:
-          name: XinTuAlbum-win-amd-portable-${{ steps.build.outputs.version }}
+          name: ImagePilot-win-amd-portable-${{ steps.build.outputs.version }}
           path: ${{ steps.build.outputs.portable_paths }}
 
       - name: Upload Unsigned APPX
         if: steps.build.outputs.unsigned_appx_paths != ''
         uses: actions/upload-artifact@v4
         with:
-          name: XinTuAlbum-win-amd-${{ steps.build.outputs.version }}
+          name: ImagePilot-win-amd-${{ steps.build.outputs.version }}
           path: ${{ steps.build.outputs.unsigned_appx_paths }}
 
       - name: Upload Signed APPX
         if: steps.build.outputs.signed_appx_paths != ''
         uses: actions/upload-artifact@v4
         with:
-          name: XinTuAlbum-win-amd-signed-${{ steps.build.outputs.version }}
+          name: ImagePilot-win-amd-signed-${{ steps.build.outputs.version }}
           path: ${{ steps.build.outputs.signed_appx_paths }}
