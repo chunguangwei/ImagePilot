@@ -1411,7 +1411,14 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                 cameraSettingsData = currentImage.cameraSettings;
               }
             }
-            
+
+            // 防御：解析结果若不是对象（cameraSettings 是能 parse 成数字/字符串/null 的值，
+            // 或本身是 null/数组外的原始值），归一为 {}。否则下方 `'iso' in cameraSettingsData`
+            // 的 in 运算会抛 "right operand of 'in' is not an object"，Hermes 未捕获致 iOS 崩溃。
+            if (cameraSettingsData === null || typeof cameraSettingsData !== 'object') {
+              cameraSettingsData = {};
+            }
+
             const hasISOCategory = !!currentImage.isoCategory;
             const hasApertureCategory = !!currentImage.apertureCategory;
             const hasShutterCategory = !!currentImage.shutterCategory;
