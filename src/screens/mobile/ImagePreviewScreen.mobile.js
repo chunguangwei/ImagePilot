@@ -640,6 +640,12 @@ const ImagePreviewScreen = ({ route, navigation }) => {
    * 获取分类显示名
    */
   const getCategoryDisplayName = (categoryId) => {
+    // 自定义分类优先：用组件内已加载的 customCategoryList（始终最新），命中即用其名称
+    const custom = customCategoryList.find((c) => c.id === categoryId);
+    if (custom) return custom.name;
+    const language = i18n.language === 'en' ? 'english' : 'chinese';
+    const name = configService?.getCategoryDisplayName?.(categoryId, language);
+    if (name && name !== categoryId) return name;
     const categoryConfig = configService.getAllCategoriesWithUI().find(c => c.id === categoryId);
     return categoryConfig?.chinese || categoryId;
   };

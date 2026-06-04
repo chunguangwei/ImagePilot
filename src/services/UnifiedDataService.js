@@ -1336,8 +1336,11 @@ class UnifiedDataService {
   async readSettings() {
     try {
       const settings = await this.imageStorageService.getSettings();
+      // 把用户自定义分类注入 ConfigService，使分类名解析（getCategoryDisplayName）能
+      // 把自定义 id 解析为配置的名称。每次读设置都刷新 → 删除/改名自动反映。
+      try { this.configService?.setCustomCategories?.(settings?.aiProvider?.customCategories); } catch (_) {}
       return settings;
-      
+
     } catch (error) {
       logger.error('读取设置失败:', error);
       throw error;
@@ -1355,9 +1358,12 @@ class UnifiedDataService {
       // 1. 先写数据库
       await this.imageStorageService.saveSettings(settings);
       logger.debug('✅ 数据库设置保存完成');
-      
-      // 2. 缓存不需要更新（设置不涉及图片数据）
-      
+
+      // 2. 同步自定义分类到 ConfigService → 用户在自定义分类页删除/改名后立即生效
+      try { this.configService?.setCustomCategories?.(settings?.aiProvider?.customCategories); } catch (_) {}
+
+      // 3. 缓存不需要更新（设置不涉及图片数据）
+
       return true;
       
     } catch (error) {
