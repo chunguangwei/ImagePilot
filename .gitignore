@@ -44,9 +44,14 @@ android/gradle/
 android/local.properties
 android/.gradle/
 android/captures/
-# 签名相关文件（包含敏感信息，不要提交）
+# 签名相关文件（包含敏感信息，不要提交）。CI 改为从 GitHub Secrets 恢复 keystore，
+# 仓库内不再存放任何 keystore/密码；本地签名密码放 ~/.gradle/gradle.properties（仓库外）。
+*.keystore
+*.jks
 android/*.keystore
 android/*.jks
+android-release-key.keystore
+android/app/release.keystore
 android/keystore-base64.txt
 *.keystore-base64.txt
 android/.idea/workspace.xml
