@@ -11,6 +11,28 @@ class ConfigService {
   constructor() {
     this.config = null;
     this.isLoaded = false;
+    // 用户自定义分类名（id→name）。内置分类在 initialSettings.json，自定义分类在用户
+    // 设置（settings.aiProvider.customCategories）里，ConfigService 本身读不到——由
+    // UnifiedDataService.readSettings/writeSettings 调 setCustomCategories 注入，
+    // 使 getCategoryDisplayName 能把自定义 id 解析成配置的名称，而不是裸露 id。
+    this.customCategoryNames = {};
+  }
+
+  /**
+   * 注入用户自定义分类（供分类名解析用）。传入 [{ id, name }]，仅取合法项。
+   * 在 UnifiedDataService 读/写设置时调用，保证名称解析始终用最新配置。
+   * @param {Array<{id:string,name:string}>} list
+   */
+  setCustomCategories(list) {
+    const map = {};
+    if (Array.isArray(list)) {
+      for (const c of list) {
+        if (c && typeof c.id === 'string' && c.id.trim() && typeof c.name === 'string' && c.name.trim()) {
+          map[c.id.trim()] = c.name.trim();
+        }
+      }
+    }
+    this.customCategoryNames = map;
   }
 
   /**
@@ -294,7 +316,12 @@ class ConfigService {
     if (category) {
       return category[language] || category.chinese || category.english || categoryId;
     }
-    
+
+    // 内置分类都找不到 → 看是不是用户自定义分类（自定义无中英文之分，统一用 name）
+    if (this.customCategoryNames && this.customCategoryNames[categoryId]) {
+      return this.customCategoryNames[categoryId];
+    }
+
     // 都找不到，返回原ID
     return categoryId;
   }
