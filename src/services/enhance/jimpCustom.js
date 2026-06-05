@@ -20,13 +20,15 @@ import blur from '@jimp/plugin-blur';        // blur（柔化）
 import invert from '@jimp/plugin-invert';    // invert（反色）
 import resize from '@jimp/plugin-resize';    // scale 依赖 resize
 import scale from '@jimp/plugin-scale';      // scaleToFit（超分前限尺寸）
+import crop from '@jimp/plugin-crop';        // cover 依赖 crop（居中裁剪）
+import cover from '@jimp/plugin-cover';      // CLIP 预处理：缩放填满 + 居中裁剪到正方形
 
 // Metro/Hermes 互操作下个别默认导出可能被再包一层，统一解包。
 const d = (m) => (m && m.default ? m.default : m);
 
 const Jimp = d(configure)({
   types: [d(jpeg)],
-  plugins: [d(color), d(blur), d(invert), d(resize), d(scale)],
+  plugins: [d(color), d(blur), d(invert), d(resize), d(scale), d(crop), d(cover)],
 });
 
 export default Jimp;

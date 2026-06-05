@@ -30,6 +30,7 @@ const DEFAULTS = {
   },
   promptOverride: null,
   customCategories: [], // [{ id, name, rule }]，A 方案：LLM 按规则归入自定义分类
+  hiddenBuiltinCategories: [], // 被用户「删除」的内置分类 id；从展示与分类器候选集中剔除，可一键恢复
 };
 
 export class UnifiedDataConfigService {
@@ -71,6 +72,14 @@ export class UnifiedDataConfigService {
   /** 设置自定义分类列表 [{ id, name, rule }] */
   async setCustomCategories(list) {
     await this._mergeTopLevel({ customCategories: Array.isArray(list) ? list : [] });
+  }
+
+  /** 设置「已删除的内置分类」id 列表（空数组＝恢复全部默认分类） */
+  async setHiddenBuiltinCategories(list) {
+    const clean = Array.isArray(list)
+      ? Array.from(new Set(list.filter((x) => typeof x === 'string' && x.trim()).map((x) => x.trim())))
+      : [];
+    await this._mergeTopLevel({ hiddenBuiltinCategories: clean });
   }
 
   async _mergeTopLevel(patch) {

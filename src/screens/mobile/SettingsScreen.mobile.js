@@ -80,7 +80,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
   // 分类模型：basic（默认已内置） / scene（Places365）/ clip（MobileCLIP，P2 未接入）
   const [classifierTier, setClassifierTier] = useState('basic');
-  // CLIP 档具体用哪个模型变体（默认新 MobileCLIP2-S2；可选 SigLIP2 高精度 / 旧版 S1）
+  // CLIP 档具体用哪个模型变体（默认 MobileCLIP2-S2；可选旧版 S1 兜底）
   const [clipModelId, setClipModelId] = useState(DEFAULT_CLIP_MODEL);
   // 各档下载状态 + 当前下载中进度（key 是 tier key）
   const [classifierDownloaded, setClassifierDownloaded] = useState({});  // { scene: true/false, ... }
@@ -1090,7 +1090,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     );
   };
 
-  // 切换 CLIP 模型变体（S2 推荐 / SigLIP2 高精度 / S1 旧版）：落 setting + 重新判断该变体是否已下载
+  // 切换 CLIP 模型变体（S2 推荐 / S1 旧版）：落 setting + 重新判断该变体是否已下载
   const selectClipModel = async (id) => {
     if (id === clipModelId) return;
     setClipModelId(id);
@@ -1157,7 +1157,15 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                         ? <SetIonicons name="checkmark" size={22} color={c.accent} />
                         : <Text style={{ color: c.accent, fontSize: 18 }}>✓</Text>
                     ) : !downloaded && !tier.bundled ? (
-                      <Text style={styles.classifierDlSizeHint}>{t('settings.classifierModel.downloadSize', { size: asset.sizeMB })}</Text>
+                      <TouchableOpacity
+                        style={styles.classifierDlBtn}
+                        onPress={() => selectClassifierTier(tierKey)}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                      >
+                        {SetIonicons ? <SetIonicons name="cloud-download-outline" size={15} color="#fff" /> : null}
+                        <Text style={styles.classifierDlBtnText}>{t('settings.classifierModel.downloadBtn', { size: asset.sizeMB })}</Text>
+                      </TouchableOpacity>
                     ) : null}
                   </View>
                 </TouchableOpacity>
@@ -1173,8 +1181,8 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                     </TouchableOpacity>
                   </View>
                 )}
-                {/* clip 档：可选模型变体（推荐 S2 / 高精度 SigLIP2 / 旧版 S1） */}
-                {tierKey === 'clip' && tier.readyForUse && (
+                {/* clip 档：模型变体选择器（仅在有多个变体时显示；现仅 S2 一个 → 隐藏） */}
+                {tierKey === 'clip' && tier.readyForUse && CLIP_MODEL_ORDER.length > 1 && (
                   <View style={styles.clipModelSelector}>
                     <Text style={styles.clipModelSelectorLabel}>{t('settings.classifierModel.clipModelLabel')}</Text>
                     <View style={styles.clipModelChips}>
@@ -1408,21 +1416,9 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           <View style={styles.actionButton}>
             <Text style={styles.actionButtonText}>{SetIonicons ? <SetIonicons name="phone-portrait-outline" size={17} color={c.accent} /> : null} {t('settings.localClassification')}</Text>
 
-            {/* 使用MobileNetV3分类 - 子区块 */}
-            <View style={styles.switchItemCompact}>
-              <View style={styles.switchItemCompactLeft}>
-                <Text style={styles.switchLabelCompact} numberOfLines={1}>{SetIonicons ? <SetIonicons name="cube-outline" size={15} color={c.accent} /> : null} {t('settings.enableMobileNetV3')}</Text>
-                <Switch
-                  value={settings.enableMobileNetV3Classification === true}
-                  onValueChange={(value) => updateSetting('enableMobileNetV3Classification', value)}
-                  trackColor={{ false: c.separator, true: c.success }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-              <Text style={styles.switchDescriptionCompact}>
-                {t('settings.enableMobileNetV3Desc')}
-              </Text>
-            </View>
+            {/* 「本地辅助识别」(enableMobileNetV3Classification) 开关已移除：默认关、与 CLIP
+                「AI智能识别」概念重叠、开启反而拖慢扫描，属多余选项。扫描侧读取该 setting 的
+                代码保留但默认 false、无 UI 可开启（死路径，后续可清理）。 */}
 
             {/* 相似度检测阈值 - 子区块 */}
             <View style={styles.switchItemCompact}>
@@ -2138,6 +2134,8 @@ const createStyles = (c) => StyleSheet.create({
   classifierTierSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: c.separator, marginLeft: 14 },
   classifierDlText: { fontSize: 12, color: c.accent, fontVariant: ['tabular-nums'] },
   classifierDlSizeHint: { fontSize: 12, color: c.tertiaryLabel },
+  classifierDlBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.accent, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
+  classifierDlBtnText: { fontSize: 12.5, color: '#fff', fontWeight: '600' },
   clipModelSelector: { paddingHorizontal: 14, paddingTop: 2, paddingBottom: 10 },
   clipModelSelectorLabel: { fontSize: 12, color: c.secondaryLabel, marginBottom: 6 },
   clipModelChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

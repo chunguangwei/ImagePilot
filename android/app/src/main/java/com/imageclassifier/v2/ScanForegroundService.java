@@ -6,10 +6,14 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 
 public class ScanForegroundService extends Service {
     private static final String CHANNEL_ID = "ScanServiceChannel";
@@ -77,6 +81,7 @@ public class ScanForegroundService extends Service {
                 .setContentTitle("Starting...")
                 .setContentText("Starting scan...")
                 .setSmallIcon(R.drawable.ic_notification)
+                .setLargeIcon(getLargeIconBitmap())
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .build();
@@ -223,6 +228,7 @@ public class ScanForegroundService extends Service {
             .setContentTitle(notificationTitle)
             .setContentText(progressText)
             .setSmallIcon(R.drawable.ic_notification)
+            .setLargeIcon(getLargeIconBitmap())
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT) // 改为 DEFAULT，确保通知能及时更新
@@ -247,6 +253,27 @@ public class ScanForegroundService extends Service {
         notificationManager.notify(NOTIFICATION_ID, notification);
     }
     
+    // 通知大图标：显式渲染我们的罗盘 app 图标为 bitmap 并 setLargeIcon。
+    // 不设 largeIcon 时，系统会用「应用图标」当大图标——而 vivo/部分 ROM 会缓存旧的
+    // 应用图标（换图标后通知里仍显示旧图），重装也不清。显式设置即可绕开该缓存。
+    private Bitmap cachedLargeIcon;
+    private Bitmap getLargeIconBitmap() {
+        if (cachedLargeIcon != null) return cachedLargeIcon;
+        try {
+            Drawable d = ContextCompat.getDrawable(this, R.mipmap.ic_launcher);
+            if (d == null) return null;
+            int size = d.getIntrinsicWidth() > 0 ? d.getIntrinsicWidth() : 144;
+            Bitmap bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bmp);
+            d.setBounds(0, 0, size, size);
+            d.draw(canvas);
+            cachedLargeIcon = bmp;
+            return bmp;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;

@@ -16,6 +16,10 @@ class ConfigService {
     // UnifiedDataService.readSettings/writeSettings 调 setCustomCategories 注入，
     // 使 getCategoryDisplayName 能把自定义 id 解析成配置的名称，而不是裸露 id。
     this.customCategoryNames = {};
+    // 用户「删除」的内置分类 id 集合（settings.aiProvider.hiddenBuiltinCategories）。
+    // 同样由 UnifiedDataService.readSettings/writeSettings 注入。getAllCategoriesWithUI
+    // 据此从展示中剔除，使被删的默认分类不在首页/各列表出现（可一键恢复）。
+    this.hiddenBuiltinSet = new Set();
   }
 
   /**
@@ -33,6 +37,21 @@ class ConfigService {
       }
     }
     this.customCategoryNames = map;
+  }
+
+  /**
+   * 注入「已删除的内置分类」id 列表。空数组＝全部默认分类可见（恢复默认）。
+   * @param {Array<string>} list
+   */
+  setHiddenBuiltinCategories(list) {
+    this.hiddenBuiltinSet = new Set(
+      Array.isArray(list) ? list.filter((x) => typeof x === 'string' && x.trim()).map((x) => x.trim()) : []
+    );
+  }
+
+  /** 某内置分类是否被用户删除（隐藏） */
+  isBuiltinCategoryHidden(categoryId) {
+    return this.hiddenBuiltinSet.has(categoryId);
   }
 
   /**
@@ -252,9 +271,10 @@ class ConfigService {
     const categoryMap = this.getCategoryNameMap();
     const displayOrder = this.getCategoryDisplayOrder();
     
-    // 按显示顺序返回分类信息
+    // 按显示顺序返回分类信息。剔除被用户删除的内置分类（NA/other 为系统档，永不隐藏）。
     return displayOrder
       .filter(categoryId => categoryMap[categoryId]) // 确保分类存在
+      .filter(categoryId => categoryId === 'NA' || categoryId === 'other' || !this.hiddenBuiltinSet.has(categoryId))
       .map(categoryId => ({
         id: categoryId,
         ...categoryMap[categoryId]
