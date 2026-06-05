@@ -1,19 +1,21 @@
 /**
- * clipModels — CLIP 档可选模型注册表（用户可在设置里选择下载哪个）。
+ * clipModels — CLIP 档模型注册表。
  *
- * 现在 CLIP 档不再写死单一模型，而是从这里选：
- *   - mobileclip2_s2（默认/推荐）：MobileCLIP2-S2，端侧优化，小而快，质量优于旧版 S1
- *   - siglip2_base（高精度）：SigLIP2-base，更准但体积更大、相似度量纲更低（阈值已单独标定）
- *   - mobileclip_s1（备用/旧版）：原 MobileCLIP-S1，保留兜底
+ * 现仅保留单一模型 MobileCLIP2-S2（fp32）。早先支持多变体可选（S1 旧版 / SigLIP2），
+ * 实测后都已移除：
+ *   - SigLIP2-base：sigmoid loss 需 logit 温度/偏置校准，裸余弦量纲下几端基本不可用，且体积过大。
+ *   - MobileCLIP-S1：旧版，质量不如 S2，已无保留价值。
  *
- * 每个变体自带：image encoder onnx（GH Release 按需下载）+ 对应文本 embeddings（内嵌 JS）
- * + minSim 阈值（不同模型相似度量纲不同，必须各自标定）。
- * 文本 embeddings 的 _meta（input_size/mean/std/embed_dim）由分类器据此做预处理与校验，
- * 因此换模型零改推理代码。
+ * 为什么 S2 用 fp32：原 fp16 版在 iOS（苹果芯片原生 fp16）正常，但安卓
+ * onnxruntime-react-native 1.17 移动版的 fp16 算子支持差会掉精度 → 安卓分类明显
+ * 不如 iOS。实测 fp32 与 fp16 输出逐位等价（cos=1.0），改 fp32 让安卓追平 iOS、
+ * iOS 不受影响，代价仅是体积翻倍（75→147MB）。
+ *
+ * 模型自带：image encoder onnx（GH Release 按需下载）+ 文本 embeddings（内嵌 JS）
+ * + minSim 阈值。文本 embeddings 的 _meta（input_size/mean/std/embed_dim）由分类器据此
+ * 做预处理与校验。注册表结构保留（CLIP_MODELS/ORDER），便于将来再扩模型时零改推理代码。
  */
-import S1_EMB from './clipTextEmbeddings.json';
 import S2_EMB from './clipTextEmbeddings.mobileclip2_s2.json';
-import SIGLIP2_EMB from './clipTextEmbeddings.siglip2_base.json';
 
 const BASE = 'https://github.com/chunguangwei/ImagePilot/releases/download/models-v1';
 
@@ -21,38 +23,18 @@ export const CLIP_MODELS = {
   mobileclip2_s2: {
     id: 'mobileclip2_s2',
     name: 'MobileCLIP2-S2',
-    sublabel: '推荐 · 小而快',
-    filename: 'mobileclip2_s2_image_encoder.onnx',
-    url: `${BASE}/mobileclip2_s2_image_encoder.onnx`,
+    sublabel: '推荐 · 最佳质量',
+    // fp32 版（文件名带 _fp32 以强制旧装机重新下载，绕开安卓 fp16 掉精度）
+    filename: 'mobileclip2_s2_fp32_image_encoder.onnx',
+    url: `${BASE}/mobileclip2_s2_fp32_image_encoder.onnx`,
     embeddings: S2_EMB,
-    minSim: 0.20,         // 与 S1 同量纲（cosine）
-    sizeMB: 72,
+    minSim: 0.20,         // cosine 量纲
+    sizeMB: 147,
     recommended: true,
-  },
-  siglip2_base: {
-    id: 'siglip2_base',
-    name: 'SigLIP2-base',
-    sublabel: '高精度 · 体积较大',
-    filename: 'siglip2_base_image_encoder.onnx',
-    url: `${BASE}/siglip2_base_image_encoder.onnx`,
-    embeddings: SIGLIP2_EMB,
-    minSim: 0.085,        // SigLIP 相似度量纲更低，单独标定（实测真匹配 ~0.1）
-    sizeMB: 178,
-  },
-  mobileclip_s1: {
-    id: 'mobileclip_s1',
-    name: 'MobileCLIP-S1',
-    sublabel: '备用 · 旧版',
-    filename: 'mobileclip_image_encoder.onnx',
-    url: `${BASE}/mobileclip_image_encoder.onnx`,
-    embeddings: S1_EMB,
-    minSim: 0.20,
-    sizeMB: 87,
-    legacy: true,
   },
 };
 
-export const CLIP_MODEL_ORDER = ['mobileclip2_s2', 'siglip2_base', 'mobileclip_s1'];
+export const CLIP_MODEL_ORDER = ['mobileclip2_s2'];
 export const DEFAULT_CLIP_MODEL = 'mobileclip2_s2';
 
 /** 解析模型 id → 变体配置；缺/无效都兜底默认（新 S2） */

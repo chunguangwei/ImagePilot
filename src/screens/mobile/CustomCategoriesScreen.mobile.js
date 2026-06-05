@@ -16,6 +16,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert,
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, Icon } from '../../adapters/WebAdapters';
 import configService from '../../services/llm/adapters/UnifiedDataConfigService';
+import builtinConfig from '../../services/ConfigService';
 import UnifiedDataService from '../../services/UnifiedDataService';
 import { CUSTOM_ICON_PRESETS, getCategoryIconMeta } from '../../components/shared/categoryUI';
 import { useIosColors } from '../../ui/ios/theme';
@@ -36,12 +37,26 @@ export default function CustomCategoriesScreen({ navigation }) {
   const [iconKey, setIconKey] = useState(CUSTOM_ICON_PRESETS[0].key);
   // 编辑弹窗（editing 为 { id, name, rule, iconKey } 时打开）
   const [editing, setEditing] = useState(null);
+  // 内置分类管理：全部内置内容分类（不含 NA/other 系统档）+ 已删除集合
+  const [builtins, setBuiltins] = useState([]);          // [{ id, name }]
+  const [hidden, setHidden] = useState([]);              // 已删除的内置分类 id
 
   useEffect(() => {
     (async () => {
       try {
         const cfg = await configService.getAIProviderConfig();
         setList(Array.isArray(cfg.customCategories) ? cfg.customCategories : []);
+        setHidden(Array.isArray(cfg.hiddenBuiltinCategories) ? cfg.hiddenBuiltinCategories : []);
+        // 内置分类全集（未过滤隐藏，因为本页要展示并允许恢复）
+        try {
+          if (!builtinConfig.isConfigLoaded?.()) { await builtinConfig.initialize?.(); }
+          const order = builtinConfig.getCategoryDisplayOrder?.() || [];
+          const nameMap = builtinConfig.getCategoryNameMap?.() || {};
+          const bl = order
+            .filter((cid) => nameMap[cid] && cid !== 'NA' && cid !== 'other')
+            .map((cid) => ({ id: cid, name: (nameMap[cid] && (nameMap[cid].chinese || nameMap[cid].english)) || cid }));
+          setBuiltins(bl);
+        } catch (_) { /* 内置列表取不到则只显示自定义部分 */ }
       } catch (e) {
         Alert.alert(t('customCategories.loadFailedTitle'), e?.message || String(e));
       } finally {
@@ -50,6 +65,67 @@ export default function CustomCategoriesScreen({ navigation }) {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 持久化「已删除的内置分类」列表（写设置 + 注入 ConfigService → 首页/各列表立即生效）
+  const persistHidden = async (next) => {
+    setHidden(next);
+    try {
+      await configService.setHiddenBuiltinCategories(next);
+    } catch (e) {
+      Alert.alert(t('customCategories.saveFailedTitle'), e?.message || String(e));
+    }
+  };
+
+  // 删除内置分类：先把该分类下的图改回「待分类(NA)」，再加入隐藏集合（可恢复）。
+  const onDeleteBuiltin = (cid, cname) => {
+    Alert.alert(
+      t('customCategories.deleteBuiltinTitle'),
+      t('customCategories.deleteBuiltinMessage', { name: cname }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('customCategories.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const inCat = await UnifiedDataService.readImagesByCategory(cid);
+              const ids = Array.isArray(inCat) ? inCat.map((img) => img && img.id).filter(Boolean) : [];
+              if (ids.length > 0) {
+                await UnifiedDataService.updateImagesCategory(ids, 'NA', 'manual');
+              }
+              await persistHidden(Array.from(new Set([...hidden, cid])));
+              Haptics.notification('warning');
+            } catch (e) {
+              Haptics.notification('error');
+              Alert.alert(t('customCategories.deleteFailedTitle'), e?.message || String(e));
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // 恢复单个内置分类（仅重新显示并允许 AI 归入；已转待分类的图不会自动回到该分类）
+  const onRestoreBuiltin = async (cid) => {
+    await persistHidden(hidden.filter((x) => x !== cid));
+    Haptics.notification('success');
+  };
+
+  // 一键恢复全部默认分类
+  const onRestoreAllBuiltins = () => {
+    if (hidden.length === 0) return;
+    Alert.alert(
+      t('customCategories.restoreAllTitle'),
+      t('customCategories.restoreAllMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('customCategories.restoreAllConfirm'),
+          onPress: async () => { await persistHidden([]); Haptics.notification('success'); },
+        },
+      ]
+    );
+  };
 
   const persist = async (next) => {
     setList(next);
@@ -214,6 +290,46 @@ export default function CustomCategoriesScreen({ navigation }) {
             );
           })
         )}
+
+        {/* 内置分类管理：删除（图回到待分类）/ 恢复 */}
+        <View style={styles.builtinHeaderRow}>
+          <Text style={[styles.cardTitle, { color: theme.label, marginBottom: 0 }]}>{t('customCategories.builtinTitle')}</Text>
+          {hidden.length > 0 && (
+            <TouchableOpacity onPress={onRestoreAllBuiltins} activeOpacity={0.6}>
+              <Text style={styles.restoreAll}>{t('customCategories.restoreAllBtn', { count: hidden.length })}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        <Text style={[styles.tip, { color: theme.secondaryLabel, marginTop: 6, marginBottom: 10 }]}>
+          {t('customCategories.builtinTip')}
+        </Text>
+        {builtins.map((b) => {
+          const meta = getCategoryIconMeta(b.id, list);
+          const isHidden = hidden.includes(b.id);
+          return (
+            <View key={b.id} style={[styles.item, { backgroundColor: theme.card }, isHidden && { opacity: 0.5 }]}>
+              <View style={[styles.itemIconWrap, { backgroundColor: meta.color }]}>
+                <Icon name={meta.iconName} size={18} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.itemName, { color: theme.label }, isHidden && { textDecorationLine: 'line-through' }]}>{b.name}</Text>
+                {isHidden && <Text style={[styles.itemRule, { color: theme.tertiaryLabel }]}>{t('customCategories.builtinDeletedHint')}</Text>}
+              </View>
+              {isHidden ? (
+                <TouchableOpacity onPress={() => onRestoreBuiltin(b.id)} style={styles.actionBtn} activeOpacity={0.6}>
+                  <Icon name="restore" size={18} color="#007AFF" />
+                  <Text style={styles.edit}>{t('customCategories.restore')}</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity onPress={() => onDeleteBuiltin(b.id, b.name)} style={styles.actionBtn} activeOpacity={0.6}>
+                  <Icon name="delete-outline" size={18} color="#FF3B30" />
+                  <Text style={styles.del}>{t('customCategories.delete')}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        })}
+        <View style={{ height: 24 }} />
       </ScrollView>
 
       {/* 编辑弹窗：id 只读，其余可改
@@ -294,6 +410,8 @@ const styles = StyleSheet.create({
   actionBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 6, marginLeft: 4 },
   edit: { color: '#007AFF', marginLeft: 4, fontSize: 14 },
   del: { color: '#FF3B30', marginLeft: 4, fontSize: 14 },
+  builtinHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  restoreAll: { color: '#007AFF', fontSize: 14, fontWeight: '500' },
 
   // 图标选择面板
   iconPickerLabel: { fontSize: 13, color: '#6C6C70', marginTop: 4, marginBottom: 8 },

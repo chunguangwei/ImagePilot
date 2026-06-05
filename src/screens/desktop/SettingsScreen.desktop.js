@@ -730,22 +730,8 @@ const SettingsScreen = ({ navigation, onRescanGallery, onScanProgress, isScannin
           {/* 本地分类设置 - 子区域 */}
           <View style={styles.switchPanel}>
             <Text style={styles.switchPanelTitle}>🔍 {t('settings.localClassification')}</Text>
-            
-            {/* 使用MobileNetV3分类 - 紧凑布局 */}
-            <View style={styles.switchItemCompact}>
-              <View style={styles.switchItemCompactLeft}>
-                <Text style={styles.switchLabelCompact} numberOfLines={1}>📱 {t('settings.enableMobileNetV3')}</Text>
-                <Switch
-                  value={settings.enableMobileNetV3Classification === true}
-                  onValueChange={(value) => updateSetting('enableMobileNetV3Classification', value)}
-                  trackColor={{ false: '#E5E5EA', true: '#34C759' }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-              <Text style={styles.switchDescriptionCompact}>
-                {t('settings.enableMobileNetV3Desc')}
-              </Text>
-            </View>
+
+            {/* 「本地辅助识别」开关已移除（多余项，详见 mobile 同处注释）。 */}
 
             {/* 相似度检测阈值 */}
             <View style={styles.switchItemCompact}>
