@@ -1731,7 +1731,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         {/* 🆕 滤镜修图（jimp 本地处理，离线） */}
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => displayUri && navigation.navigate('FilterEditor', { imageUri: displayUri })}>
+          onPress={() => displayUri && navigation.navigate('FilterEditor', { imageUri: displayUri, image: currentImage })}>
           {actIcon('filter', '🎨')}
           <Text style={styles.actionLabel}>{t('imagePreview.filter')}</Text>
         </TouchableOpacity>

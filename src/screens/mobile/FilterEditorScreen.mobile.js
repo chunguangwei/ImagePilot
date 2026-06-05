@@ -11,6 +11,7 @@ import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Dimensions
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { RNFS, getLocalPath, ModelPathAdapter, SafeAreaView } from '../../adapters/WebAdapters';
+import UnifiedDataService from '../../services/UnifiedDataService';
 import { useIosColors } from '../../ui/ios/theme';
 import ImageProcessor from '../../services/ImageProcessor';
 import { JIMP_FILTERS, JIMP_FILTER_IDS, hasIntensity, applyJimpFilterToBase64 } from '../../services/enhance/jimpFilters.js';
@@ -96,12 +97,50 @@ export default function FilterEditorScreen({ route, navigation }) {
     if (!canSave) return;
     setBusy(true);
     try {
-      const base64 = String(resultUri).split(',')[1] || '';
-      const dir = `${RNFS.PicturesDirectoryPath}/xualbum`;
-      await RNFS.mkdir(dir).catch(() => {});
-      const path = `${dir}/filtered_${Date.now()}.jpg`;
-      await RNFS.writeFile(path, base64, 'base64');
-      Alert.alert(t('filterEditor.savedTitle'), t('filterEditor.savedMessage', { path }));
+      // 用跨平台的 saveImageToGallery（Android MediaStore / iOS PhotoKit），它接受 data: URL
+      // 并写入系统相册。原实现写死 RNFS.PicturesDirectoryPath（安卓专属，iOS 为 undefined
+      // → 路径变 "undefined/xualbum/..." → ENOENT）。
+      await RNFS.saveImageToGallery(resultUri, `filtered_${Date.now()}.jpg`);
+      Alert.alert(t('filterEditor.savedTitle'), t('filterEditor.savedToAlbum'));
+    } catch (e) {
+      Alert.alert(t('filterEditor.saveFailedTitle'), e?.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // 暂存：保存到相册 + 建库记录（继承原图分类/元数据）+ 放入暂存箱，
+  // 这样编辑结果能直接在「暂存箱」里看到（与 AI 修图一致的落库方式 + 额外暂存）。
+  const original = route?.params?.image;
+  const onStage = async () => {
+    if (!canSave) return;
+    setBusy(true);
+    try {
+      const fileName = `filtered_${Date.now()}.jpg`;
+      const res = await RNFS.saveImageToGallery(resultUri, fileName);
+      const contentUri = res?.uri || '';
+      const path = res?.path || '';
+      const newUri = path ? `${contentUri}||${path}` : contentUri;
+      if (!newUri) throw new Error(t('filterEditor.saveFailedTitle'));
+      const now = Date.now();
+      const id = UnifiedDataService.getStableId(newUri);
+      const record = {
+        id,
+        uri: newUri,
+        fileName: res?.fileName || fileName,
+        category: original?.category || 'other',
+        confidence: original?.confidence ?? 1.0,
+        timestamp: now,
+        takenAt: original?.takenAt || now,
+        width: original?.width || 0,
+        height: original?.height || 0,
+        ...(original?.imageDimensions && { imageDimensions: original.imageDimensions }),
+        ...(original?.city && { city: original.city }),
+        ...(original?.color && { color: original.color }),
+      };
+      await UnifiedDataService.writeImageDetailedInfo([record], true);
+      await UnifiedDataService.addToStagingBox([id]);
+      Alert.alert(t('filterEditor.stagedTitle'), t('filterEditor.stagedMessage'));
     } catch (e) {
       Alert.alert(t('filterEditor.saveFailedTitle'), e?.message || String(e));
     } finally {
@@ -150,9 +189,14 @@ export default function FilterEditorScreen({ route, navigation }) {
           <Text style={styles.headerBtn}>{t('filterEditor.back')}</Text>
         </TouchableOpacity>
         <Text style={styles.title}>{t('filterEditor.title')}</Text>
-        <TouchableOpacity onPress={onSave} disabled={busy || aiBusy || !canSave}>
-          <Text style={[styles.headerBtn, (busy || aiBusy || !canSave) && styles.disabled]}>{t('common.save')}</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={onStage} disabled={busy || aiBusy || !canSave}>
+            <Text style={[styles.headerBtn, (busy || aiBusy || !canSave) && styles.disabled]}>{t('filterEditor.stage')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onSave} disabled={busy || aiBusy || !canSave}>
+            <Text style={[styles.headerBtn, styles.headerBtnPrimary, (busy || aiBusy || !canSave) && styles.disabled]}>{t('common.save')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={[styles.preview, { height: size }]}>
@@ -229,7 +273,9 @@ const createStyles = (c, isDark) => StyleSheet.create({
   // 在 light 主题下用 groupedBg（不再全黑），dark 下用 card 黑面板
   container: { flex: 1, backgroundColor: isDark ? c.groupedBg : c.groupedBg },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   headerBtn: { color: c.accent, fontSize: 16, fontWeight: '500' },
+  headerBtnPrimary: { fontWeight: '700' },
   disabled: { color: c.tertiaryLabel },
   title: { color: c.label, fontSize: 17, fontWeight: '600' },
   // 预览区保持深底，避免照片缩放后透出与外壳同色，便于聚焦图片本身

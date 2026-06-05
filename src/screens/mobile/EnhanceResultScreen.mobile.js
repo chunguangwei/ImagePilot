@@ -167,7 +167,8 @@ export default function EnhanceResultScreen({ route, navigation }) {
   const goPrev = useCallback(() => setIndex((i) => (i > 0 ? i - 1 : i)), []);
   const goNext = useCallback(() => setIndex((i) => (i < total - 1 ? i + 1 : i)), [total]);
 
-  const onSave = useCallback(async () => {
+  const onSave = useCallback(async (opts) => {
+    const alsoStage = opts?.stage === true; // true=保存到相册+落库+放入暂存箱
     // 仅保存增强图（对齐PC逻辑）
     if (!enhancedReady || !currentResult?.enhancedUri) {
       Alert.alert(t('enhanceResult.tip'), t('enhanceResult.notReady'));
@@ -270,6 +271,15 @@ export default function EnhanceResultScreen({ route, navigation }) {
       // 使用 writeImageDetailedInfo 保存图片数据（服务层会自动刷新缓存）
       await UnifiedDataService.writeImageDetailedInfo([completeImageData], true);
 
+      // 「暂存」：在保存落库的基础上，把新图放进暂存箱（id 与写库一致 = getStableId(uri)）
+      if (alsoStage) {
+        try {
+          await UnifiedDataService.addToStagingBox([UnifiedDataService.getStableId(newImageUri)]);
+        } catch (stageErr) {
+          logger.warn('增强图加入暂存箱失败:', stageErr);
+        }
+      }
+
       Animated.sequence([
         Animated.timing(saveSuccessAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
         Animated.timing(saveSuccessAnim, { toValue: 0, duration: 220, delay: 180, useNativeDriver: true }),
@@ -291,6 +301,20 @@ export default function EnhanceResultScreen({ route, navigation }) {
       });
     }
   }, [enhancedReady, current, currentResult, saveSuccessAnim, t]);
+
+  // 点保存时让用户选：仅存相册 / 存相册并放入暂存箱（编辑结果直接进暂存箱）
+  const onSavePressed = useCallback(() => {
+    if (!canSave) return;
+    Alert.alert(
+      t('enhanceResult.saveActionTitle'),
+      undefined,
+      [
+        { text: t('enhanceResult.saveToGallery'), onPress: () => onSave() },
+        { text: t('enhanceResult.saveAndStage'), onPress: () => onSave({ stage: true }) },
+        { text: t('common.cancel'), style: 'cancel' },
+      ],
+    );
+  }, [canSave, onSave, t]);
 
   const toggleShow = () => {
     if (!enhancedReady) return;
@@ -672,7 +696,7 @@ export default function EnhanceResultScreen({ route, navigation }) {
             }) : 1,
           },
         ]}>
-          <TouchableOpacity style={[styles.saveButton, (!canSave) && styles.saveButtonDisabled]} onPress={onSave} disabled={!canSave}>
+          <TouchableOpacity style={[styles.saveButton, (!canSave) && styles.saveButtonDisabled]} onPress={onSavePressed} disabled={!canSave}>
             <Text style={styles.saveText} numberOfLines={1}>
               {currentResult?.saved ? t('enhanceResult.saved') : (isSaving ? t('enhanceResult.saving') : t('enhanceResult.saveToGallery'))}
             </Text>
