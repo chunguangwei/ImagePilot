@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, dialog, ipcMain, clipboard, nativeImage } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, clipboard, nativeImage, shell } = require('electron');
 const path = require('path');
 const { exec } = require('child_process');
 const fs = require('fs');
@@ -305,7 +305,6 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      enableRemoteModule: true,
       webSecurity: false,  // 开发环境需要禁用以加载本地文件
       // GPU 相关配置，解决 GPU 状态错误
       // 在 macOS 上启用硬件加速以获得更好的性能
@@ -372,6 +371,22 @@ function createWindow() {
   mainWindow.once('ready-to-show', showMainWindow);
   mainWindow.webContents.once('did-finish-load', showMainWindow);
   setTimeout(showMainWindow, 8000);
+
+  // —— 安全加固（不改 node 集成架构，仅加防护性守卫）——
+  // 1) 拦截任意「新窗口」(window.open / target=_blank)：一律不在应用内开；http(s) 外链交系统浏览器。
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  // 2) 拦截导航：只允许应用自身（file:// 或 dev 的 localhost）；外部 URL 不在应用内打开，
+  //    防止 renderer（高权限 node 环境）被导航到外部/恶意页面。
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const isInternal = url.startsWith('file://') || url.startsWith('http://localhost');
+    if (!isInternal) {
+      event.preventDefault();
+      if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    }
+  });
 
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
     logger.error('Page failed to load:', errorCode, errorDescription, validatedURL);
