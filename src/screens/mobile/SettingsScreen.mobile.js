@@ -1703,15 +1703,19 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             </View>
           </View>
 
-          {/* 检查更新：从 GitHub Releases 升级到客户端（紧贴 version，同一类信息） */}
-          <ActionButton
-            styles={styles}
-            c={c}
-            icon="cloud-download-outline"
-            title={t('settings.checkUpdate')}
-            description={t('settings.checkUpdateDesc', { version: UpdateService.CURRENT_VERSION })}
-            onPress={handleCheckUpdate}
-          />
+          {/* 检查更新：从 GitHub Releases 升级到客户端（紧贴 version，同一类信息）。
+              iOS 不显示——App Store 自带更新逻辑，且应用内引导外部下载/自更新违反审核指南
+              （2.4.5/3.1.1）。iOS 仅展示下方版本号。 */}
+          {Platform.OS !== 'ios' && (
+            <ActionButton
+              styles={styles}
+              c={c}
+              icon="cloud-download-outline"
+              title={t('settings.checkUpdate')}
+              description={t('settings.checkUpdateDesc', { version: UpdateService.CURRENT_VERSION })}
+              onPress={handleCheckUpdate}
+            />
+          )}
 
           {/* 版本与构建版本合并：大版本(构建版本)，去掉日期时间；移除"平台"项 */}
           <InfoItem styles={styles} label={t('settings.version')} value={`${BUILD_VERSION} (${BUILD_VERSION_CODE})`} />
