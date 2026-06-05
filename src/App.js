@@ -227,9 +227,9 @@ console.log('📦 App.js: 定义 App 组件...');
 
 // 启动屏最短展示时长（ms）：服务初始化通常很快，加载屏会"一闪而过"，
 // 用户看不清品牌动效。强制至少展示一轮动画再进主页。
-// 取 3000ms —— 品牌启动屏行业舒适区间（2.5~3s），可完整播一轮呼吸+粒子汇聚，
-// 再长会显得拖沓（Apple HIG 倾向越短越好）。
-const MIN_SPLASH_MS = 3000;
+// 取 6000ms —— 让品牌动效（照片由远及近被吸入）充分展示；同时给「跳过」按钮，
+// 不想等的用户可随时提前进入，兼顾观感与效率。
+const MIN_SPLASH_MS = 6000;
 
 function AppInner() {
   console.log('📦 App.js: App 组件开始渲染');
@@ -364,6 +364,8 @@ function AppInner() {
         <SplashLoading
           tagline={t('app.tagline', '智能分类 · 便捷管理 · 仅你可见')}
           minDurationMs={MIN_SPLASH_MS}
+          skippable
+          skipAfterMs={1200}
           onFinish={onSplashFinish}
         />
       </View>
