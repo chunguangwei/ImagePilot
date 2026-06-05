@@ -1095,12 +1095,12 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             const downloaded = !!classifierDownloaded[tierKey];
             const downloading = classifierDownloadingKey === tierKey;
             const isLast = idx === CLASSIFIER_TIER_ORDER.length - 1;
+            // 已下载状态用右侧 ✓ + 下方 重新下载/删除 表达，不再塞进 meta（避免文字过长被截断）
             const metaParts = [
               `${tier.sizeMB}MB`,
               tier.speed,
               `${tier.classes} 类`,
             ];
-            if (downloaded) metaParts.push(t('settings.classifierModel.downloaded'));
             return (
               <View key={tierKey}>
                 <TouchableOpacity

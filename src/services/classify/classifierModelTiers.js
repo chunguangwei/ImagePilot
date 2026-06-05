@@ -66,8 +66,8 @@ export const CLASSIFIER_TIERS = {
     url: `${BASE}/mobileclip2_s2_image_encoder.onnx`,
     engine: 'clip',
     readyForUse: true,
-    desc: '用 CLIP 视觉特征分类，对抽象场景（生活方式 / 氛围 / 室内外）比物体识别更准',
-    weak: '比基础档慢约 2x；自定义类请用云端 AI 智能分类',
+    desc: 'AI 语义识别，更懂抽象场景与氛围',
+    weak: '比基础档稍慢；自定义类请用云端 AI 分类',
     classes: 9,
   },
 };
