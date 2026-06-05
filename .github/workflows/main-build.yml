@@ -134,7 +134,24 @@ jobs:
           echo "Release files:"
           ls -la ./release/
 
+      # 护栏：若该版本号的 Release 已存在则跳过发布，避免未 bump 版本号合 main 时
+      # 覆盖已发布产物。需要发版时先 bump package.json 版本号（tag 不存在即正常发布）。
+      - name: Check if release already exists
+        id: rel-check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Release v$VERSION 已存在 → 跳过发布（不覆盖已发布产物）。如需发版请先 bump 版本号。"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Release v$VERSION 不存在 → 将正常创建。"
+          fi
+
       - name: Create Release
+        if: steps.rel-check.outputs.exists != 'true'
         uses: softprops/action-gh-release@v2.4.2
         with:
           tag_name: v${{ steps.get-version.outputs.version }}

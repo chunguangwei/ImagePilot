@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "enabled": true,
+  "type": "builtin",
+  "id": "default",
+  "imageUrl": "",
+  "link": "",
+  "linkEnabled": false,
+  "durationMs": 4000,
+  "skippable": true,
+  "skipAfterMs": 1000,
+  "startAt": null,
+  "endAt": null
+}
