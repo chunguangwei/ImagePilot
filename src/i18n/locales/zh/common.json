@@ -783,10 +783,23 @@
       "deleteTitle": "删除模型",
       "deleteConfirm": "删除 {{label}} 的本地模型？下次使用需重新下载 {{size}}MB。",
       "deleteFailed": "删除失败",
-      "cancelDownload": "取消"
+      "cancelDownload": "取消",
+      "classesUnit": "{{n}} 类",
+      "adapting": "适配中",
+      "speedFast": "快",
+      "speedMedium": "中等",
+      "tierLabel": { "basic": "物体识别", "scene": "场景识别", "clip": "AI 智能识别" },
+      "tierDesc": {
+        "basic": "识别照片里的物品、动物、食物、设备等具体对象",
+        "scene": "识别拍摄场景：厨房 / 海滩 / 办公室 / 教室 等 365 类",
+        "clip": "AI 语义识别，更懂抽象场景与氛围"
+      },
+      "clipSublabel": "推荐 · 最佳质量"
     },
     "superRes": {
       "title": "AI 增强模型",
+      "variantSmall": "小（快 · 约 5MB）",
+      "variantLarge": "大（高质量 · 约 64MB）",
       "desc": "模型按需下载（不占安装包）。大模型更清晰但更慢更大。",
       "iosNote": "iOS 首次默认走「大」。",
       "iosIncompatible": "（iOS 不兼容，请选大）",

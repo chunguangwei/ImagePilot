@@ -970,7 +970,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     const tier = CLASSIFIER_TIERS[tierKey];
     if (!tier) return;
     if (!tier.readyForUse) {
-      Alert.alert(t('settings.classifierModel.comingSoon'), t('settings.classifierModel.comingSoonDesc', { label: tier.label }));
+      Alert.alert(t('settings.classifierModel.comingSoon'), t('settings.classifierModel.comingSoonDesc', { label: t('settings.classifierModel.tierLabel.' + tier.key, { defaultValue: tier.label }) }));
       return;
     }
     // 已下载 → 立即切档
@@ -1013,7 +1013,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         // 承诺即切：下载完成后落 setting；UI 上 classifierTier 已经乐观高亮
         try { await updateSetting('classifierModelTier', tierKey); } catch (_) {}
       } else {
-        Alert.alert(t('settings.classifierModel.downloadComplete'), t('settings.classifierModel.ready', { label: tier.label }));
+        Alert.alert(t('settings.classifierModel.downloadComplete'), t('settings.classifierModel.ready', { label: t('settings.classifierModel.tierLabel.' + tier.key, { defaultValue: tier.label }) }));
       }
     } catch (e) {
       if (isAbortError(e)) {
@@ -1068,7 +1068,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     if (!tier || tier.bundled) return;
     Alert.alert(
       t('settings.classifierModel.deleteTitle'),
-      t('settings.classifierModel.deleteConfirm', { label: tier.label, size: tier.sizeMB }),
+      t('settings.classifierModel.deleteConfirm', { label: t('settings.classifierModel.tierLabel.' + tier.key, { defaultValue: tier.label }), size: tier.sizeMB }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -1119,10 +1119,14 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             const downloading = classifierDownloadingKey === tierKey;
             const isLast = idx === CLASSIFIER_TIER_ORDER.length - 1;
             // 已下载状态用右侧 ✓ + 下方 重新下载/删除 表达，不再塞进 meta（避免文字过长被截断）
+            // i18n：档名/描述/速度/类数走翻译（数据里是中文，切英文也正确显示），缺键回退原值
+            const speedI18n = tier.speed === '快'
+              ? t('settings.classifierModel.speedFast')
+              : tier.speed === '中等' ? t('settings.classifierModel.speedMedium') : tier.speed;
             const metaParts = [
               `${asset.sizeMB}MB`,
-              tier.speed,
-              `${tier.classes} 类`,
+              speedI18n,
+              t('settings.classifierModel.classesUnit', { n: tier.classes }),
             ];
             return (
               <View key={tierKey}>
@@ -1137,11 +1141,11 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                 >
                   <View style={styles.classifierTierMain}>
                     <Text style={styles.classifierTierTitle}>
-                      {tier.label}
-                      {tier.readyForUse ? null : <Text style={styles.classifierTierSublabel}>  （适配中）</Text>}
+                      {t('settings.classifierModel.tierLabel.' + tierKey, { defaultValue: tier.label })}
+                      {tier.readyForUse ? null : <Text style={styles.classifierTierSublabel}>  （{t('settings.classifierModel.adapting')}）</Text>}
                     </Text>
                     <Text style={styles.classifierTierMeta}>{metaParts.join(' · ')}</Text>
-                    <Text style={styles.classifierTierDesc} numberOfLines={2}>{tier.desc}</Text>
+                    <Text style={styles.classifierTierDesc} numberOfLines={2}>{t('settings.classifierModel.tierDesc.' + tierKey, { defaultValue: tier.desc })}</Text>
                   </View>
                   <View style={styles.classifierTierRight}>
                     {downloading ? (
@@ -1217,8 +1221,8 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     // 小模型是 Qualcomm AI Hub 格式，仅 Android 上跑得动；iOS 标注「不兼容」并隐藏推荐
     const smallSuffix = Platform.OS === 'ios' ? `（${t('settings.superRes.iosIncompatible')}）` : '';
     const opts = [
-      { key: 'small', label: SUPERRES_VARIANTS.small.label + smallSuffix },
-      { key: 'large', label: SUPERRES_VARIANTS.large.label },
+      { key: 'small', label: t('settings.superRes.variantSmall', { defaultValue: SUPERRES_VARIANTS.small.label }) + smallSuffix },
+      { key: 'large', label: t('settings.superRes.variantLarge', { defaultValue: SUPERRES_VARIANTS.large.label }) },
       { key: 'custom', label: t('settings.superRes.customUrl') },
     ];
     return (

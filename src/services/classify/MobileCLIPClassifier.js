@@ -131,14 +131,12 @@ function cosineSim(a, b) {
  * 单张图 → top1 app 类。
  * @returns {Promise<{success, predictions, topPrediction, confidence, model, processingTime}>}
  */
-export async function classifyImageWithMobileCLIP(imageUri, modelPath, clipModel, opts = {}) {
+export async function classifyImageWithMobileCLIP(imageUri, modelPath, clipModel) {
   const t0 = Date.now();
   // 按用户所选模型解析配置（input_size/mean/std/embed_dim/categories/minSim/embeddings）。
   const cfg = clipModel ? buildCfg(clipModel) : DEFAULT_CFG;
-  // 被用户删除的内置分类：从候选集中剔除，避免把图归进已删分类（最优剩余仍 < 阈值则落 NA/待分类）。
-  const exclude = opts.excludeCategories instanceof Set
-    ? opts.excludeCategories
-    : new Set(Array.isArray(opts.excludeCategories) ? opts.excludeCategories : []);
+  // 注：不在此剔除被删除的内置分类——分类一律落「真实分类」，被删分类的隐藏由展示层
+  // （GlobalImageCache._effectiveCategoryId）统一映射到「待分类」，可逆（恢复即回到原类）。
   try {
     const session = await ensureSession(modelPath);
     const chw = await preprocessImage(imageUri, cfg);
@@ -154,7 +152,6 @@ export async function classifyImageWithMobileCLIP(imageUri, modelPath, clipModel
     // 各 app 类相似度 → 排序。多原型：embeddings[cat] 是「一组原型向量」，取该类所有原型
     // 的最大余弦（任一子概念命中即归该类，召回更高）；兼容旧的「单向量」格式。
     const scored = cfg.categories
-      .filter((cat) => !exclude.has(cat))   // 跳过被删除的内置分类
       .map((cat) => {
         const ref = cfg.textEmbeds.embeddings[cat];
         let sim = -1;
@@ -166,7 +163,7 @@ export async function classifyImageWithMobileCLIP(imageUri, modelPath, clipModel
         return { index: cfg.categories.indexOf(cat), name: cat, probability: sim, appCategory: cat };
       }).sort((a, b) => b.probability - a.probability);
 
-    // 全部候选被删除（极端情况）→ 直接落 NA/待分类，避免空数组取 [0] 崩溃。
+    // 防御：候选为空（理论上不会）→ 直接落 NA/待分类，避免空数组取 [0] 崩溃。
     if (scored.length === 0) {
       return {
         success: true,

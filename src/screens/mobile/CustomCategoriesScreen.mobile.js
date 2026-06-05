@@ -66,17 +66,20 @@ export default function CustomCategoriesScreen({ navigation }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 持久化「已删除的内置分类」列表（写设置 + 注入 ConfigService → 首页/各列表立即生效）
+  // 持久化「已删除的内置分类」列表（写设置 + 注入 ConfigService），并重算分类统计 + 通知首页刷新。
   const persistHidden = async (next) => {
     setHidden(next);
     try {
       await configService.setHiddenBuiltinCategories(next);
+      // 隐藏/恢复后，库里属于隐藏分类的图在统计/展示上归到「待分类」；这里立即重算，首页无需重扫即更新。
+      try { UnifiedDataService.refreshCategoryVisibility(); } catch (_) {}
     } catch (e) {
       Alert.alert(t('customCategories.saveFailedTitle'), e?.message || String(e));
     }
   };
 
-  // 删除内置分类：先把该分类下的图改回「待分类(NA)」，再加入隐藏集合（可恢复）。
+  // 删除内置分类：只加入隐藏集合（不改库）。该分类下的图在展示/统计上自动归到「待分类」，
+  // 恢复后又回到原分类——完全可逆。（截图/二维码等元数据检测分类也由展示层统一处理。）
   const onDeleteBuiltin = (cid, cname) => {
     Alert.alert(
       t('customCategories.deleteBuiltinTitle'),
@@ -88,11 +91,6 @@ export default function CustomCategoriesScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              const inCat = await UnifiedDataService.readImagesByCategory(cid);
-              const ids = Array.isArray(inCat) ? inCat.map((img) => img && img.id).filter(Boolean) : [];
-              if (ids.length > 0) {
-                await UnifiedDataService.updateImagesCategory(ids, 'NA', 'manual');
-              }
               await persistHidden(Array.from(new Set([...hidden, cid])));
               Haptics.notification('warning');
             } catch (e) {

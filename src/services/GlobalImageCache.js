@@ -57,6 +57,12 @@ class GlobalImageCache {
     this.listeners.forEach(callback => callback(this.cache));
   }
 
+  /** 内置分类显示/隐藏变化后：重算分类统计（隐藏分类归 NA）+ 通知监听者，首页即时反映，无需重扫 */
+  rebuildCategoryCountsAndNotify() {
+    this._rebuildCategoryCounts();
+    this.notifyListeners();
+  }
+
   // 构建缓存
   async buildCache() {
     if (this.isLoading) {
@@ -238,8 +244,8 @@ class GlobalImageCache {
       // 更新ID索引映射
       this.imageIdToIndex.set(image.id, this.cache.allImages.length - 1);
       
-      // 更新统计信息
-      const normalizedCategory = this._normalizeCategoryId(image.category);
+      // 更新统计信息（隐藏分类归 NA）
+      const normalizedCategory = this._effectiveCategoryId(image.category);
       this.cache.categoryCounts[normalizedCategory] = (this.cache.categoryCounts[normalizedCategory] || 0) + 1;
       // 城市统计
       if (image.city) {
@@ -518,8 +524,8 @@ class GlobalImageCache {
     this.cache.categoryCounts = {};
     this.cache.allImages.forEach((img, index) => {
       if (img.category) {
-        // 使用标准化的分类ID作为键（英文ID）
-        const normalizedCategory = this._normalizeCategoryId(img.category);
+        // 使用「有效分类ID」作为键（隐藏的内置分类归 NA）
+        const normalizedCategory = this._effectiveCategoryId(img.category);
         this.cache.categoryCounts[normalizedCategory] = (this.cache.categoryCounts[normalizedCategory] || 0) + 1;
       }
     });
@@ -548,6 +554,23 @@ class GlobalImageCache {
     
     // 如果都没找到，返回原值（支持 'NA' 等未配置的分类）
     return categoryInput;
+  }
+
+  /**
+   * 「有效分类」= 标准化分类，但若该内置分类被用户删除(隐藏)，则在统计/取图上归到「待分类(NA)」。
+   * 为什么放展示层：截图/二维码/证件照等是元数据检测分类（不走 CLIP，绕过候选集剔除），
+   * 删该分类后新图仍被打成原分类；隐藏后这些图既不在(隐藏的)原分类、也不在 NA → "消失"。
+   * 这里把库里属于隐藏分类的图，在展示/统计时映射到 NA；**不改库**，恢复分类后自动回到原类（可逆）。
+   * NA / other 是系统档，永不隐藏。
+   */
+  _effectiveCategoryId(rawCategory) {
+    const norm = this._normalizeCategoryId(rawCategory);
+    if (norm === 'NA' || norm === 'other') return norm;
+    if (configService && typeof configService.isBuiltinCategoryHidden === 'function'
+        && configService.isBuiltinCategoryHidden(norm)) {
+      return 'NA';
+    }
+    return norm;
   }
 
   /**
@@ -1320,7 +1343,7 @@ class GlobalImageCache {
         return false; // 改为返回false而不是抛出错误
       }
       
-      const imgCategory = this._normalizeCategoryId(img.category);
+      const imgCategory = this._effectiveCategoryId(img.category);
       return imgCategory === normalizedCategory;
     });
     

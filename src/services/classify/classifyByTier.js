@@ -62,17 +62,6 @@ export async function readActiveClipModel() {
   }
 }
 
-/** 从 settings 读取「已删除的内置分类」id 集合（用于分类时从候选集剔除） */
-export async function readHiddenBuiltinCategories() {
-  try {
-    const s = await UnifiedDataService.readSettings();
-    const arr = s?.aiProvider?.hiddenBuiltinCategories;
-    return new Set(Array.isArray(arr) ? arr : []);
-  } catch (_) {
-    return new Set();
-  }
-}
-
 /**
  * 对单张图分类，按 tier 路由。
  * @param imageUri  ph:// 或 file:// URI
@@ -147,9 +136,8 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
         // eslint-disable-next-line global-require
         _mobileClipMod = require('./MobileCLIPClassifier');
       }
-      // 剔除被用户删除的内置分类（被删分类不再被 AI 归入；最优剩余 < 阈值则落待分类）。
-      const excludeCategories = await readHiddenBuiltinCategories();
-      const r = await _mobileClipMod.classifyImageWithMobileCLIP(imageUri, modelPath, clipModel, { excludeCategories });
+      // 分类一律落真实分类；被删内置分类的隐藏由展示层统一映射到「待分类」（可逆）。
+      const r = await _mobileClipMod.classifyImageWithMobileCLIP(imageUri, modelPath, clipModel);
       if (!r.success) {
         const fb = await runImageNet(imageUri, sharedClassifier);
         return { ...fb, fallback: 'engine-error' };

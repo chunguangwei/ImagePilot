@@ -783,10 +783,23 @@
       "deleteTitle": "Delete Model",
       "deleteConfirm": "Delete the local {{label}} model? You'll need to re-download {{size}}MB next time.",
       "deleteFailed": "Delete Failed",
-      "cancelDownload": "Cancel"
+      "cancelDownload": "Cancel",
+      "classesUnit": "{{n}} classes",
+      "adapting": "Adapting",
+      "speedFast": "Fast",
+      "speedMedium": "Medium",
+      "tierLabel": { "basic": "Object recognition", "scene": "Scene recognition", "clip": "AI smart recognition" },
+      "tierDesc": {
+        "basic": "Recognizes concrete objects in photos: items, animals, food, devices, etc.",
+        "scene": "Recognizes the scene: kitchen / beach / office / classroom and 365 more",
+        "clip": "AI semantic recognition — better at abstract scenes and mood"
+      },
+      "clipSublabel": "Recommended · best quality"
     },
     "superRes": {
       "title": "AI Enhancement Model",
+      "variantSmall": "Small (fast · ~5MB)",
+      "variantLarge": "Large (high quality · ~64MB)",
       "desc": "Downloaded on demand (not bundled in the APK). Larger models look sharper but run slower and weigh more.",
       "iosNote": "iOS defaults to Large.",
       "iosIncompatible": "iOS-incompatible; pick Large",
