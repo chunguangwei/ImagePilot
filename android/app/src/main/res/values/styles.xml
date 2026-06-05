@@ -14,5 +14,7 @@
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
+        <!-- 冷启动窗口背景：深色 + 罗盘，消除白闪、统一新 logo（与 iOS LaunchScreen 一致） -->
+        <item name="android:windowBackground">@drawable/launch_screen</item>
     </style>
 </resources>
