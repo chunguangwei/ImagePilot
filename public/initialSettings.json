@@ -53,17 +53,72 @@
     "electronics": {
       "chinese": "电子产品",
       "english": "Electronics"
+    },
+    "kids": {
+      "chinese": "儿童",
+      "english": "Kids"
+    },
+    "night_scene": {
+      "chinese": "夜景",
+      "english": "Night Scenes"
+    },
+    "architecture": {
+      "chinese": "建筑",
+      "english": "Architecture"
+    },
+    "plants": {
+      "chinese": "植物花卉",
+      "english": "Plants & Flowers"
+    },
+    "vehicles": {
+      "chinese": "车辆",
+      "english": "Vehicles"
+    },
+    "sports": {
+      "chinese": "运动健身",
+      "english": "Sports & Fitness"
+    },
+    "fashion": {
+      "chinese": "服饰穿搭",
+      "english": "Fashion"
+    },
+    "products": {
+      "chinese": "商品",
+      "english": "Products"
+    },
+    "documents": {
+      "chinese": "文档票据",
+      "english": "Documents"
+    },
+    "art": {
+      "chinese": "艺术绘画",
+      "english": "Art"
+    },
+    "cartoon": {
+      "chinese": "卡通表情",
+      "english": "Cartoon & Memes"
     }
   },
   "categoryDisplayOrder": [
     "single_person",
     "social_activities",
-    "travel_scenery",
+    "kids",
     "pets",
     "foods",
-    "idcard",
-    "screenshot",
+    "travel_scenery",
+    "night_scene",
+    "architecture",
+    "plants",
+    "vehicles",
+    "sports",
+    "fashion",
+    "products",
     "electronics",
+    "documents",
+    "idcard",
+    "art",
+    "cartoon",
+    "screenshot",
     "qrcode",
     "other",
     "NA"

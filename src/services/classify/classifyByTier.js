@@ -24,6 +24,7 @@
 import { logger } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../UnifiedDataService';
 import { CLASSIFIER_TIERS, DEFAULT_CLASSIFIER_TIER } from './classifierModelTiers';
+import { getClipModel, DEFAULT_CLIP_MODEL } from './clipModels';
 import { ensureClassifierModel, isClassifierModelDownloaded } from './classifierModelSource';
 
 let _places365Mod = null;
@@ -48,6 +49,16 @@ export async function readActiveTier() {
     return CLASSIFIER_TIERS[t] ? t : DEFAULT_CLASSIFIER_TIER;
   } catch (_) {
     return DEFAULT_CLASSIFIER_TIER;
+  }
+}
+
+/** 从 settings 读取用户选的 CLIP 模型变体；缺/无效兜底默认（新 MobileCLIP2-S2） */
+export async function readActiveClipModel() {
+  try {
+    const s = await UnifiedDataService.readSettings();
+    return getClipModel(s?.classifierClipModel || DEFAULT_CLIP_MODEL);
+  } catch (_) {
+    return getClipModel(DEFAULT_CLIP_MODEL);
   }
 }
 
@@ -111,19 +122,21 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
     }
   }
   if (tierCfg.engine === 'clip') {
-    const downloaded = await isClassifierModelDownloaded(tierCfg.filename);
+    // clip 档具体用哪个模型由用户在设置里选（默认新 MobileCLIP2-S2）；下载/推理都按所选变体。
+    const clipModel = await readActiveClipModel();
+    const downloaded = await isClassifierModelDownloaded(clipModel.filename);
     if (!downloaded) {
-      logger.warn(`[classifyByTier] clip tier 模型未下载，回退 basic`);
+      logger.warn(`[classifyByTier] clip 模型(${clipModel.id})未下载，回退 basic`);
       const r = await runImageNet(imageUri, sharedClassifier);
       return { ...r, fallback: 'no-model' };
     }
     try {
-      const modelPath = await ensureClassifierModel(tierCfg.filename, tierCfg.url);
+      const modelPath = await ensureClassifierModel(clipModel.filename, clipModel.url);
       if (!_mobileClipMod) {
         // eslint-disable-next-line global-require
         _mobileClipMod = require('./MobileCLIPClassifier');
       }
-      const r = await _mobileClipMod.classifyImageWithMobileCLIP(imageUri, modelPath);
+      const r = await _mobileClipMod.classifyImageWithMobileCLIP(imageUri, modelPath, clipModel);
       if (!r.success) {
         const fb = await runImageNet(imageUri, sharedClassifier);
         return { ...fb, fallback: 'engine-error' };

@@ -55,19 +55,19 @@ export const CLASSIFIER_TIERS = {
     key: 'clip',
     label: 'AI 智能识别',
     sublabel: '高级 · 按需下载',
-    sizeMB: 87,
-    speed: '中等（约慢 2x）',
+    sizeMB: 72,
+    speed: '中等',
     bundled: false,
-    // P2-lite：MobileCLIP-S1 image encoder（OpenCLIP / datacompdr），输入 256×256，
-    // 输出 512 维 L2-normed embedding。9 个 app 类的 text embeddings 在导出脚本里
-    // 一次性用 text encoder 算好，bundle 进 JS（clipTextEmbeddings.json）。
-    // 设备端不跑 text encoder + 不带 BPE tokenizer——自定义类走云端 LLM 链路。
-    filename: 'mobileclip_image_encoder.onnx',
-    url: `${BASE}/mobileclip_image_encoder.onnx`,
+    // CLIP 档默认用新的 MobileCLIP2-S2（更小更强）。具体下载哪个变体由 clipModels.js +
+    // 用户设置 classifierClipModel 决定（默认 mobileclip2_s2；可选 siglip2_base 高精度 /
+    // mobileclip_s1 旧版备用）。下方 filename/url 是默认变体，供设置页下载/状态判断。
+    // 文本侧 embeddings 各变体随包内嵌（clipTextEmbeddings*.json），换模型零改推理代码。
+    filename: 'mobileclip2_s2_image_encoder.onnx',
+    url: `${BASE}/mobileclip2_s2_image_encoder.onnx`,
     engine: 'clip',
     readyForUse: true,
-    desc: '用 CLIP 视觉特征分类，对抽象场景（生活方式 / 氛围 / 室内外）比物体识别更准',
-    weak: '比基础档慢约 2x；自定义类请用云端 AI 智能分类',
+    desc: 'AI 语义识别，更懂抽象场景与氛围',
+    weak: '比基础档稍慢；自定义类请用云端 AI 分类',
     classes: 9,
   },
 };

@@ -26,17 +26,14 @@
       "chinese": "美食记录",
       "english": "Food Records"
     },
-   
     "travel_scenery": {
       "chinese": "旅行风景",
       "english": "Travel Scenery"
     },
-   
     "screenshot": {
       "chinese": "手机截图",
       "english": "Mobile Screenshots"
     },
-   
     "other": {
       "chinese": "其它",
       "english": "Other Images"
@@ -52,23 +49,78 @@
     "qrcode": {
       "chinese": "二维码",
       "english": "QR Code"
+    },
+    "kids": {
+      "chinese": "儿童",
+      "english": "Kids"
+    },
+    "night_scene": {
+      "chinese": "夜景",
+      "english": "Night Scenes"
+    },
+    "architecture": {
+      "chinese": "建筑",
+      "english": "Architecture"
+    },
+    "plants": {
+      "chinese": "植物花卉",
+      "english": "Plants & Flowers"
+    },
+    "vehicles": {
+      "chinese": "车辆",
+      "english": "Vehicles"
+    },
+    "sports": {
+      "chinese": "运动健身",
+      "english": "Sports & Fitness"
+    },
+    "fashion": {
+      "chinese": "服饰穿搭",
+      "english": "Fashion"
+    },
+    "products": {
+      "chinese": "商品",
+      "english": "Products"
+    },
+    "documents": {
+      "chinese": "文档票据",
+      "english": "Documents"
+    },
+    "art": {
+      "chinese": "艺术绘画",
+      "english": "Art"
+    },
+    "cartoon": {
+      "chinese": "卡通表情",
+      "english": "Cartoon & Memes"
     }
-   
   },
   "categoryDisplayOrder": [
     "single_person",
     "social_activities",
-    "travel_scenery",
+    "kids",
     "pets",
     "foods",
+    "travel_scenery",
+    "night_scene",
+    "architecture",
+    "plants",
+    "vehicles",
+    "sports",
+    "fashion",
+    "products",
+    "electronics",
+    "documents",
     "idcard",
+    "art",
+    "cartoon",
     "screenshot",
     "qrcode",
     "other",
     "NA"
   ],
   "objectMappings": {
-    "animals": "pets", 
+    "animals": "pets",
     "food": "foods",
     "transportation": "travel_scenery",
     "infrastructure": "travel_scenery",
@@ -6742,7 +6794,7 @@
       "id": 922,
       "chinese": "菜单",
       "english": "menu",
-      "category": "daily_items", 
+      "category": "daily_items",
       "subcategory": "tools"
     },
     "plate": {

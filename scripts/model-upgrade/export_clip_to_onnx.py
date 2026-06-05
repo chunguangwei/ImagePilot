@@ -40,18 +40,87 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-# 9 个 App 内置类别 → 自然语言 prompt 集（prompt ensemble：多句取平均更稳）。
-# 想调分类“口味”，改这里的句子即可（中英都行，CLIP/SigLIP 多语种模型对中文也可）。
+# 9 个 App 内置类别 → 「多原型」prompt 集（multi-prototype）。
+# 关键改进：每个类用一组覆盖不同子概念的 prompt，每句各自生成一个 L2 归一原型向量
+# （不再平均成一个）。分类时取「该类所有原型的最大余弦」→ 召回大涨、"其它"大减。
+# 想调分类口味/扩子概念，直接在这里加句子即可（同模型、零额外下载）。
 CATEGORY_PROMPTS = {
-    "single_person":    ["a portrait photo of a single person", "a selfie of one person", "a photo focused on one individual"],
-    "social_activities":["a photo of people at a social gathering", "a group of friends together", "a party or event with several people"],
-    "travel_scenery":   ["a travel landscape photo", "a scenic view of nature or a city", "a photo of a tourist attraction or landmark"],
-    "pets":             ["a photo of a pet", "a cute dog or cat", "a domestic animal companion"],
-    "foods":            ["a photo of food", "a delicious meal or dish", "food on a plate at a restaurant"],
-    "screenshot":       ["a smartphone screenshot", "a screen capture of an app interface", "a screenshot of a phone screen"],
-    "idcard":           ["a photo of an ID card or identity document", "a passport, certificate or official document", "a scanned identity card"],
-    "electronics":      ["a photo of an electronic device", "a gadget such as a phone, laptop or camera", "consumer electronics product"],
-    "qrcode":           ["a QR code", "a barcode or scannable code", "a black and white QR matrix code"],
+    "single_person": [
+        "a portrait photo of a single person", "a selfie of one person", "a headshot of a person",
+        "one person posing for a photo", "a full body photo of a person", "a close-up photo of a person's face",
+    ],
+    "social_activities": [
+        "a group of friends together", "people at a party", "a social gathering with several people",
+        "a celebration or event with a crowd", "friends having dinner together", "a wedding or ceremony",
+        "people taking a group photo",
+    ],
+    "travel_scenery": [
+        "a travel landscape photo", "a beach and ocean view", "mountains and nature scenery",
+        "a city skyline", "a sunset or sunrise", "a lake or river", "a forest or green nature",
+        "a famous landmark or tourist attraction", "a blue sky with clouds", "city lights at night",
+        "a street view of a town", "snow scenery", "a garden with flowers and plants", "a tall building or architecture",
+    ],
+    "pets": [
+        "a photo of a dog", "a photo of a cat", "a cute puppy", "a kitten",
+        "a pet animal close-up", "a domestic animal companion",
+    ],
+    "foods": [
+        "a plate of food", "a delicious meal or dish", "a dessert or cake", "a cup of coffee or drink",
+        "food at a restaurant", "fruit", "breakfast food", "noodles or rice dish",
+    ],
+    "screenshot": [
+        "a smartphone screenshot", "a screen capture of an app interface", "a screenshot of a phone screen",
+        "a chat conversation screenshot", "a web page screenshot",
+    ],
+    "idcard": [
+        "an ID card or identity document", "a passport", "a certificate or official document",
+        "a business card", "paperwork or a printed document", "a receipt or invoice", "a card with text on it",
+    ],
+    "electronics": [
+        "a smartphone", "a laptop or computer", "a camera", "headphones or earphones",
+        "an electronic gadget", "a keyboard or mouse", "a TV or monitor screen", "a consumer electronics product",
+    ],
+    "qrcode": [
+        "a QR code", "a barcode", "a black and white QR matrix code", "a scannable code",
+    ],
+    "kids": [
+        "a photo of a baby", "a young child", "kids playing", "a toddler", "children together",
+    ],
+    "night_scene": [
+        "a city at night with lights", "night cityscape", "neon lights at night",
+        "fireworks at night", "a dark night scene with bright lights",
+    ],
+    "architecture": [
+        "a building exterior", "modern architecture", "a landmark building",
+        "interior of a room", "a house or apartment building", "a bridge or tower",
+    ],
+    "plants": [
+        "a flower", "green plants", "a tree", "a garden of flowers", "a potted plant", "leaves and foliage",
+    ],
+    "vehicles": [
+        "a car", "a vehicle on the road", "a motorcycle", "a bus or train", "an airplane", "a bicycle",
+    ],
+    "sports": [
+        "people playing sports", "a gym workout", "running or jogging",
+        "a soccer or basketball game", "fitness exercise", "a sports field or stadium",
+    ],
+    "fashion": [
+        "clothing and outfit", "a fashion outfit", "shoes or accessories",
+        "a handbag or purse", "jewelry or a watch",
+    ],
+    "products": [
+        "a product on display", "a shopping item", "product packaging", "a boxed product for sale",
+    ],
+    "documents": [
+        "a document with text", "a receipt or invoice", "handwritten notes",
+        "a contract or paperwork", "a printed page of text", "a business card",
+    ],
+    "art": [
+        "a painting", "a drawing or sketch", "artwork in a gallery", "calligraphy",
+    ],
+    "cartoon": [
+        "a cartoon image", "an anime illustration", "a meme image", "a sticker or emoji", "a comic illustration",
+    ],
 }
 CATEGORY_ORDER = list(CATEGORY_PROMPTS.keys())
 
@@ -99,14 +168,48 @@ def main():
     ap.add_argument("--pretrained", required=True, help="预训练权重名，如 webli")
     ap.add_argument("--out-dir", default="./out")
     ap.add_argument("--opset", type=int, default=17)
+    ap.add_argument("--text-only", action="store_true",
+                    help="只重算文本 embedding（多原型），不导出/不改动 image encoder onnx——改 prompt/扩类时用，秒级")
     args = ap.parse_args()
     os.makedirs(args.out_dir, exist_ok=True)
 
+    import onnx
     model, preprocess, tokenizer = get_open_clip(args.model, args.pretrained)
     input_size, mean, std = extract_preprocess_meta(preprocess)
     print(f"[meta] input_size={input_size} mean={mean} std={std}")
 
-    # 1) 导出 image encoder
+    # 1) 「多原型」文本 embedding：每个 prompt 各自 L2 归一成一个原型（不平均）。
+    #    分类时取「该类所有原型的最大余弦」→ 召回大涨、"其它"大减。
+    embeddings = {}
+    embed_dim = None
+    for cat in CATEGORY_ORDER:
+        toks = tokenizer(CATEGORY_PROMPTS[cat])
+        arr = F.normalize(model.encode_text(toks), dim=-1).cpu().numpy()  # [N_prompts, D]
+        embed_dim = int(arr.shape[-1])
+        embeddings[cat] = [[float(x) for x in row] for row in arr.tolist()]
+    n_proto = sum(len(v) for v in embeddings.values())
+    print(f"[text] 多原型 {n_proto} 个 / {len(CATEGORY_ORDER)} 类  embed_dim={embed_dim}")
+
+    out_json = {
+        "_meta": {
+            "model": args.model, "pretrained": args.pretrained,
+            "input_size": input_size, "mean": mean, "std": std,
+            "embed_dim": embed_dim, "categories": CATEGORY_ORDER,
+            "multi_prototype": True,
+        },
+        "embeddings": embeddings,
+    }
+    json_path = os.path.join(args.out_dir, "clipTextEmbeddings.json")
+    with open(json_path, "w") as f:
+        json.dump(out_json, f, ensure_ascii=False)
+    print(f"[json] {json_path}")
+
+    if args.text_only:
+        print("\n[text-only] 仅重算文本 embedding（image encoder onnx 未导出/未改动）。"
+              "覆盖 src/services/classify/clipTextEmbeddings*.json 即可，无需重传模型。")
+        return
+
+    # 2) 导出 image encoder
     wrapper = ImageEncoderWrapper(model).eval()
     dummy = torch.randn(1, 3, input_size, input_size)
     onnx_path = os.path.join(args.out_dir, "clip_image_encoder.onnx")
@@ -116,41 +219,43 @@ def main():
         dynamic_axes={"image": {0: "batch"}, "image_features": {0: "batch"}},
         opset_version=args.opset, do_constant_folding=True,
     )
-    embed_dim = int(wrapper(dummy).shape[-1])
     print(f"[onnx] {onnx_path}  embed_dim={embed_dim}")
+    onnx.save(onnx.load(onnx_path), onnx_path, save_as_external_data=False)
+    for ext_data in (onnx_path + ".data", os.path.join(args.out_dir, "clip_image_encoder.onnx.data")):
+        if os.path.exists(ext_data):
+            os.remove(ext_data)
 
-    # 2) 计算 9 类文本 embedding（prompt ensemble → 平均 → L2 归一）
-    embeddings = {}
-    for cat in CATEGORY_ORDER:
-        toks = tokenizer(CATEGORY_PROMPTS[cat])
-        tfeat = model.encode_text(toks)
-        tfeat = F.normalize(tfeat, dim=-1).mean(dim=0)
-        tfeat = F.normalize(tfeat, dim=-1)
-        embeddings[cat] = [float(x) for x in tfeat.cpu().numpy().tolist()]
+    # 3) 单文件 fp16（带数值校验回退）：fp16 体积减半，但 ViT/CLIP 激活可能溢出 fp16。
+    #    用「真实 [0,1] 输入」校验输出有限且 L2≈1；fp16 不达标则回退 fp32，保证产出可用模型。
+    import onnxruntime as ort
+    from onnxconverter_common import float16
+    test_in = np.random.RandomState(0).rand(1, 3, input_size, input_size).astype(np.float32)
 
-    out_json = {
-        "_meta": {
-            "model": args.model, "pretrained": args.pretrained,
-            "input_size": input_size, "mean": mean, "std": std,
-            "embed_dim": embed_dim, "categories": CATEGORY_ORDER,
-        },
-        "embeddings": embeddings,
-    }
-    json_path = os.path.join(args.out_dir, "clipTextEmbeddings.json")
-    with open(json_path, "w") as f:
-        json.dump(out_json, f, ensure_ascii=False)
-    print(f"[json] {json_path}")
+    def validate(path):
+        sess = ort.InferenceSession(path, providers=["CPUExecutionProvider"])
+        o = sess.run(None, {"image": test_in})[0]
+        n = float(np.linalg.norm(o[0]))
+        ok = (o.shape[-1] == embed_dim) and bool(np.isfinite(o).all()) and abs(n - 1.0) < 0.05
+        return ok, o.shape[-1], n
 
-    # 3) 自检：ONNX 推理一致性 + 维度匹配
-    try:
-        import onnxruntime as ort
-        sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
-        out = sess.run(None, {"image": dummy.numpy()})[0]
-        assert out.shape[-1] == embed_dim == len(embeddings[CATEGORY_ORDER[0]]), "维度不一致！"
-        norm = float(np.linalg.norm(out[0]))
-        print(f"[check] ONNX 输出维度={out.shape[-1]} L2范数≈{norm:.4f}（应≈1.0）— OK")
-    except Exception as e:
-        print(f"[check] 跳过 onnxruntime 自检：{e}")
+    ok32, d32, n32 = validate(onnx_path)
+    assert ok32, f"fp32 模型自检失败 dim={d32} norm={n32}"
+    m16 = float16.convert_float_to_float16(onnx.load(onnx_path), keep_io_types=True, disable_shape_infer=True)
+    fp16_path = onnx_path + ".fp16.onnx"
+    onnx.save(m16, fp16_path, save_as_external_data=False)
+    ok16, d16, n16 = validate(fp16_path)
+    if ok16:
+        os.replace(fp16_path, onnx_path)
+        print(f"[check] fp16 OK  dim={d16} L2={n16:.4f}  → 单文件 {os.path.getsize(onnx_path)//1024//1024} MB")
+    else:
+        os.remove(fp16_path)
+        print(f"[check] fp16 数值溢出(norm={n16:.2f}) → 回退 fp32  单文件 {os.path.getsize(onnx_path)//1024//1024} MB (dim={d32}, L2={n32:.4f})")
+
+    # 与现网 onnxruntime-react-native 1.17 兼容：降 ir_version 到 8（opset 18 仍受支持；
+    # torch 新导出器默认 ir_version 10 可能被 1.17 拒绝 → "Can't load model"）。
+    mfin = onnx.load(onnx_path); mfin.ir_version = 8
+    onnx.save(mfin, onnx_path, save_as_external_data=False)
+    print(f"[ir] ir_version → 8（兼容 onnxruntime 1.17）")
 
     print("\n完成。把 out/clipTextEmbeddings.json 覆盖 src/services/classify/clipTextEmbeddings.json，"
           "并把 clip_image_encoder.onnx 传到 GitHub Release 后更新 classifierModelTiers.js 的 clip 档 url。")
