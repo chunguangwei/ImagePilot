@@ -1488,6 +1488,14 @@ class UnifiedDataService {
   // ==================== 暂存箱相关方法 ====================
 
   /**
+   * 由 URI 计算图片记录的稳定 id（与写库时 generateStableId 一致）。
+   * 修图链路保存新图后据此暂存（addToStagingBox 用同一 id）。
+   */
+  getStableId(uri) {
+    return this.imageStorageService.generateStableId(uri);
+  }
+
+  /**
    * 添加图片到暂存箱
    * @param {Array<string>} imageIds - 图片ID数组
    * @returns {Promise<{success: boolean, added: number, errors: Array}>}
