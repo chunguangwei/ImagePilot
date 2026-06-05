@@ -15,6 +15,7 @@ description: Updates the app version number across ImageClassifierApp source fil
 |------|----------|
 | `package.json` | `"version": "x.y.z"` → 新版本 |
 | `android/app/build.gradle` | `versionName "x.y.z"` → 新版本 |
+| `ios/ImagePilot.xcodeproj/project.pbxproj` | `MARKETING_VERSION = x.y.z;`（**两处** Debug/Release）→ 新版本（iOS 上架版本号，易漏） |
 | `public/initialSettings.json` | `"version": "x.y.z"` → 新版本 |
 | `src/config/BuildInfo.js` | `BUILD_VERSION = 'x.y.z'` → 新版本 |
 | `src/services/ImageStorageService.js` | `version: 'x.y.z'`（仅应用元数据处）→ 新版本 |
@@ -40,6 +41,7 @@ description: Updates the app version number across ImageClassifierApp source fil
 
 - [ ] 根目录 `package.json` 的 `version`
 - [ ] `android/app/build.gradle` 的 `versionName`
+- [ ] `ios/ImagePilot.xcodeproj/project.pbxproj` 的 `MARKETING_VERSION`（两处，iOS 上架用，易漏）
 - [ ] `public/initialSettings.json` 的 `version`
 - [ ] `src/config/BuildInfo.js` 的 `BUILD_VERSION`
 - [ ] `src/services/ImageStorageService.js` 中应用 `version`
