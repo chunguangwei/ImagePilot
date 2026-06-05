@@ -119,6 +119,13 @@ def main():
     embed_dim = int(wrapper(dummy).shape[-1])
     print(f"[onnx] {onnx_path}  embed_dim={embed_dim}")
 
+    # 1b) 合并外部权重为单文件（torch 新导出器可能把权重拆成 .onnx.data；App 要单文件）
+    import onnx
+    onnx.save(onnx.load(onnx_path), onnx_path, save_as_external_data=False)
+    for ext_data in (onnx_path + ".data", os.path.join(args.out_dir, "clip_image_encoder.onnx.data")):
+        if os.path.exists(ext_data):
+            os.remove(ext_data)
+
     # 2) 计算 9 类文本 embedding（prompt ensemble → 平均 → L2 归一）
     embeddings = {}
     for cat in CATEGORY_ORDER:
@@ -141,16 +148,37 @@ def main():
         json.dump(out_json, f, ensure_ascii=False)
     print(f"[json] {json_path}")
 
-    # 3) 自检：ONNX 推理一致性 + 维度匹配
-    try:
-        import onnxruntime as ort
-        sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
-        out = sess.run(None, {"image": dummy.numpy()})[0]
-        assert out.shape[-1] == embed_dim == len(embeddings[CATEGORY_ORDER[0]]), "维度不一致！"
-        norm = float(np.linalg.norm(out[0]))
-        print(f"[check] ONNX 输出维度={out.shape[-1]} L2范数≈{norm:.4f}（应≈1.0）— OK")
-    except Exception as e:
-        print(f"[check] 跳过 onnxruntime 自检：{e}")
+    # 3) 单文件 fp16（带数值校验回退）：fp16 体积减半，但 ViT/CLIP 激活可能溢出 fp16。
+    #    用「真实 [0,1] 输入」校验输出有限且 L2≈1；fp16 不达标则回退 fp32，保证产出可用模型。
+    import onnxruntime as ort
+    from onnxconverter_common import float16
+    test_in = np.random.RandomState(0).rand(1, 3, input_size, input_size).astype(np.float32)
+
+    def validate(path):
+        sess = ort.InferenceSession(path, providers=["CPUExecutionProvider"])
+        o = sess.run(None, {"image": test_in})[0]
+        n = float(np.linalg.norm(o[0]))
+        ok = (o.shape[-1] == embed_dim == len(embeddings[CATEGORY_ORDER[0]])) and bool(np.isfinite(o).all()) and abs(n - 1.0) < 0.05
+        return ok, o.shape[-1], n
+
+    ok32, d32, n32 = validate(onnx_path)
+    assert ok32, f"fp32 模型自检失败 dim={d32} norm={n32}"
+    m16 = float16.convert_float_to_float16(onnx.load(onnx_path), keep_io_types=True, disable_shape_infer=True)
+    fp16_path = onnx_path + ".fp16.onnx"
+    onnx.save(m16, fp16_path, save_as_external_data=False)
+    ok16, d16, n16 = validate(fp16_path)
+    if ok16:
+        os.replace(fp16_path, onnx_path)
+        print(f"[check] fp16 OK  dim={d16} L2={n16:.4f}  → 单文件 {os.path.getsize(onnx_path)//1024//1024} MB")
+    else:
+        os.remove(fp16_path)
+        print(f"[check] fp16 数值溢出(norm={n16:.2f}) → 回退 fp32  单文件 {os.path.getsize(onnx_path)//1024//1024} MB (dim={d32}, L2={n32:.4f})")
+
+    # 与现网 onnxruntime-react-native 1.17 兼容：降 ir_version 到 8（opset 18 仍受支持；
+    # torch 新导出器默认 ir_version 10 可能被 1.17 拒绝 → "Can't load model"）。
+    mfin = onnx.load(onnx_path); mfin.ir_version = 8
+    onnx.save(mfin, onnx_path, save_as_external_data=False)
+    print(f"[ir] ir_version → 8（兼容 onnxruntime 1.17）")
 
     print("\n完成。把 out/clipTextEmbeddings.json 覆盖 src/services/classify/clipTextEmbeddings.json，"
           "并把 clip_image_encoder.onnx 传到 GitHub Release 后更新 classifierModelTiers.js 的 clip 档 url。")

@@ -21,6 +21,7 @@ import { logger } from '../../adapters/WebAdapters';
 import { loadOnnxSession } from '../enhance/loadOnnxSession';
 import * as ortNS from 'onnxruntime-react-native';
 import TEXT_EMBEDS from './clipTextEmbeddings.json';
+import { getClipModel, DEFAULT_CLIP_MODEL } from './clipModels';
 
 const ort = ortNS.default || ortNS;
 const { Tensor } = ort;
@@ -31,18 +32,25 @@ let ImageResizer = null;
 try { ImageResizer = require('react-native-image-resizer').default || require('react-native-image-resizer'); }
 catch (_) { ImageResizer = null; }
 
-const META = TEXT_EMBEDS._meta || {};
-const INPUT_SIZE = META.input_size || 224;
-const MEAN = META.mean || [0.48145466, 0.4578275, 0.40821073];
-const STD = META.std || [0.26862954, 0.26130258, 0.27577711];
-const EMBED_DIM = META.embed_dim || 512;
-const CATEGORIES = META.categories || Object.keys(TEXT_EMBEDS.embeddings || {});
+// CLIP 档现在按「用户所选模型」动态取配置（embeddings/meta/阈值），而非写死单一模型。
+// buildCfg 把一个 clipModel 变体归一成推理需要的配置；不传则用默认（新 MobileCLIP2-S2）。
+// 阈值 minSim：top1 cosine ≥ minSim 才采纳，否则落 other。不同模型相似度量纲不同，各自标定
+// （MobileCLIP 系 ~0.20；SigLIP2 量纲更低 ~0.085），由 clipModels.js 提供。
+function buildCfg(clipModel) {
+  const emb = (clipModel && clipModel.embeddings) || TEXT_EMBEDS;
+  const meta = emb._meta || {};
+  return {
+    textEmbeds: emb,
+    inputSize: meta.input_size || 256,
+    mean: meta.mean || [0, 0, 0],
+    std: meta.std || [1, 1, 1],
+    embedDim: meta.embed_dim || 512,
+    categories: meta.categories || Object.keys(emb.embeddings || {}),
+    minSim: (clipModel && typeof clipModel.minSim === 'number') ? clipModel.minSim : 0.20,
+  };
+}
 
-/**
- * 阈值：top1 cosine > MIN_SIM 才采纳，否则 落 other。CLIP 通常 top1 真匹配 0.25+，
- * 弱相关 0.18~0.22；保守起 0.20。
- */
-const MIN_SIM = 0.20;
+const DEFAULT_CFG = buildCfg(getClipModel(DEFAULT_CLIP_MODEL));
 
 let _session = null;
 let _sessionPath = null;
@@ -69,7 +77,8 @@ async function ensureSession(modelPath) {
 }
 
 /** ph:// / file:// → INPUT_SIZE×INPUT_SIZE CHW float32（CLIP 归一） */
-async function preprocessImage(imageUri) {
+async function preprocessImage(imageUri, cfg) {
+  const INPUT_SIZE = cfg.inputSize, MEAN = cfg.mean, STD = cfg.std;
   if (!ImageResizer) throw new Error('react-native-image-resizer 不可用');
   const resized = await ImageResizer.createResizedImage(
     imageUri, INPUT_SIZE, INPUT_SIZE, 'JPEG', 95, 0, undefined, false,
@@ -107,29 +116,31 @@ function cosineSim(a, b) {
  * 单张图 → top1 app 类。
  * @returns {Promise<{success, predictions, topPrediction, confidence, model, processingTime}>}
  */
-export async function classifyImageWithMobileCLIP(imageUri, modelPath) {
+export async function classifyImageWithMobileCLIP(imageUri, modelPath, clipModel) {
   const t0 = Date.now();
+  // 按用户所选模型解析配置（input_size/mean/std/embed_dim/categories/minSim/embeddings）。
+  const cfg = clipModel ? buildCfg(clipModel) : DEFAULT_CFG;
   try {
     const session = await ensureSession(modelPath);
-    const chw = await preprocessImage(imageUri);
-    const feeds = { [_inputName]: new Tensor('float32', chw, [1, 3, INPUT_SIZE, INPUT_SIZE]) };
+    const chw = await preprocessImage(imageUri, cfg);
+    const feeds = { [_inputName]: new Tensor('float32', chw, [1, 3, cfg.inputSize, cfg.inputSize]) };
     const out = await session.run(feeds);
     const embT = out[_outputName] || out[Object.keys(out)[0]];
     if (!embT || !embT.data) throw new Error('CLIP 图编码器输出为空');
     const emb = Array.from(embT.data);
-    if (emb.length !== EMBED_DIM) {
-      logger.warn(`[MobileCLIP] embed_dim mismatch: ONNX=${emb.length} JSON=${EMBED_DIM}`);
+    if (emb.length !== cfg.embedDim) {
+      logger.warn(`[MobileCLIP] embed_dim mismatch: ONNX=${emb.length} JSON=${cfg.embedDim}`);
     }
 
-    // 9 类 cosine 相似度 → 排序
-    const scored = CATEGORIES.map((cat) => {
-      const ref = TEXT_EMBEDS.embeddings[cat];
+    // 各 app 类 cosine 相似度 → 排序
+    const scored = cfg.categories.map((cat) => {
+      const ref = cfg.textEmbeds.embeddings[cat];
       const sim = ref ? cosineSim(emb, ref) : -1;
-      return { index: CATEGORIES.indexOf(cat), name: cat, probability: sim, appCategory: cat };
+      return { index: cfg.categories.indexOf(cat), name: cat, probability: sim, appCategory: cat };
     }).sort((a, b) => b.probability - a.probability);
 
     const top = scored[0];
-    const adopt = top.probability >= MIN_SIM ? top : {
+    const adopt = top.probability >= cfg.minSim ? top : {
       ...top,
       name: 'other',
       appCategory: 'other',
