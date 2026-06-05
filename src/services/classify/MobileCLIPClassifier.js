@@ -132,10 +132,16 @@ export async function classifyImageWithMobileCLIP(imageUri, modelPath, clipModel
       logger.warn(`[MobileCLIP] embed_dim mismatch: ONNX=${emb.length} JSON=${cfg.embedDim}`);
     }
 
-    // 各 app 类 cosine 相似度 → 排序
+    // 各 app 类相似度 → 排序。多原型：embeddings[cat] 是「一组原型向量」，取该类所有原型
+    // 的最大余弦（任一子概念命中即归该类，召回更高）；兼容旧的「单向量」格式。
     const scored = cfg.categories.map((cat) => {
       const ref = cfg.textEmbeds.embeddings[cat];
-      const sim = ref ? cosineSim(emb, ref) : -1;
+      let sim = -1;
+      if (Array.isArray(ref) && Array.isArray(ref[0])) {
+        for (let k = 0; k < ref.length; k++) { const s = cosineSim(emb, ref[k]); if (s > sim) sim = s; }
+      } else if (Array.isArray(ref)) {
+        sim = cosineSim(emb, ref);
+      }
       return { index: cfg.categories.indexOf(cat), name: cat, probability: sim, appCategory: cat };
     }).sort((a, b) => b.probability - a.probability);
 

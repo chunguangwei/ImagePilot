@@ -121,7 +121,7 @@ const TimeCard = React.memo(function TimeCard({ timeKey, label, count, recentIma
  */
 const CategoryCard = React.memo(function CategoryCard({
   id, count, color, recentImages, displayName, isNACategory,
-  styles, onPressById, onLongPressNAById, screenWidth,
+  styles, onPressById, onLongPressNAById, screenWidth, naClassifyLabel,
 }) {
   // 用 useCallback 把 id 绑入闭包；父级传 stable onPressById/onLongPressNAById 时这两个回调引用稳定，
   // 配合 React.memo 的浅比较即可避免冗余重建。
@@ -149,9 +149,14 @@ const CategoryCard = React.memo(function CategoryCard({
         <Text style={styles.categoryCount}>{count}</Text>
       </View>
       {isNACategory && count > 0 && (
-        <View style={styles.naCategoryBadge}>
-          <Text style={styles.naCategoryBadgeText}>👆</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.naClassifyBtn}
+          onPress={handleLongPress}
+          activeOpacity={0.85}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        >
+          <Text style={styles.naClassifyBtnText} numberOfLines={1}>{naClassifyLabel || '开始分类'}</Text>
+        </TouchableOpacity>
       )}
     </TouchableOpacity>
   );
@@ -1711,6 +1716,7 @@ const HomeScreen = ({ navigation }) => {
       screenWidth={SCREEN_WIDTH}
       onPressById={handleCategoryPressById}
       onLongPressNAById={handleCategoryLongPressNAById}
+      naClassifyLabel={t('home.startClassifyBtn')}
     />
   );
 
@@ -3014,27 +3020,26 @@ const createStyles = (c) => StyleSheet.create({
   startSimilarityButtonTextDisabled: {
     color: c.tertiaryLabel,
   },
-  // NA分类长按提示样式 - 右上角徽章
-  naCategoryBadge: {
+  // 待分类卡片：显式「开始分类」按钮（替代隐蔽长按）—— 顶部蓝色条，醒目可点。
+  naClassifyBtn: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0, 122, 255, 0.9)',
-    justifyContent: 'center',
+    top: 5,
+    left: 5,
+    right: 5,
+    paddingVertical: 3,
+    borderRadius: 9,
+    backgroundColor: 'rgba(0, 122, 255, 0.96)',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 2,
     elevation: 3,
   },
-  naCategoryBadgeText: {
-    fontSize: 10,
+  naClassifyBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 });
