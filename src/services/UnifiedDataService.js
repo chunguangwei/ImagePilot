@@ -1491,8 +1491,22 @@ class UnifiedDataService {
    * 由 URI 计算图片记录的稳定 id（与写库时 generateStableId 一致）。
    * 修图链路保存新图后据此暂存（addToStagingBox 用同一 id）。
    */
+  /** 内置分类删除/恢复后调用：重算分类统计（隐藏归 NA）并通知首页等刷新，无需重扫 */
+  refreshCategoryVisibility() {
+    try { this.imageCache.rebuildCategoryCountsAndNotify(); } catch (e) { logger.warn('refreshCategoryVisibility 失败:', e); }
+  }
+
   getStableId(uri) {
-    return this.imageStorageService.generateStableId(uri);
+    // 与 SQLiteAdapter/IndexedDBAdapter.generateStableId 完全相同的 URI 稳定哈希。
+    // 内联实现：主类 ImageStorageService 不暴露该方法（只在适配器上），直接委托会
+    // 「undefined is not a function」。纯函数，结果与写库时生成的 id 一致。
+    const s = String(uri || '');
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) {
+      hash = ((hash << 5) - hash) + s.charCodeAt(i);
+      hash = hash & hash;
+    }
+    return `img_${Math.abs(hash).toString(36)}`;
   }
 
   /**
