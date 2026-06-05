@@ -56,7 +56,7 @@ export const CLASSIFIER_TIERS = {
     label: 'AI 智能识别',
     sublabel: '高级 · 按需下载',
     sizeMB: 72,
-    speed: '中等（约慢 2x）',
+    speed: '中等',
     bundled: false,
     // CLIP 档默认用新的 MobileCLIP2-S2（更小更强）。具体下载哪个变体由 clipModels.js +
     // 用户设置 classifierClipModel 决定（默认 mobileclip2_s2；可选 siglip2_base 高精度 /
