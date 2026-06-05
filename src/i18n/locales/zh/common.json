@@ -770,6 +770,7 @@
     },
     "classifierModel": {
       "title": "分类模型",
+      "clipModelLabel": "AI 识别模型（可切换）",
       "desc": "设备端分类引擎，按需下载、随时切换。照片不上传。",
       "downloaded": "已下载",
       "downloadSize": "下载 {{size}}MB",

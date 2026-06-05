@@ -68,7 +68,7 @@ export const CLASSIFIER_TIERS = {
     readyForUse: true,
     desc: 'AI 语义识别，更懂抽象场景与氛围',
     weak: '比基础档稍慢；自定义类请用云端 AI 分类',
-    classes: 9,
+    classes: 20,
   },
 };
 

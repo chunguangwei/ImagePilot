@@ -770,6 +770,7 @@
     },
     "classifierModel": {
       "title": "Classification Model",
+      "clipModelLabel": "AI recognition model",
       "desc": "On-device classification engine, download on demand and switch anytime. Photos stay on the device.",
       "downloaded": "Downloaded",
       "downloadSize": "Download {{size}}MB",
