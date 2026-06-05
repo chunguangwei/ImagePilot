@@ -254,6 +254,7 @@
     "aiClassificationInProgress": "AI分类进行中...",
     "aiClassificationComplete": "AI分类完成",
     "aiClassificationFailed": "AI分类失败: {{error}}",
+    "modelDownloadNeedNetwork": "首次使用需联网下载设备端分类模型，请连接网络后重试。模型仅下载一次，之后完全离线、不再联网。",
     "galleryScanModuleUnavailable": "GalleryScanModule 不可用，请确保在Android平台运行",
     "lastScanInfo": "扫描: {{time}} | 照片: {{count}} | 大小: {{size}}{{duration}}",
     "welcome": "欢迎使用ImagePilot",

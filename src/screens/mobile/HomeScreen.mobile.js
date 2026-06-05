@@ -1349,7 +1349,13 @@ const HomeScreen = ({ navigation }) => {
         // 在线大模型分类整体出错 → 提示改用离线模型兜底
         promptLocalFallback(t('home.aiClassifyLLMFailMessageGeneric', { error: error.message || '' }));
       } else {
-        Alert.alert(t('home.aiClassificationFailed', { error: '' }), error.message);
+        // 离线模型路径失败：若像首次下载/网络问题，给更友好的可重试提示（审核网络差也不至于看不懂）
+        const msg = String(error?.message || '');
+        const looksLikeDownload = /E_DOWNLOAD|E_NO_MODEL|Network|network|timeout|timed out|ENOTFOUND|ECONN|offline|HTTP\s*\d/i.test(msg);
+        Alert.alert(
+          t('home.aiClassificationFailed', { error: '' }),
+          looksLikeDownload ? t('home.modelDownloadNeedNetwork') : msg
+        );
       }
     } finally {
       // 释放唤醒锁
