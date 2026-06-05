@@ -83,6 +83,44 @@ CATEGORY_PROMPTS = {
     "qrcode": [
         "a QR code", "a barcode", "a black and white QR matrix code", "a scannable code",
     ],
+    "kids": [
+        "a photo of a baby", "a young child", "kids playing", "a toddler", "children together",
+    ],
+    "night_scene": [
+        "a city at night with lights", "night cityscape", "neon lights at night",
+        "fireworks at night", "a dark night scene with bright lights",
+    ],
+    "architecture": [
+        "a building exterior", "modern architecture", "a landmark building",
+        "interior of a room", "a house or apartment building", "a bridge or tower",
+    ],
+    "plants": [
+        "a flower", "green plants", "a tree", "a garden of flowers", "a potted plant", "leaves and foliage",
+    ],
+    "vehicles": [
+        "a car", "a vehicle on the road", "a motorcycle", "a bus or train", "an airplane", "a bicycle",
+    ],
+    "sports": [
+        "people playing sports", "a gym workout", "running or jogging",
+        "a soccer or basketball game", "fitness exercise", "a sports field or stadium",
+    ],
+    "fashion": [
+        "clothing and outfit", "a fashion outfit", "shoes or accessories",
+        "a handbag or purse", "jewelry or a watch",
+    ],
+    "products": [
+        "a product on display", "a shopping item", "product packaging", "a boxed product for sale",
+    ],
+    "documents": [
+        "a document with text", "a receipt or invoice", "handwritten notes",
+        "a contract or paperwork", "a printed page of text", "a business card",
+    ],
+    "art": [
+        "a painting", "a drawing or sketch", "artwork in a gallery", "calligraphy",
+    ],
+    "cartoon": [
+        "a cartoon image", "an anime illustration", "a meme image", "a sticker or emoji", "a comic illustration",
+    ],
 }
 CATEGORY_ORDER = list(CATEGORY_PROMPTS.keys())
 
