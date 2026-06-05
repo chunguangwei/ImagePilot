@@ -1,11 +1,11 @@
-# 自动签名Release APK脚本
-# 使用方法: .\sign-release-apk.ps1
-
+# 自动签名Release APK脚本（已废弃：发版签名现走 CI GitHub Secrets，见 main-build/android-build workflow）
+# 仅本地手动签名时用。密码不再硬编码——通过参数传入，例如：
+#   .\sign-release-apk.ps1 -StorePass <pw> -KeyPass <pw>
 param(
     [string]$KeystorePath = "android-release-key.keystore",
     [string]$Alias = "imageclassifier",
-    [string]$StorePass = "image123",
-    [string]$KeyPass = "image123"
+    [string]$StorePass = "",
+    [string]$KeyPass = ""
 )
 
 Write-Host "🔐 开始自动签名Release APK..." -ForegroundColor Green

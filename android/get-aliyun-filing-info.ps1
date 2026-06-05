@@ -5,7 +5,7 @@
 #   -KeystorePath: 签名密钥文件路径（默认: android-release-key.keystore）
 #   -Alias: 密钥别名（留空则自动检测，通常为 imageclassifier）
 #   -Domain: 具体使用的域名（可选，如果不提供会询问）
-#   -StorePass: 密钥库密码（可选，如果不提供会询问。默认可能是 'image123'）
+#   -StorePass: 密钥库密码（可选，如果不提供会询问）
 
 param(
     [string]$KeystorePath = "android-release-key.keystore",
@@ -64,7 +64,6 @@ Write-Host ""
 
 # 读取密钥库密码
 if ([string]::IsNullOrWhiteSpace($StorePass)) {
-    Write-Host "💡 提示: 如果这是项目默认的keystore，密码可能是 'image123'" -ForegroundColor Cyan
     Write-Host ""
     $storePassword = Read-Host "请输入密钥库密码" -AsSecureString
     $storePasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($storePassword))
