@@ -299,6 +299,9 @@ function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    // 深色窗口底 + 就绪后再显示：消除启动时白底一闪（与移动端启动屏同色 #03060B）
+    backgroundColor: '#03060B',
+    show: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -361,6 +364,14 @@ function createWindow() {
       mainWindow.loadURL(startUrl);
     });
   }
+
+  // 内容就绪后再显示窗口（消除白底一闪）。多重触发 + 兜底，确保窗口一定会显示，不会黑窗。
+  const showMainWindow = () => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) mainWindow.show();
+  };
+  mainWindow.once('ready-to-show', showMainWindow);
+  mainWindow.webContents.once('did-finish-load', showMainWindow);
+  setTimeout(showMainWindow, 8000);
 
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
     logger.error('Page failed to load:', errorCode, errorDescription, validatedURL);
