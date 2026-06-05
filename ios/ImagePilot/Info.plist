@@ -22,6 +22,8 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
@@ -39,8 +41,6 @@
 	<string>ImagePilot 需要访问相册以完成本地照片分类、预览与管理。所有分类默认在设备端完成，不上传任何照片；仅当你主动配置在线大模型并选择云端分类时，照片才会按你指定的服务商上传。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>ImagePilot 在你导出修图/超分结果时，需要把成品保存回相册。</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>ImagePilot 仅在你查看「按城市分类」时使用位置信息做离线反向地理编码，全程不联网、不上传。</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>AntDesign.ttf</string>

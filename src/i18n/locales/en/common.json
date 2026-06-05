@@ -254,6 +254,7 @@
     "aiClassificationInProgress": "AI Classification in Progress...",
     "aiClassificationComplete": "AI Classification Complete",
     "aiClassificationFailed": "AI Classification Failed: {{error}}",
+    "modelDownloadNeedNetwork": "First-time use needs to download the on-device model. Please connect to the internet and retry. It downloads only once and then runs fully offline.",
     "galleryScanModuleUnavailable": "GalleryScanModule is unavailable, please ensure running on Android platform",
     "lastScanInfo": "Scan: {{time}} | Photos: {{count}} | Size: {{size}}{{duration}}",
     "welcome": "Welcome to ImagePilot",
