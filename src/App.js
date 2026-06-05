@@ -41,6 +41,9 @@ import CustomCategoriesScreen from './screens/mobile/CustomCategoriesScreen.mobi
 import BackupRestoreScreen from './screens/mobile/BackupRestoreScreen.mobile';
 import { AIModelConfigScreen } from './ui/config/AIModelConfigScreen.mobile.jsx';
 import { makeAIModelConfigDeps } from './ui/config/aiModelConfigDeps.js';
+import SplashLoading from './components/SplashLoading.mobile';
+import SplashAd from './components/SplashAd.mobile';
+import { getActiveSplash, refreshSplashConfig } from './services/SplashConfigService';
 
 // 🆕 滤镜修图屏（jimp 纯 JS）：懒加载，仅在进入该屏时才加载 jimp
 const FilterEditorScreen = React.lazy(() => import('./screens/mobile/FilterEditorScreen.mobile'));
@@ -222,6 +225,12 @@ const checkAppPermissions = async () => {
 
 console.log('📦 App.js: 定义 App 组件...');
 
+// 启动屏最短展示时长（ms）：服务初始化通常很快，加载屏会"一闪而过"，
+// 用户看不清品牌动效。强制至少展示一轮动画再进主页。
+// 取 3000ms —— 品牌启动屏行业舒适区间（2.5~3s），可完整播一轮呼吸+粒子汇聚，
+// 再长会显得拖沓（Apple HIG 倾向越短越好）。
+const MIN_SPLASH_MS = 3000;
+
 function AppInner() {
   console.log('📦 App.js: App 组件开始渲染');
   const { t } = useTranslation('common');
@@ -233,8 +242,25 @@ function AppInner() {
   const sbStyle = isDark ? 'light-content' : 'dark-content';
   const sbBg = isDark ? '#000000' : '#ffffff';
 
-  const [isServiceReady, setIsServiceReady] = React.useState(false);
+  const [isServiceReady, setIsServiceReady] = React.useState(false); // 核心服务初始化完成
+  const [splashDone, setSplashDone] = React.useState(false);          // 启动屏（动效/广告）播放完成
   const [stagingBoxCount, setStagingBoxCount] = React.useState(0);
+  // 本次启动展示哪种启动屏：默认内置动效；若缓存里有可投放的远程图/广告则切换
+  const [splashDesc, setSplashDesc] = React.useState({ mode: 'builtin' });
+
+  // 进主页的条件：服务就绪 且 启动屏已播完（两者都满足才离开启动屏）
+  const canEnterApp = isServiceReady && splashDone;
+
+  // 启动时：① 读本地缓存决定本次启动屏；② 后台静默刷新远程配置供"下次"生效。
+  // 全程容错，任何失败都维持内置动效，不阻塞、不崩溃。
+  useEffect(() => {
+    let alive = true;
+    getActiveSplash()
+      .then((d) => { if (alive && d && d.mode === 'image') setSplashDesc(d); })
+      .catch(() => {});
+    refreshSplashConfig().catch(() => {});
+    return () => { alive = false; };
+  }, []);
   // 隐私政策预同意：fork（ImagePilot）已彻底剥离原作者第三方后端，所有 AI 分类/增强
   // 仅在设备端或用户自配 Provider 上发生，无需在首次安装弹隐私政策确认页。
   // 直接当"已同意"，跳过 modal。
@@ -313,15 +339,33 @@ function AppInner() {
 
   console.log('📦 App.js: 返回 JSX');
   
-  // 如果服务还未就绪，显示加载界面
-  if (!isServiceReady) {
-    return (
-      <View style={styles.container}>
-        <StatusBar barStyle={sbStyle} backgroundColor={sbBg} />
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>🚀 {t('common.initializing')}</Text>
-          <Text style={styles.loadingSubText}>{t('app.loadingServices')}</Text>
+  // 未就绪（服务未初始化完 或 启动屏未播完）：显示启动屏。
+  // splashDesc 决定是「内置动效」还是「远程图/广告」；onFinish 标记启动屏播放完成。
+  if (!canEnterApp) {
+    const onSplashFinish = () => setSplashDone(true);
+    if (splashDesc.mode === 'image') {
+      return (
+        <View style={styles.splashContainer}>
+          <SplashAd
+            source={{ uri: splashDesc.localUri }}
+            link={splashDesc.link}
+            linkEnabled={splashDesc.linkEnabled}
+            durationMs={splashDesc.durationMs}
+            skippable={splashDesc.skippable}
+            skipAfterMs={splashDesc.skipAfterMs}
+            onFinish={onSplashFinish}
+          />
         </View>
+      );
+    }
+    return (
+      <View style={styles.splashContainer}>
+        <StatusBar barStyle="light-content" backgroundColor="#0A0E14" />
+        <SplashLoading
+          tagline={t('app.tagline', '智能分类 · 便捷管理 · 仅你可见')}
+          minDurationMs={MIN_SPLASH_MS}
+          onFinish={onSplashFinish}
+        />
       </View>
     );
   }
@@ -400,6 +444,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5FCFF',
+  },
+  splashContainer: {
+    flex: 1,
+    backgroundColor: '#0A0E14',
   },
   loadingContainer: {
     flex: 1,
