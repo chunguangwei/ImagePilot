@@ -2,10 +2,10 @@
 
 buildscript {
     ext {
-        buildToolsVersion = "34.0.0"
+        buildToolsVersion = "35.0.0"
         minSdkVersion = 24
-        compileSdkVersion = 33
-        targetSdkVersion = 33
+        compileSdkVersion = 35
+        targetSdkVersion = 35
         ndkVersion = "23.1.7779620"
     }
     repositories {
@@ -13,7 +13,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:7.4.2")
+        classpath("com.android.tools.build:gradle:8.1.1")
         classpath("com.facebook.react:react-native-gradle-plugin")
     }
 }
@@ -37,6 +37,27 @@ allprojects {
         }
         google()
         maven { url 'https://www.jitpack.io' }
+    }
+}
+
+// —— AGP 8 兼容：给缺少 namespace 的旧 RN 原生库自动从其 AndroidManifest 的 package 补上 ——
+// AGP 8 要求每个 Android module 显式声明 namespace；RN 0.72 era 的部分库仍用 manifest 的 package=。
+// 这里在各子工程评估后，若 android.namespace 为空则读其 manifest 的 package 回填，避免逐个 patch node_modules。
+subprojects { subproject ->
+    afterEvaluate {
+        if (subproject.hasProperty("android")) {
+            subproject.android {
+                if (namespace == null) {
+                    def manifestFile = subproject.file("src/main/AndroidManifest.xml")
+                    if (manifestFile.exists()) {
+                        def matcher = (manifestFile.getText("UTF-8") =~ /package="(.+?)"/)
+                        if (matcher.find()) {
+                            namespace = matcher.group(1)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
