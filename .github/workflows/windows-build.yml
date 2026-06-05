@@ -37,7 +37,10 @@ jobs:
 
       - name: Install system dependencies (GTK2-Runtime for node-canvas)
         run: |
-          choco install -y pkgconfiglite gtk-runtime libjpeg-turbo
+          # --allow-empty-checksums：libjpeg-turbo 这个 choco 包从 sourceforge 拉 .exe 且未带
+          # checksum；Chocolatey v1+ 默认禁止空校验和的非安全源安装 → 构建报错。该包无人维护，
+          # 加此开关放行（仅影响这几个系统依赖的安装，不影响产物）。
+          choco install -y --allow-empty-checksums pkgconfiglite gtk-runtime libjpeg-turbo
 
       - name: Prepare build environment
         run: |
