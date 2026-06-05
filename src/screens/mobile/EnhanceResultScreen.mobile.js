@@ -235,8 +235,12 @@ export default function EnhanceResultScreen({ route, navigation }) {
       const width = originalImage?.width || null;
       const height = originalImage?.height || null;
 
+      // 记录 id 与扫描器一致：iOS 用 PhotoKit localIdentifier（否则重扫会按 uri 唯一约束
+      // 把记录重新键入 localIdentifier，原记录被顶掉、暂存 id 成孤儿）。安卓退回 getStableId。
+      const recordId = res?.localIdentifier || UnifiedDataService.getStableId(newImageUri);
       // 复制原图的所有元数据，只改变 uri 指向新保存的图片
       const completeImageData = {
+        id: recordId,
         uri: newImageUri,
         fileName: res.fileName || fileName || 'enhanced.jpg',
         category: originalImage?.category || 'other',
@@ -250,7 +254,6 @@ export default function EnhanceResultScreen({ route, navigation }) {
         generalDetections: originalImage?.generalDetections || [],
         mobileNetV3Detections: originalImage?.mobileNetV3Detections || null,
         message: originalImage?.message || null,
-        ...(originalImage?.imageDimensions && { imageDimensions: originalImage.imageDimensions }),
         ...(originalImage?.city && { city: originalImage.city }),
         ...(originalImage?.color && { color: originalImage.color }),
       };
@@ -267,6 +270,12 @@ export default function EnhanceResultScreen({ route, navigation }) {
         if (!completeImageData.width) completeImageData.width = 0;
         if (!completeImageData.height) completeImageData.height = 0;
       }
+      // 新记录入库强制要求 imageDimensions（缺则 insert 抛错并被上层吞掉 → 图没真正入库）。
+      // 无条件补上（iOS 上原图常缺宽高，用已兜底的 width/height）。
+      if (!completeImageData.imageDimensions) {
+        completeImageData.imageDimensions = originalImage?.imageDimensions
+          || { width: completeImageData.width || 0, height: completeImageData.height || 0 };
+      }
 
       // 使用 writeImageDetailedInfo 保存图片数据（服务层会自动刷新缓存）
       await UnifiedDataService.writeImageDetailedInfo([completeImageData], true);
@@ -274,7 +283,7 @@ export default function EnhanceResultScreen({ route, navigation }) {
       // 「暂存」：在保存落库的基础上，把新图放进暂存箱（id 与写库一致 = getStableId(uri)）
       if (alsoStage) {
         try {
-          await UnifiedDataService.addToStagingBox([UnifiedDataService.getStableId(newImageUri)]);
+          await UnifiedDataService.addToStagingBox([recordId]);
         } catch (stageErr) {
           logger.warn('增强图加入暂存箱失败:', stageErr);
         }

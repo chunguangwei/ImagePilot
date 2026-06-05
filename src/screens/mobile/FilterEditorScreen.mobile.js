@@ -123,7 +123,17 @@ export default function FilterEditorScreen({ route, navigation }) {
       const newUri = path ? `${contentUri}||${path}` : contentUri;
       if (!newUri) throw new Error(t('filterEditor.saveFailedTitle'));
       const now = Date.now();
-      const id = UnifiedDataService.getStableId(newUri);
+      // id 必须与扫描器一致：iOS 用 PhotoKit localIdentifier（记录 id 体系就是它，不是
+      // generateStableId）；否则重扫枚举到这张新图会按 uri 唯一约束把记录重新键入
+      // localIdentifier，我的记录被顶掉 → staging id 成孤儿 → 暂存箱有数字无图。
+      // 安卓无 localIdentifier，退回 getStableId(uri)。
+      const id = res?.localIdentifier || UnifiedDataService.getStableId(newUri);
+      // 关键：ImageStorageService 对「新记录」强制校验，必须含 width/height/imageDimensions/category，
+      // 否则 insert 抛错（且上层会吞掉错 → addToStagingBox 仍执行 → 计数 +1 但 images 表无记录
+      // → 暂存箱有数字无图）。因此这几项**无条件**提供（iOS 上原图常缺宽高，用 0 兜底，
+      // 不影响缩略图渲染——缩略图走 uri）。
+      const w = original?.width || 0;
+      const h = original?.height || 0;
       const record = {
         id,
         uri: newUri,
@@ -132,9 +142,14 @@ export default function FilterEditorScreen({ route, navigation }) {
         confidence: original?.confidence ?? 1.0,
         timestamp: now,
         takenAt: original?.takenAt || now,
-        width: original?.width || 0,
-        height: original?.height || 0,
-        ...(original?.imageDimensions && { imageDimensions: original.imageDimensions }),
+        size: original?.size || 0,
+        width: w,
+        height: h,
+        imageDimensions: original?.imageDimensions || { width: w, height: h },
+        idCardDetections: original?.idCardDetections || [],
+        generalDetections: original?.generalDetections || [],
+        mobileNetV3Detections: original?.mobileNetV3Detections || null,
+        message: original?.message || null,
         ...(original?.city && { city: original.city }),
         ...(original?.color && { color: original.color }),
       };
