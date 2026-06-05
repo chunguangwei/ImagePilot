@@ -33,6 +33,7 @@ import { presetIcon } from '../../ui/ios/presetIcons';
 import { useIosColors, ThemeContext } from '../../ui/ios/theme';
 import { SUPERRES_VARIANTS, ensureModel, isModelDownloaded, resolveSuperRes, deleteModel } from '../../services/enhance/modelSource';
 import { CLASSIFIER_TIERS, CLASSIFIER_TIER_ORDER, DEFAULT_CLASSIFIER_TIER } from '../../services/classify/classifierModelTiers';
+import { CLIP_MODELS, CLIP_MODEL_ORDER, DEFAULT_CLIP_MODEL, getClipModel } from '../../services/classify/clipModels';
 import {
   ensureClassifierModel as ensureClassifierModelFile,
   isClassifierModelDownloaded as isClassifierModelDownloadedFile,
@@ -79,8 +80,13 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
   // 分类模型：basic（默认已内置） / scene（Places365）/ clip（MobileCLIP，P2 未接入）
   const [classifierTier, setClassifierTier] = useState('basic');
+  // CLIP 档具体用哪个模型变体（默认新 MobileCLIP2-S2；可选 SigLIP2 高精度 / 旧版 S1）
+  const [clipModelId, setClipModelId] = useState(DEFAULT_CLIP_MODEL);
   // 各档下载状态 + 当前下载中进度（key 是 tier key）
   const [classifierDownloaded, setClassifierDownloaded] = useState({});  // { scene: true/false, ... }
+
+  // 解析某档实际要下载/判断的模型资产：clip 档按所选变体，其它档按 tier 自身。
+  const clipAssetOf = (tierKey) => (tierKey === 'clip' ? getClipModel(clipModelId) : CLASSIFIER_TIERS[tierKey]);
   const [classifierDownloadingKey, setClassifierDownloadingKey] = useState(null); // 哪个 tier 正在下载
   const [classifierDownloadProgress, setClassifierDownloadProgress] = useState(0);
   // 取消下载用的 AbortController（分类模型/AI 增强模型分别一个）
@@ -188,12 +194,16 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
       const savedCfg = CLASSIFIER_TIERS[savedTier];
       const validTier = (savedCfg && savedCfg.readyForUse) ? savedTier : DEFAULT_CLASSIFIER_TIER;
       setClassifierTier(validTier);
-      // 检查各 tier 模型下载状态
+      // CLIP 档所选模型变体
+      const clipMid = CLIP_MODELS[savedSettings.classifierClipModel] ? savedSettings.classifierClipModel : DEFAULT_CLIP_MODEL;
+      setClipModelId(clipMid);
+      // 检查各 tier 模型下载状态（clip 档按所选变体的文件名判断）
       const dlMap = {};
       for (const k of CLASSIFIER_TIER_ORDER) {
         const tier = CLASSIFIER_TIERS[k];
         if (tier.bundled) { dlMap[k] = true; continue; }
-        try { dlMap[k] = await isClassifierModelDownloadedFile(tier.filename); }
+        const fname = k === 'clip' ? getClipModel(clipMid).filename : tier.filename;
+        try { dlMap[k] = await isClassifierModelDownloadedFile(fname); }
         catch (_) { dlMap[k] = false; }
       }
       setClassifierDownloaded(dlMap);
@@ -983,7 +993,8 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   const downloadClassifierModel = async (tierKey, opts = {}) => {
     const { switchAfter = false } = opts;
     const tier = CLASSIFIER_TIERS[tierKey];
-    if (!tier || !tier.url) return;
+    const asset = clipAssetOf(tierKey);  // clip 档下载用户所选的变体
+    if (!tier || !asset || !asset.url) return;
     // 旧 controller 残留先 abort（防御 double-click）
     try { classifierAbortRef.current?.abort(); } catch (_) {}
     const controller = new AbortController();
@@ -992,8 +1003,8 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     setClassifierDownloadProgress(0);
     try {
       await ensureClassifierModelFile(
-        tier.filename,
-        tier.url,
+        asset.filename,
+        asset.url,
         (p) => setClassifierDownloadProgress(p),
         { signal: controller.signal },
       );
@@ -1065,7 +1076,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteClassifierModelFile(tier.filename);
+              await deleteClassifierModelFile(clipAssetOf(tierKey).filename);
               setClassifierDownloaded((prev) => ({ ...prev, [tierKey]: false }));
               // 若删的就是当前选中档，切回 basic
               if (classifierTier === tierKey) {
@@ -1077,6 +1088,17 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         },
       ]
     );
+  };
+
+  // 切换 CLIP 模型变体（S2 推荐 / SigLIP2 高精度 / S1 旧版）：落 setting + 重新判断该变体是否已下载
+  const selectClipModel = async (id) => {
+    if (id === clipModelId) return;
+    setClipModelId(id);
+    try { await updateSetting('classifierClipModel', id); } catch (_) {}
+    try {
+      const dl = await isClassifierModelDownloadedFile(getClipModel(id).filename);
+      setClassifierDownloaded((prev) => ({ ...prev, clip: dl }));
+    } catch (_) {}
   };
 
   const renderClassifierModel = () => {
@@ -1091,13 +1113,14 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         <View style={styles.classifierList}>
           {CLASSIFIER_TIER_ORDER.map((tierKey, idx) => {
             const tier = CLASSIFIER_TIERS[tierKey];
+            const asset = clipAssetOf(tierKey);  // clip 档显示/下载所选变体
             const isActive = classifierTier === tierKey;
             const downloaded = !!classifierDownloaded[tierKey];
             const downloading = classifierDownloadingKey === tierKey;
             const isLast = idx === CLASSIFIER_TIER_ORDER.length - 1;
             // 已下载状态用右侧 ✓ + 下方 重新下载/删除 表达，不再塞进 meta（避免文字过长被截断）
             const metaParts = [
-              `${tier.sizeMB}MB`,
+              `${asset.sizeMB}MB`,
               tier.speed,
               `${tier.classes} 类`,
             ];
@@ -1134,7 +1157,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                         ? <SetIonicons name="checkmark" size={22} color={c.accent} />
                         : <Text style={{ color: c.accent, fontSize: 18 }}>✓</Text>
                     ) : !downloaded && !tier.bundled ? (
-                      <Text style={styles.classifierDlSizeHint}>{t('settings.classifierModel.downloadSize', { size: tier.sizeMB })}</Text>
+                      <Text style={styles.classifierDlSizeHint}>{t('settings.classifierModel.downloadSize', { size: asset.sizeMB })}</Text>
                     ) : null}
                   </View>
                 </TouchableOpacity>
@@ -1148,6 +1171,29 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                     <TouchableOpacity onPress={() => deleteClassifierTierModel(tierKey)} style={styles.classifierFooterBtn}>
                       <Text style={[styles.classifierFooterBtnText, { color: c.danger }]}>{t('settings.classifierModel.delete')}</Text>
                     </TouchableOpacity>
+                  </View>
+                )}
+                {/* clip 档：可选模型变体（推荐 S2 / 高精度 SigLIP2 / 旧版 S1） */}
+                {tierKey === 'clip' && tier.readyForUse && (
+                  <View style={styles.clipModelSelector}>
+                    <Text style={styles.clipModelSelectorLabel}>{t('settings.classifierModel.clipModelLabel')}</Text>
+                    <View style={styles.clipModelChips}>
+                      {CLIP_MODEL_ORDER.map((mid) => {
+                        const m = CLIP_MODELS[mid];
+                        const sel = clipModelId === mid;
+                        return (
+                          <TouchableOpacity
+                            key={mid}
+                            style={[styles.clipModelChip, sel && { borderColor: c.accent, backgroundColor: c.accentSoft || 'rgba(0,122,255,0.10)' }]}
+                            onPress={() => selectClipModel(mid)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[styles.clipModelChipText, sel && { color: c.accent }]} numberOfLines={1}>{m.name}</Text>
+                            <Text style={styles.clipModelChipSub} numberOfLines={1}>{m.sublabel} · {m.sizeMB}MB</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
                   </View>
                 )}
                 {!isLast && <View style={styles.classifierTierSeparator} />}
@@ -2092,6 +2138,12 @@ const createStyles = (c) => StyleSheet.create({
   classifierTierSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: c.separator, marginLeft: 14 },
   classifierDlText: { fontSize: 12, color: c.accent, fontVariant: ['tabular-nums'] },
   classifierDlSizeHint: { fontSize: 12, color: c.tertiaryLabel },
+  clipModelSelector: { paddingHorizontal: 14, paddingTop: 2, paddingBottom: 10 },
+  clipModelSelectorLabel: { fontSize: 12, color: c.secondaryLabel, marginBottom: 6 },
+  clipModelChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  clipModelChip: { borderWidth: StyleSheet.hairlineWidth, borderColor: c.separator, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, marginRight: 8, marginBottom: 6 },
+  clipModelChipText: { fontSize: 13, fontWeight: '600', color: c.label },
+  clipModelChipSub: { fontSize: 10.5, color: c.tertiaryLabel, marginTop: 1 },
   srCustomRow: { marginTop: 4, marginBottom: 4 },
   srInput: { borderWidth: StyleSheet.hairlineWidth, borderColor: c.separator, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 13, color: c.label, backgroundColor: c.groupedBg },
   srStatusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
