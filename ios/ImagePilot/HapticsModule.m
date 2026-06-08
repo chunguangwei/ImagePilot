@@ -20,4 +20,7 @@ RCT_EXTERN_METHOD(notification:(NSString *)type
 RCT_EXTERN_METHOD(selection:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(totalMemoryMB:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end

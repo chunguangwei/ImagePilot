@@ -177,3 +177,9 @@ node_modules
 # PC version final build (exclude build output only)
 pc-version-final/build/
 pc-version-final/node_modules/
+# LiteRT-LM 预编译框架（77MB）不入库：iOS 不在 CI，二进制留本地/按需下载，见 ios/LiteRTLM/README.md
+ios/LiteRTLM/CLiteRTLM.xcframework/
+
+# Python 构建缓存
+__pycache__/
+*.pyc

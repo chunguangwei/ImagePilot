@@ -767,7 +767,7 @@
       "detecting": "Detecting…"
     },
     "classifierModel": {
-      "title": "Classification Model",
+      "title": "Classification Model (On-device)",
       "clipModelLabel": "AI recognition model",
       "desc": "On-device classification engine, download on demand and switch anytime. Photos stay on the device.",
       "downloaded": "Downloaded",
@@ -788,13 +788,24 @@
       "adapting": "Adapting",
       "speedFast": "Fast",
       "speedMedium": "Medium",
-      "tierLabel": { "basic": "Object recognition", "scene": "Scene recognition", "clip": "AI smart recognition" },
+      "speedSlowest": "Slowest",
+      "tierLabel": { "basic": "Object recognition", "scene": "Scene recognition", "clip": "AI smart recognition", "vlm": "Multimodal LLM" },
       "tierDesc": {
         "basic": "Recognizes concrete objects in photos: items, animals, food, devices, etc.",
         "scene": "Recognizes the scene: kitchen / beach / office / classroom and 365 more",
-        "clip": "AI semantic recognition — better at abstract scenes and mood"
+        "clip": "AI semantic recognition — better at abstract scenes and mood",
+        "vlm": "An LLM reads the image — best understanding of content & detail; ideal for single/small-batch refinement"
       },
-      "clipSublabel": "Recommended · best quality"
+      "clipSublabel": "Recommended · best quality",
+      "vlmModelLabel": "LLM (switchable)",
+      "openLabeling": "Open tagging",
+      "vlmHint": "No fixed category limit: the model auto-detects and applies multiple tags, prefers existing categories, and records new concepts in the photo's info (auto-merged later if you create a matching category). First use downloads over the network (China mirror, resumable). Seconds per photo — whole-library batches are slow and warm the device; keep it plugged in.",
+      "vlmDisabled": "Not enough RAM on this device",
+      "lowMemTitle": "Device memory too low",
+      "lowMemMsg": "{{name}} needs more memory than this device has, so it's unavailable here. Use a device with 6GB+ RAM.",
+      "vlmUnsupportedTitle": "Can't load on this device",
+      "vlmUnsupportedMsg": "{{name}} failed to load on this device (out of memory or unsupported). Switch to the smaller SmolVLM-500M, or retry.",
+      "vlmRetry": "Retry"
     },
     "superRes": {
       "title": "AI Enhancement Model",

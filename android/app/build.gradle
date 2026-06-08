@@ -97,7 +97,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode getVersionCode()
-        versionName "1.5.18"
+        versionName "1.5.19"
     }
 
     splits {
@@ -187,6 +187,10 @@ dependencies {
 
     // AndroidX ExifInterface - 用于读取图片EXIF信息（MediaStore需要）
     implementation 'androidx.exifinterface:exifinterface:1.3.6'
-   
+
+    // LiteRT-LM：Android 本地多模态分类档运行时（Gemma4-E2B .litertlm）。
+    // 用 Java 原生模块调用其 Kotlin API（走 JVM 签名，不需要给本项目加 Kotlin 插件，避免与 RN0.72 的 Kotlin 1.7.22 冲突）。
+    implementation 'com.google.ai.edge.litertlm:litertlm-android:0.11.0'
+
 }
 

@@ -69,9 +69,27 @@ export const CLASSIFIER_TIERS = {
     weak: '比基础档稍慢；自定义类请用云端 AI 分类',
     classes: 20,
   },
+  vlm: {
+    key: 'vlm',
+    label: '多模态大模型',
+    sublabel: '最精准 · 按需下载',
+    // VLM 档体积/下载按所选变体（vlmModels.js）动态取；这里给默认 Qwen3-VL-2B 的体积占位。
+    sizeMB: 1838,
+    speed: '最慢',
+    bundled: false,
+    // vlm 档是双文件（model+mmproj），下载/状态判断走 vlmModels + ensureLargeModel，
+    // 不用下面单一 filename/url（保留占位以兼容旧的按 tier 读取逻辑）。
+    filename: 'Qwen3-VL-2B-Instruct-Q4_K_M.gguf',
+    url: '',
+    engine: 'vlm',
+    readyForUse: true,
+    desc: '大模型看图理解，最懂内容与细节；单张/小批量精修最佳',
+    weak: '秒级/张，整库批量慢、发热、建议插电',
+    classes: 20,
+  },
 };
 
-export const CLASSIFIER_TIER_ORDER = ['basic', 'scene', 'clip'];
+export const CLASSIFIER_TIER_ORDER = ['basic', 'scene', 'clip', 'vlm'];
 
 /** 默认档：basic（已打包，0 下载） */
 export const DEFAULT_CLASSIFIER_TIER = 'basic';

@@ -59,7 +59,8 @@ public class MainApplication extends Application implements ReactApplication {
             new GalleryScanPackage(),  // 添加相册扫描原生模块
             new NativeLogExportPackage(),  // 添加原生日志导出模块
             new ApkInstallerPackage(),  // App 内更新安装（方案2）
-            new BlurViewPackage()  // ImagePreview 沉浸式 chrome 磨砂玻璃效果
+            new BlurViewPackage(),  // ImagePreview 沉浸式 chrome 磨砂玻璃效果
+            new GemmaPackage()  // Android 本地多模态分类档（LiteRT-LM + Gemma4-E2B）
           );
         }
 
