@@ -22,6 +22,7 @@ import {
   RefreshControl,
   StyleSheet,
   Dimensions,
+  useWindowDimensions,
   ActivityIndicator,
   Share,
   FlatList,
@@ -209,7 +210,9 @@ const HomeScreen = ({ navigation }) => {
   const c = useIosColors();
   const insets = useSafeAreaInsets();
   // 工厂模式：把颜色 token 注入到 StyleSheet，使整页跟随 light/dark 主题切换
-  const styles = React.useMemo(() => createStyles(c), [c]);
+  // 折叠屏：窗口宽度变化（折叠↔展开）时把宽度传进 createStyles → 网格样式实时重算，图标/卡片自适应。
+  const { width: winW } = useWindowDimensions();
+  const styles = React.useMemo(() => createStyles(c, winW), [c, winW]);
   // 主题动态色叠加到 StyleSheet 上（部分组件保留 inline 覆盖以便简化合并）
   const dynSection = { backgroundColor: c.card };
   const dynSectionTitle = { color: c.label };
@@ -1713,7 +1716,7 @@ const HomeScreen = ({ navigation }) => {
       displayName={getCategoryDisplayName(category.id)}
       isNACategory={category.id === 'NA'}
       styles={styles}
-      screenWidth={SCREEN_WIDTH}
+      screenWidth={winW}
       onPressById={handleCategoryPressById}
       onLongPressNAById={handleCategoryLongPressNAById}
       naClassifyLabel={t('home.startClassifyBtn')}
@@ -2583,7 +2586,7 @@ const HomeScreen = ({ navigation }) => {
 // 布局（margin/padding/width/height/borderRadius/fontSize/fontWeight）一律不动，
 // 只把硬编码颜色替换成 c.xxx；纯白覆盖文字 / rgba 半透明 / 阴影色保留不变。
 // 死样式已删除（similarityCard 系列 / citiesList 系列 / scanProgress* / sectionTitleRow / sectionMore / badge / moreButton / moreButtonText / moreGroupsHint 等）。
-const createStyles = (c) => StyleSheet.create({
+const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: c.groupedBg,
@@ -2783,7 +2786,7 @@ const createStyles = (c) => StyleSheet.create({
     gap: 4,
   },
   categoryCard: {
-    width: (SCREEN_WIDTH - 16 - 12) / 4, // 4列: 总宽度 - 左右padding(8*2) - gap(4*3)
+    width: (winW - 16 - 12) / 4, // 4列: 总宽度 - 左右padding(8*2) - gap(4*3)（winW 响应式 → 折叠屏自适应）
     aspectRatio: 1, // 正方形
     borderRadius: 12, // iOS 风格更圆润
     overflow: 'hidden',
@@ -2845,7 +2848,7 @@ const createStyles = (c) => StyleSheet.create({
     backgroundColor: c.fillTertiary,
     borderRadius: 8,
     gap: 6,
-    width: (SCREEN_WIDTH - 16 * 2 - 8 * 4) / 5,
+    width: (winW - 16 * 2 - 8 * 4) / 5,
   },
   colorChipSwatch: {
     width: 14,
@@ -2920,8 +2923,8 @@ const createStyles = (c) => StyleSheet.create({
     gap: 4,
   },
   recentGridItem: {
-    width: (SCREEN_WIDTH - 40) / 3, // 3列布局
-    height: (SCREEN_WIDTH - 40) / 3,
+    width: (winW - 40) / 3, // 3列布局
+    height: (winW - 40) / 3,
     position: 'relative', // 添加相对定位，用于覆盖层
   },
   recentGridImage: {
@@ -2935,7 +2938,7 @@ const createStyles = (c) => StyleSheet.create({
     position: 'absolute',
     right: 16,
     bottom: 144, // 比按钮高出一些
-    maxWidth: SCREEN_WIDTH - 80,
+    maxWidth: winW - 80,
     backgroundColor: 'rgba(0,0,0,0.85)',
     paddingHorizontal: 12,
     paddingVertical: 8,

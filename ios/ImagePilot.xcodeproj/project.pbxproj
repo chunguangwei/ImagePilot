@@ -34,6 +34,7 @@
 		D1282F25DC05446EE8BF4420 /* Engine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94F4697D0D0A003E50B6DE7 /* Engine.swift */; };
 		D6654B6EFE0A9494E3E6610C /* PhotoKitImageLoader.m in Sources */ = {isa = PBXBuildFile; fileRef = 889EBAA3471FD175F07FEFC9 /* PhotoKitImageLoader.m */; };
 		F37996C443ACD05106A96928 /* LiteRTLMModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B738912783C2215E767DD79 /* LiteRTLMModule.swift */; };
+		F9FD8C70617AE018495A7572 /* mobilenetv3_rw_Opset17.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 83483154FFF5FDCE96B3E987 /* mobilenetv3_rw_Opset17.onnx */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -88,6 +89,7 @@
 		7C1AD126DC3B93B4FCDF6317 /* HapticsModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ImagePilot/HapticsModule.swift; sourceTree = "<group>"; };
 		7FD7178E89C046514482B76D /* Tool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Tool.swift; path = LiteRTLM/swift/Tool.swift; sourceTree = SOURCE_ROOT; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = ImagePilot/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		83483154FFF5FDCE96B3E987 /* mobilenetv3_rw_Opset17.onnx */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file; name = mobilenetv3_rw_Opset17.onnx; path = ../public/models/mobilenetv3_rw_Opset17.onnx; sourceTree = SOURCE_ROOT; };
 		8483E80CAFA3CEF3E72C8A91 /* ImagePilot-Bridging-Header.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "ImagePilot-Bridging-Header.h"; path = "ImagePilot/ImagePilot-Bridging-Header.h"; sourceTree = "<group>"; };
 		8852C51D8BE60FB078555EA3 /* Conversation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Conversation.swift; path = LiteRTLM/swift/Conversation.swift; sourceTree = SOURCE_ROOT; };
 		889EBAA3471FD175F07FEFC9 /* PhotoKitImageLoader.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = ImagePilot/PhotoKitImageLoader.m; sourceTree = "<group>"; };
@@ -205,6 +207,7 @@
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
 				3161862EF39D5A14726793D7 /* LiteRTLMVendor */,
+				83483154FFF5FDCE96B3E987 /* mobilenetv3_rw_Opset17.onnx */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -330,6 +333,7 @@
 				6132EF182BDFF13200BBE14D /* PrivacyInfo.xcprivacy in Resources */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				F9FD8C70617AE018495A7572 /* mobilenetv3_rw_Opset17.onnx in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -602,7 +606,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5.21;
+				MARKETING_VERSION = 1.5.22;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -636,7 +640,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5.21;
+				MARKETING_VERSION = 1.5.22;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
