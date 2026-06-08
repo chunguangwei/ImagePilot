@@ -417,7 +417,9 @@ class GalleryScannerService {
               idCardDetections: [],
               generalDetections: [],
               mobileNetV3Detections: null,
-              message: null,
+              // VLM 开放式打标：归不进已有类的图落 other，但把模型自拟标签存到 message
+              // （用于在图上展示，并在用户日后建同名自定义类时自动并入）。
+              message: r?.vlmLabel || null,
               background_color: null,
             });
           } catch (e) {

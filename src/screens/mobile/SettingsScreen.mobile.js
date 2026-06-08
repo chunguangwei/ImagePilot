@@ -34,10 +34,14 @@ import { useIosColors, ThemeContext } from '../../ui/ios/theme';
 import { SUPERRES_VARIANTS, ensureModel, isModelDownloaded, resolveSuperRes, deleteModel } from '../../services/enhance/modelSource';
 import { CLASSIFIER_TIERS, CLASSIFIER_TIER_ORDER, DEFAULT_CLASSIFIER_TIER } from '../../services/classify/classifierModelTiers';
 import { CLIP_MODELS, CLIP_MODEL_ORDER, DEFAULT_CLIP_MODEL, getClipModel } from '../../services/classify/clipModels';
+import { VLM_MODELS, VLM_MODEL_ORDER, DEFAULT_VLM_MODEL, getVlmModel } from '../../services/classify/vlmModels';
+import { getDeviceTotalMemMB } from '../../services/classify/vlmShared';
 import {
   ensureClassifierModel as ensureClassifierModelFile,
   isClassifierModelDownloaded as isClassifierModelDownloadedFile,
   deleteClassifierModel as deleteClassifierModelFile,
+  ensureLargeModel as ensureLargeModelFile,
+  isLargeModelComplete as isLargeModelCompleteFile,
 } from '../../services/classify/classifierModelSource';
 import { BUILD_DATE, BUILD_VERSION, BUILD_VERSION_CODE } from '../../config/BuildInfo';
 import { ActionButton, InfoItem } from './settings/widgets';
@@ -82,11 +86,24 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   const [classifierTier, setClassifierTier] = useState('basic');
   // CLIP 档具体用哪个模型变体（默认 MobileCLIP2-S2；可选旧版 S1 兜底）
   const [clipModelId, setClipModelId] = useState(DEFAULT_CLIP_MODEL);
+  // VLM 档具体用哪个模型变体（默认 SmolVLM-500M；可选 Qwen3-VL-2B）
+  const [vlmModelId, setVlmModelId] = useState(DEFAULT_VLM_MODEL);
+  // 本机加载失败被禁用的 VLM 变体：{ qwen3vl_2b: 'reason' }（用户要求：加载不了就禁用）
+  const [vlmUnsupported, setVlmUnsupported] = useState({});
+  // VLM 两个变体各自独立的下载状态/进度（用户要求：每个模型右侧各有下载入口，互不遮挡）
+  const [vlmDownloaded, setVlmDownloaded] = useState({});       // { smolvlm_500m: bool, qwen3vl_2b: bool }
+  const [vlmDownloadingId, setVlmDownloadingId] = useState(null); // 哪个 VLM 变体正在下载
+  const [vlmDownloadProgress, setVlmDownloadProgress] = useState(0);
+  const vlmAbortRef = useRef(null);
   // 各档下载状态 + 当前下载中进度（key 是 tier key）
   const [classifierDownloaded, setClassifierDownloaded] = useState({});  // { scene: true/false, ... }
 
-  // 解析某档实际要下载/判断的模型资产：clip 档按所选变体，其它档按 tier 自身。
-  const clipAssetOf = (tierKey) => (tierKey === 'clip' ? getClipModel(clipModelId) : CLASSIFIER_TIERS[tierKey]);
+  // 解析某档实际要下载/判断的模型资产：clip 档按所选 CLIP 变体，vlm 档按所选 VLM 变体，其它档按 tier 自身。
+  const clipAssetOf = (tierKey) => (
+    tierKey === 'clip' ? getClipModel(clipModelId)
+      : tierKey === 'vlm' ? getVlmModel(vlmModelId)
+        : CLASSIFIER_TIERS[tierKey]
+  );
   const [classifierDownloadingKey, setClassifierDownloadingKey] = useState(null); // 哪个 tier 正在下载
   const [classifierDownloadProgress, setClassifierDownloadProgress] = useState(0);
   // 取消下载用的 AbortController（分类模型/AI 增强模型分别一个）
@@ -197,14 +214,40 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
       // CLIP 档所选模型变体
       const clipMid = CLIP_MODELS[savedSettings.classifierClipModel] ? savedSettings.classifierClipModel : DEFAULT_CLIP_MODEL;
       setClipModelId(clipMid);
-      // 检查各 tier 模型下载状态（clip 档按所选变体的文件名判断）
+      // VLM 档所选变体 + 本机不可用标记
+      const vlmMid = VLM_MODELS[savedSettings.classifierVlmModel] ? savedSettings.classifierVlmModel : DEFAULT_VLM_MODEL;
+      setVlmModelId(vlmMid);
+      setVlmUnsupported(savedSettings.vlmUnsupported || {});
+      // 两个 VLM 变体各自的下载状态（model+mmproj 都齐才算已下载）
+      const vlmDl = {};
+      for (const mid of VLM_MODEL_ORDER) {
+        try {
+          const vm = getVlmModel(mid);
+          const files = [vm.model, vm.mmproj].filter(Boolean); // Gemma 单文件 / Qwen 双文件
+          let ok = true;
+          for (const f of files) {
+            if (!(await isLargeModelCompleteFile(f.filename, f.bytes))) { ok = false; break; }
+          }
+          vlmDl[mid] = ok;
+        } catch (_) { vlmDl[mid] = false; }
+      }
+      setVlmDownloaded(vlmDl);
+      // 检查各 tier 模型下载状态（clip 档按所选变体的文件名；vlm 档需 model+mmproj 两文件齐全）
       const dlMap = {};
       for (const k of CLASSIFIER_TIER_ORDER) {
         const tier = CLASSIFIER_TIERS[k];
         if (tier.bundled) { dlMap[k] = true; continue; }
-        const fname = k === 'clip' ? getClipModel(clipMid).filename : tier.filename;
-        try { dlMap[k] = await isClassifierModelDownloadedFile(fname); }
-        catch (_) { dlMap[k] = false; }
+        try {
+          if (k === 'vlm') {
+            const vm = getVlmModel(vlmMid);
+            const a = await isLargeModelCompleteFile(vm.model.filename, vm.model.bytes);
+            const b = await isLargeModelCompleteFile(vm.mmproj.filename, vm.mmproj.bytes);
+            dlMap[k] = a && b;
+          } else {
+            const fname = k === 'clip' ? getClipModel(clipMid).filename : tier.filename;
+            dlMap[k] = await isClassifierModelDownloadedFile(fname);
+          }
+        } catch (_) { dlMap[k] = false; }
       }
       setClassifierDownloaded(dlMap);
       
@@ -973,6 +1016,25 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
       Alert.alert(t('settings.classifierModel.comingSoon'), t('settings.classifierModel.comingSoonDesc', { label: t('settings.classifierModel.tierLabel.' + tier.key, { defaultValue: tier.label }) }));
       return;
     }
+    // vlm 档独立交互：下载/管理在每个变体右侧。点 tier 行 = 想启用 vlm。
+    if (tierKey === 'vlm') {
+      if (vlmUnsupported && vlmUnsupported[vlmModelId]) {
+        Alert.alert(
+          t('settings.classifierModel.vlmUnsupportedTitle'),
+          t('settings.classifierModel.vlmUnsupportedMsg', { name: getVlmModel(vlmModelId).name }),
+        );
+        return;
+      }
+      if (vlmDownloaded[vlmModelId]) {
+        // 所选变体已下载 → 激活 vlm 档
+        setClassifierTier('vlm');
+        try { await updateSetting('classifierModelTier', 'vlm'); } catch (_) {}
+      } else {
+        // 所选变体未下载 → 触发该变体下载（下完自动激活）
+        await downloadVlmVariant(vlmModelId);
+      }
+      return;
+    }
     // 已下载 → 立即切档
     if (classifierDownloaded[tierKey]) {
       setClassifierTier(tierKey);
@@ -993,8 +1055,11 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   const downloadClassifierModel = async (tierKey, opts = {}) => {
     const { switchAfter = false } = opts;
     const tier = CLASSIFIER_TIERS[tierKey];
-    const asset = clipAssetOf(tierKey);  // clip 档下载用户所选的变体
-    if (!tier || !asset || !asset.url) return;
+    const asset = clipAssetOf(tierKey);  // clip 档下载用户所选的变体；vlm 档为 VLM 变体对象
+    const isVlm = tier.engine === 'vlm';
+    if (!tier || !asset) return;
+    if (!isVlm && !asset.url) return;
+    if (isVlm && !(asset.model && asset.model.url)) return;
     // 旧 controller 残留先 abort（防御 double-click）
     try { classifierAbortRef.current?.abort(); } catch (_) {}
     const controller = new AbortController();
@@ -1002,12 +1067,23 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     setClassifierDownloadingKey(tierKey);
     setClassifierDownloadProgress(0);
     try {
-      await ensureClassifierModelFile(
-        asset.filename,
-        asset.url,
-        (p) => setClassifierDownloadProgress(p),
-        { signal: controller.signal },
-      );
+      if (isVlm) {
+        // VLM 双文件（model + mmproj）：续传下载，按字节合并进度。
+        const totalBytes = (asset.model.bytes || 0) + (asset.mmproj.bytes || 0);
+        const mkProg = (base) => (p) => {
+          const done = base + p * (base === 0 ? (asset.model.bytes || 0) : (asset.mmproj.bytes || 0));
+          if (totalBytes > 0) setClassifierDownloadProgress(Math.min(1, done / totalBytes));
+        };
+        await ensureLargeModelFile(asset.model.filename, asset.model.url, mkProg(0), { signal: controller.signal, expectedBytes: asset.model.bytes });
+        await ensureLargeModelFile(asset.mmproj.filename, asset.mmproj.url, mkProg(asset.model.bytes || 0), { signal: controller.signal, expectedBytes: asset.mmproj.bytes });
+      } else {
+        await ensureClassifierModelFile(
+          asset.filename,
+          asset.url,
+          (p) => setClassifierDownloadProgress(p),
+          { signal: controller.signal },
+        );
+      }
       setClassifierDownloaded((prev) => ({ ...prev, [tierKey]: true }));
       if (switchAfter) {
         // 承诺即切：下载完成后落 setting；UI 上 classifierTier 已经乐观高亮
@@ -1076,7 +1152,13 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteClassifierModelFile(clipAssetOf(tierKey).filename);
+              if (tier.engine === 'vlm') {
+                const vm = clipAssetOf(tierKey); // VLM 变体对象
+                await deleteClassifierModelFile(vm.model.filename);
+                await deleteClassifierModelFile(vm.mmproj.filename);
+              } else {
+                await deleteClassifierModelFile(clipAssetOf(tierKey).filename);
+              }
               setClassifierDownloaded((prev) => ({ ...prev, [tierKey]: false }));
               // 若删的就是当前选中档，切回 basic
               if (classifierTier === tierKey) {
@@ -1101,6 +1183,130 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     } catch (_) {}
   };
 
+  // ===== VLM 两个变体：各自独立的「选用 / 下载 / 删除」 =====
+  // 设计（按用户反馈）：上方对勾只表示"选用哪个模型"；下载/重新下载/删除按钮在每个模型右侧，互不遮挡。
+
+  // 清除某变体的"本机不可用"标记（重试入口）
+  const clearVlmUnsupported = async (id) => {
+    const next = { ...(vlmUnsupported || {}) };
+    delete next[id];
+    setVlmUnsupported(next);
+    try {
+      const s = (await UnifiedDataService.readSettings()) || {};
+      await UnifiedDataService.writeSettings({ ...s, vlmUnsupported: next });
+    } catch (_) {}
+  };
+
+  // 选用某变体（只改"选哪个"）。已下载则顺带把分类档切到 vlm；未下载只高亮选中，等用户点右侧下载。
+  const selectVlmVariant = async (id) => {
+    if (vlmUnsupported && vlmUnsupported[id]) {
+      Alert.alert(
+        t('settings.classifierModel.vlmUnsupportedTitle'),
+        t('settings.classifierModel.vlmUnsupportedMsg', { name: getVlmModel(id).name }),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('settings.classifierModel.vlmRetry'), onPress: () => clearVlmUnsupported(id) },
+        ],
+      );
+      return;
+    }
+    setVlmModelId(id);
+    try { await updateSetting('classifierVlmModel', id); } catch (_) {}
+    if (vlmDownloaded[id]) {
+      // 已下载 → 选它即把当前分类档切到 vlm
+      setClassifierTier('vlm');
+      try { await updateSetting('classifierModelTier', 'vlm'); } catch (_) {}
+    }
+  };
+
+  // 下载某变体（model + mmproj 两文件，按字节合并进度，断点续传）。完成后若它是当前选用变体则激活 vlm 档。
+  const downloadVlmVariant = async (id) => {
+    const vm = getVlmModel(id);
+    if (!vm || !vm.model?.url) return;
+    // 下载前内存门槛：物理内存低于该模型要求 → 拦下提示"机型配置较低，将无法提供此项服务"，
+    // 从根上避免低配机加载时被系统强杀（崩溃 JS 拦不住）。取不到内存(0)则不拦。
+    if (vm.minDeviceMemMB) {
+      const memMB = await getDeviceTotalMemMB();
+      if (memMB > 0 && memMB < vm.minDeviceMemMB) {
+        Alert.alert(
+          t('settings.classifierModel.lowMemTitle'),
+          t('settings.classifierModel.lowMemMsg', { name: vm.name }),
+        );
+        return;
+      }
+    }
+    try { vlmAbortRef.current?.abort(); } catch (_) {}
+    const controller = new AbortController();
+    vlmAbortRef.current = controller;
+    setVlmDownloadingId(id);
+    setVlmDownloadProgress(0);
+    try {
+      // Gemma 单文件 / Qwen 双文件，统一按 files 顺序下载，按字节合并进度。
+      const files = [vm.model, vm.mmproj].filter(Boolean);
+      const totalBytes = files.reduce((s, f) => s + (f.bytes || 0), 0);
+      let base = 0;
+      for (const f of files) {
+        const b0 = base;
+        const fileBytes = f.bytes || 0;
+        await ensureLargeModelFile(f.filename, f.url, (p) => {
+          const done = b0 + p * fileBytes;
+          if (totalBytes > 0) setVlmDownloadProgress(Math.min(1, done / totalBytes));
+        }, { signal: controller.signal, expectedBytes: f.bytes });
+        base += fileBytes;
+      }
+      setVlmDownloaded((prev) => ({ ...prev, [id]: true }));
+      // 下完即选用并切到 vlm 档（承诺即用）
+      setVlmModelId(id);
+      try { await updateSetting('classifierVlmModel', id); } catch (_) {}
+      setClassifierTier('vlm');
+      try { await updateSetting('classifierModelTier', 'vlm'); } catch (_) {}
+    } catch (e) {
+      if (!isAbortError(e)) {
+        const msg = (e?.message || String(e)).replace(/^E_\w+\s*/, '');
+        Alert.alert(t('settings.classifierModel.downloadFailed'), msg);
+      }
+    } finally {
+      setVlmDownloadingId(null);
+      setVlmDownloadProgress(0);
+      if (vlmAbortRef.current === controller) vlmAbortRef.current = null;
+    }
+  };
+
+  const cancelVlmDownload = () => {
+    try { vlmAbortRef.current?.abort(); } catch (_) {}
+    vlmAbortRef.current = null;
+    setVlmDownloadingId(null);
+    setVlmDownloadProgress(0);
+  };
+
+  // 删除某变体（两文件）。若删的正是当前选用且 vlm 是激活档 → 退回 basic。
+  const deleteVlmVariant = (id) => {
+    const vm = getVlmModel(id);
+    Alert.alert(
+      t('settings.classifierModel.deleteTitle'),
+      t('settings.classifierModel.deleteConfirm', { label: vm.name, size: vm.sizeMB }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('settings.classifierModel.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              for (const f of [vm.model, vm.mmproj].filter(Boolean)) {
+                await deleteClassifierModelFile(f.filename);
+              }
+              setVlmDownloaded((prev) => ({ ...prev, [id]: false }));
+              if (classifierTier === 'vlm' && vlmModelId === id) {
+                setClassifierTier(DEFAULT_CLASSIFIER_TIER);
+                try { await updateSetting('classifierModelTier', DEFAULT_CLASSIFIER_TIER); } catch (_) {}
+              }
+            } catch (e) { Alert.alert(t('settings.classifierModel.deleteFailed'), e?.message || String(e)); }
+          },
+        },
+      ],
+    );
+  };
+
   const renderClassifierModel = () => {
     return (
       <View style={styles.actionButton}>
@@ -1122,11 +1328,15 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             // i18n：档名/描述/速度/类数走翻译（数据里是中文，切英文也正确显示），缺键回退原值
             const speedI18n = tier.speed === '快'
               ? t('settings.classifierModel.speedFast')
-              : tier.speed === '中等' ? t('settings.classifierModel.speedMedium') : tier.speed;
+              : tier.speed === '中等' ? t('settings.classifierModel.speedMedium')
+                : tier.speed === '最慢' ? t('settings.classifierModel.speedSlowest') : tier.speed;
             const metaParts = [
               `${asset.sizeMB}MB`,
               speedI18n,
-              t('settings.classifierModel.classesUnit', { n: tier.classes }),
+              // vlm 是开放式打标，不限类别数 → 不显示"N 类"
+              tierKey === 'vlm'
+                ? t('settings.classifierModel.openLabeling')
+                : t('settings.classifierModel.classesUnit', { n: tier.classes }),
             ];
             return (
               <View key={tierKey}>
@@ -1160,7 +1370,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                       SetIonicons
                         ? <SetIonicons name="checkmark" size={22} color={c.accent} />
                         : <Text style={{ color: c.accent, fontSize: 18 }}>✓</Text>
-                    ) : !downloaded && !tier.bundled ? (
+                    ) : !downloaded && !tier.bundled && tierKey !== 'vlm' ? (
                       <TouchableOpacity
                         style={styles.classifierDlBtn}
                         onPress={() => selectClassifierTier(tierKey)}
@@ -1173,8 +1383,8 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                     ) : null}
                   </View>
                 </TouchableOpacity>
-                {/* 已下载的非内置档：长按或单独的"删除"按钮藏在 row 下半 footer */}
-                {downloaded && !tier.bundled && !downloading && (
+                {/* 已下载的非内置档：长按或单独的"删除"按钮藏在 row 下半 footer（vlm 走每变体独立控件，不用 tier 级 footer） */}
+                {downloaded && !tier.bundled && !downloading && tierKey !== 'vlm' && (
                   <View style={styles.classifierTierFooter}>
                     <TouchableOpacity onPress={() => downloadClassifierModel(tierKey)} style={styles.classifierFooterBtn}>
                       <Text style={styles.classifierFooterBtnText}>{t('settings.classifierModel.redownload')}</Text>
@@ -1206,6 +1416,71 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                         );
                       })}
                     </View>
+                  </View>
+                )}
+                {/* vlm 档：两个变体各自一行 —— 左侧选用勾(只表示"选哪个")，右侧独立的 下载/重新下载/删除。 */}
+                {tierKey === 'vlm' && tier.readyForUse && (
+                  <View style={styles.clipModelSelector}>
+                    <Text style={styles.clipModelSelectorLabel}>{t('settings.classifierModel.vlmModelLabel')}</Text>
+                    {VLM_MODEL_ORDER.map((mid) => {
+                      const m = VLM_MODELS[mid];
+                      const sel = vlmModelId === mid;
+                      const disabled = !!(vlmUnsupported && vlmUnsupported[mid]);
+                      const dl = !!vlmDownloaded[mid];
+                      const dling = vlmDownloadingId === mid;
+                      return (
+                        <View key={mid} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 }}>
+                          <TouchableOpacity
+                            style={[{ flexDirection: 'row', alignItems: 'center', flex: 1 }, disabled && { opacity: 0.5 }]}
+                            onPress={() => selectVlmVariant(mid)}
+                            activeOpacity={0.6}
+                            disabled={dling}
+                          >
+                            <View style={{ width: 24 }}>
+                              {sel
+                                ? (SetIonicons ? <SetIonicons name="checkmark-circle" size={19} color={c.accent} /> : <Text style={{ color: c.accent, fontSize: 16 }}>✓</Text>)
+                                : (SetIonicons ? <SetIonicons name="ellipse-outline" size={19} color={c.subtext || '#9aa0a6'} /> : <Text style={{ color: c.subtext || '#9aa0a6', fontSize: 16 }}>○</Text>)}
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[styles.clipModelChipText, sel && { color: c.accent }]} numberOfLines={1}>{m.name}</Text>
+                              <Text style={styles.clipModelChipSub} numberOfLines={1}>
+                                {disabled ? t('settings.classifierModel.vlmDisabled') : `${m.sublabel} · ${m.sizeMB}MB`}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                          <View style={{ marginLeft: 8 }}>
+                            {dling ? (
+                              <View style={styles.classifierTierRightInner}>
+                                <ActivityIndicator size="small" color={c.accent} />
+                                <Text style={styles.classifierDlText}>{Math.round(vlmDownloadProgress * 100)}%</Text>
+                                <TouchableOpacity onPress={cancelVlmDownload} hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}>
+                                  <Text style={[styles.classifierFooterBtnText, { color: c.danger }]}>{t('settings.classifierModel.cancelDownload')}</Text>
+                                </TouchableOpacity>
+                              </View>
+                            ) : dl ? (
+                              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <TouchableOpacity onPress={() => downloadVlmVariant(mid)} style={styles.classifierFooterBtn}>
+                                  <Text style={styles.classifierFooterBtnText}>{t('settings.classifierModel.redownload')}</Text>
+                                </TouchableOpacity>
+                                <Text style={styles.classifierFooterSep}> · </Text>
+                                <TouchableOpacity onPress={() => deleteVlmVariant(mid)} style={styles.classifierFooterBtn}>
+                                  <Text style={[styles.classifierFooterBtnText, { color: c.danger }]}>{t('settings.classifierModel.delete')}</Text>
+                                </TouchableOpacity>
+                              </View>
+                            ) : disabled ? (
+                              <TouchableOpacity onPress={() => selectVlmVariant(mid)} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
+                                <Text style={[styles.classifierFooterBtnText, { color: c.accent }]}>{t('settings.classifierModel.vlmRetry')}</Text>
+                              </TouchableOpacity>
+                            ) : (
+                              <TouchableOpacity style={styles.classifierDlBtn} onPress={() => downloadVlmVariant(mid)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
+                                {SetIonicons ? <SetIonicons name="cloud-download-outline" size={15} color="#fff" /> : null}
+                                <Text style={styles.classifierDlBtnText}>{t('settings.classifierModel.downloadBtn', { size: m.sizeMB })}</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })}
                   </View>
                 )}
                 {!isLast && <View style={styles.classifierTierSeparator} />}

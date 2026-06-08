@@ -25,10 +25,12 @@ import { logger } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../UnifiedDataService';
 import { CLASSIFIER_TIERS, DEFAULT_CLASSIFIER_TIER } from './classifierModelTiers';
 import { getClipModel, DEFAULT_CLIP_MODEL } from './clipModels';
-import { ensureClassifierModel, isClassifierModelDownloaded } from './classifierModelSource';
+import { getVlmModel, DEFAULT_VLM_MODEL, VLM_MODEL_ORDER } from './vlmModels';
+import { ensureClassifierModel, isClassifierModelDownloaded, ensureLargeModel, isLargeModelComplete } from './classifierModelSource';
 
 let _places365Mod = null;
 let _mobileClipMod = null;
+let _vlmMod = null;
 let _imageClassifierSingleton = null;
 
 /** 优先用 scanner 传入的现有实例（避免重复加载 ONNX 模型）；没传退回单例 */
@@ -59,6 +61,16 @@ export async function readActiveClipModel() {
     return getClipModel(s?.classifierClipModel || DEFAULT_CLIP_MODEL);
   } catch (_) {
     return getClipModel(DEFAULT_CLIP_MODEL);
+  }
+}
+
+/** 从 settings 读取用户选的 VLM 模型变体；缺/无效兜底默认（SmolVLM-500M） */
+export async function readActiveVlmModel() {
+  try {
+    const s = await UnifiedDataService.readSettings();
+    return getVlmModel(s?.classifierVlmModel || DEFAULT_VLM_MODEL);
+  } catch (_) {
+    return getVlmModel(DEFAULT_VLM_MODEL);
   }
 }
 
@@ -153,6 +165,68 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
       };
     } catch (e) {
       logger.warn(`[classifyByTier] clip 失败回退 basic: ${e?.message || e}`);
+      const fb = await runImageNet(imageUri, sharedClassifier);
+      return { ...fb, fallback: 'engine-error' };
+    }
+  }
+  if (tierCfg.engine === 'vlm') {
+    // vlm 档：优先用所选变体；若所选变体没下全（如刚切到 Qwen 还在下），自动改用另一个已下好的变体，
+    // 避免静默回退到 basic（那样 VLM 完全不生效、也没 AI 描述）。
+    // 就绪 = 该变体所有文件都下全。Gemma 单文件（无 mmproj）/ Qwen 双文件，统一按 files 数组判断。
+    const filesOf = (vm) => [vm && vm.model, vm && vm.mmproj].filter(Boolean);
+    const isReady = async (vm) => {
+      if (!vm) return false;
+      for (const f of filesOf(vm)) {
+        // eslint-disable-next-line no-await-in-loop
+        if (!(await isLargeModelComplete(f.filename, f.bytes))) return false;
+      }
+      return true;
+    };
+    let vlmModel = await readActiveVlmModel();
+    if (!(await isReady(vlmModel))) {
+      let alt = null;
+      for (const id of VLM_MODEL_ORDER) {
+        const cand = getVlmModel(id);
+        // eslint-disable-next-line no-await-in-loop
+        if (await isReady(cand)) { alt = cand; break; }
+      }
+      if (alt) {
+        logger.warn(`[classifyByTier] vlm 所选变体(${vlmModel.id})未下全，改用已就绪的 ${alt.id}`);
+        vlmModel = alt;
+      } else {
+        logger.warn(`[classifyByTier] vlm 无任何变体下载齐，回退 basic`);
+        const r = await runImageNet(imageUri, sharedClassifier);
+        return { ...r, fallback: 'no-model' };
+      }
+    }
+    try {
+      const modelUri = await ensureLargeModel(vlmModel.model.filename, vlmModel.model.url, undefined, { expectedBytes: vlmModel.model.bytes });
+      // Gemma 无 mmproj；仅 Qwen 需要
+      let mmprojUri;
+      if (vlmModel.mmproj) {
+        mmprojUri = await ensureLargeModel(vlmModel.mmproj.filename, vlmModel.mmproj.url, undefined, { expectedBytes: vlmModel.mmproj.bytes });
+      }
+      if (!_vlmMod) {
+        // eslint-disable-next-line global-require
+        _vlmMod = require('./VLMClassifier');
+      }
+      const r = await _vlmMod.classifyImageWithVLM(imageUri, { model: modelUri, mmproj: mmprojUri }, vlmModel);
+      if (!r.success) {
+        const fb = await runImageNet(imageUri, sharedClassifier);
+        return { ...fb, fallback: 'engine-error' };
+      }
+      return {
+        engine: 'vlm',
+        topPrediction: r.topPrediction ? {
+          name: r.topPrediction.name,
+          appCategory: r.topPrediction.appCategory,
+        } : null,
+        confidence: r.confidence,
+        predictions: r.predictions,
+        vlmLabel: r.vlmLabel || null,   // 归不进已有类时模型自拟的标签（落 other + 打标签）
+      };
+    } catch (e) {
+      logger.warn(`[classifyByTier] vlm 失败回退 basic: ${e?.message || e}`);
       const fb = await runImageNet(imageUri, sharedClassifier);
       return { ...fb, fallback: 'engine-error' };
     }

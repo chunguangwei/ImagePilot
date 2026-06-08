@@ -767,7 +767,7 @@
       "detecting": "检测中…"
     },
     "classifierModel": {
-      "title": "分类模型",
+      "title": "分类模型（本地分类）",
       "clipModelLabel": "AI 识别模型（可切换）",
       "desc": "设备端分类引擎，按需下载、随时切换。照片不上传。",
       "downloaded": "已下载",
@@ -788,13 +788,24 @@
       "adapting": "适配中",
       "speedFast": "快",
       "speedMedium": "中等",
-      "tierLabel": { "basic": "物体识别", "scene": "场景识别", "clip": "AI 智能识别" },
+      "speedSlowest": "最慢",
+      "tierLabel": { "basic": "物体识别", "scene": "场景识别", "clip": "AI 智能识别", "vlm": "多模态大模型" },
       "tierDesc": {
         "basic": "识别照片里的物品、动物、食物、设备等具体对象",
         "scene": "识别拍摄场景：厨房 / 海滩 / 办公室 / 教室 等 365 类",
-        "clip": "AI 语义识别，更懂抽象场景与氛围"
+        "clip": "AI 语义识别，更懂抽象场景与氛围",
+        "vlm": "大模型看图理解，最懂内容与细节；单张/小批量精修最佳"
       },
-      "clipSublabel": "推荐 · 最佳质量"
+      "clipSublabel": "推荐 · 最佳质量",
+      "vlmModelLabel": "大模型（可切换）",
+      "openLabeling": "开放打标",
+      "vlmHint": "不限固定类别：模型自动识别并打多个标签，优先归入已有分类，识别到的新内容会标在图片信息里（日后可建对应分类自动并入）。首次联网下载（中国源，支持断点续传）。秒级/张，整库批量慢、发热，建议插电。",
+      "vlmDisabled": "本机内存不足，不可用",
+      "lowMemTitle": "机型配置较低",
+      "lowMemMsg": "{{name}} 对内存要求较高，本机配置较低，将无法提供此项服务。可在 6GB+ 内存的机型上使用。",
+      "vlmUnsupportedTitle": "本机无法加载",
+      "vlmUnsupportedMsg": "{{name}} 在本机加载失败（内存不足或不支持）。可改用更小的 SmolVLM-500M，或重试一次。",
+      "vlmRetry": "重试"
     },
     "superRes": {
       "title": "AI 增强模型",

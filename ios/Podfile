@@ -5,9 +5,10 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
-# iOS 14+：PhotoKit 的 .readWrite 授权 + 现代 PHFetchOptions 接口都从 14 起；
-# iOS 12/13 全网占比 < 0.5%，不值得为它们写降级路径。
-platform :ios, '14.0'
+# iOS 15+：LiteRT-LM 的 CLiteRTLM.framework MinimumOSVersion=15.0（本地 Gemma 多模态分类档）。
+# 原本 14（PhotoKit .readWrite + 现代 PHFetchOptions），为接 LiteRT-LM 上调到 15；
+# iOS 14 全网占比已 < 1%，不值得为它放弃统一的端侧大模型能力。
+platform :ios, '15.0'
 prepare_react_native_project!
 
 # If you are using a `react-native-flipper` your iOS build will fail when `NO_FLIPPER=1` is set.
@@ -33,6 +34,12 @@ target 'ImagePilot' do
   # 把 onnxruntime-c 钉到 1.17.x，与 onnxruntime-react-native@1.17.0 ABI 匹配
   # —— 不钉默认会拿到 1.18，模型 InferenceSession.create 直接 "Can't load model"
   pod 'onnxruntime-c', '~> 1.17.0'
+
+  # 注：LiteRT-LM（CLiteRTLM.xcframework + Swift 封装源）不走 pod —— CocoaPods 的 xcframework
+  # 解包脚本不在 Swift 模块依赖扫描之前执行，会报 "unable to resolve module dependency: 'CLiteRTLM'"。
+  # 改为把 xcframework + swift/ 源直接挂到 ImagePilot app target（Xcode 原生处理切片）。
+  # 接线脚本：add_litertlm_module.rb（LiteRTLMModule.swift/.m + 部署目标 15）、
+  #          add_litertlm_xcframework.rb（CLiteRTLM.xcframework 链接+嵌入签名 + 9 个 swift 封装源）。
 
   # Flags change depending on the env values.
   flags = get_default_flags()

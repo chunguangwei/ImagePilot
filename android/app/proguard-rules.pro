@@ -70,6 +70,14 @@
 # Custom Native Modules
 -keep class com.imageclassifier.v2.** { *; }
 
+# llama.rn (llama.cpp RN 绑定) — 多模态 VLM 分类档运行时
+-keep class com.rnllama.** { *; }
+
+# LiteRT-LM（Android 本地多模态 Gemma 分类）—— GemmaModule 全程反射调用，
+# release 若混淆会把"看似没人用"的类剥掉导致运行时 ClassNotFound，必须 keep。
+-keep class com.google.ai.edge.litertlm.** { *; }
+-keep class com.imageclassifier.v2.GemmaModule { *; }
+
 # Keep native methods
 -keepclasseswithmembernames class * {
     native <methods>;

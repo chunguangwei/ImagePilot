@@ -71,4 +71,14 @@ class HapticsModule: NSObject {
       resolve(nil)
     }
   }
+
+  /// 设备物理内存（MB）—— 给"本地大模型下载前判断机型是否跑得动"用。
+  /// 注意：iOS 给单个 App 的实际可用内存远低于物理内存（jetsam 限制，4GB 机约 2.1GB），
+  /// 阈值判断在 JS 侧按物理内存近似（4GB→不够跑 Qwen，需 6GB+）。
+  @objc(totalMemoryMB:rejecter:)
+  func totalMemoryMB(_ resolve: @escaping RCTPromiseResolveBlock,
+                     rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let bytes = ProcessInfo.processInfo.physicalMemory
+    resolve(NSNumber(value: bytes / (1024 * 1024)))
+  }
 }
