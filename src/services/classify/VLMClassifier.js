@@ -1,111 +1,57 @@
 /**
- * VLMClassifier（iOS / 默认）—— 用 llama.rn（llama.cpp RN 绑定）加载 GGUF 多模态模型
- * （Qwen3-VL-2B：model + mmproj），看图 → 出"描述 + 分类"。
+ * VLMClassifier（iOS）—— 本地多模态分类：Google LiteRT-LM + Gemma4-E2B（纯 CPU 推理）。
  *
- * 跨平台共享逻辑（分类清单/prompt/解析/语言/图像/落库契约）在 vlmShared.js。
- * Android 端是 VLMClassifier.android.js（LiteRT-LM + Gemma），metro 自动按平台解析。
+ * 通过原生模块 LiteRTLMModule.classify(modelPath, imagePath, prompt) 跑推理拿原始文本，
+ * prompt 构建 + 结果解析复用 vlmShared（与安卓 GemmaModule 路径完全一致）。
+ * 引擎初始化失败（E_LOAD，通常内存不足/机型不支持）→ markVlmUnsupported → 设置页禁用、上层回退 basic。
  *
- * 设计：GPU→CPU 自动回退；加载失败 markVlmUnsupported → 设置页禁用；单例 context 按模型 id 缓存。
+ * 注：原 Qwen3-VL-2B（llama.rn）兜底已于 v1.5.21 下线。
  */
 
+import { NativeModules } from 'react-native';
 import { logger } from '../../adapters/WebAdapters';
 import {
   currentLang, getCategoryList, buildPrompt, parseResult,
   prepareImageFile, cleanupTmp, markVlmUnsupported, buildResult, buildFailure,
 } from './vlmShared';
 
-// llama.rn 懒加载：未链接/老包时不至于 import 崩，留给上层回退 basic。
-let _llama = null;
-function getLlama() {
-  if (_llama) return _llama;
-  // eslint-disable-next-line global-require
-  _llama = require('llama.rn');
-  return _llama;
-}
+const { LiteRTLMModule } = NativeModules;
 
-// 单例 context（按模型 id 缓存）
-let _ctx = null;
-let _ctxModelId = null;
-let _ctxBackend = null;
-
-/** 释放当前 context（换模型 / 重新下载 / 退出时） */
+/** 释放原生 LiteRT-LM Engine（换模型/退出时）。 */
 export async function disposeVLMContext() {
-  if (_ctx) { try { await _ctx.release(); } catch (_) {} }
-  _ctx = null;
-  _ctxModelId = null;
-  _ctxBackend = null;
-}
-
-/** 确保 llama context 就绪（GPU→CPU 自动回退）。失败 markVlmUnsupported 并抛 E_VLM_LOAD。 */
-async function ensureContext(vlmModel, paths) {
-  if (_ctx && _ctxModelId === vlmModel.id) return _ctx;
-  if (_ctx) await disposeVLMContext();
-
-  const llama = getLlama();
-  const initLlama = llama.initLlama || (llama.default && llama.default.initLlama);
-  if (typeof initLlama !== 'function') throw new Error('E_VLM_LOAD llama.rn 未正确链接');
-
-  const attempts = [
-    { gpuLayers: 99, useGpu: true, tag: 'gpu' },
-    { gpuLayers: 0, useGpu: false, tag: 'cpu' },
-  ];
-  let lastErr = null;
-  for (const a of attempts) {
-    let ctx = null;
-    try {
-      logger.debug(`[VLM] initLlama ${vlmModel.id} backend=${a.tag}`);
-      // n_ctx 压到 2048（分类只需 短prompt+图像token+短输出），省 KV-cache 内存，缓解 4GB 机 OOM。
-      // eslint-disable-next-line no-await-in-loop
-      ctx = await initLlama({ model: paths.model, n_ctx: 2048, n_gpu_layers: a.gpuLayers, ctx_shift: false });
-      // image_max_tokens 128：进一步限图像 token，降激活内存峰值（分类不需要高分辨率细节）。
-      // eslint-disable-next-line no-await-in-loop
-      const okMM = await ctx.initMultimodal({ path: paths.mmproj, use_gpu: a.useGpu, image_max_tokens: 128 });
-      if (!okMM) throw new Error('initMultimodal 返回 false（mmproj 不被支持）');
-      _ctx = ctx; _ctxModelId = vlmModel.id; _ctxBackend = a.tag;
-      logger.debug(`[VLM] ${vlmModel.id} 就绪 backend=${a.tag}`);
-      return _ctx;
-    } catch (e) {
-      lastErr = e;
-      logger.warn(`[VLM] ${vlmModel.id} backend=${a.tag} 加载失败: ${e?.message || e}`);
-      try { if (ctx) await ctx.release(); } catch (_) {}
-    }
-  }
-  await markVlmUnsupported(vlmModel.id, (lastErr && (lastErr.message || String(lastErr))) || 'load failed');
-  throw new Error(`E_VLM_LOAD ${vlmModel.id} 本机无法加载: ${lastErr?.message || lastErr}`);
+  try { if (LiteRTLMModule && LiteRTLMModule.release) await LiteRTLMModule.release(); } catch (_) {}
 }
 
 /**
- * 单张图 → top1 app 类（VLM / llama.rn）。
- * @param paths { model: file://..., mmproj: file://... }
+ * 单张图 → top1 app 类（Gemma / LiteRT-LM）。
+ * @param paths { model: file://... }（Gemma 单文件，无 mmproj）
  */
 export async function classifyImageWithVLM(imageUri, paths, vlmModel) {
   const t0 = Date.now();
   let tmpFile = null;
   try {
-    const ctx = await ensureContext(vlmModel, paths);
+    if (!LiteRTLMModule || typeof LiteRTLMModule.classify !== 'function') {
+      throw new Error('E_VLM_LOAD LiteRTLMModule 未链接');
+    }
     const cats = getCategoryList();
     const lang = currentLang();
     const prompt = buildPrompt(cats, lang);
     const imgUrl = await prepareImageFile(imageUri);
     tmpFile = imgUrl;
 
-    const res = await ctx.completion({
-      messages: [{ role: 'user', content: [
-        { type: 'text', text: prompt },
-        { type: 'image_url', image_url: { url: imgUrl } },
-      ] }],
-      n_predict: 64,
-      temperature: 0.2,
-    });
-
-    const raw = (res && (res.text || res.content || '')).trim();
+    // 原生侧：确保 Engine（纯 CPU）→ 看图出文本。多秒级。
+    const raw = String(await LiteRTLMModule.classify(paths.model, imgUrl, prompt) || '').trim();
     const { appCategory, description } = parseResult(raw, cats, lang);
-    logger.debug(`[VLM] ${String(imageUri).slice(-30)} → ${appCategory} desc="${description || ''}" backend=${_ctxBackend} in ${Date.now() - t0}ms`);
+    logger.debug(`[VLM-Gemma] ${String(imageUri).slice(-30)} → ${appCategory} desc="${description || ''}" in ${Date.now() - t0}ms`);
     await cleanupTmp(tmpFile);
     return buildResult(appCategory, description, t0);
   } catch (e) {
     await cleanupTmp(tmpFile);
-    logger.error(`[VLM] 推理失败: ${e?.message || e}`);
+    const code = e?.code || e?.message || '';
+    if (String(code).includes('E_LOAD') || String(code).includes('E_VLM_LOAD')) {
+      await markVlmUnsupported(vlmModel?.id || 'gemma_e2b', e?.message || String(e));
+    }
+    logger.error(`[VLM-Gemma] 推理失败: ${e?.message || e}`);
     return buildFailure(e, t0);
   }
 }

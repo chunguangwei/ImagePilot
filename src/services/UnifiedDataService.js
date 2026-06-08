@@ -1225,6 +1225,29 @@ class UnifiedDataService {
         logger.debug('批量删除图片:', imageIds.length);
         const total = imageIds.length;
 
+        // iOS：照片在 Photos 图库（PHAsset），RNFS.unlink 删不了（只能删 app 沙盒文件）→ 之前批量删除
+        // 在 iOS 上只清了 DB、照片仍在。必须走 PhotoKitModule.deleteAssets 物理删除（与单图删除一致）。
+        // imageIds 在 iOS 端即 PHAsset.localIdentifier；系统弹一次原生确认：同意=全部物理删，拒绝=E_USER_CANCELLED。
+        if (Platform.OS === 'ios') {
+          const { NativeModules } = require('react-native');
+          const PhotoKitModule = NativeModules && NativeModules.PhotoKitModule;
+          if (PhotoKitModule && typeof PhotoKitModule.deleteAssets === 'function') {
+            try {
+              await PhotoKitModule.deleteAssets(imageIds);
+              await this.imageStorageService.deleteImages(imageIds);
+              await this.imageCache.refreshCache();
+              if (onProgress) onProgress({ filesDeleted: total, filesFailed: 0, total });
+              return { success: true, processed: total, filesDeleted: total, filesFailed: 0, successfulImageIds: imageIds, failedImageIds: [] };
+            } catch (e) {
+              const cancelled = !!(e && e.code === 'E_USER_CANCELLED');
+              if (!cancelled) logger.debug('iOS PhotoKit 批量删除失败:', e?.message || e);
+              if (onProgress) onProgress({ filesDeleted: 0, filesFailed: total, total });
+              return { success: false, processed: 0, filesDeleted: 0, filesFailed: total, successfulImageIds: [], failedImageIds: imageIds, cancelled };
+            }
+          }
+          // PhotoKitModule 不可用 → 落到下面通用流程（在 iOS 上基本删不动，但不至于崩）
+        }
+
         // 1. 收集 (id, 本地路径)。没有路径（content:// 或缓存里没此图）的直接计为失败，
         //    交由上层（系统授权流程 / 错误提示）处理。
         const imageIdToPathMap = new Map();
