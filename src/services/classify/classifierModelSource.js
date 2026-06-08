@@ -34,28 +34,43 @@ export async function isClassifierModelDownloaded(filename) {
 }
 
 /**
- * 确保分类模型在本地，否则从 url 下载。返回本地 file:// URI 供 ONNX 加载。
- * @param {string} filename
- * @param {string} url
- * @param {(p:number)=>void} [onProgress] 0~1 下载进度
- * @param {{ signal?: AbortSignal }} [opts] 可选 AbortSignal；abort 时调 RNFS.stopDownload(jobId)，
- *                                          并清理 .part 临时文件后 throw E_ABORTED
+ * 若该模型已「打包进 App」，拷到本地缓存目录并返回 true（拷一次后走本地、不再拷）。
+ *  - 基础物体识别 mobilenetv3 随包：默认档零下载、离线开箱即用，不连任何云
+ *    （解决国内/华为等连不上 github.com 时基础分类直接失败）。
+ *  - Android：assets/models/<file>；iOS：App 资源包根 MainBundle/<file>。
  */
-export async function ensureClassifierModel(filename, url, onProgress, opts = {}) {
-  const dest = modelLocalPath(filename);
-  const asUri = (p) => (p.startsWith('file://') ? p : `file://${p}`);
-  if (await isClassifierModelDownloaded(filename)) return asUri(dest);
-  if (!url) throw new Error('E_NO_MODEL 未配置分类模型下载地址');
+async function copyBundledModelIfPresent(filename, dest) {
+  try {
+    if (Platform.OS === 'android') {
+      const assetPath = `models/${filename}`;
+      const exists = await RNFS.existsAssets(assetPath).catch(() => false);
+      if (!exists) return false;
+      await RNFS.copyFileAssets(assetPath, dest);
+      return true;
+    }
+    const bundlePath = `${RNFS.MainBundlePath}/${filename}`;
+    const exists = await RNFS.exists(bundlePath).catch(() => false);
+    if (!exists) return false;
+    await RNFS.copyFile(bundlePath, dest);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
 
-  const { signal } = opts;
-  if (signal && signal.aborted) throw new Error('E_ABORTED 下载已取消');
+// 国内访问 github.com 常超时/被拦 → GitHub 加速代理作主源、直连兜底。
+// （日后若把模型传到 ModelScope，把其直链设为首选源即可：return [modelscopeUrl, GH_MIRROR+url, url]）
+const GH_MIRROR = 'https://gh-proxy.com/';
+function buildUrlCandidates(url) {
+  if (/^https?:\/\/github\.com\//i.test(url)) return [GH_MIRROR + url, url];
+  return [url];
+}
 
+/** 单源下载到 dest（成功无返回；失败抛错；用户 abort 抛 E_ABORTED）。供多源循环调用。 */
+async function downloadUrlToFile(url, tmp, dest, filename, onProgress, signal) {
   await RNFS.mkdir(MODELS_DIR).catch(() => {});
-  const tmp = `${dest}.part`;
   try { if (await RNFS.exists(tmp)) await RNFS.unlink(tmp); } catch (_) {}
-
   logger.debug(`[classifierModelSource] 开始下载: ${filename} from ${url}`);
-  // GitHub Release 第一帧 contentLength 可能为 0（302 重定向到 S3），用 begin 兜底
   let totalBytes = 0;
   const { jobId, promise } = RNFS.downloadFile({
     fromUrl: url,
@@ -66,25 +81,14 @@ export async function ensureClassifierModel(filename, url, onProgress, opts = {}
       if (!onProgress) return;
       const denom = totalBytes || r.contentLength;
       if (denom > 0) onProgress(Math.min(1, r.bytesWritten / denom));
-      else if (r.bytesWritten > 0) onProgress(0.01); // 至少出 1%，不卡 0%
+      else if (r.bytesWritten > 0) onProgress(0.01);
     },
   });
-
-  // AbortSignal → RNFS.stopDownload(jobId)；abort 后 promise 会以 statusCode 抛错/或正常返回部分文件，
-  // 统一交由 cleanup 分支识别并抛 E_ABORTED
   let aborted = false;
-  const onAbort = () => {
-    aborted = true;
-    try { RNFS.stopDownload(jobId); } catch (_) {}
-  };
+  const onAbort = () => { aborted = true; try { RNFS.stopDownload(jobId); } catch (_) {} };
   if (signal) signal.addEventListener('abort', onAbort);
-
   try {
-    const res = await promise.catch((e) => {
-      // stopDownload 后 promise 可能 reject，把它当作 abort 路径处理
-      if (aborted) return null;
-      throw e;
-    });
+    const res = await promise.catch((e) => { if (aborted) return null; throw e; });
     if (aborted) {
       try { if (await RNFS.exists(tmp)) await RNFS.unlink(tmp); } catch (_) {}
       throw new Error('E_ABORTED 下载已取消');
@@ -100,12 +104,50 @@ export async function ensureClassifierModel(filename, url, onProgress, opts = {}
     }
     await RNFS.moveFile(tmp, dest);
     logger.debug(`[classifierModelSource] 下载完成: ${filename}, size=${st.size}`);
-    return asUri(dest);
   } finally {
-    if (signal) {
-      try { signal.removeEventListener('abort', onAbort); } catch (_) {}
+    if (signal) { try { signal.removeEventListener('abort', onAbort); } catch (_) {} }
+  }
+}
+
+/**
+ * 确保分类模型在本地，否则从 url 下载。返回本地 file:// URI 供 ONNX 加载。
+ * 加载优先级：本地缓存 → 打包资源(若有) → 网络下载（国内镜像优先、直连兜底）。
+ * @param {string} filename
+ * @param {string} url
+ * @param {(p:number)=>void} [onProgress] 0~1 下载进度
+ * @param {{ signal?: AbortSignal }} [opts] 可选 AbortSignal；abort 时调 RNFS.stopDownload(jobId)，
+ *                                          并清理 .part 临时文件后 throw E_ABORTED
+ */
+export async function ensureClassifierModel(filename, url, onProgress, opts = {}) {
+  const dest = modelLocalPath(filename);
+  const asUri = (p) => (p.startsWith('file://') ? p : `file://${p}`);
+  if (await isClassifierModelDownloaded(filename)) return asUri(dest);
+  await RNFS.mkdir(MODELS_DIR).catch(() => {});
+  // 打包模型优先（基础识别随包 → 零下载、离线可用）
+  if (await copyBundledModelIfPresent(filename, dest)) {
+    logger.debug(`[classifierModelSource] 使用打包模型: ${filename}`);
+    return asUri(dest);
+  }
+  if (!url) throw new Error('E_NO_MODEL 未配置分类模型下载地址');
+
+  const { signal } = opts;
+  if (signal && signal.aborted) throw new Error('E_ABORTED 下载已取消');
+
+  const tmp = `${dest}.part`;
+  // 多源下载：国内 GitHub 加速镜像优先、直连兜底（解决国内/华为首次连不上 github.com）。
+  let lastErr = null;
+  for (const candUrl of buildUrlCandidates(url)) {
+    if (signal && signal.aborted) throw new Error('E_ABORTED 下载已取消');
+    try {
+      await downloadUrlToFile(candUrl, tmp, dest, filename, onProgress, signal);
+      return asUri(dest);
+    } catch (e) {
+      if (String(e?.message || '').includes('E_ABORTED')) throw e; // 用户取消 → 不再换源
+      lastErr = e;
+      logger.debug(`[classifierModelSource] 源失败转下一个: ${candUrl} — ${e?.message || e}`);
     }
   }
+  throw lastErr || new Error('E_DOWNLOAD 所有下载源均失败');
 }
 
 export async function deleteClassifierModel(filename) {

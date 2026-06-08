@@ -22,10 +22,10 @@ export const CLASSIFIER_TIERS = {
   basic: {
     key: 'basic',
     label: '物体识别',
-    sublabel: '默认 · 按需下载',
+    sublabel: '默认 · 已内置',
     sizeMB: 22,
     speed: '快',
-    bundled: false,            // 全部模型放 GH Release 按需下载，APK/.ipa 不打包
+    bundled: true,             // 基础识别随 App 打包（安卓 assets/models、iOS 资源包）→ 零下载、离线开箱即用
     filename: 'mobilenetv3_rw_Opset17.onnx',
     url: `${BASE}/mobilenetv3_rw_Opset17.onnx`,
     engine: 'imagenet',        // 推理引擎标识
