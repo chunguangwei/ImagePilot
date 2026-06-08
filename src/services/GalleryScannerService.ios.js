@@ -382,7 +382,10 @@ class GalleryScannerService {
 
       let processedCount = 0;
       let failedCount = 0;
-      const BATCH = 20;
+      // VLM（多模态大模型）秒级/张，太慢：用 BATCH=1，让进度条与落库都「一张一张」推进，
+      // 用户能实时看到百分比走动、结果逐张出现；基础/CLIP 等快引擎保持 20 批量以省 IO。
+      const preTier = await readActiveTier();
+      const BATCH = (preTier && preTier.engine === 'vlm') ? 1 : 20;
       for (let i = 0; i < naImages.length; i += BATCH) {
         const batch = naImages.slice(i, i + BATCH);
         const classificationDataArray = [];

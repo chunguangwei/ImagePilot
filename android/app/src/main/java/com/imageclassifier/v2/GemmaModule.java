@@ -122,17 +122,28 @@ public class GemmaModule extends ReactContextBaseJavaModule {
     releaseEngineInternal();
     try { ensureReflection(); } catch (Throwable t) { Log.e(TAG, "reflection init failed: " + t.getMessage(), t); return null; }
 
-    String cacheDir = ctx.getCacheDir().getAbsolutePath();
     boolean[] gpuFirst = { true, false };
     for (boolean gpu : gpuFirst) {
       Object e = null;
       try {
         Object backend = newBackend(gpu);
         Object vision = newBackend(gpu);
+        // 完全对齐译人：maxNumTokens 4096(=模型上下文)，cacheDir 传 null（缓存默认落模型目录）。
+        // 之前传 ctx.getCacheDir() 是我和译人唯一的共同差异，两端都因此 createConversation 失败。
         Object cfg = ctorEngineConfig.newInstance(
-            modelPath, backend, vision, null, Integer.valueOf(512), Integer.valueOf(1), cacheDir);
+            modelPath, backend, vision, null, Integer.valueOf(4096), Integer.valueOf(1), null);
         e = ctorEngine.newInstance(cfg);
         mInitialize.invoke(e);
+        // 验证该后端「能建会话」——iOS 上 GPU 能 init 引擎却建不了会话(createConversation 失败)；
+        // 个别安卓 GPU 驱动同理。GPU 建不了就回退 CPU，保证出结果。
+        // （vivo 实测：带此探测 GPU 正常工作；之前"一动不动"是首张引擎加载慢，非探测挂住。）
+        Object probeSampler = ctorSampler.newInstance(40, 0.95, 0.2, 0);
+        Object probeEmpty = newContentsOf(Collections.emptyList());
+        Object probeCc = ctorConvConfig.newInstance(
+            probeEmpty, Collections.emptyList(), Collections.emptyList(),
+            probeSampler, Boolean.FALSE, Collections.emptyList(), Collections.emptyMap());
+        Object probeConv = mCreateConversation.invoke(e, probeCc);
+        try { mConvClose.invoke(probeConv); } catch (Throwable ignore) {}
         engine = e;
         engineModelPath = modelPath;
         engineBackend = gpu ? "gpu" : "cpu";

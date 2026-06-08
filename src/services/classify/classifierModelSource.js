@@ -137,6 +137,26 @@ async function appendFileChunked(src, dest) {
   }
 }
 
+// 各模型文件类型的「头部魔数」（base64 前缀；读前 6 字节即可判定头 3~4 字节）。
+//  .litertlm：实测头是 ASCII 'LITERTLM' (4C 49 54 45 52 54 4C 4D) → base64 前缀 'TElU'（不是 zip！）
+//  .gguf    ：'GGUF' 47 47 55 46                                  → base64 前缀 'R0dV'
+// 用途：下完后校验内容类型——下成 HTML 错误页 / 文件头损坏的，直接判废，避免"大小对就放行"后端侧加载才崩。
+const MODEL_MAGIC_B64 = {
+  '.litertlm': 'TElU',
+  '.gguf': 'R0dV',
+};
+
+/** 校验已下文件的头部魔数是否匹配其扩展名。未知类型 / 读失败 → 返回 true（不误杀）。 */
+async function verifyModelMagic(path, filename) {
+  const ext = (String(filename).match(/\.[a-z0-9]+$/i) || [''])[0].toLowerCase();
+  const want = MODEL_MAGIC_B64[ext];
+  if (!want) return true;
+  try {
+    const b64 = await RNFS.read(path, 6, 0, 'base64');
+    return typeof b64 === 'string' && b64.startsWith(want);
+  } catch (_) { return true; }
+}
+
 /** 大文件是否已完整下载（有 expectedBytes 则按字节核对，否则仅判存在且足够大）。 */
 export async function isLargeModelComplete(filename, expectedBytes) {
   try {
@@ -239,6 +259,12 @@ export async function ensureLargeModel(filename, url, onProgress, opts = {}) {
     const size = st ? Number(st.size) : 0;
     if (!size || (expectedBytes && size < expectedBytes)) {
       throw new Error(`E_CORRUPT 模型下载不完整 ${size}/${expectedBytes || '?'}`);
+    }
+    // 内容校验：头部魔数不对（下成 HTML 错误页 / 文件头损坏）→ 删 .part 强制干净重下，
+    // 否则会"大小够就放行"，等到端侧加载模型才崩、还看不出是下载坏了。
+    if (!(await verifyModelMagic(tmp, filename))) {
+      try { await RNFS.unlink(tmp); } catch (_) {}
+      throw new Error('E_CORRUPT 模型文件头校验失败（可能下到错误页或文件损坏），已清除，请重试');
     }
     await RNFS.moveFile(tmp, dest);
     logger.debug(`[classifierModelSource] 大模型完成 ${filename} size=${size}`);

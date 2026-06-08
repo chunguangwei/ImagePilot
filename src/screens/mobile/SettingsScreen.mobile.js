@@ -1441,9 +1441,9 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                                 ? (SetIonicons ? <SetIonicons name="checkmark-circle" size={19} color={c.accent} /> : <Text style={{ color: c.accent, fontSize: 16 }}>✓</Text>)
                                 : (SetIonicons ? <SetIonicons name="ellipse-outline" size={19} color={c.subtext || '#9aa0a6'} /> : <Text style={{ color: c.subtext || '#9aa0a6', fontSize: 16 }}>○</Text>)}
                             </View>
-                            <View style={{ flex: 1 }}>
+                            <View style={{ flex: 1, paddingRight: 6 }}>
                               <Text style={[styles.clipModelChipText, sel && { color: c.accent }]} numberOfLines={1}>{m.name}</Text>
-                              <Text style={styles.clipModelChipSub} numberOfLines={1}>
+                              <Text style={styles.clipModelChipSub} numberOfLines={2}>
                                 {disabled ? t('settings.classifierModel.vlmDisabled') : `${m.sublabel} · ${m.sizeMB}MB`}
                               </Text>
                             </View>

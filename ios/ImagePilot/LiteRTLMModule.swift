@@ -34,34 +34,26 @@ actor LiteRTLMRunner {
     if let e = engine, engineModelPath == modelPath { return e }
     await releaseEngine()
 
-    // cacheDir 必须可写：用 App 临时目录（LiteRT-LM 会在此放权重缓存等）。
-    let cacheDir = NSTemporaryDirectory()
-    var lastErr: Error?
-    for gpu in [true, false] {
-      do {
-        let be: Backend = gpu ? .gpu : .cpu()
-        // visionBackend 与主后端一致，开启视觉执行器（不传则不初始化视觉、无法看图）。
-        // maxNumTokens 512：分类只需短 prompt + 图像 token + 短输出，压小 KV-cache 省内存。
-        let cfg = try EngineConfig(
-          modelPath: modelPath,
-          backend: be,
-          visionBackend: be,
-          maxNumTokens: 512,
-          cacheDir: cacheDir
-        )
-        let e = Engine(engineConfig: cfg)
-        try await e.initialize()   // 耗时操作（可达 10s+），已在后台 Task 中
-        engine = e
-        engineModelPath = modelPath
-        backend = gpu ? "gpu" : "cpu"
-        NSLog("[LiteRTLM] Engine ready backend=\(backend)")
-        return e
-      } catch {
-        lastErr = error
-        NSLog("[LiteRTLM] Engine init failed backend=\(gpu ? "gpu" : "cpu"): \(error)")
-      }
+    // iOS 实测（iPhone 13/4GB）：GPU(Metal) 无论作主后端还是视觉后端，都会让 createConversation
+    // 失败或卡死(probe 挂住)；唯有「主+视觉都用 CPU」能跑通(conf=0.9+正确描述)。iOS 端 Gemma 固定全 CPU
+    // ——慢但可用；GPU 这条路在 iOS LiteRT-LM 上目前走不通。maxNumTokens 4096；不传 cacheDir。
+    do {
+      let cfg = try EngineConfig(
+        modelPath: modelPath,
+        backend: .cpu(),
+        visionBackend: .cpu(),
+        maxNumTokens: 4096
+      )
+      let e = Engine(engineConfig: cfg)
+      try await e.initialize()   // 耗时操作（CPU 加载 2.5GB 模型可达 30s+），已在后台 Task 中
+      engine = e
+      engineModelPath = modelPath
+      backend = "cpu"
+      NSLog("[LiteRTLM] Engine ready backend=cpu")
+      return e
+    } catch {
+      throw LiteRTLMRunnerError.engineInit("\(error)")
     }
-    throw LiteRTLMRunnerError.engineInit("\(lastErr.map { "\($0)" } ?? "GPU & CPU both failed")")
   }
 
   func releaseEngine() async {
