@@ -29,11 +29,12 @@ export const VLM_MODELS = {
     },
     mmproj: null,
     sizeMB: 2468,        // ~2.5GB
-    minRamGB: 6,
-    // 下载前内存门槛（物理内存 MB）：iOS 给单 App 预算约物理内存一半（jetsam，4GB 机 ~2.1GB）。
-    // 2B 视觉模型工作集 >2.1GB → 4GB iPhone（物理 ~3.7GB）必崩；需 6GB+ iPhone（物理 ~5.7GB）。
-    // 故 iOS 门槛比安卓(2800)严：拦 <5500（iPhone 13 等 4GB 机被拦，提示"机型配置较低"）。
-    minDeviceMemMB: 5500,
+    minRamGB: 4,
+    // 下载前内存门槛（物理内存 MB）。
+    // 【实测档】暂降到 3000，让 iPhone 13(物理 ~3.7GB) 也能下载并尝试加载 Gemma ——
+    // 验证 Gemma E2B 的 PLE/MatFormer 省内存能否在 4GB iPhone 上扛住（Qwen 当初是直接 OOM 崩）。
+    // 若实测照样 OOM，再恢复 5500（仅 6GB+ iPhone 物理~5.7GB 才放行）。
+    minDeviceMemMB: 3000,
     recommended: true,
   },
   // 兜底退路：Qwen3-VL-2B（llama.rn / GGUF，model + mmproj 两文件）。

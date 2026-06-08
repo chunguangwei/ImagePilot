@@ -33,6 +33,21 @@ let _mobileClipMod = null;
 let _vlmMod = null;
 let _imageClassifierSingleton = null;
 
+// 诊断：把 VLM 回退原因写进 settings.vlmLastError（节流，避免每张图写一次），
+// 便于从设备 DB 直接看到 Gemma 推理为何回退基础引擎（无需设备日志/root）。
+let _lastVlmErrAt = 0;
+async function recordVlmError(reason) {
+  try {
+    const now = Date.now();
+    if (now - _lastVlmErrAt < 3000) return; // 3s 节流
+    _lastVlmErrAt = now;
+    // eslint-disable-next-line global-require
+    const UDS = require('../UnifiedDataService').default || require('../UnifiedDataService');
+    const s = (await UDS.readSettings()) || {};
+    await UDS.writeSettings({ ...s, vlmLastError: { reason: String(reason).slice(0, 300), at: new Date().toISOString() } });
+  } catch (_) {}
+}
+
 /** 优先用 scanner 传入的现有实例（避免重复加载 ONNX 模型）；没传退回单例 */
 function getImageClassifier(maybeShared) {
   if (maybeShared) return maybeShared;
@@ -212,6 +227,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
       }
       const r = await _vlmMod.classifyImageWithVLM(imageUri, { model: modelUri, mmproj: mmprojUri }, vlmModel);
       if (!r.success) {
+        await recordVlmError(`classify failed: ${r.error || 'unknown'}`);
         const fb = await runImageNet(imageUri, sharedClassifier);
         return { ...fb, fallback: 'engine-error' };
       }
@@ -227,6 +243,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
       };
     } catch (e) {
       logger.warn(`[classifyByTier] vlm 失败回退 basic: ${e?.message || e}`);
+      await recordVlmError(`exception: ${e?.message || String(e)}`);
       const fb = await runImageNet(imageUri, sharedClassifier);
       return { ...fb, fallback: 'engine-error' };
     }

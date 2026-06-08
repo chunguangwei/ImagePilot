@@ -3085,6 +3085,7 @@ class ImageStorageService {
           uri: img.uri,
           size: img.size,
           background_color: img.background_color || null, // 背景颜色字段
+          message: img.message || null, // 🤖 AI 描述（VLM 多模态档生成）——必须带上，否则详情页缓存里没有、不显示
           mimeType: img.mimeType || null, // 格式统计需要
           imageDimensions: img.imageDimensions || null, // 保留原始 imageDimensions 字段
           // 🔥 GPS坐标字段（用于位置信息补全）
