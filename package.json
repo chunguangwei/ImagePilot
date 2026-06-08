@@ -1,6 +1,6 @@
 {
   "name": "imagepilot",
-  "version": "1.5.20",
+  "version": "1.5.21",
   "description": "ImagePilot-智能分类，便捷管理，仅你可见",
   "displayName": "ImagePilot",
   "main": "index.js",
@@ -41,7 +41,6 @@
     "jimp": "^0.22.12",
     "jpeg-js": "^0.4.4",
     "jsqr": "^1.4.0",
-    "llama.rn": "^0.12.4",
     "onnxruntime-node": "^1.22.0-rev",
     "onnxruntime-react-native": "^1.17.0",
     "react": "18.2.0",

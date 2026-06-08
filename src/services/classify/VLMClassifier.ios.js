@@ -1,11 +1,11 @@
 /**
- * VLMClassifier（iOS）—— 本地多模态分类的 iOS 入口，按所选变体的引擎路由：
- *   - engine === 'litertlm'（Gemma4-E2B，主路径）：调原生 LiteRTLMModule.classify（Google LiteRT-LM Swift 运行时）。
- *   - 否则（Qwen3-VL-2B，兜底）：委派到 VLMClassifierQwen（llama.rn / GGUF）。
+ * VLMClassifier（iOS）—— 本地多模态分类：Google LiteRT-LM + Gemma4-E2B（纯 CPU 推理）。
  *
- * 与安卓 VLMClassifier.android.js 对称：原生侧只跑「(模型路径, 图片路径, prompt) → 原始文本」，
- * prompt 构建 + 结果解析复用 vlmShared（两端、两引擎完全一致）。
+ * 通过原生模块 LiteRTLMModule.classify(modelPath, imagePath, prompt) 跑推理拿原始文本，
+ * prompt 构建 + 结果解析复用 vlmShared（与安卓 GemmaModule 路径完全一致）。
  * 引擎初始化失败（E_LOAD，通常内存不足/机型不支持）→ markVlmUnsupported → 设置页禁用、上层回退 basic。
+ *
+ * 注：原 Qwen3-VL-2B（llama.rn）兜底已于 v1.5.21 下线。
  */
 
 import { NativeModules } from 'react-native';
@@ -17,17 +17,16 @@ import {
 
 const { LiteRTLMModule } = NativeModules;
 
-/** 释放推理资源（换模型/退出时）：释放原生 LiteRT-LM Engine + Qwen 的 llama context。 */
+/** 释放原生 LiteRT-LM Engine（换模型/退出时）。 */
 export async function disposeVLMContext() {
   try { if (LiteRTLMModule && LiteRTLMModule.release) await LiteRTLMModule.release(); } catch (_) {}
-  try {
-    // eslint-disable-next-line global-require
-    await require('./VLMClassifierQwen').disposeVLMContext();
-  } catch (_) {}
 }
 
-/** Gemma / LiteRT-LM 主路径：原生模块看图出文本 → 共享解析。 */
-async function classifyWithLiteRTLM(imageUri, paths, vlmModel) {
+/**
+ * 单张图 → top1 app 类（Gemma / LiteRT-LM）。
+ * @param paths { model: file://... }（Gemma 单文件，无 mmproj）
+ */
+export async function classifyImageWithVLM(imageUri, paths, vlmModel) {
   const t0 = Date.now();
   let tmpFile = null;
   try {
@@ -40,7 +39,7 @@ async function classifyWithLiteRTLM(imageUri, paths, vlmModel) {
     const imgUrl = await prepareImageFile(imageUri);
     tmpFile = imgUrl;
 
-    // 原生侧：确保 Engine（GPU→CPU 回退）→ 看图出文本。多秒级。
+    // 原生侧：确保 Engine（纯 CPU）→ 看图出文本。多秒级。
     const raw = String(await LiteRTLMModule.classify(paths.model, imgUrl, prompt) || '').trim();
     const { appCategory, description } = parseResult(raw, cats, lang);
     logger.debug(`[VLM-Gemma] ${String(imageUri).slice(-30)} → ${appCategory} desc="${description || ''}" in ${Date.now() - t0}ms`);
@@ -55,19 +54,6 @@ async function classifyWithLiteRTLM(imageUri, paths, vlmModel) {
     logger.error(`[VLM-Gemma] 推理失败: ${e?.message || e}`);
     return buildFailure(e, t0);
   }
-}
-
-/**
- * 单张图 → top1 app 类。按引擎路由（Gemma 原生 / Qwen llama.rn）。
- * @param paths { model: file://..., mmproj?: file://... }
- */
-export async function classifyImageWithVLM(imageUri, paths, vlmModel) {
-  if (vlmModel && vlmModel.engine === 'litertlm') {
-    return classifyWithLiteRTLM(imageUri, paths, vlmModel);
-  }
-  // 兜底：Qwen / llama.rn
-  // eslint-disable-next-line global-require
-  return require('./VLMClassifierQwen').classifyImageWithVLM(imageUri, paths, vlmModel);
 }
 
 export default { classifyImageWithVLM, disposeVLMContext };

@@ -768,6 +768,7 @@
     },
     "classifierModel": {
       "title": "Classification Model (On-device)",
+      "current": "Current: {{name}}",
       "clipModelLabel": "AI recognition model",
       "desc": "On-device classification engine, download on demand and switch anytime. Photos stay on the device.",
       "downloaded": "Downloaded",
@@ -809,6 +810,7 @@
     },
     "superRes": {
       "title": "AI Enhancement Model",
+      "current": "Current: {{name}}",
       "variantSmall": "Small (fast · ~5MB)",
       "variantLarge": "Large (high quality · ~64MB)",
       "desc": "Downloaded on demand (not bundled in the APK). Larger models look sharper but run slower and weigh more.",

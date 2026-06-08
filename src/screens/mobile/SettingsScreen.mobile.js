@@ -84,6 +84,9 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
   // 分类模型：basic（默认已内置） / scene（Places365）/ clip（MobileCLIP，P2 未接入）
   const [classifierTier, setClassifierTier] = useState('basic');
+  // 分类模型 / AI 修图预设两段默认折叠（只显示当前选中），点开才露完整选择/下载，避免设置页过长
+  const [classifierExpanded, setClassifierExpanded] = useState(false);
+  const [srExpanded, setSrExpanded] = useState(false);
   // CLIP 档具体用哪个模型变体（默认 MobileCLIP2-S2；可选旧版 S1 兜底）
   const [clipModelId, setClipModelId] = useState(DEFAULT_CLIP_MODEL);
   // VLM 档具体用哪个模型变体（默认 SmolVLM-500M；可选 Qwen3-VL-2B）
@@ -1308,14 +1311,22 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   };
 
   const renderClassifierModel = () => {
+    const activeTierLabel = t('settings.classifierModel.tierLabel.' + classifierTier, { defaultValue: (CLASSIFIER_TIERS[classifierTier] && CLASSIFIER_TIERS[classifierTier].label) || classifierTier });
     return (
       <View style={styles.actionButton}>
-        <Text style={styles.actionButtonText}>
-          {SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color={c.accent} /> : null} {t('settings.classifierModel.title')}
-        </Text>
-        <Text style={styles.actionButtonDescription}>
-          {t('settings.classifierModel.desc')}
-        </Text>
+        {/* 折叠头：点击展开/收起；收起时只显示「当前：xx」 */}
+        <TouchableOpacity activeOpacity={0.7} onPress={() => setClassifierExpanded((v) => !v)}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={styles.actionButtonText}>
+              {SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color={c.accent} /> : null} {t('settings.classifierModel.title')}
+            </Text>
+            {SetIonicons ? <SetIonicons name={classifierExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={c.subtext || '#9aa0a6'} /> : <Text style={{ color: c.subtext || '#9aa0a6' }}>{classifierExpanded ? '⌃' : '⌄'}</Text>}
+          </View>
+          <Text style={styles.actionButtonDescription}>
+            {classifierExpanded ? t('settings.classifierModel.desc') : t('settings.classifierModel.current', { name: activeTierLabel, defaultValue: `当前：${activeTierLabel}` })}
+          </Text>
+        </TouchableOpacity>
+        {classifierExpanded && (
         <View style={styles.classifierList}>
           {CLASSIFIER_TIER_ORDER.map((tierKey, idx) => {
             const tier = CLASSIFIER_TIERS[tierKey];
@@ -1488,6 +1499,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
             );
           })}
         </View>
+        )}
       </View>
     );
   };
@@ -1812,12 +1824,15 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         {/* === Section 2：修图引擎 ===
             归口"把照片本身处理一下"的设置：超分(AI增强)模型 + 照片创玩 AI 修图预设 */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.titleRow}>
+          {/* 整段折叠：点段标题展开/收起「修图引擎」（AI增强模型 + 修图预设） */}
+          <TouchableOpacity activeOpacity={0.7} onPress={() => setSrExpanded((v) => !v)} style={[styles.sectionHeader, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+            <View style={[styles.titleRow, { flex: 1 }]}>
               <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">{SetIonicons ? <SetIonicons name="color-wand-outline" size={17} color={c.accent} /> : null} {t('settings.imageEngine') || '修图引擎'}</Text>
             </View>
-          </View>
+            {SetIonicons ? <SetIonicons name={srExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={c.subtext || '#9aa0a6'} /> : <Text style={{ color: c.subtext || '#9aa0a6' }}>{srExpanded ? '⌃' : '⌄'}</Text>}
+          </TouchableOpacity>
 
+          {srExpanded && (<>
           {/* 超分(AI增强)模型：小/大/自定义 + 按需下载 */}
           {renderSuperResModel()}
 
@@ -1886,7 +1901,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                 </View>
               );
             })}
-
+          </>)}
         </View>
 
         {/* === Section 3：数据管理 ===

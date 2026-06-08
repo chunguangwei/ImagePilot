@@ -17,6 +17,7 @@ import {
   Image,
   StyleSheet,
   Dimensions,
+  useWindowDimensions,
   ActivityIndicator,
   Share,
   Modal,
@@ -85,6 +86,11 @@ const CategoryScreen = ({ route, navigation }) => {
   const c = useIosColors();
   const insets = useSafeAreaInsets();
   const styles = React.useMemo(() => createStyles(c), [c]);
+
+  // 响应式网格尺寸：折叠屏「折叠↔展开」时窗口宽度会变，用 useWindowDimensions 实时重算单元尺寸。
+  // （模块级 TIMELINE_ITEM_SIZE 是加载时的一次性快照，折叠屏切换不更新 → 图片大小不跟着变小的 bug。）
+  const { width: winW } = useWindowDimensions();
+  const gridItemSize = (winW - GRID_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
 
   // ==================== 路由参数 ====================
   // 统一使用 filterType 和 filterValue，从旧参数推导（过渡期）
@@ -1785,6 +1791,7 @@ const CategoryScreen = ({ route, navigation }) => {
                     key={image.id}
                     style={[
                       styles.timelineItem,
+                      { width: gridItemSize, height: gridItemSize },  // 响应式：折叠屏宽度变化实时重算
                       UnifiedDataService.isImageSelected(image.id) && styles.timelineItemSelected,
                       isHighlighted && styles.timelineItemHighlighted
                     ]}

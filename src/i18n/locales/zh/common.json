@@ -768,6 +768,7 @@
     },
     "classifierModel": {
       "title": "分类模型（本地分类）",
+      "current": "当前：{{name}}",
       "clipModelLabel": "AI 识别模型（可切换）",
       "desc": "设备端分类引擎，按需下载、随时切换。照片不上传。",
       "downloaded": "已下载",
@@ -809,6 +810,7 @@
     },
     "superRes": {
       "title": "AI 增强模型",
+      "current": "当前：{{name}}",
       "variantSmall": "小（快 · 约 5MB）",
       "variantLarge": "大（高质量 · 约 64MB）",
       "desc": "模型按需下载（不占安装包）。大模型更清晰但更慢更大。",
