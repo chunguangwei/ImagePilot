@@ -79,7 +79,7 @@ export default function CustomCategoriesScreen({ navigation }) {
           const order = builtinConfig.getCategoryDisplayOrder?.() || [];
           const nameMap = builtinConfig.getCategoryNameMap?.() || {};
           const bl = order
-            .filter((cid) => nameMap[cid] && cid !== 'NA' && cid !== 'other')
+            .filter((cid) => nameMap[cid] && cid !== 'NA' && cid !== 'NA_video' && cid !== 'other')   // NA_video 同 NA 是系统分类，不入"内置分类管理"
             .map((cid) => ({ id: cid, name: (nameMap[cid] && (nameMap[cid].chinese || nameMap[cid].english)) || cid }));
           setBuiltins(bl);
         } catch (_) { /* 内置列表取不到则只显示自定义部分 */ }
