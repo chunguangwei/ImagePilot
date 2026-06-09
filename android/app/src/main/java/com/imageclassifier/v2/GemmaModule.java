@@ -122,6 +122,14 @@ public class GemmaModule extends ReactContextBaseJavaModule {
     releaseEngineInternal();
     try { ensureReflection(); } catch (Throwable t) { Log.e(TAG, "reflection init failed: " + t.getMessage(), t); return null; }
 
+    // 提速：视觉 token 预算设 140（Gemma4 合法档 70/140/280/560/1120；默认约 280）→ 视觉减半、加快推理。
+    // 与 iOS 对齐。0.13.1 起支持；ExperimentalFlags 是 Kotlin object（INSTANCE 单例），安卓版无需 optIn。
+    try {
+      Class<?> cFlags = Class.forName(P + "ExperimentalFlags");
+      Object flagsInst = cFlags.getField("INSTANCE").get(null);
+      cFlags.getMethod("setVisualTokenBudget", Integer.class).invoke(flagsInst, Integer.valueOf(140));
+    } catch (Throwable t) { Log.w(TAG, "setVisualTokenBudget failed(非致命): " + t.getMessage()); }
+
     boolean[] gpuFirst = { true, false };
     for (boolean gpu : gpuFirst) {
       Object e = null;

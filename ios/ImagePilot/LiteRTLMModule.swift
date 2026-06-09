@@ -34,6 +34,12 @@ actor LiteRTLMRunner {
     if let e = engine, engineModelPath == modelPath { return e }
     await releaseEngine()
 
+    // 提速：视觉 token 预算设 140（Gemma4 合法档 70/140/280/560/1120；默认"按需"约 280）。
+    // 视觉 prefill 占大头，砍半 → iOS CPU 明显加快；140 对"粗分类+短描述"质量足够。
+    // optInto 幂等；该 flag 全局、被 Conversation 在 sendMessage 时读取，故设一次即可。
+    ExperimentalFlags.optIntoExperimentalAPIs()
+    ExperimentalFlags.visualTokenBudget = 140
+
     // iOS 实测（iPhone 13/4GB）：GPU(Metal) 无论作主后端还是视觉后端，都会让 createConversation
     // 失败或卡死(probe 挂住)；唯有「主+视觉都用 CPU」能跑通(conf=0.9+正确描述)。iOS 端 Gemma 固定全 CPU
     // ——慢但可用；GPU 这条路在 iOS LiteRT-LM 上目前走不通。maxNumTokens 4096；不传 cacheDir。

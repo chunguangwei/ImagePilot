@@ -97,7 +97,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode getVersionCode()
-        versionName "1.5.22"
+        versionName "1.5.23"
     }
 
     splits {
@@ -190,7 +190,9 @@ dependencies {
 
     // LiteRT-LM：Android 本地多模态分类档运行时（Gemma4-E2B .litertlm）。
     // 用 Java 原生模块调用其 Kotlin API（走 JVM 签名，不需要给本项目加 Kotlin 插件，避免与 RN0.72 的 Kotlin 1.7.22 冲突）。
-    implementation 'com.google.ai.edge.litertlm:litertlm-android:0.11.0'
+    // 0.13.1（与 iOS Swift 同版本）：相比 0.11.0 增加 ExperimentalFlags.visualTokenBudget（视觉 token 预算），
+    // 用于把视觉分辨率减半提速；字节码仍 Java21(major 65)、反射签名全兼容，工具链不变。
+    implementation 'com.google.ai.edge.litertlm:litertlm-android:0.13.1'
 
 }
 
