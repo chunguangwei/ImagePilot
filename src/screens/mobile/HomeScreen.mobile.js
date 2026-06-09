@@ -132,9 +132,11 @@ const CategoryCard = React.memo(function CategoryCard({
   const handleLongPress = useCallback(() => {
     if (isNACategory && onLongPressNAById) onLongPressNAById(id);
   }, [id, isNACategory, onLongPressNAById]);
+  // 「待分类视频」NA_video：用摄像机底图（不显示视频帧），右下角播放角标表明是视频待分类。
+  const isVideoCategory = id === 'NA_video';
   return (
     <TouchableOpacity style={styles.categoryCard} onPress={handlePress} onLongPress={handleLongPress}>
-      {recentImages && recentImages.length > 0 ? (
+      {(recentImages && recentImages.length > 0 && !isVideoCategory) ? (
         <Image
           source={{ uri: getUri(recentImages[0]) || recentImages[0]?.uri }}
           style={styles.thumbnail}
@@ -149,6 +151,11 @@ const CategoryCard = React.memo(function CategoryCard({
         <Text style={styles.categoryName} numberOfLines={1}>{displayName}</Text>
         <Text style={styles.categoryCount}>{count}</Text>
       </View>
+      {isVideoCategory && (
+        <View style={styles.videoCatBadge} pointerEvents="none">
+          <Text style={styles.videoCatBadgeIcon}>▶</Text>
+        </View>
+      )}
       {isNACategory && count > 0 && (
         <TouchableOpacity
           style={styles.naClassifyBtn}
@@ -2834,6 +2841,22 @@ const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
   // iOS 风格：底部细窄半透明条 + 系统字号；名称 semibold 96% 白，计数 regular 70% 白；
   // 去掉计数胶囊背景，靠透明度区分主次，更接近 Apple Photos 的标签呈现。
   // 覆盖在缩略图上的半透明黑底 + 白字，light/dark 都用同一套（与图片自身对比）
+  videoCatBadge: {
+    position: 'absolute',
+    right: 6,
+    top: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  videoCatBadgeIcon: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    marginLeft: 1,
+  },
   categoryOverlay: {
     position: 'absolute',
     bottom: 0,

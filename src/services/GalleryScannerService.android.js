@@ -366,6 +366,10 @@ class GalleryScannerService {
       logger.info(`✅ 基础扫描完成: ${scanId}, 已处理: ${this.imagesClassified}/${this.totalImagesToBeClassified}`);
       
       try {
+        // 视频从 NA 迁到「待分类视频」NA_video（原生扫描把视频按 NA 入库）。放在"基础扫描完成"里，
+        // 不依赖是否触发 AI 分类——只扫描也会迁移。幂等。
+        try { await UnifiedDataService.migrateUnclassifiedVideos(); } catch (_) {}
+
         // 🔥 位置信息补全（在发送 completed 消息之前完成）
         try {
           await this.enrichLocationInfo();
@@ -373,7 +377,7 @@ class GalleryScannerService {
           logger.error('❌ 位置信息补全失败（不影响基础扫描完成）:', error);
           // 位置信息补全失败不影响基础扫描完成，继续执行
         }
-        
+
         // 发送基础扫描完成消息（AI分类需要用户手动触发）
         // 注意：completed 消息会触发 processProgressData 自动重建缓存
         await this.sendProgressMessage('completed', this.imagesClassified, this.totalImagesToBeClassified, this.imagesClassified, this.totalImagesToBeClassified);
