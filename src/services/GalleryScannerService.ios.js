@@ -100,6 +100,7 @@ function toImageRecord(asset) {
 class GalleryScannerService {
   constructor() {
     this.isScanning = false;
+    this._stopRequested = false;   // 用户请求停止 JS 分类循环（见 requestStop）
     this.scanStartTimestamp = null;
     this.onProgress = null;
     this.imagesClassified = 0;
@@ -112,6 +113,18 @@ class GalleryScannerService {
     this._changeEmitter = null;
     this._changeSub = null;
     this._onIncrementalRefresh = null;
+  }
+
+  /**
+   * 优雅停止"JS 离线/云端分类"循环（如 VLM 大模型逐张分类太慢时）。
+   * 只置停止标志，不动 onProgress —— 让循环检测后 break，仍走完 refreshCache + 完成事件，
+   * 使已分类的（每张已即时落库）立刻归位、UI 可见；剩余 NA 图下次扫描自动续。
+   */
+  requestStop() {
+    if (this.isScanning) {
+      logger.info('🛑 [iOS] 用户请求停止分类（保留已分类结果，剩余下次续扫）');
+      this._stopRequested = true;
+    }
   }
 
   async initialize() {
@@ -351,6 +364,7 @@ class GalleryScannerService {
   async _classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify) {
     logger.info('🚀 [iOS] 启动 JS 端离线 AI 分类（MobileNetV3）');
     this.isScanning = true;
+    this._stopRequested = false;   // 用户停止标志（requestStop 置 true，循环逐张检测后优雅退出）
     this.scanStartTimestamp = scanStartTime || new Date();
 
     try {
@@ -386,12 +400,21 @@ class GalleryScannerService {
       // 用户能实时看到百分比走动、结果逐张出现；基础/CLIP 等快引擎保持 20 批量以省 IO。
       const preTier = await readActiveTier();
       const BATCH = (preTier && preTier.engine === 'vlm') ? 1 : 20;
+      let stoppedByUser = false;
       for (let i = 0; i < naImages.length; i += BATCH) {
+        // 用户停止：逐批检测，已分类的（每张已即时落库）保留，剩余 NA 图下次扫描自动续。
+        if (this._stopRequested) {
+          stoppedByUser = true;
+          logger.info(`🛑 [iOS] 用户停止分类：已处理 ${processedCount}，剩余 ${naImages.length - i} 张保持待分类`);
+          break;
+        }
         const batch = naImages.slice(i, i + BATCH);
         const classificationDataArray = [];
         // 当前批次共用一个 tier（每批读 settings 一次，避免单图 IO）
         const activeTier = await readActiveTier();
         for (const image of batch) {
+          // 批内逐张可停（快引擎 BATCH=20 时也能即时停，不必等整批跑完）。
+          if (this._stopRequested) { stoppedByUser = true; break; }
           try {
             const imageUri = getUri(image) || image?.uri;
             if (!imageUri) { failedCount++; continue; }
@@ -457,7 +480,7 @@ class GalleryScannerService {
         logger.warn('[iOS] 分类后刷新 GlobalImageCache 失败:', e?.message || e);
       }
       await this.sendProgressMessage('completed', processedCount, naImages.length, this.imagesClassified, naImages.length);
-      return { success: true, processedCount, failedCount };
+      return { success: true, processedCount, failedCount, stopped: stoppedByUser };
     } catch (error) {
       logger.error('❌ [iOS] 离线分类失败:', error);
       throw error;
@@ -473,6 +496,7 @@ class GalleryScannerService {
   async _classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg) {
     logger.info(`🚀 [iOS] 启动 JS 端云端 AI 分类（${aiCfg.active}）`);
     this.isScanning = true;
+    this._stopRequested = false;
     this.scanStartTimestamp = scanStartTime || new Date();
     try {
       let naImages = [];
@@ -501,6 +525,10 @@ class GalleryScannerService {
       let failedCount = 0;
       const BATCH = 10;
       for (let i = 0; i < naImages.length; i += BATCH) {
+        if (this._stopRequested) {
+          logger.info(`🛑 [iOS] 用户停止云端分类：已处理 ${processedCount}，剩余 ${naImages.length - i} 张保持待分类`);
+          break;
+        }
         const batch = naImages.slice(i, i + BATCH);
         const inputs = [];
         const validResults = [];

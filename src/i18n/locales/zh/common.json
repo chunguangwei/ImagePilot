@@ -253,6 +253,7 @@
     "scanAlreadyInProgress": "扫描已在进行中，请等待当前扫描完成",
     "aiClassificationInProgress": "AI分类进行中...",
     "aiClassificationComplete": "AI分类完成",
+    "scanStopping": "正在停止，已分类的会保留…",
     "startClassifyBtn": "开始分类",
     "aiClassificationFailed": "AI分类失败: {{error}}",
     "modelDownloadNeedNetwork": "首次使用需联网下载设备端分类模型，请连接网络后重试。模型仅下载一次，之后完全离线、不再联网。",

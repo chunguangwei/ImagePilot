@@ -267,6 +267,8 @@ const HomeScreen = ({ navigation }) => {
   
   // 防抖定时器引用（用于避免频繁刷新数据）
   const loadDataDebounceTimerRef = useRef(null);
+  // 当前进行中的扫描/分类服务实例 —— 供 FAB 上的「停止」按钮调用 requestStop()（保留已分类、剩余下次续扫）
+  const scanServiceRef = useRef(null);
   // 存储最新的 loadAllData 函数引用（用于防抖函数）
   const loadAllDataRef = useRef(null);
   
@@ -1311,10 +1313,11 @@ const HomeScreen = ({ navigation }) => {
       }
       
       const galleryScannerService = new GalleryScannerService();
-      
+      scanServiceRef.current = galleryScannerService;   // 暴露给「停止」按钮
+
       // 初始化服务
       await galleryScannerService.initialize();
-      
+
       // 🔥 先设置进度回调（必须在调用aiImageClassifyByContent之前设置）
       galleryScannerService.onProgress = (progress) => {
         if (progress) {
@@ -1369,10 +1372,26 @@ const HomeScreen = ({ navigation }) => {
       // 释放唤醒锁
       await WakeLockService.release();
       setIsScanning(false);
+      scanServiceRef.current = null;
       // 🔥 清除全局变量
       if (typeof window !== 'undefined') {
         window.isScanning = false;
       }
+    }
+  };
+
+  /**
+   * 停止进行中的 AI 分类（大模型逐张分类太慢时）。
+   * 调 requestStop()：已分类的（每张已落库）保留并刷新归位，剩余待分类图下次扫描自动续。
+   */
+  const handleStopScan = () => {
+    try {
+      if (scanServiceRef.current && typeof scanServiceRef.current.requestStop === 'function') {
+        scanServiceRef.current.requestStop();
+        setGlobalMessage(t('home.scanStopping', { defaultValue: '正在停止，已分类的会保留…' }));
+      }
+    } catch (e) {
+      logger.warn('停止分类失败:', e?.message || e);
     }
   };
 
@@ -2450,11 +2469,18 @@ const HomeScreen = ({ navigation }) => {
       {/* 扫描按钮：bottom = 16(常规边距) + 安全区底距 + 49(底部 Tab 栏) */}
       <TouchableOpacity
         style={[styles.fab, { bottom: 16 + insets.bottom + 49 }]}
-        onPress={handleScan}
-        disabled={isScanning}
+        onPress={isScanning ? handleStopScan : handleScan}
+        activeOpacity={0.8}
       >
         {isScanning ? (
-          <ActivityIndicator color="#FFFFFF" />
+          // 扫描/分类中：外圈 spinner 一直转 + 中间「停止」方块。点击停止 → 已分类的保留并归位，
+          // 剩余待分类图下次扫描自动续（见 GalleryScannerService.requestStop）。
+          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator color="#FFFFFF" size="small" />
+            <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }} pointerEvents="none">
+              {HomeIonicons ? <HomeIonicons name="stop" size={13} color="#FFFFFF" /> : <Text style={{ color: '#FFFFFF', fontSize: 11 }}>■</Text>}
+            </View>
+          </View>
         ) : HomeIonicons ? (
           <HomeIonicons name="sync" size={28} color="#FFFFFF" />
         ) : (

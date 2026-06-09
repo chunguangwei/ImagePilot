@@ -97,7 +97,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode getVersionCode()
-        versionName "1.5.23"
+        versionName "1.5.24"
     }
 
     splits {
@@ -156,9 +156,10 @@ android {
         }
     }
     
-    // 模型不再随 APK 打包 —— 全部走 GH Release 按需下载（classifierModelSource）
-    // public/ 里 initialSettings.json 已被 ConfigService 以 ES import 内联进 JS bundle，
-    // 不需要再作为 Android assets 源，srcDirs 回到默认。
+    // 模型打包策略：基础物体识别 mobilenetv3 随 APK 打包在 src/main/assets/models/（默认 assets 源，
+    // 零下载、离线开箱即用，见 classifierModelSource.copyBundledModelIfPresent）；场景/CLIP/Gemma 等
+    // 更大的可选档仍按需下载（国内镜像优先）。public/initialSettings.json 由 ConfigService 以 ES import
+    // 内联进 JS bundle，不作为 assets 源。
 }
 
 dependencies {
