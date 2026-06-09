@@ -1951,6 +1951,8 @@ const CategoryScreen = ({ route, navigation }) => {
         console.warn('⚠️ 发现无效的分类对象:', cat);
         return false;
       }
+      // 「待分类视频」NA_video 是系统视频桶，不作为分类目标（避免与「待分类」重名歧义）
+      if (cat.id === 'NA_video') return false;
       // 注意：暂存箱不是分类，不会出现在 getAllCategoriesWithUI() 返回的列表中，所以不需要过滤
       return true;
     });

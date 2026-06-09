@@ -89,6 +89,7 @@ const BUILTIN_ICON_META = {
   cartoon: { iconName: 'emoji-emotions', color: '#FFC107' },
   other: { iconName: 'apps', color: '#7F8C8D' },
   NA: { iconName: 'help-outline', color: '#F39C12' },
+  NA_video: { iconName: 'videocam', color: '#F39C12' },  // 待分类视频：摄像机图标
 };
 
 const CUSTOM_ICON_INDEX = Object.fromEntries(CUSTOM_ICON_PRESETS.map((p) => [p.key, p]));
