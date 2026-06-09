@@ -132,16 +132,22 @@ const CategoryCard = React.memo(function CategoryCard({
   const handleLongPress = useCallback(() => {
     if (isNACategory && onLongPressNAById) onLongPressNAById(id);
   }, [id, isNACategory, onLongPressNAById]);
-  // 「待分类视频」NA_video：用摄像机底图（不显示视频帧），右下角播放角标表明是视频待分类。
+  // 「待分类视频」NA_video：有视频时显示最近一帧（不突兀），空态用摄像机图标；右上角播放角标标明视频桶。
   const isVideoCategory = id === 'NA_video';
   return (
     <TouchableOpacity style={styles.categoryCard} onPress={handlePress} onLongPress={handleLongPress}>
-      {(recentImages && recentImages.length > 0 && !isVideoCategory) ? (
+      {(recentImages && recentImages.length > 0) ? (
         <Image
           source={{ uri: getUri(recentImages[0]) || recentImages[0]?.uri }}
           style={styles.thumbnail}
           resizeMode="cover"
         />
+      ) : isVideoCategory ? (
+        <View style={[styles.thumbnail, { backgroundColor: color, alignItems: 'center', justifyContent: 'center' }]}>
+          {HomeIonicons
+            ? <HomeIonicons name="videocam" size={Math.round((screenWidth - 28) / 4 * 0.5)} color="rgba(255,255,255,0.92)" />
+            : <SkeuomorphicCamera size={Math.round((screenWidth - 28) / 4 * 0.52)} tint="rgba(255,255,255,0.92)" />}
+        </View>
       ) : (
         <View style={[styles.thumbnail, { backgroundColor: color, alignItems: 'center', justifyContent: 'center' }]}>
           <SkeuomorphicCamera size={Math.round((screenWidth - 28) / 4 * 0.52)} tint="rgba(255,255,255,0.92)" />
