@@ -2016,6 +2016,20 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
           <InfoItem styles={styles} label={t('settings.storageType')} value={storageType} />
           <InfoItem styles={styles} label={t('settings.storageSize')} value={storageSize} />
           {renderLanguageItem()}
+
+          {/* 授权协议：非商业免费 · 商用须授权（PolyForm Noncommercial 1.0.0） */}
+          <ActionButton
+            styles={styles}
+            c={c}
+            icon="document-text-outline"
+            title={t('settings.license', { defaultValue: '授权协议' })}
+            description={t('settings.licenseDesc', { defaultValue: '非商业免费 · 商业用途须事先授权' })}
+            onPress={() => Alert.alert(
+              t('settings.license', { defaultValue: '授权协议' }),
+              t('settings.licenseFull', { defaultValue: 'ImagePilot 采用 PolyForm Noncommercial License 1.0.0。\n\n✅ 个人 / 学习 / 研究 / 非营利 / 教育 / 政府 等非商业用途：免费使用、修改、分发。\n\n⛔ 任何商业用途：须事先获得作者书面同意。\n商业授权请联系：chunguangwee@gmail.com\n\n© 2026 Chunguang Wei（魏春光）' })
+            )}
+          />
+          <InfoItem styles={styles} label={t('settings.copyright', { defaultValue: '版权' })} value="© 2026 Chunguang Wei" />
         </View>
 
         {/* 底部空白由 ScrollView contentContainerStyle 处理 */}
