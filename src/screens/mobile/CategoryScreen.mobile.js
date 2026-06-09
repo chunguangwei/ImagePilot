@@ -209,6 +209,10 @@ const CategoryScreen = ({ route, navigation }) => {
           { id: 'delete', label: t('common.delete'), iconKey: 'delete', emoji: '🗑️', danger: true },
           { id: 'enhance', label: t('category.enhance'), iconKey: 'enhance', emoji: '✨' },
           { id: 'changeCategory', label: t('category.changeCategory'), iconKey: 'category', emoji: '📁' },
+          // 清理分类：退回待分类 + 清空 AI 描述（非"待分类"视图才有意义，故 NA 视图下排除）
+          ...(filterType === 'category' && filterValue === 'NA'
+            ? []
+            : [{ id: 'clearClassification', label: t('category.clearClassification', { defaultValue: '清理分类' }), iconKey: 'clearClassify', emoji: '♻️' }]),
           { id: 'share', label: t('category.share'), iconKey: 'share', emoji: '📤' },
         ];
 
@@ -951,6 +955,9 @@ const CategoryScreen = ({ route, navigation }) => {
         case 'changeCategory':
           await showCategorySelector(selectedIds);
           break;
+        case 'clearClassification':
+          await batchClearClassification(selectedIds);
+          break;
         case 'delete':
           await batchDelete(selectedIds);
           break;
@@ -1362,6 +1369,43 @@ const CategoryScreen = ({ route, navigation }) => {
                 setShowUpdateProgress(false);
                 Alert.alert(t('settings.operationFailed'), t('category.stagingError'));
               }
+          },
+        },
+      ]
+    );
+  };
+
+  /**
+   * 批量清理分类：退回"待分类" + 清空 AI 描述。清理后这些图从当前分类消失、进入待分类，
+   * 下次扫描会重新分类（含新建的自定义分类）。
+   */
+  const batchClearClassification = async (imageIds) => {
+    Alert.alert(
+      t('category.confirmClearClassificationTitle', { defaultValue: '清理分类信息' }),
+      t('category.confirmClearClassificationMessage', { count: imageIds.length, defaultValue: `将 ${imageIds.length} 张图退回「待分类」并清空 AI 描述，下次扫描会重新分类。` }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.confirm', { defaultValue: '确定' }),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              imageIds.forEach(id => UnifiedDataService.setImageSelection(id, false));
+              setSelectionMode(false);
+              setShowUpdateProgress(true);
+              setUpdateOperationType('clearClassification');
+              setUpdateProgress({ filesProcessed: 0, filesFailed: 0, total: imageIds.length });
+
+              const result = await UnifiedDataService.clearImagesClassification(imageIds);
+
+              setUpdateProgress({ filesProcessed: result.processed || imageIds.length, filesFailed: 0, total: imageIds.length });
+              setShowUpdateProgress(false);
+              await loadImages();   // 这些图已退回待分类 → 从当前分类视图刷新移除
+            } catch (error) {
+              logger.error('❌ 批量清理分类失败:', error);
+              setShowUpdateProgress(false);
+              Alert.alert(t('settings.operationFailed'), t('category.clearClassificationError', { defaultValue: '清理分类失败' }));
+            }
           },
         },
       ]

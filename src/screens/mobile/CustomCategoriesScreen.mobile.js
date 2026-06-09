@@ -12,7 +12,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, Icon } from '../../adapters/WebAdapters';
 import configService from '../../services/llm/adapters/UnifiedDataConfigService';
@@ -24,6 +24,32 @@ import Haptics from '../../utils/haptics';
 
 // 内置分类 id（自定义 id 不应与之冲突）
 const BUILTIN_IDS = ['single_person', 'social_activities', 'travel_scenery', 'pets', 'foods', 'idcard', 'screenshot', 'electronics', 'qrcode', 'other', 'NA'];
+
+// 内置分类参考（供用户查看"内置是怎么设置的"，照着写自定义分类规则）。内置分类靠模型识别、无显式规则，
+// 这里给出每类的含义说明作示例。名称取自 initialSettings.categoryNameMap。
+const BUILTIN_REFERENCE = [
+  { id: 'single_person', name: '单人照片', desc: '以单个人物为主体：自拍、个人写真、人像特写' },
+  { id: 'social_activities', name: '社交活动', desc: '多人聚会、聚餐、合影、活动、团建等社交场景' },
+  { id: 'kids', name: '儿童', desc: '以儿童、婴幼儿为主体的照片' },
+  { id: 'pets', name: '宠物萌照', desc: '猫、狗等宠物及动物的照片' },
+  { id: 'foods', name: '美食记录', desc: '食物、菜品、饮料、零食、美食摆盘' },
+  { id: 'travel_scenery', name: '旅行风景', desc: '旅行风光、自然或城市景观、打卡景点' },
+  { id: 'night_scene', name: '夜景', desc: '夜晚拍摄的夜景、灯光、霓虹、烟花' },
+  { id: 'architecture', name: '建筑', desc: '建筑物、楼宇、地标、室内外结构' },
+  { id: 'plants', name: '植物花卉', desc: '植物、花卉、绿植、园艺' },
+  { id: 'vehicles', name: '车辆', desc: '汽车、摩托、火车、飞机、船等交通工具' },
+  { id: 'sports', name: '运动健身', desc: '运动、健身、比赛、户外活动场景' },
+  { id: 'fashion', name: '服饰穿搭', desc: '服装搭配、穿搭、鞋包配饰' },
+  { id: 'products', name: '商品', desc: '商品、物品展示照、开箱、带货' },
+  { id: 'electronics', name: '电子产品', desc: '手机、电脑、相机、数码设备' },
+  { id: 'documents', name: '文档票据', desc: '文档、票据、发票、合同、纸质材料' },
+  { id: 'idcard', name: '证件照', desc: '身份证、护照、驾照等证件' },
+  { id: 'art', name: '艺术绘画', desc: '绘画、书法、雕塑等艺术作品' },
+  { id: 'cartoon', name: '卡通表情', desc: '卡通、动漫、表情包、梗图' },
+  { id: 'screenshot', name: '手机截图', desc: '手机或电脑的屏幕截图' },
+  { id: 'qrcode', name: '二维码', desc: '二维码、条形码' },
+];
+const BUILTIN_DESC_BY_ID = BUILTIN_REFERENCE.reduce((m, b) => { m[b.id] = b.desc; return m; }, {});
 
 export default function CustomCategoriesScreen({ navigation }) {
   const theme = useIosColors();
@@ -76,6 +102,12 @@ export default function CustomCategoriesScreen({ navigation }) {
     } catch (e) {
       Alert.alert(t('customCategories.saveFailedTitle'), e?.message || String(e));
     }
+  };
+
+  // 查看内置分类含义：弹出该类说明，供用户照着写自定义分类「规则」。
+  const onViewBuiltin = (cid, cname) => {
+    const desc = BUILTIN_DESC_BY_ID[cid] || t('customCategories.builtinNoDesc', { defaultValue: '此分类由模型自动识别，无需规则。' });
+    Alert.alert(cname, desc);
   };
 
   // 删除内置分类：只加入隐藏集合（不改库）。该分类下的图在展示/统计上自动归到「待分类」，
@@ -313,17 +345,24 @@ export default function CustomCategoriesScreen({ navigation }) {
                 <Text style={[styles.itemName, { color: theme.label }, isHidden && { textDecorationLine: 'line-through' }]}>{b.name}</Text>
                 {isHidden && <Text style={[styles.itemRule, { color: theme.tertiaryLabel }]}>{t('customCategories.builtinDeletedHint')}</Text>}
               </View>
-              {isHidden ? (
-                <TouchableOpacity onPress={() => onRestoreBuiltin(b.id)} style={styles.actionBtn} activeOpacity={0.6}>
-                  <Icon name="restore" size={18} color="#007AFF" />
-                  <Text style={styles.edit}>{t('customCategories.restore')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {/* 查看：弹出该内置分类的含义说明，供照着写自定义规则 */}
+                <TouchableOpacity onPress={() => onViewBuiltin(b.id, b.name)} style={styles.actionBtn} activeOpacity={0.6}>
+                  <Icon name="info-outline" size={18} color="#007AFF" />
+                  <Text style={styles.edit}>{t('customCategories.view', { defaultValue: '查看' })}</Text>
                 </TouchableOpacity>
-              ) : (
-                <TouchableOpacity onPress={() => onDeleteBuiltin(b.id, b.name)} style={styles.actionBtn} activeOpacity={0.6}>
-                  <Icon name="delete-outline" size={18} color="#FF3B30" />
-                  <Text style={styles.del}>{t('customCategories.delete')}</Text>
-                </TouchableOpacity>
-              )}
+                {isHidden ? (
+                  <TouchableOpacity onPress={() => onRestoreBuiltin(b.id)} style={styles.actionBtn} activeOpacity={0.6}>
+                    <Icon name="restore" size={18} color="#007AFF" />
+                    <Text style={styles.edit}>{t('customCategories.restore')}</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={() => onDeleteBuiltin(b.id, b.name)} style={styles.actionBtn} activeOpacity={0.6}>
+                    <Icon name="delete-outline" size={18} color="#FF3B30" />
+                    <Text style={styles.del}>{t('customCategories.delete')}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           );
         })}
@@ -335,12 +374,18 @@ export default function CustomCategoriesScreen({ navigation }) {
              ImagePreviewScreen 经历），改用 absolute fill inline overlay：setState(null)
              直接卸载组件，不走原生 modal 生命周期。 */}
       {!!editing && (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 999, justifyContent: 'flex-end' }]}>
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 999 }]}>
           <TouchableOpacity
             activeOpacity={1}
             style={StyleSheet.absoluteFill}
             onPress={() => setEditing(null)}
           />
+          {/* KeyboardAvoidingView：iOS 键盘弹出时整张卡片上移，保存按钮(modalFooter)不再被遮住 */}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1, justifyContent: 'flex-end' }}
+            pointerEvents="box-none"
+          >
           <View style={styles.modalCard} pointerEvents="box-none">
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{t('customCategories.editModalTitle')}</Text>
@@ -377,6 +422,7 @@ export default function CustomCategoriesScreen({ navigation }) {
               </TouchableOpacity>
             </View>
           </View>
+          </KeyboardAvoidingView>
         </View>
       )}
     </SafeAreaView>

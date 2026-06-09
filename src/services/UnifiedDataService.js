@@ -1207,6 +1207,34 @@ class UnifiedDataService {
     }
   }
 
+  /**
+   * 清理选中图片的分类信息：category→NA（待分类）、清空 AI 描述(message)、置信度归零、清空检测。
+   * 用于让用户把图片"退回待分类"，下次扫描会重新分类（含新建的自定义分类）。
+   * @param {string[]} imageIds
+   * @returns {Promise<{success:boolean, processed:number}>}
+   */
+  async clearImagesClassification(imageIds) {
+    try {
+      if (!imageIds || imageIds.length === 0) return { success: true, processed: 0 };
+      const arr = imageIds.map((id) => ({
+        id,
+        category: 'NA',                 // 退回"待分类"
+        message: null,                  // 清空 AI 描述
+        confidence: 0,
+        generalDetections: null,
+        idCardDetections: null,
+        mobileNetV3Detections: null,
+      }));
+      const result = await this.batchUpdateClassification(arr, false);
+      try { await this.imageCache.refreshCache(); } catch (_) {}
+      logger.debug(`[clearImagesClassification] 已清理 ${imageIds.length} 张 → 待分类`);
+      return { success: !!(result && result.success), processed: (result && result.updatedCount) || imageIds.length };
+    } catch (error) {
+      logger.error('清理图片分类失败:', error);
+      throw error;
+    }
+  }
+
 
   /**
    * 批量删除图片

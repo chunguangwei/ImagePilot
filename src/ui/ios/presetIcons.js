@@ -28,6 +28,7 @@ export const ACTION_ICONS = {
   filter: 'color-filter-outline',   // 滤镜
   category: 'pricetag-outline',     // 分类
   share: 'share-outline',           // 分享
+  clearClassify: 'refresh-outline', // 清理分类（退回待分类）
 };
 
 export default { PRESET_ICONS, presetIcon, ACTION_ICONS };

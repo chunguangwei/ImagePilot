@@ -16,6 +16,7 @@ class ConfigService {
     // UnifiedDataService.readSettings/writeSettings 调 setCustomCategories 注入，
     // 使 getCategoryDisplayName 能把自定义 id 解析成配置的名称，而不是裸露 id。
     this.customCategoryNames = {};
+    this.customCategoryRules = {};   // { id: rule } 自定义分类判定规则，供本地 VLM 提示词用
     // 用户「删除」的内置分类 id 集合（settings.aiProvider.hiddenBuiltinCategories）。
     // 同样由 UnifiedDataService.readSettings/writeSettings 注入。getAllCategoriesWithUI
     // 据此从展示中剔除，使被删的默认分类不在首页/各列表出现（可一键恢复）。
@@ -29,14 +30,29 @@ class ConfigService {
    */
   setCustomCategories(list) {
     const map = {};
+    const rules = {};
     if (Array.isArray(list)) {
       for (const c of list) {
         if (c && typeof c.id === 'string' && c.id.trim() && typeof c.name === 'string' && c.name.trim()) {
           map[c.id.trim()] = c.name.trim();
+          // 同时存「判定规则」rule —— 供本地多模态(Gemma)分类提示词使用，让模型像在线模型一样
+          // 按用户规则把图片归入自定义分类（见 vlmShared.getCategoryList/buildPrompt）。
+          if (typeof c.rule === 'string' && c.rule.trim()) rules[c.id.trim()] = c.rule.trim();
         }
       }
     }
     this.customCategoryNames = map;
+    this.customCategoryRules = rules;
+  }
+
+  /** 取自定义分类的判定规则映射 { id: rule }（供本地 VLM 提示词用）。 */
+  getCustomCategoryRules() {
+    return this.customCategoryRules || {};
+  }
+
+  /** 取自定义分类名映射 { id: name }（getAllCategoriesWithUI 只含内置，VLM 清单需补自定义）。 */
+  getCustomCategoryNames() {
+    return this.customCategoryNames || {};
   }
 
   /**

@@ -70,9 +70,20 @@ export function getCategoryList() {
     if (ConfigService && typeof ConfigService.getAllCategoriesWithUI === 'function') {
       const arr = ConfigService.getAllCategoriesWithUI();
       if (Array.isArray(arr) && arr.length) {
+        // 自定义分类的判定规则（{id: rule}）——带进提示词，让本地模型按规则归入自定义类（对齐在线模型）。
+        const rules = (typeof ConfigService.getCustomCategoryRules === 'function') ? (ConfigService.getCustomCategoryRules() || {}) : {};
         const list = arr
           .filter((x) => x && x.id && x.id !== 'NA')
-          .map((x) => ({ id: x.id, zh: x.chinese || x.name || x.id, en: x.english || x.id }));
+          .map((x) => ({ id: x.id, zh: x.chinese || x.name || x.id, en: x.english || x.id, rule: rules[x.id] || '' }));
+        // ⚠️ getAllCategoriesWithUI 只含「内置分类」(categoryNameMap∩displayOrder)，不含自定义分类！
+        // 必须在此补上自定义分类，否则本地模型清单里根本没有它们 → 永远分不进、全落 other。
+        const names = (typeof ConfigService.getCustomCategoryNames === 'function') ? (ConfigService.getCustomCategoryNames() || {}) : {};
+        const seen = new Set(list.map((c) => c.id));
+        for (const id of Object.keys(names)) {
+          if (id && id !== 'NA' && id !== 'other' && !seen.has(id)) {
+            list.push({ id, zh: names[id], en: names[id], rule: rules[id] || '' });
+          }
+        }
         if (list.length) return list;
       }
     }
@@ -86,21 +97,24 @@ export function getCategoryList() {
  */
 export function buildPrompt(cats, lang) {
   if (lang === 'en') {
-    const lines = cats.map((c) => `${c.id}=${c.en}`).join('  ');
+    // 带「规则」的自定义分类，把规则一并给模型 → 像在线模型一样按规则归类。
+    const lines = cats.map((c) => `${c.id} = ${c.en}${c.rule ? ` (rule: ${c.rule})` : ''}`).join('\n');
     return (
-      'Look at the image, then output EXACTLY two lines (description first, then category).\n' +
-      'desc: one short English sentence (max 15 words) summarizing the image content.\n' +
-      'cat: choose the single best category id from the list; if none fits, use other.\n\n' +
-      `Categories (id=meaning):\n${lines}\n\n` +
+      'Look at the image carefully, understand its content, then pick the single best category from the list.\n' +
+      'Output EXACTLY two lines:\n' +
+      'desc: one short English sentence (max 15 words) describing the image.\n' +
+      'cat: output ONE category id from the list. For categories that have a rule, prefer the one whose rule matches the image. If none fits, use other.\n\n' +
+      `Categories (id = meaning, rule in parentheses):\n${lines}\n\n` +
       'desc: '
     );
   }
-  const lines = cats.map((c) => `${c.id}=${c.zh}`).join('  ');
+  const lines = cats.map((c) => `${c.id} = ${c.zh}${c.rule ? `（规则：${c.rule}）` : ''}`).join('\n');
   return (
-    'Look at the image, then output EXACTLY two lines (description first, then category).\n' +
-    '描述: 用简体中文写一句不超过15字的图片内容概括（必须中文）。\n' +
-    '分类: choose the single best category id from the list below; if none fits, use other.\n\n' +
-    `Categories (id=中文含义)：\n${lines}\n\n` +
+    '仔细看图，先理解图片内容，再从下面的分类清单里选出最贴近的一类。\n' +
+    '严格输出两行：\n' +
+    '描述: 一句不超过15字的简体中文图片内容概括（必须用中文）。\n' +
+    '分类: 只输出清单里的一个分类 id；带「规则」的分类优先按规则判断是否符合；都不符合时输出 other。\n\n' +
+    `分类清单（id = 含义，括号内为判定规则）：\n${lines}\n\n` +
     '描述: '
   );
 }
