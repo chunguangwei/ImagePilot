@@ -580,7 +580,10 @@ public class GalleryScanService {
                         vi.path = path;
                         vi.relativePath = relativePath;
                         vi.size = size;
-                        vi.dateTaken = dateTaken;
+                        // 视频的 DATE_TAKEN 常为 0（MediaStore 对视频不填）→ 回退 DATE_ADDED/DATE_MODIFIED，
+                        // 否则 takenAt=0 会被时间分桶判为「更早(past)」，不出现在近期时间视图里。
+                        vi.dateTaken = (dateTaken > 0) ? dateTaken
+                            : (dateAdded > 0 ? dateAdded * 1000L : dateModified * 1000L);
                         vi.dateModified = dateModified * 1000;
                         vi.dateAdded = dateAdded * 1000;
                         vi.width = width;

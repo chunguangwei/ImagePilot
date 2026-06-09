@@ -243,7 +243,14 @@ class UnifiedDataService {
    */
   _getImageTime(img) {
     if (!img) return 0;
-    const t = img.takenAt != null ? (typeof img.takenAt === 'number' ? img.takenAt : new Date(img.takenAt).getTime()) : img.timestamp;
+    // takenAt 为 0/缺失时回退 timestamp（视频 DATE_TAKEN 常为 0，否则会被分到「更早」桶）。
+    const taRaw = img.takenAt;
+    let t = (taRaw != null && taRaw !== 0)
+      ? (typeof taRaw === 'number' ? taRaw : new Date(taRaw).getTime())
+      : 0;
+    if (!t && img.timestamp) {
+      t = typeof img.timestamp === 'number' ? img.timestamp : new Date(img.timestamp).getTime();
+    }
     return t || 0;
   }
 
