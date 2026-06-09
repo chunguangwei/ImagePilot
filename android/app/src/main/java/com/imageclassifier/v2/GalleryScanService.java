@@ -529,13 +529,80 @@ public class GalleryScanService {
             } else {
                 fileLogger.w(TAG, "⚠️ MediaStore查询返回null Cursor，可能没有权限或MediaStore未初始化");
             }
+
+            // 🎬 视频：并行查询 MediaStore.Video（结构同图片，mimeType 为 video/*）。类别先按 NA 入库，
+            // 由 JS 端 migrateUnclassifiedVideos() 迁到「待分类视频」NA_video；缩略图由 Glide 解视频首帧。
+            try {
+                List<String> vProj = new ArrayList<>();
+                vProj.add(MediaStore.Video.Media._ID);
+                vProj.add(MediaStore.Video.Media.DISPLAY_NAME);
+                vProj.add(MediaStore.Video.Media.SIZE);
+                vProj.add(MediaStore.Video.Media.DATE_TAKEN);
+                vProj.add(MediaStore.Video.Media.DATE_MODIFIED);
+                vProj.add(MediaStore.Video.Media.DATE_ADDED);
+                vProj.add(MediaStore.Video.Media.WIDTH);
+                vProj.add(MediaStore.Video.Media.HEIGHT);
+                vProj.add(MediaStore.Video.Media.MIME_TYPE);
+                vProj.add(MediaStore.Video.Media.DATA);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    vProj.add(MediaStore.Video.Media.RELATIVE_PATH);
+                }
+                Cursor vCursor = contentResolver.query(
+                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                    vProj.toArray(new String[0]),
+                    null, null,
+                    MediaStore.Video.Media.DATE_TAKEN + " DESC"
+                );
+                if (vCursor != null) {
+                    while (vCursor.moveToNext()) {
+                        long id = vCursor.getLong(vCursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID));
+                        String displayName = vCursor.getString(vCursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME));
+                        long size = vCursor.getLong(vCursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE));
+                        long dateTaken = vCursor.getLong(vCursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_TAKEN));
+                        long dateModified = vCursor.getLong(vCursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED));
+                        long dateAdded = vCursor.getLong(vCursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED));
+                        int width = vCursor.getInt(vCursor.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH));
+                        int height = vCursor.getInt(vCursor.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT));
+                        String mimeType = vCursor.getString(vCursor.getColumnIndexOrThrow(MediaStore.Video.Media.MIME_TYPE));
+                        String path = vCursor.getString(vCursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA));
+                        String relativePath = null;
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            int rpc = vCursor.getColumnIndex(MediaStore.Video.Media.RELATIVE_PATH);
+                            if (rpc >= 0) relativePath = vCursor.getString(rpc);
+                        }
+                        Uri contentUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id);
+                        ImageInfo vi = new ImageInfo();
+                        vi.id = String.valueOf(id);
+                        String filePath = (path != null && !path.isEmpty()) ? path : relativePath;
+                        vi.uri = buildCombinedUri(contentUri.toString(), filePath);
+                        if (displayName == null || displayName.isEmpty()) displayName = "video_" + id + ".mp4";
+                        vi.fileName = displayName;
+                        vi.path = path;
+                        vi.relativePath = relativePath;
+                        vi.size = size;
+                        vi.dateTaken = dateTaken;
+                        vi.dateModified = dateModified * 1000;
+                        vi.dateAdded = dateAdded * 1000;
+                        vi.width = width;
+                        vi.height = height;
+                        vi.mimeType = (mimeType != null && !mimeType.isEmpty()) ? mimeType : "video/mp4";
+                        if (scanPaths == null || scanPaths.isEmpty() || isPathMatched(vi, scanPaths)) {
+                            images.add(vi);
+                        }
+                    }
+                    fileLogger.d(TAG, "🎬 视频扫描: " + vCursor.getCount() + " 个");
+                    vCursor.close();
+                }
+            } catch (Exception e) {
+                fileLogger.e(TAG, "❌ 视频扫描失败（不影响图片）: " + e.getMessage(), e);
+            }
         } catch (SecurityException e) {
             fileLogger.e(TAG, "❌ 目录扫描权限错误: " + e.getMessage(), e);
         } catch (Exception e) {
             fileLogger.e(TAG, "❌ 目录扫描失败: " + e.getMessage(), e);
         }
-        
-        fileLogger.d(TAG, "✅ scanDirectories返回 " + images.size() + " 张图片");
+
+        fileLogger.d(TAG, "✅ scanDirectories返回 " + images.size() + " 项（图片+视频）");
         return images;
     }
     

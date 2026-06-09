@@ -287,10 +287,10 @@ class ConfigService {
     const categoryMap = this.getCategoryNameMap();
     const displayOrder = this.getCategoryDisplayOrder();
     
-    // 按显示顺序返回分类信息。剔除被用户删除的内置分类（NA/other 为系统档，永不隐藏）。
+    // 按显示顺序返回分类信息。剔除被用户删除的内置分类（NA/NA_video/other 为系统档，永不隐藏）。
     return displayOrder
       .filter(categoryId => categoryMap[categoryId]) // 确保分类存在
-      .filter(categoryId => categoryId === 'NA' || categoryId === 'other' || !this.hiddenBuiltinSet.has(categoryId))
+      .filter(categoryId => categoryId === 'NA' || categoryId === 'NA_video' || categoryId === 'other' || !this.hiddenBuiltinSet.has(categoryId))
       .map(categoryId => ({
         id: categoryId,
         ...categoryMap[categoryId]

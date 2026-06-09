@@ -1235,6 +1235,12 @@ class UnifiedDataService {
     }
   }
 
+  /** 把未分类视频从 NA 迁到 NA_video（幂等）。扫描后调用，让旧版已扫进 NA 的视频归位。 */
+  async migrateUnclassifiedVideos() {
+    const r = await this.imageStorageService.migrateUnclassifiedVideosToNaVideo();
+    return r || { moved: 0 };
+  }
+
 
   /**
    * 批量删除图片

@@ -84,7 +84,8 @@ function toImageRecord(asset) {
     width: asset.width || 0,
     height: asset.height || 0,
     mimeType: asset.mimeType || 'image/jpeg',
-    category: systemCat || 'NA',
+    // 视频单独归入「待分类视频」(NA_video)，与未分类图片(NA)分开；手动分类后移到目标类。
+    category: systemCat || ((asset.isVideo || String(asset.mimeType || '').startsWith('video/')) ? 'NA_video' : 'NA'),
     confidence: systemCat ? 'system' : null,
     message: null,
     background_color: null,
@@ -224,6 +225,9 @@ class GalleryScannerService {
       const records = mergeScannerRecords(fresh, existing);
       emit({ stage: 'saving', message: `落库 ${records.length} 张…`, processed: 0, total: records.length });
       await UnifiedDataService.writeImageDetailedInfo(records, true);
+
+      // 把旧版已扫进 NA 的视频迁到「待分类视频」NA_video（幂等；新扫的视频 toImageRecord 已直接落 NA_video）。
+      try { await UnifiedDataService.migrateUnclassifiedVideos(); } catch (_) {}
 
       const duration = Date.now() - this.scanStartTimestamp.getTime();
       // 标记本次扫描完成 —— HomeScreen 通过 settings.lastScanTime 判断 hasScanned，
@@ -415,6 +419,8 @@ class GalleryScannerService {
         for (const image of batch) {
           // 批内逐张可停（快引擎 BATCH=20 时也能即时停，不必等整批跑完）。
           if (this._stopRequested) { stoppedByUser = true; break; }
+          // 视频：第一阶段仅支持手动分类，自动分类跳过（保持待分类）。
+          if (String(image.mimeType || '').startsWith('video/')) continue;
           try {
             const imageUri = getUri(image) || image?.uri;
             if (!imageUri) { failedCount++; continue; }

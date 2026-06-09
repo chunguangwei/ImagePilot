@@ -73,7 +73,7 @@ export function getCategoryList() {
         // 自定义分类的判定规则（{id: rule}）——带进提示词，让本地模型按规则归入自定义类（对齐在线模型）。
         const rules = (typeof ConfigService.getCustomCategoryRules === 'function') ? (ConfigService.getCustomCategoryRules() || {}) : {};
         const list = arr
-          .filter((x) => x && x.id && x.id !== 'NA')
+          .filter((x) => x && x.id && x.id !== 'NA' && x.id !== 'NA_video')   // NA/NA_video 是系统待分类桶，不作分类目标
           .map((x) => ({ id: x.id, zh: x.chinese || x.name || x.id, en: x.english || x.id, rule: rules[x.id] || '' }));
         // ⚠️ getAllCategoriesWithUI 只含「内置分类」(categoryNameMap∩displayOrder)，不含自定义分类！
         // 必须在此补上自定义分类，否则本地模型清单里根本没有它们 → 永远分不进、全落 other。

@@ -28,15 +28,18 @@ export function sortCategoryList(list) {
   const rest = [];
   let otherItem = null;
   let naItem = null;
+  let naVideoItem = null;
   for (const item of list) {
     if (!item || !item.id) { rest.push(item); continue; }
     if (item.id === 'other') { otherItem = item; continue; }
     if (item.id === 'NA') { naItem = item; continue; }
+    if (item.id === 'NA_video') { naVideoItem = item; continue; }
     rest.push(item);
   }
   const result = rest;
   if (otherItem) result.push(otherItem);
   if (naItem) result.push(naItem);
+  if (naVideoItem) result.push(naVideoItem);   // 「待分类视频」紧跟「待分类」之后（最末位）
   return result;
 }
 

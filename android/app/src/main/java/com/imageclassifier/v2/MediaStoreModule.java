@@ -316,6 +316,30 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
         }
     }
 
+    /**
+     * 用系统播放器播放视频（ACTION_VIEW intent）。combinedUri 为 "content://...||/path" 格式，
+     * 取 || 前的 content uri；没有则原样用。授予临时读权限给外部播放器。
+     */
+    @ReactMethod
+    public void playVideo(String combinedUri, Promise promise) {
+        try {
+            String uriStr = combinedUri == null ? "" : combinedUri;
+            int sep = uriStr.indexOf("||");
+            if (sep >= 0) uriStr = uriStr.substring(0, sep);
+            if (uriStr.isEmpty()) { promise.reject("E_PLAY", "空 uri"); return; }
+            Uri videoUri = Uri.parse(uriStr);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(videoUri, "video/*");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            Activity activity = getCurrentActivity();
+            Context ctx = (activity != null) ? activity : getReactApplicationContext();
+            ctx.startActivity(intent);
+            promise.resolve(true);
+        } catch (Exception e) {
+            promise.reject("E_PLAY", e.getMessage());
+        }
+    }
+
     @ReactMethod
     public void getFileInfo(String filePath, Promise promise) {
         try {
