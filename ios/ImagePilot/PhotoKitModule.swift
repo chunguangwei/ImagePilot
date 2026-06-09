@@ -26,6 +26,7 @@ import Photos
 import PhotosUI
 import React
 import UIKit
+import AVKit
 
 @objc(PhotoKitModule)
 class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
@@ -51,8 +52,9 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
       guard let self = self else { return }
       let opts = PHFetchOptions()
       opts.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-      opts.predicate = NSPredicate(format: "isHidden == NO")
-      self.observerFetchResult = PHAsset.fetchAssets(with: .image, options: opts)
+      opts.predicate = NSPredicate(format: "isHidden == NO AND (mediaType == %d OR mediaType == %d)",
+                                   PHAssetMediaType.image.rawValue, PHAssetMediaType.video.rawValue)
+      self.observerFetchResult = PHAsset.fetchAssets(with: opts)
       PHPhotoLibrary.shared().register(self)
     }
   }
@@ -94,9 +96,12 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
 
   /// 与 fetchAllPhotos 同形状的 PHAsset → JS dict 转换；diff 推送和初扫共用。
   private static func assetToDict(_ asset: PHAsset) -> [String: Any] {
+    let isVideo = asset.mediaType == .video
     let resources = PHAssetResource.assetResources(for: asset)
-    let primary = resources.first(where: { $0.type == .photo || $0.type == .fullSizePhoto }) ?? resources.first
-    let fileName = primary?.originalFilename ?? "\(asset.localIdentifier).jpg"
+    let primary = isVideo
+      ? (resources.first(where: { $0.type == .video || $0.type == .fullSizeVideo }) ?? resources.first)
+      : (resources.first(where: { $0.type == .photo || $0.type == .fullSizePhoto }) ?? resources.first)
+    let fileName = primary?.originalFilename ?? "\(asset.localIdentifier)\(isVideo ? ".mov" : ".jpg")"
     let fileSize = (primary?.value(forKey: "fileSize") as? Int64) ?? 0
     let takenAt = Int64((asset.creationDate?.timeIntervalSince1970 ?? 0) * 1000)
     // PhotoKit mediaSubtypes 暴露的系统级标记（私有 vision 标签拿不到，只能用这些）
@@ -109,11 +114,12 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
     let isBurst = asset.representsBurst
 
     let lowerName = fileName.lowercased()
-    let mimeType: String =
-      lowerName.hasSuffix(".png") ? "image/png" :
-      lowerName.hasSuffix(".heic") ? "image/heic" :
-      lowerName.hasSuffix(".gif") ? "image/gif" :
-      "image/jpeg"
+    let mimeType: String = isVideo
+      ? (lowerName.hasSuffix(".mp4") ? "video/mp4" : lowerName.hasSuffix(".m4v") ? "video/x-m4v" : "video/quicktime")
+      : (lowerName.hasSuffix(".png") ? "image/png" :
+         lowerName.hasSuffix(".heic") ? "image/heic" :
+         lowerName.hasSuffix(".gif") ? "image/gif" :
+         "image/jpeg")
 
     // GPS：PHAsset.location 是 CLLocation?，由系统从原图 EXIF 抽好缓存在 Photos DB 里——
     // 拿它比我们自己解 EXIF 快几个数量级（不用打开图像数据）。
@@ -148,6 +154,9 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
       "isLive": isLive,
       "isDepthEffect": isDepthEffect,
       "isBurst": isBurst,
+      // 视频：isVideo 标记 + 时长(秒)。uri 仍是 ph://，PhotoKit 对视频会返回封面帧作缩略图。
+      "isVideo": isVideo,
+      "duration": isVideo ? asset.duration : 0,
     ]
     // 把 nil 字段交给 JS 层默认值（toImageRecord），不在 dict 里塞 NSNull
     if let lat = lat { dict["latitude"] = lat }
@@ -208,10 +217,11 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
     DispatchQueue.global(qos: .userInitiated).async {
       let options = PHFetchOptions()
       options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-      // 排除已"最近删除"里的图——它们的 fileSize 通常已置 0，扫了也没意义
-      options.predicate = NSPredicate(format: "isHidden == NO")
+      // 排除已"最近删除"里的图；同时纳入图片 + 视频（视频后续显示缩略图+手动分类）。
+      options.predicate = NSPredicate(format: "isHidden == NO AND (mediaType == %d OR mediaType == %d)",
+                                      PHAssetMediaType.image.rawValue, PHAssetMediaType.video.rawValue)
 
-      let fetchResult = PHAsset.fetchAssets(with: .image, options: options)
+      let fetchResult = PHAsset.fetchAssets(with: options)
       var items: [[String: Any]] = []
       items.reserveCapacity(fetchResult.count)
 
@@ -223,6 +233,43 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
         resolve(["count": items.count, "items": items])
       }
     }
+  }
+
+  // MARK: - 播放视频（系统播放器 AVPlayerViewController）
+
+  /// 用系统播放器播放指定 localIdentifier 的视频（支持 iCloud 下载）。
+  @objc(playVideo:resolver:rejecter:)
+  func playVideo(_ localIdentifier: String,
+                 resolver resolve: @escaping RCTPromiseResolveBlock,
+                 rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let fetch = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
+    guard let asset = fetch.firstObject, asset.mediaType == .video else {
+      reject("E_NO_VIDEO", "未找到该视频", nil); return
+    }
+    let opts = PHVideoRequestOptions()
+    opts.isNetworkAccessAllowed = true   // 允许下载 iCloud 视频
+    opts.deliveryMode = .automatic
+    PHImageManager.default().requestPlayerItem(forVideo: asset, options: opts) { playerItem, _ in
+      DispatchQueue.main.async {
+        guard let playerItem = playerItem else { reject("E_PLAY", "无法加载视频", nil); return }
+        let player = AVPlayer(playerItem: playerItem)
+        let vc = AVPlayerViewController()
+        vc.player = player
+        guard let root = Self.topViewController() else { reject("E_NO_VC", "无可用控制器", nil); return }
+        root.present(vc, animated: true) { player.play() }
+        resolve(true)
+      }
+    }
+  }
+
+  /// 找当前最顶层 VC 用于 present。
+  private static func topViewController() -> UIViewController? {
+    let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+    let keyWindow = scenes.flatMap { $0.windows }.first(where: { $0.isKeyWindow })
+      ?? scenes.first?.windows.first
+    var top = keyWindow?.rootViewController
+    while let presented = top?.presentedViewController { top = presented }
+    return top
   }
 
   // MARK: - Limited Library Picker（iOS 14+，"仅允许部分照片"层级专用）

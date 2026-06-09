@@ -46,6 +46,10 @@
       "chinese": "待分类",
       "english": "to be classified"
     },
+    "NA_video": {
+      "chinese": "待分类视频",
+      "english": "Unclassified Videos"
+    },
     "qrcode": {
       "chinese": "二维码",
       "english": "QR Code"
@@ -121,7 +125,8 @@
     "screenshot",
     "qrcode",
     "other",
-    "NA"
+    "NA",
+    "NA_video"
   ],
   "objectMappings": {
     "animals": "pets",

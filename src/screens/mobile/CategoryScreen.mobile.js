@@ -932,6 +932,27 @@ const CategoryScreen = ({ route, navigation }) => {
   /**
    * 执行批量操作
    */
+  // 播放视频：iOS 调系统播放器(PhotoKitModule.playVideo)；安卓系统播放器 intent 后续接入。
+  const playVideoRecord = async (image) => {
+    const id = image?.id || image?.localIdentifier;
+    const PhotoKitModule = NativeModules && NativeModules.PhotoKitModule;
+    try {
+      if (PhotoKitModule && typeof PhotoKitModule.playVideo === 'function') {
+        await PhotoKitModule.playVideo(id);
+        return;
+      }
+      const MediaStoreModule = NativeModules && NativeModules.MediaStoreModule;
+      if (MediaStoreModule && typeof MediaStoreModule.playVideo === 'function') {
+        await MediaStoreModule.playVideo(image?.uri || id);   // Android：系统播放器 intent
+        return;
+      }
+      Alert.alert(t('common.tip'), t('category.videoPlaySoon', { defaultValue: '视频播放即将支持' }));
+    } catch (e) {
+      logger.warn('播放视频失败:', e?.message || e);
+      Alert.alert(t('settings.operationFailed'), t('category.videoPlayError', { defaultValue: '播放失败' }));
+    }
+  };
+
   const handleBatchAction = async (actionId) => {
     try {
       // 点击任意底部按钮时，自动收起“照片创玩”面板
@@ -1842,6 +1863,8 @@ const CategoryScreen = ({ route, navigation }) => {
                     onPress={() => {
                       if (selectionMode) {
                         toggleImageSelection(image.id);
+                      } else if (String(image.mimeType || '').startsWith('video/')) {
+                        playVideoRecord(image);   // 视频 → 调系统播放器
                       } else {
                         // 注意：不需要在这里更新高亮，因为返回时会通过 returnedImageId 自动设置高亮
                         const allImages = Object.values(groupedImages).flat();
@@ -1869,6 +1892,11 @@ const CategoryScreen = ({ route, navigation }) => {
                       style={styles.timelineImage}
                       resizeMode="cover"
                     />
+                    {String(image.mimeType || '').startsWith('video/') && (
+                      <View style={styles.videoBadge} pointerEvents="none">
+                        <Text style={styles.videoBadgeIcon}>▶</Text>
+                      </View>
+                    )}
                     {selectionMode && (
                       <View style={[
                         styles.timelineSelectionOverlay,
@@ -2315,6 +2343,22 @@ const createStyles = (c) => StyleSheet.create({
   timelineImage: {
     width: '100%',
     height: '100%',
+  },
+  videoBadge: {
+    position: 'absolute',
+    right: 4,
+    bottom: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoBadgeIcon: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    marginLeft: 1,
   },
   timelineSelectionOverlay: {
     position: 'absolute',

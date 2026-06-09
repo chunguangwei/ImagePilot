@@ -2852,10 +2852,31 @@ class ImageStorageService {
   }
 
   // 批量更新图片分类ID（统一接口，内部处理平台差异）
+  /**
+   * 把「未分类的视频」从 NA 迁到 NA_video（一次性/幂等）。供旧版已扫进 NA 的视频归位用。
+   * 只动 category='NA' 且 mimeType 为 video/* 的记录，不影响已手动分类的视频。
+   */
+  async migrateUnclassifiedVideosToNaVideo() {
+    try {
+      if (Platform.OS === 'web') return { moved: 0 };
+      await this.ensureInitialized();
+      const [res] = await this.storage.db.executeSql(
+        "UPDATE images SET category = 'NA_video', updatedAt = ? WHERE category = 'NA' AND mimeType LIKE 'video/%'",
+        [new Date().toISOString()]
+      );
+      const moved = (res && res.rowsAffected) || 0;
+      if (moved > 0) logger.debug(`[migrate] ${moved} 个未分类视频 NA → NA_video`);
+      return { moved };
+    } catch (e) {
+      logger.warn('迁移未分类视频失败:', e?.message || e);
+      return { moved: 0 };
+    }
+  }
+
   async batchUpdateImageCategory(imageIds, newCategory, newConfidence = 'manual') {
     try {
       await this.ensureInitialized();
-      
+
       logger.debug(`🔄 批量更新图片分类: ${imageIds.length}张图片 -> ${newCategory}`);
       
       if (!imageIds || imageIds.length === 0) {

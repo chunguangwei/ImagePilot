@@ -386,6 +386,7 @@ const HomeScreen = ({ navigation }) => {
       if (Platform.Version >= 33) {
         permissions = [
           PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
           PermissionsAndroid.PERMISSIONS.ACCESS_MEDIA_LOCATION,
         ];
       } else {
@@ -1110,6 +1111,7 @@ const HomeScreen = ({ navigation }) => {
         logger.debug('📋 Android 13+，请求新的媒体权限和通知权限');
         permissions = [
           PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO, // 视频读取（待分类视频）
           PermissionsAndroid.PERMISSIONS.ACCESS_MEDIA_LOCATION, // 读取照片GPS信息
           PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS, // 通知权限（用于前台服务）
         ];

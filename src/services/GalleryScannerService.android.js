@@ -523,6 +523,8 @@ class GalleryScannerService {
     logger.info('🚀 启动 JS 端离线 AI 分类（MobileNetV3，绕过 native scanner）');
     this.isScanning = true;
     this._stopRequested = false;   // 用户停止标志（requestStop 置 true，循环逐张检测后优雅退出）
+    // 视频先从 NA 迁到「待分类视频」NA_video（原生扫描把视频按 NA 入库）→ 不进下面的分类集。
+    try { await UnifiedDataService.migrateUnclassifiedVideos(); } catch (_) {}
     this.scanStartTimestamp = scanStartTime || new Date();
 
     try {
@@ -582,6 +584,8 @@ class GalleryScannerService {
           // 批内逐张可停（快引擎 BATCH=20 时也能即时停，不必等整批 20 张跑完）。
           // 已分类的（本批已累积的 + 之前批次已落库的）保留；剩余 NA 图下次扫描续。
           if (this._stopRequested) { stoppedByUser = true; break; }
+          // 视频：第一阶段仅支持手动分类，自动分类跳过（保持待分类）。
+          if (String(image.mimeType || '').startsWith('video/')) continue;
           try {
             const imageUri = getUri(image) || image?.uri;
             if (!imageUri) { failedCount++; continue; }

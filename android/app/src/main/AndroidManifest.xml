@@ -23,6 +23,7 @@
     
     <!-- 媒体权限 - Android 13+ (API 33+) -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.WRITE_MEDIA_IMAGES" />
     
     <!-- 管理所有文件权限 - Android 11+ (API 30+) 用于删除其他应用创建的文件 -->
