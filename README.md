@@ -9,7 +9,7 @@
 
 **ImagePilot** 是一款隐私优先的智能照片分类管理工具：默认全程本地离线分类（设备端 ONNX），可选配置你自己的大模型做在线增强；并内置从 GitHub 一键升级的能力。支持 Android（React Native）与 PC 桌面（Electron / react-native-web），已验证平台为 Android 与 PC。
 
-> 本项目以 MIT 许可证开源，早期基于上游 ImageClassifier 起步，现已作为独立产品演进（移除原作者公网后端、统一走用户自配大模型、自建 GitHub 升级通道等）。上游致谢见文末「致谢」。
+> 本项目以 **PolyForm Noncommercial License 1.0.0** 授权：**非商业用途免费，商业用途须事先获作者书面同意**（详见文末「授权 / License」）。早期基于上游 ImageClassifier 起步，现已作为独立产品演进（移除原作者公网后端、统一走用户自配大模型、自建 GitHub 升级通道等）。上游致谢见文末「致谢」。
 
 ### 核心优势
 
@@ -523,9 +523,21 @@ Scoped Storage 下，删除其他应用拍/截的图需要用户授权。v1.2.1 
 
 查看 [CHANGELOG](CHANGELOG.md) 或 [Releases](https://github.com/chunguangwei/ImagePilot/releases) 了解早期版本详情。
 
-## 📄 许可证
+## 📄 授权 / License
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+本项目采用 **PolyForm Noncommercial License 1.0.0** 授权（全文见 [LICENSE](LICENSE)）。
+This project is licensed under the **PolyForm Noncommercial License 1.0.0** (see [LICENSE](LICENSE)).
+
+| | 用途 / Use | 说明 / Terms |
+|---|---|---|
+| ✅ | **非商业 / Noncommercial** | 个人、学习、研究、业余、非营利、教育、政府等用途 —— **免费**使用、修改、分发。<br>Personal, study, research, hobby, nonprofit, educational, governmental use — **free** to use, modify, distribute. |
+| ⛔ | **商业 / Commercial** | 任何商业用途**须事先获得作者书面同意**。<br>Any commercial use requires **prior written consent** from the author. |
+
+> **商业授权 / Commercial licensing**：请联系 / contact **chunguangwee@gmail.com**
+>
+> 分发时请保留版权与 `Required Notice` 声明。Retain the copyright and `Required Notice` when distributing.
+
+Copyright (c) 2026 Chunguang Wei（魏春光）
 
 ## 📞 联系与反馈
 
