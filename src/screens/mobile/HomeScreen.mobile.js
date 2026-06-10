@@ -2533,6 +2533,13 @@ const HomeScreen = ({ navigation }) => {
         >
           <Text style={[styles.headerTitle, { color: c.label }]}>{t('app.name')}</Text>
         </Pressable>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Search')}
+          style={styles.headerSearchBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          {HomeIonicons ? <HomeIonicons name="search" size={22} color={c.label} /> : <Text style={{ fontSize: 20 }}>🔍</Text>}
+        </TouchableOpacity>
       </View>
 
       {/* 消息提示区（首扫前 globalMessage 为空 → 整条不渲染，避免占空高度） */}
@@ -2647,11 +2654,16 @@ const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
     backgroundColor: c.card,
     borderBottomWidth: 1,
     borderBottomColor: c.separator,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
   },
   headerTitleContainer: {
     // 让标题可以长按
+  },
+  headerSearchBtn: {
+    padding: 4,
   },
   headerTitle: {
     fontSize: 20,

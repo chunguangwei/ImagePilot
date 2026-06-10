@@ -244,6 +244,13 @@
     "selectEnhancePreset": "Select Enhance Preset",
     "selectEnhancePresetForImages": "Select enhance preset for {{count}} images"
   },
+  "search": {
+    "placeholder": "Search description, category, file name…",
+    "emptyTip": "Type a keyword to search by AI description / category / file name",
+    "noResults": "No photos match \"{{query}}\"",
+    "resultCount": "{{count}} result(s)",
+    "untaggedHint": "{{count}} photo(s) have no AI description yet — classify with the multimodal tier to make them searchable by description"
+  },
   "home": {
     "title": "Home",
     "ready": "Ready",

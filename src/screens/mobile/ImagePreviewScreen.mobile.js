@@ -2064,7 +2064,7 @@ const createStyles = (c) => StyleSheet.create({
     backgroundColor: c.card,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    maxHeight: SCREEN_HEIGHT * 0.6,
+    maxHeight: SCREEN_HEIGHT * 0.72,
   },
   infoPanelHeader: {
     flexDirection: 'row',
@@ -2086,9 +2086,9 @@ const createStyles = (c) => StyleSheet.create({
   infoContent: {
     padding: 16,
   },
-  // 滚动内容底部留白：让「分类」等最后一行与面板圆角底边之间有呼吸空间，不顶到边
+  // 滚动内容底部留白：让「分类」等最后一行与面板圆角底边之间有呼吸空间，不被底部操作栏裁掉
   infoContentContainer: {
-    paddingBottom: 12,
+    paddingBottom: 28,
   },
   infoRow: {
     flexDirection: 'row',

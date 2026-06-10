@@ -1230,6 +1230,10 @@ const CategoryScreen = ({ route, navigation }) => {
       ]);
       logger.debug(`[batchChangeCategory] step 3 done: processed=${result?.processed} errors=${result?.errors?.length || 0}`);
 
+      // 3.5 重建缓存计数：增量更新对「待分类视频」等场景偶发不生效（DB 已对、计数滞后），
+      // refreshCache 从 DB 重算 categoryCounts，首页聚焦重载即显示正确数量。
+      try { await UnifiedDataService.imageCache.refreshCache(); } catch (_) {}
+
       // 4. 更新失败数量（如果有）
       stage = 'update-progress-final';
       setUpdateProgress({ filesProcessed: result.processed, filesFailed: result.errors?.length || 0, total: imageIds.length });

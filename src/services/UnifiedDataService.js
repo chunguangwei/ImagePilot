@@ -306,6 +306,47 @@ class UnifiedDataService {
   }
 
   /**
+   * 按描述/关键词搜图：匹配 AI 描述(message) + 分类名 + 文件名 + 城市/国家。
+   * 语义搜索依赖 AI 描述（只有多模态档分类过的图才有）；未打描述的图统计出来提示用户。
+   * @param {string} query
+   * @returns {Promise<{results:Array, untaggedCount:number, total:number, withDescCount:number}>}
+   */
+  async searchImages(query) {
+    try {
+      const q = String(query || '').trim().toLowerCase();
+      await this.imageCache.buildCache();
+      const all = this.imageCache.getCache().allImages || [];
+      if (!q) return { results: [], untaggedCount: 0, total: all.length, withDescCount: 0 };
+      const terms = q.split(/\s+/).filter(Boolean);
+      const getCatName = (id) => {
+        try { return this.configService.getCategoryDisplayName(id, 'zh') || id; } catch (_) { return id; }
+      };
+      let untaggedCount = 0;
+      let withDescCount = 0;
+      const results = [];
+      for (const img of all) {
+        const desc = (img.message != null ? String(img.message) : '').trim();
+        if (desc) withDescCount++; else untaggedCount++;
+        const hay = [
+          desc,
+          getCatName(img.category),
+          img.fileName || '',
+          img.city || '',
+          img.country || '',
+        ].join(' ').toLowerCase();
+        if (hay.includes(q) || terms.every((t) => hay.includes(t))) {
+          results.push(img);
+        }
+      }
+      results.sort((a, b) => this._getImageTime(b) - this._getImageTime(a));
+      return { results, untaggedCount, total: all.length, withDescCount };
+    } catch (error) {
+      logger.error('searchImages 失败:', error);
+      return { results: [], untaggedCount: 0, total: 0, withDescCount: 0 };
+    }
+  }
+
+  /**
    * 按时间桶获取图片列表（时间倒序）
    * @param {string} timeKey - thisWeek | thisMonth | thisYear | lastYear | yearBeforeLast | YYYY | past
    * @returns {Promise<Array>}
@@ -1175,6 +1216,24 @@ class UnifiedDataService {
         return { success: true, processed: 0 };
       }
 
+      // 移回「待分类」时，视频应回「待分类视频」NA_video（而非图片的 NA）。混合选择则拆开分别处理。
+      if (newCategory === 'NA') {
+        try {
+          const all = this.imageCache.getCache().allImages || [];
+          const byId = new Map(all.map((i) => [i.id, i]));
+          const isVid = (id) => String(byId.get(id)?.mimeType || '').startsWith('video/');
+          const vidIds = imageIds.filter(isVid);
+          if (vidIds.length === imageIds.length) {
+            newCategory = 'NA_video';                 // 全是视频
+          } else if (vidIds.length > 0) {
+            const imgIds = imageIds.filter((id) => !isVid(id));
+            const rV = await this.updateImagesCategory(vidIds, 'NA_video', newConfidence);
+            const rI = await this.updateImagesCategory(imgIds, 'NA', newConfidence);
+            return { success: !!(rV.success && rI.success), processed: (rV.processed || 0) + (rI.processed || 0) };
+          }
+        } catch (_) { /* 取不到缓存就按原 newCategory 走 */ }
+      }
+
       let processed = 0;
       const errors = [];
 
@@ -1223,9 +1282,12 @@ class UnifiedDataService {
   async clearImagesClassification(imageIds) {
     try {
       if (!imageIds || imageIds.length === 0) return { success: true, processed: 0 };
+      // 视频退回「待分类视频」NA_video，图片退回 NA。
+      const all = this.imageCache.getCache().allImages || [];
+      const byId = new Map(all.map((i) => [i.id, i]));
       const arr = imageIds.map((id) => ({
         id,
-        category: 'NA',                 // 退回"待分类"
+        category: String(byId.get(id)?.mimeType || '').startsWith('video/') ? 'NA_video' : 'NA',
         message: null,                  // 清空 AI 描述
         confidence: 0,
         generalDetections: null,
