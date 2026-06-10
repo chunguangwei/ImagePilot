@@ -379,10 +379,15 @@ class GalleryScannerService {
         await UnifiedDataService.imageCache.buildCache();
         try { naImages = await UnifiedDataService.readImagesByCategory('NA'); }
         catch (e) { logger.error('❌ 读取 NA 图片失败:', e); naImages = []; }
+        // 待分类视频也纳入自动分类：抽中间帧走同一图片分类链路（抽帧失败保持 NA_video）
+        try {
+          const naVideos = await UnifiedDataService.readImagesByCategory('NA_video');
+          if (naVideos && naVideos.length > 0) naImages = naImages.concat(naVideos);
+        } catch (_) {}
       }
       this.totalImagesToBeClassified = naImages.length;
       this.imagesClassified = 0;
-      logger.info(`📊 [iOS] 离线分类目标：${naImages.length} 张 NA 图片`);
+      logger.info(`📊 [iOS] 离线分类目标：${naImages.length} 张 NA 图片（含待分类视频）`);
 
       await this.sendProgressMessage('initializing', 0, naImages.length, 0, naImages.length);
       if (naImages.length === 0) {
@@ -419,10 +424,23 @@ class GalleryScannerService {
         for (const image of batch) {
           // 批内逐张可停（快引擎 BATCH=20 时也能即时停，不必等整批跑完）。
           if (this._stopRequested) { stoppedByUser = true; break; }
-          // 视频：第一阶段仅支持手动分类，自动分类跳过（保持待分类）。
-          if (String(image.mimeType || '').startsWith('video/')) continue;
+          const isVideo = String(image.mimeType || '').startsWith('video/');
+          let frameTemp = null;
           try {
-            const imageUri = getUri(image) || image?.uri;
+            let imageUri;
+            if (isVideo) {
+              // 视频自动分类：抽中间帧 → 走同一图片分类链路（封面帧常黑场，中点更具代表性）
+              try {
+                const localId = String(image.uri || '').replace(/^ph:\/\//, '');
+                frameTemp = await NativeModules.PhotoKitModule.extractVideoFrame(localId);
+              } catch (fe) {
+                logger.warn(`⚠️ [iOS] 视频抽帧失败（保持待分类视频）: ${fe?.message || fe}`);
+                failedCount++; continue;
+              }
+              imageUri = frameTemp;
+            } else {
+              imageUri = getUri(image) || image?.uri;
+            }
             if (!imageUri) { failedCount++; continue; }
             // P1: 按 tier 路由（basic→ImageNet / scene→Places365 / clip→未接入回退）
             const r = await classifyImageByTier(imageUri, activeTier, { imageClassifier: this.imageClassifier });
@@ -457,6 +475,9 @@ class GalleryScannerService {
           } catch (e) {
             logger.warn(`⚠️ [iOS] 离线分类单张失败: ${e?.message || e}`);
             failedCount++;
+          } finally {
+            // 删抽帧临时文件（失败无妨，tmp 系统会自清）
+            if (frameTemp) { try { await RNFS.unlink(frameTemp.replace(/^file:\/\//, '')); } catch (_) {} }
           }
         }
         if (classificationDataArray.length > 0) {

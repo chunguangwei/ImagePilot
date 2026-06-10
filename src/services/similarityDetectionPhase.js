@@ -7,9 +7,10 @@ import UnifiedDataService from './UnifiedDataService';
  * @returns {boolean} 如果应该排除返回true，否则返回false
  */
 function shouldExcludeFromSimilarityDetection(image) {
-  if (!image || !image.category) {
-    return false;
-  }
+  if (!image) return false;
+  // 视频不参与相似度检测（直方图等图片算法对视频 uri 无意义/会失败）
+  if (String(image.mimeType || '').startsWith('video/')) return true;
+  if (!image.category) return false;
   // 排除以下分类：手机截图、二维码、证件照
   const excludedCategories = ['screenshot', 'qrcode', 'idcard'];
   return excludedCategories.includes(image.category);

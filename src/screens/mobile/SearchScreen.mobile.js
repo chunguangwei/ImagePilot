@@ -75,7 +75,7 @@ export default function SearchScreen({ navigation }) {
   };
 
   const onPressItem = (image, index) => {
-    if (isVideoRecord(image)) { playVideoRecord(image); return; }
+    // 视频也进预览页（海报帧+居中▶）：可查看信息/改分类/编辑描述，点▶才播放
     navigation.navigate('ImagePreview', {
       image,
       allImages: results,

@@ -1,7 +1,9 @@
 # iOS Archive 上传 App Store 操作步骤
 
 > 对照本工程：workspace `ios/ImagePilot.xcworkspace`、scheme `ImagePilot`、
-> bundle id `com.chunguangwei.imagepilot`、Team `L35RLT89XN`、当前版本 `1.5.17` / build `1`。
+> bundle id `com.chunguangwei.imagepilot`、Team `L35RLT89XN`。
+> 版本号/build 号以 `ios/ImagePilot.xcodeproj` 里的 `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` 为准
+> （build 号上传前 +1，可叫 Claude 代办，见第 6 节）。
 > 全程用 **Xcode 图形界面**最稳；命令行方式见文末附录。
 
 ---
@@ -83,9 +85,13 @@ build 处理完后（会收到邮件）：
 
 - **build 号必须递增**：改 `ios/ImagePilot.xcodeproj` 的 `CURRENT_PROJECT_VERSION`
   （现在是 1 → 下次 2、3…），否则上传会被拒"build 号已存在"。
+  **👉 此步交给 Claude 代办**：Archive 前对 Claude 说一句「准备上 App Store，把 build 号 +1」即可
+  （它会把 pbxproj 里两处 `CURRENT_PROJECT_VERSION` 同步递增并提交）。
 - **版本号(MARKETING_VERSION)**：发新版本时按
   `.cursor/skills/update-version/SKILL.md` 一起改（含 iOS 两处）。
 - 同一个 MARKETING_VERSION 下可以传多个递增的 build（如修小问题重传）。
+- 隐私清单 `ios/ImagePilot/PrivacyInfo.xcprivacy` 已含 FileTimestamp/UserDefaults/SystemBootTime/DiskSpace
+  四类 Required Reason 声明（2026-06 校验过），新增第三方 SDK 时才需要重审。
 
 ---
 

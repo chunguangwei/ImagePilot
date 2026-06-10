@@ -242,7 +242,12 @@
     "removingFromStaging": "Removing {{count}} images from staging box",
     "processingImages": "Processing Images",
     "selectEnhancePreset": "Select Enhance Preset",
-    "selectEnhancePresetForImages": "Select enhance preset for {{count}} images"
+    "selectEnhancePresetForImages": "Select enhance preset for {{count}} images",
+    "aiClassify": "AI Classify",
+    "confirmAIClassifyTitle": "AI Classify",
+    "confirmAIClassifyMessage": "Re-classify the {{count}} selected item(s) with the classifier model in Settings (videos use an extracted frame).",
+    "aiClassifyPartialFail": "{{count}} item(s) failed to classify (kept as-is). Try again later.",
+    "aiClassifyError": "AI classification failed"
   },
   "search": {
     "placeholder": "Search description, category, file name…",
@@ -514,7 +519,13 @@
     "localPresets": {
       "cutout": "Remove BG",
       "inpaint": "Erase"
-    }
+    },
+    "addDescription": "Tap to add a description (searchable)",
+    "editDescription": "Edit AI Description",
+    "descPlaceholder": "Write a description — you can find this photo by it in Search…",
+    "descSearchableTip": "After saving, you can find it in Search by this description",
+    "descSaved": "Description saved",
+    "descSaveFailed": "Save failed"
   },
   "enhanceResult": {
     "defaultPresetName": "Photo Enhancement",
@@ -806,7 +817,12 @@
       "speedFast": "Fast",
       "speedMedium": "Medium",
       "speedSlowest": "Slowest",
-      "tierLabel": { "basic": "Object recognition", "scene": "Scene recognition", "clip": "AI smart recognition", "vlm": "Multimodal LLM" },
+      "tierLabel": {
+        "basic": "Object recognition",
+        "scene": "Scene recognition",
+        "clip": "AI smart recognition",
+        "vlm": "Multimodal LLM"
+      },
       "tierDesc": {
         "basic": "Recognizes concrete objects in photos: items, animals, food, devices, etc.",
         "scene": "Recognizes the scene: kitchen / beach / office / classroom and 365 more",

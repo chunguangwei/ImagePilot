@@ -213,6 +213,8 @@ const CategoryScreen = ({ route, navigation }) => {
           ...(filterType === 'category' && filterValue === 'NA'
             ? []
             : [{ id: 'clearClassification', label: t('category.clearClassification', { defaultValue: '清理分类' }), iconKey: 'clearClassify', emoji: '♻️' }]),
+          // AI 分类：对选中图/视频按设置的分类模型重跑（与"清理分类"对称，清完可立即重分）
+          { id: 'aiClassify', label: t('category.aiClassify', { defaultValue: 'AI 分类' }), iconKey: 'aiClassify', emoji: '🤖' },
           { id: 'share', label: t('category.share'), iconKey: 'share', emoji: '📤' },
         ];
 
@@ -979,6 +981,9 @@ const CategoryScreen = ({ route, navigation }) => {
         case 'clearClassification':
           await batchClearClassification(selectedIds);
           break;
+        case 'aiClassify':
+          await batchAIClassify(selectedIds);
+          break;
         case 'delete':
           await batchDelete(selectedIds);
           break;
@@ -1438,6 +1443,56 @@ const CategoryScreen = ({ route, navigation }) => {
   };
 
   /**
+   * 对选中图/视频跑 AI 分类（设备端，按设置的分类模型档位；视频自动抽中间帧）。
+   * 复用扫描服务的 aiImageClassifyByContent(time, imagesToClassify) 指定图模式。
+   */
+  const batchAIClassify = async (imageIds) => {
+    Alert.alert(
+      t('category.confirmAIClassifyTitle', { defaultValue: 'AI 分类' }),
+      t('category.confirmAIClassifyMessage', { count: imageIds.length, defaultValue: `用设置中的分类模型对选中的 ${imageIds.length} 张重新分类（视频自动抽帧）。` }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.confirm', { defaultValue: '确定' }),
+          onPress: async () => {
+            try {
+              const records = images.filter((img) => imageIds.includes(img.id));
+              imageIds.forEach((id) => UnifiedDataService.setImageSelection(id, false));
+              setSelectionMode(false);
+              setShowUpdateProgress(true);
+              setUpdateOperationType('aiClassify');
+              setUpdateProgress({ filesProcessed: 0, filesFailed: 0, total: records.length });
+
+              const GalleryScannerService = (await import('../../services/GalleryScannerService')).default;
+              const svc = new GalleryScannerService();
+              await svc.initialize();
+              svc.onProgress = (p) => {
+                if (p && typeof p.imagesClassified === 'number') {
+                  setUpdateProgress((prev) => ({ ...prev, filesProcessed: p.imagesClassified }));
+                }
+              };
+              // forceLocal：走设备端档位（基础/场景/CLIP/多模态），小批量即点即分、离线可用
+              const result = await svc.aiImageClassifyByContent(new Date(), records, { forceLocal: true });
+
+              setShowUpdateProgress(false);
+              try { await UnifiedDataService.imageCache.refreshCache(); } catch (_) {}
+              await loadImages();   // 分好类的图离开当前视图（如在待分类视图）
+              const failed = (result && result.failedCount) || 0;
+              if (failed > 0) {
+                Alert.alert(t('common.tip'), t('category.aiClassifyPartialFail', { count: failed, defaultValue: `${failed} 张分类失败（保持原分类），可稍后重试。` }));
+              }
+            } catch (error) {
+              logger.error('❌ 批量AI分类失败:', error);
+              setShowUpdateProgress(false);
+              Alert.alert(t('settings.operationFailed'), error?.message || t('category.aiClassifyError', { defaultValue: 'AI 分类失败' }));
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  /**
    * 批量从暂存箱移除
    */
   const batchRemoveFromStagingBox = async (imageIds) => {
@@ -1867,9 +1922,9 @@ const CategoryScreen = ({ route, navigation }) => {
                     onPress={() => {
                       if (selectionMode) {
                         toggleImageSelection(image.id);
-                      } else if (String(image.mimeType || '').startsWith('video/')) {
-                        playVideoRecord(image);   // 视频 → 调系统播放器
                       } else {
+                        // 视频也进预览页（海报帧 + 居中▶播放键）：这样视频能查看信息/改分类/编辑描述，
+                        // 点▶才进系统播放器——与系统相册一致。
                         // 注意：不需要在这里更新高亮，因为返回时会通过 returnedImageId 自动设置高亮
                         const allImages = Object.values(groupedImages).flat();
                         const currentIndex = allImages.findIndex(img => img.id === image.id);

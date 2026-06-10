@@ -1216,8 +1216,8 @@ class UnifiedDataService {
         return { success: true, processed: 0 };
       }
 
-      // 移回「待分类」时，视频应回「待分类视频」NA_video（而非图片的 NA）。混合选择则拆开分别处理。
-      if (newCategory === 'NA') {
+      // 移回「待分类」时按介质路由：图片→NA、视频→NA_video（两边都防：传 NA 或 NA_video 均矫正）。
+      if (newCategory === 'NA' || newCategory === 'NA_video') {
         try {
           const all = this.imageCache.getCache().allImages || [];
           const byId = new Map(all.map((i) => [i.id, i]));
@@ -1225,7 +1225,9 @@ class UnifiedDataService {
           const vidIds = imageIds.filter(isVid);
           if (vidIds.length === imageIds.length) {
             newCategory = 'NA_video';                 // 全是视频
-          } else if (vidIds.length > 0) {
+          } else if (vidIds.length === 0) {
+            newCategory = 'NA';                       // 全是图片
+          } else {
             const imgIds = imageIds.filter((id) => !isVid(id));
             const rV = await this.updateImagesCategory(vidIds, 'NA_video', newConfidence);
             const rI = await this.updateImagesCategory(imgIds, 'NA', newConfidence);
@@ -1301,6 +1303,24 @@ class UnifiedDataService {
     } catch (error) {
       logger.error('清理图片分类失败:', error);
       throw error;
+    }
+  }
+
+  /**
+   * 人工编辑 AI 描述（message 字段）。
+   * 只动 message（存储层动态 SET 不会碰 category/检测结果）；改完描述立即可被搜索命中。
+   */
+  async updateImageDescription(imageId, message) {
+    try {
+      if (!imageId) return { success: false };
+      const text = String(message == null ? '' : message).trim();
+      const result = await this.batchUpdateClassification([{ id: imageId, message: text || null }], false);
+      try { await this.imageCache.refreshCache(); } catch (_) {}
+      logger.debug(`[updateImageDescription] ${imageId} → ${text ? `"${text.slice(0, 30)}…"` : '(清空)'}`);
+      return { success: !!(result && result.success), message: text || null };
+    } catch (error) {
+      logger.error('更新图片描述失败:', error);
+      return { success: false, error };
     }
   }
 
