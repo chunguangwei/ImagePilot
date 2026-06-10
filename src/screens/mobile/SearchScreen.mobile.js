@@ -284,6 +284,9 @@ export default function SearchScreen({ navigation, route }) {
 
   const renderItem = ({ item, index }) => {
     const uri = getUri(item) || item?.uri;
+    // 相似度角标：向量/颜色/AI 搜图模式下显示"像的程度"（百分比）
+    const score = item.vectorScore ?? item.similarScore ?? item.aiScore;
+    const showScore = (similarTo || aiTarget) && typeof score === 'number';
     return (
       <TouchableOpacity
         style={{ width: itemSize, height: itemSize, marginRight: (index % GRID_COLUMNS === GRID_COLUMNS - 1) ? 0 : GRID_GAP, marginBottom: GRID_GAP }}
@@ -291,6 +294,11 @@ export default function SearchScreen({ navigation, route }) {
         onPress={() => onPressItem(item, index)}
       >
         <Image source={{ uri }} style={styles.thumb} resizeMode="cover" />
+        {showScore && (
+          <View style={styles.scoreBadge} pointerEvents="none">
+            <Text style={styles.scoreBadgeText}>{Math.round(Math.min(1, score) * 100)}%</Text>
+          </View>
+        )}
         {isVideoRecord(item) && (
           <View style={[styles.videoBadge, formatDuration(item.duration) ? styles.videoBadgeWide : null]} pointerEvents="none">
             <Text style={styles.videoBadgeIcon}>
@@ -515,6 +523,8 @@ const styles = StyleSheet.create({
   countText: { fontSize: 12.5, marginBottom: 6, marginLeft: 2 },
   thumb: { width: '100%', height: '100%', borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.04)' },
   videoBadge: { position: 'absolute', right: 4, bottom: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
+  scoreBadge: { position: 'absolute', left: 4, top: 4, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 7, backgroundColor: 'rgba(0,0,0,0.55)' },
+  scoreBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
   videoBadgeWide: { width: undefined, paddingHorizontal: 6 },
   videoBadgeIcon: { color: '#FFFFFF', fontSize: 11, marginLeft: 1 },
 });

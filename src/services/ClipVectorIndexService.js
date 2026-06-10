@@ -11,6 +11,18 @@
  */
 import { logger } from '../adapters/WebAdapters';
 import UnifiedDataService from './UnifiedDataService';
+import i18n from '../i18n';
+
+/** 模型未下载的提示：用设置里的真实档位名（「AI 智能识别」），并跟随界面语言 */
+function modelMissingMessage() {
+  try {
+    return i18n.t('common:search.vectorModelMissing', {
+      defaultValue: '需先下载识别模型：设置 → 分类模型 → AI 智能识别',
+    });
+  } catch (_) {
+    return '需先下载识别模型：设置 → 分类模型 → AI 智能识别';
+  }
+}
 
 class ClipVectorIndexService {
   constructor() {
@@ -63,7 +75,7 @@ class ClipVectorIndexService {
     this._stopRequested = false;
     try {
       const resolved = await this._resolveModel();
-      if (!resolved) throw new Error('CLIP 模型未下载（设置 → 分类模型 → CLIP 档）');
+      if (!resolved) throw new Error(modelMissingMessage());
       const { clipModel, modelPath } = resolved;
       const { getImageEmbedding } = require('./classify/MobileCLIPClassifier');
       const { getUri } = require('../adapters/WebAdapters');
@@ -114,9 +126,11 @@ class ClipVectorIndexService {
    * @param {{id?:string, uri:string}} image
    * @returns {Promise<{results:Array, indexed:number}>} results 含 vectorScore
    */
-  async search(image, { limit = 60, minScore = 0.55 } = {}) {
+  // minScore 0.6：用户真机校准（2026-06-10）——60% 以上才算"像"，以下观感开始跑题。
+  // MobileCLIP 图-图余弦量纲：同场景 0.8+、同类不同张 0.5~0.7、无关 <0.3。
+  async search(image, { limit = 60, minScore = 0.6 } = {}) {
     const resolved = await this._resolveModel();
-    if (!resolved) throw new Error('CLIP 模型未下载（设置 → 分类模型 → CLIP 档）');
+    if (!resolved) throw new Error(modelMissingMessage());
     const { clipModel, modelPath } = resolved;
     const { getImageEmbedding, cosineSimilarity } = require('./classify/MobileCLIPClassifier');
     const { getUri } = require('../adapters/WebAdapters');

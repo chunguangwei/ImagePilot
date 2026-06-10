@@ -272,7 +272,8 @@
     "vectorNoIndex": "还没有 AI 向量索引：点下方按钮建立（每张图约 0.1~0.3 秒，仅需一次）",
     "vectorBuildBtn": "建立 AI 向量索引",
     "vectorBuilding": "建索引中 {{done}}/{{total}}…",
-    "vectorPartialIndex": "向量索引 {{indexed}}/{{total}}，点此补全（覆盖更多图）"
+    "vectorPartialIndex": "向量索引 {{indexed}}/{{total}}，点此补全（覆盖更多图）",
+    "vectorModelMissing": "需先下载识别模型：设置 → 分类模型 → AI 智能识别"
   },
   "home": {
     "title": "首页",

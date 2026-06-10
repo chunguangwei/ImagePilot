@@ -311,7 +311,7 @@ class UnifiedDataService {
    * @param {Object} image 目标图记录（需 id/uri）
    * @returns {Promise<{results:Array, indexedCount:number, total:number}>} results 含 similarScore
    */
-  async searchSimilarImages(image, { limit = 60, minScore = 0.55 } = {}) {
+  async searchSimilarImages(image, { limit = 60, minScore = 0.45 } = {}) {
     try {
       if (!image || (!image.id && !image.uri)) return { results: [], indexedCount: 0, total: 0 };
       await this.imageCache.buildCache();
