@@ -41,7 +41,7 @@ import * as UpdateService from '../../services/UpdateService';
 import cityLocationService from '../../services/CityLocationService';
 import SkeuomorphicCamera from '../../ui/ios/SkeuomorphicCamera';
 import { useIosColors } from '../../ui/ios/theme';
-import { sortCategoryList } from '../../components/shared/categoryUI';
+import { sortCategoryList, formatDuration } from '../../components/shared/categoryUI';
 import { logger, getUri, getLocalPath } from '../../adapters/WebAdapters';
 import { getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
 
@@ -129,9 +129,10 @@ const CategoryCard = React.memo(function CategoryCard({
   const handlePress = useCallback(() => {
     if (onPressById) onPressById(id);
   }, [id, onPressById]);
+  // 长按任意目录卡 → 对该目录内容跑 AI 分类（本地/云端），范围只限该目录（替代原「开始分类」按钮）
   const handleLongPress = useCallback(() => {
-    if (isNACategory && onLongPressNAById) onLongPressNAById(id);
-  }, [id, isNACategory, onLongPressNAById]);
+    if (onLongPressNAById) onLongPressNAById(id);
+  }, [id, onLongPressNAById]);
   // 「待分类视频」NA_video：有视频时显示最近一帧（不突兀），空态用摄像机图标；右上角播放角标标明视频桶。
   const isVideoCategory = id === 'NA_video';
   return (
@@ -162,16 +163,7 @@ const CategoryCard = React.memo(function CategoryCard({
           <Text style={styles.videoCatBadgeIcon}>▶</Text>
         </View>
       )}
-      {isNACategory && count > 0 && (
-        <TouchableOpacity
-          style={styles.naClassifyBtn}
-          onPress={handleLongPress}
-          activeOpacity={0.85}
-          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-        >
-          <Text style={styles.naClassifyBtnText} numberOfLines={1}>{naClassifyLabel || '开始分类'}</Text>
-        </TouchableOpacity>
-      )}
+      {/* 「开始分类」按钮已移除：统一改为长按目录卡触发 AI 分类（范围限该目录） */}
     </TouchableOpacity>
   );
 });
@@ -269,6 +261,7 @@ const HomeScreen = ({ navigation }) => {
   // 最近照片
   const [recentImages, setRecentImages] = useState([]);
   const [recentImagesTotal, setRecentImagesTotal] = useState(0); // 新发现照片的总数
+  const [memories, setMemories] = useState([]); // 回忆/那年今天（历年同月同日）
   const [isRefreshingRecent, setIsRefreshingRecent] = useState(false); // 「重新检测」按钮 loading 态
   
   // 扫描状态
@@ -512,6 +505,7 @@ const HomeScreen = ({ navigation }) => {
       await Promise.all([
         loadCategories(),
         loadRecentImages(),
+        (async () => loadMemories())(),
       ]);
 
       // 延迟加载次要数据（第二优先级）：先 Promise.all 拿原始数据，再一次性 setState 批处理
@@ -732,6 +726,32 @@ const HomeScreen = ({ navigation }) => {
       logger.error('❌ 加载新发现照片失败:', error);
       setRecentImages([]);
       setRecentImagesTotal(0);
+    }
+  };
+
+  /**
+   * 回忆/那年今天：取历年「同月同日」拍的照片/视频（takenAt），按时间倒序。
+   * 纯内存过滤（毫秒级），无 DB 改动。
+   */
+  const loadMemories = () => {
+    try {
+      const all = GlobalImageCache.getCache().allImages || [];
+      const now = new Date();
+      const m = now.getMonth(); const d = now.getDate(); const y = now.getFullYear();
+      const out = [];
+      for (const img of all) {
+        const ts = (img && (img.takenAt || img.timestamp)) || 0;
+        if (!ts || ts <= 0) continue;
+        const dt = new Date(ts);
+        if (dt.getMonth() === m && dt.getDate() === d && dt.getFullYear() < y) {
+          out.push({ ...img, memoryYear: dt.getFullYear() });
+        }
+      }
+      out.sort((a, b) => ((b.takenAt || b.timestamp) || 0) - ((a.takenAt || a.timestamp) || 0));
+      setMemories(out.slice(0, 30));   // 上限 30，横滑展示足够
+    } catch (e) {
+      logger.debug('回忆加载失败:', e?.message || e);
+      setMemories([]);
     }
   };
 
@@ -1225,17 +1245,24 @@ const HomeScreen = ({ navigation }) => {
   /**
    * 处理NA分类的AI分类（长按待分类卡片时触发）
    */
-  const handleAIClassifyNA = async () => {
+  // categoryId 为空 = 旧行为（NA+NA_video 全量）；传入则只分类该目录的内容（长按目录卡触发）
+  const handleAIClassifyNA = async (categoryId = null) => {
     // 检查是否正在扫描中
     if (isScanning) {
       Alert.alert(t('common.tip'), t('home.scanAlreadyInProgress'));
       return;
     }
 
-    // 从缓存获取待分类数量（图片 NA + 待分类视频 NA_video，视频走抽帧自动分类）
+    // 从缓存获取数量：指定目录只数该目录；否则待分类全量（图片 NA + 视频 NA_video）
     const cache = GlobalImageCache.getCache();
     const categoryCounts = cache.categoryCounts || {};
-    const naCount = (categoryCounts['NA'] || 0) + (categoryCounts['NA_video'] || 0);
+    const naCount = categoryId
+      ? (categoryCounts[categoryId] || 0)
+      : (categoryCounts['NA'] || 0) + (categoryCounts['NA_video'] || 0);
+    if (naCount === 0) {
+      Alert.alert(t('common.tip'), t('home.aiClassifyEmptyCategory', { defaultValue: '该目录暂无内容可分类' }));
+      return;
+    }
 
     // 判断是否已配置在线大模型（active 非 local-onnx 即视为已配置）
     let isLLMConfigured = false;
@@ -1258,12 +1285,12 @@ const HomeScreen = ({ navigation }) => {
           {
             text: t('home.aiClassifyUseLocal'),
             style: 'default',
-            onPress: async () => { await executeAIClassify({ forceLocal: true, naCount }); },
+            onPress: async () => { await executeAIClassify({ forceLocal: true, naCount, categoryId }); },
           },
           {
             text: t('home.aiClassifyUseCloud'),
             style: 'default',
-            onPress: async () => { await executeAIClassify({ forceLocal: false, naCount }); },
+            onPress: async () => { await executeAIClassify({ forceLocal: false, naCount, categoryId }); },
           },
         ],
       );
@@ -1277,7 +1304,7 @@ const HomeScreen = ({ navigation }) => {
           {
             text: t('common.confirm'),
             style: 'default',
-            onPress: async () => { await executeAIClassify({ forceLocal: true, naCount }); },
+            onPress: async () => { await executeAIClassify({ forceLocal: true, naCount, categoryId }); },
           },
         ],
       );
@@ -1288,7 +1315,7 @@ const HomeScreen = ({ navigation }) => {
    * 执行AI分类（确认后执行）
    */
   // 弹出"大模型失败→改用离线模型"兜底确认框
-  const promptLocalFallback = (message) => {
+  const promptLocalFallback = (message, categoryId = null) => {
     Alert.alert(
       t('home.aiClassifyLLMFailTitle'),
       message,
@@ -1297,7 +1324,7 @@ const HomeScreen = ({ navigation }) => {
         {
           text: t('common.confirm'),
           style: 'default',
-          onPress: async () => { await executeAIClassify({ forceLocal: true }); },
+          onPress: async () => { await executeAIClassify({ forceLocal: true, categoryId }); },
         },
       ],
     );
@@ -1346,8 +1373,25 @@ const HomeScreen = ({ navigation }) => {
         }
       };
       
-      // 启动分类（按内容）。forceLocal=true 走设备端离线模型，否则走配置的在线大模型
-      const result = await galleryScannerService.aiImageClassifyByContent(new Date(), null, { forceLocal });
+      // 启动分类（按内容）。forceLocal=true 走设备端离线模型，否则走配置的在线大模型。
+      // 指定 categoryId（长按目录卡）→ 只取该目录的记录传入，分类范围限定在该目录。
+      let imagesToClassify = null;
+      if (opts.categoryId) {
+        try {
+          imagesToClassify = await UnifiedDataService.readImagesByCategory(opts.categoryId);
+        } catch (e) {
+          logger.warn('读取目录记录失败:', e?.message || e);
+          imagesToClassify = [];
+        }
+        if (!imagesToClassify || imagesToClassify.length === 0) {
+          setIsScanning(false);
+          if (typeof window !== 'undefined') window.isScanning = false;
+          setGlobalMessage('');
+          Alert.alert(t('common.tip'), t('home.aiClassifyEmptyCategory', { defaultValue: '该目录暂无内容可分类' }));
+          return;
+        }
+      }
+      const result = await galleryScannerService.aiImageClassifyByContent(new Date(), imagesToClassify, { forceLocal });
 
       logger.debug('✅ AI分类完成');
       setGlobalMessage(t('home.aiClassificationComplete'));
@@ -1366,14 +1410,14 @@ const HomeScreen = ({ navigation }) => {
       const failedCount = result && typeof result.failedCount === 'number' ? result.failedCount : 0;
       if (!forceLocal && failedCount > 0) {
         logger.warn(`⚠️ 大模型分类仍有 ${failedCount} 张失败，提示离线兜底`);
-        promptLocalFallback(t('home.aiClassifyLLMFailMessage', { count: failedCount }));
+        promptLocalFallback(t('home.aiClassifyLLMFailMessage', { count: failedCount }), opts.categoryId);
       }
     } catch (error) {
       logger.error('❌ AI分类失败:', error);
       setGlobalMessage(t('home.aiClassificationFailed', { error: error.message }));
       if (!forceLocal) {
         // 在线大模型分类整体出错 → 提示改用离线模型兜底
-        promptLocalFallback(t('home.aiClassifyLLMFailMessageGeneric', { error: error.message || '' }));
+        promptLocalFallback(t('home.aiClassifyLLMFailMessageGeneric', { error: error.message || '' }), opts.categoryId);
       } else {
         // 离线模型路径失败：若像首次下载/网络问题，给更友好的可重试提示（审核网络差也不至于看不懂）
         const msg = String(error?.message || '');
@@ -1730,11 +1774,11 @@ const HomeScreen = ({ navigation }) => {
   const handleAIClassifyNARef = useRef(null);
   handleAIClassifyNARef.current = handleAIClassifyNA;
   const handleCategoryLongPressNAById = useCallback((categoryId) => {
-    if (categoryId === 'NA' || categoryId === 'NA_video') {   // 待分类视频同样可启动（抽帧自动分类）
-      logger.debug('🤖 长按待分类卡片，启动AI分类');
-      const fn = handleAIClassifyNARef.current;
-      if (typeof fn === 'function') fn();
-    }
+    // 长按任意目录卡 → 对该目录跑 AI 分类（范围限该目录：NA 只分图片、NA_video 只分视频、
+    // 其它目录=对已分类内容重新分类）
+    logger.debug(`🤖 长按目录卡 ${categoryId}，启动AI分类`);
+    const fn = handleAIClassifyNARef.current;
+    if (typeof fn === 'function') fn(categoryId);
   }, []);
 
   /**
@@ -2462,10 +2506,12 @@ const HomeScreen = ({ navigation }) => {
                     style={styles.recentGridImage}
                     resizeMode="cover"
                   />
-                  {/* 视频角标 */}
+                  {/* 视频角标（带时长） */}
                   {String(image?.mimeType || '').startsWith('video/') && (
-                    <View style={styles.videoCatBadge} pointerEvents="none">
-                      <Text style={styles.videoCatBadgeIcon}>▶</Text>
+                    <View style={[styles.videoCatBadge, formatDuration(image?.duration) ? styles.videoCatBadgeWide : null]} pointerEvents="none">
+                      <Text style={styles.videoCatBadgeIcon}>
+                        {'▶'}{formatDuration(image?.duration) ? ` ${formatDuration(image?.duration)}` : ''}
+                      </Text>
                     </View>
                   )}
                   {/* 目录标签覆盖层 */}
@@ -2479,6 +2525,50 @@ const HomeScreen = ({ navigation }) => {
             })}
           </View>
         )}
+      </View>
+    );
+  };
+
+  /**
+   * 回忆/那年今天：横滑卡片，年份角标；点进预览（回忆集合内左右滑）。无回忆不渲染。
+   */
+  const renderMemoriesSection = () => {
+    if (!memories || memories.length === 0) return null;
+    return (
+      <View style={[styles.section, dynSection]}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleContainer}>
+            <SectionIcon name="calendar-outline" emoji="🕰️" tint="#AF52DE" />
+            <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>
+              {t('home.memoriesTitle', { defaultValue: '那年今天' })}
+            </Text>
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeText}>{memories.length}</Text>
+            </View>
+          </View>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 2 }}>
+          {memories.map((img, idx) => (
+            <TouchableOpacity
+              key={img.id || idx}
+              style={styles.memoryItem}
+              activeOpacity={0.85}
+              onPress={() => navigation && navigation.navigate('ImagePreview', {
+                image: img, allImages: memories, currentIndex: idx, fromScreen: 'Home',
+              })}
+            >
+              <Image source={{ uri: getUri(img) || img?.uri }} style={styles.memoryImage} resizeMode="cover" />
+              <View style={styles.memoryYearBadge} pointerEvents="none">
+                <Text style={styles.memoryYearText}>{img.memoryYear}</Text>
+              </View>
+              {String(img?.mimeType || '').startsWith('video/') && (
+                <View style={styles.memoryPlayBadge} pointerEvents="none">
+                  <Text style={styles.videoCatBadgeIcon}>▶</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
     );
   };
@@ -2586,6 +2676,7 @@ const HomeScreen = ({ navigation }) => {
             <Text style={styles.welcomeHint}>{t('home.welcomeHint')}</Text>
           </View>
         ) : null}
+        {renderMemoriesSection()}
         {renderTimeSection()}
         {renderCategoriesSection()}
         {renderCitiesSection()}
@@ -2871,6 +2962,42 @@ const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
     position: 'absolute',
     right: 6,
     bottom: 30,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // 有时长时变药丸：▶ 0:32
+  videoCatBadgeWide: {
+    width: undefined,
+    paddingHorizontal: 6,
+  },
+  // 回忆/那年今天（横滑卡片）
+  memoryItem: {
+    width: 108,
+    height: 144,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginRight: 8,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  memoryImage: { width: '100%', height: '100%' },
+  memoryYearBadge: {
+    position: 'absolute',
+    left: 6,
+    top: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  memoryYearText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
+  memoryPlayBadge: {
+    position: 'absolute',
+    right: 6,
+    bottom: 6,
     width: 22,
     height: 22,
     borderRadius: 11,

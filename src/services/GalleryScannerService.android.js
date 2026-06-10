@@ -508,6 +508,12 @@ class GalleryScannerService {
     if (this.isScanning) {
       logger.info('🛑 用户请求停止分类（保留已分类结果，剩余下次续扫）');
       this._stopRequested = true;
+      // 原生基础扫描阶段（EXIF/截图检测，长循环在 Java）也要能停——通知原生置停止标志
+      try {
+        if (GalleryScanModule && typeof GalleryScanModule.stopScan === 'function') {
+          GalleryScanModule.stopScan().catch(() => {});
+        }
+      } catch (_) { /* 原生不可用时仅停 JS 循环 */ }
     }
   }
 
@@ -701,10 +707,15 @@ class GalleryScannerService {
         await UnifiedDataService.imageCache.buildCache();
         try { naImages = await UnifiedDataService.readImagesByCategory('NA'); }
         catch (e) { logger.error('❌ 读取 NA 图片失败:', e); naImages = []; }
+        // 待分类视频也纳入云端分类（抽中间帧上传）
+        try {
+          const naVideos = await UnifiedDataService.readImagesByCategory('NA_video');
+          if (naVideos && naVideos.length > 0) naImages = naImages.concat(naVideos);
+        } catch (_) {}
       }
       this.totalImagesToBeClassified = naImages.length;
       this.imagesClassified = 0;
-      logger.info(`📊 JS 云端分类目标：${naImages.length} 张 NA 图片`);
+      logger.info(`📊 JS 云端分类目标：${naImages.length} 张 NA 图片（含待分类视频）`);
       await this.sendProgressMessage('initializing', 0, naImages.length, 0, naImages.length);
 
       if (naImages.length === 0) {
@@ -731,8 +742,19 @@ class GalleryScannerService {
         const inputs = [];
         const validResults = [];
         for (const image of batch) {
+          let frameTemp = null;
           try {
-            const sourceUri = getUri(image) || image?.uri;
+            let sourceUri = getUri(image) || image?.uri;
+            // 视频：抽中间帧 → 压缩上传（与设备端分类同策略；抽帧失败保持待分类视频）
+            if (String(image.mimeType || '').startsWith('video/')) {
+              try {
+                frameTemp = await NativeModules.MediaStoreModule.extractVideoFrame(image?.uri || String(image?.id || ''));
+                sourceUri = frameTemp;
+              } catch (fe) {
+                logger.warn(`⚠️ 云端分类视频抽帧失败: ${fe?.message || fe}`);
+                failedCount++; continue;
+              }
+            }
             if (!sourceUri) { failedCount++; continue; }
             const resized = await ImageProcessor.resizeImage(sourceUri, CLOUD_LLM_MAX_EDGE, CLOUD_LLM_MAX_EDGE, {
               maintainAspectRatio: true, outputFormat: 'jpeg', quality: CLOUD_LLM_JPEG_QUALITY,
@@ -748,6 +770,8 @@ class GalleryScannerService {
           } catch (e) {
             logger.warn(`⚠️ 云端分类预处理失败: ${e?.message || e}`);
             failedCount++;
+          } finally {
+            if (frameTemp) { try { await RNFS.unlink(frameTemp.replace(/^file:\/\//, '')); } catch (_) {} }
           }
         }
         if (inputs.length === 0) continue;
@@ -1720,8 +1744,8 @@ class GalleryScannerService {
         this.lastLocationRefreshCount = filesProcessed;
         logger.debug(`🔄 位置信息补全刷新: 已处理 ${filesProcessed} 张图片（上次刷新: ${lastRefresh}）`);
       }
-    } else if (imagesClassified > 0 && imagesClassified - this.lastRefreshCount >= 50) {
-      // 其他阶段：每50张成功分类的图片刷新一次
+    } else if (imagesClassified > 0 && imagesClassified - this.lastRefreshCount >= 20) {
+      // 其他阶段：每20张成功分类刷新一次（与 iOS 对齐；分好的图边跑边归位，不用等全部完成）
       shouldRefresh = true;
       this.lastRefreshCount = imagesClassified;
     }
@@ -1771,6 +1795,8 @@ class GalleryScannerService {
       // 检查之前的设置
       logger.debug(`🔍 保存前检查: 之前耗时=${settings.lastScanDurationSeconds}秒`);
       
+      // 记录上一次扫描时间：「新发现照片」=自上上次扫描以来的新增（否则刚扫完就清空，两次扫描间拍的永远看不到）
+      if (settings.lastScanTime) settings.prevScanTime = settings.lastScanTime;
       settings.lastScanTime = new Date().toISOString();
       settings.lastScanDuration = totalScanDuration; // 毫秒
       settings.lastScanDurationSeconds = Math.round(totalScanDuration / 1000); // 秒

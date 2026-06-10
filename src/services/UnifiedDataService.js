@@ -306,6 +306,140 @@ class UnifiedDataService {
   }
 
   /**
+   * 以图搜图：用目标图的颜色直方图特征与全库特征索引（image_features 表）比对，按相似度排序。
+   * 特征索引在「相似照片检测」时顺手建立；目标图无索引则现算一张（百毫秒级）。
+   * @param {Object} image 目标图记录（需 id/uri）
+   * @returns {Promise<{results:Array, indexedCount:number, total:number}>} results 含 similarScore
+   */
+  async searchSimilarImages(image, { limit = 60, minScore = 0.45 } = {}) {
+    try {
+      if (!image || (!image.id && !image.uri)) return { results: [], indexedCount: 0, total: 0 };
+      await this.imageCache.buildCache();
+      const sim = require('./ImageSimilarityService.js').default;
+      const featuresMap = await this.imageStorageService.readAllImageFeatures();
+      let target = image.id ? featuresMap[image.id] : null;
+      if (!target || !target.color_histogram) {
+        target = await sim.extractFeaturesForImage(image);   // 现算目标图特征（库外图也支持，如 AI 搜图选的图）
+        if (image.id && target && target.color_histogram) {
+          this.imageStorageService.saveImageFeaturesBatch([{ imageId: image.id, features: target }]).catch(() => {});
+        }
+      }
+      const all = this.imageCache.getCache().allImages || [];
+      const indexedCount = Object.keys(featuresMap).length;
+      if (!target || !target.color_histogram) {
+        return { results: [], indexedCount, total: all.length };
+      }
+      const scored = [];
+      for (const img of all) {
+        if (!img || img.id === image.id) continue;
+        if (String(img.mimeType || '').startsWith('video/')) continue;   // 视频不参与（直方图对视频无意义）
+        const f = featuresMap[img.id];
+        if (!f || !f.color_histogram) continue;
+        const score = sim.scoreFeatureSimilarity(target, f);
+        if (score >= minScore) scored.push({ ...img, similarScore: score });
+      }
+      scored.sort((a, b) => b.similarScore - a.similarScore);
+      return { results: scored.slice(0, limit), indexedCount, total: all.length };
+    } catch (error) {
+      logger.error('以图搜图失败:', error);
+      return { results: [], indexedCount: 0, total: 0 };
+    }
+  }
+
+  /** 文本 → 字符 bigram 集合（去空白/标点、转小写）。中文无分词，bigram 比 token 稳。 */
+  _bigrams(text) {
+    const s = String(text || '').toLowerCase().replace(/[\s\p{P}]+/gu, '');
+    const set = new Set();
+    for (let i = 0; i < s.length - 1; i++) set.add(s.slice(i, i + 2));
+    return set;
+  }
+
+  /**
+   * 文本相似度（0-1）：bigram Dice 系数（对称）。适合「描述 vs 描述」。
+   */
+  _textSimilarity(a, b) {
+    const g1 = this._bigrams(a); const g2 = this._bigrams(b);
+    if (g1.size === 0 || g2.size === 0) return 0;
+    let inter = 0;
+    for (const g of g1) { if (g2.has(g)) inter++; }
+    return (2 * inter) / (g1.size + g2.size);
+  }
+
+  /**
+   * 查询包含度（0-1）：查询的 bigram 被文档覆盖的比例（非对称）。
+   * 适合「短查询 vs 长描述」——Dice 会被长度差惩罚，这里只看查询词覆盖率。
+   */
+  _gramContainment(queryText, docText) {
+    const q = this._bigrams(queryText); const d = this._bigrams(docText);
+    if (q.size === 0 || d.size === 0) return 0;
+    let inter = 0;
+    for (const g of q) { if (d.has(g)) inter++; }
+    return inter / q.size;
+  }
+
+  /**
+   * 语义文字搜图：查询短语与库中 AI 描述(message)+分类名 做 bigram 包含度匹配。
+   * 与关键字搜图（子串精确匹配）互补：写"狗在草地上跑"也能命中"草坪上奔跑的小狗"这类描述。
+   * @returns {Promise<{results:Array, untaggedCount:number, total:number}>} results 含 aiScore
+   */
+  async searchBySemanticText(query, { limit = 80, minScore = 0.45 } = {}) {
+    try {
+      const q = String(query || '').trim();
+      if (!q) return { results: [], untaggedCount: 0, total: 0 };
+      await this.imageCache.buildCache();
+      const all = this.imageCache.getCache().allImages || [];
+      let untagged = 0;
+      const nameMap = (() => {
+        try { return require('./ConfigService').default.getCategoryNameMap() || {}; } catch (_) { return {}; }
+      })();
+      const scored = [];
+      for (const img of all) {
+        if (!img || !img.id) continue;
+        if (!img.message) { untagged++; }
+        const catName = (nameMap[img.category] && (nameMap[img.category].chinese || nameMap[img.category].english)) || '';
+        const doc = `${img.message || ''} ${catName}`;
+        const score = this._gramContainment(q, doc);
+        if (score >= minScore) scored.push({ ...img, aiScore: score });
+      }
+      scored.sort((a, b) => b.aiScore - a.aiScore || ((b.takenAt || 0) - (a.takenAt || 0)));
+      return { results: scored.slice(0, limit), untaggedCount: untagged, total: all.length };
+    } catch (error) {
+      logger.error('语义搜图失败:', error);
+      return { results: [], untaggedCount: 0, total: 0 };
+    }
+  }
+
+  /**
+   * AI 搜图（语义以图搜图）：给定目标图的 AI 分类信息（category + 描述），
+   * 与库中已分类内容（分类强权重 + AI 描述 bigram 相似度）比对，按分数排序。
+   * 含视频；零库侧成本（直接复用已有分类成果）。
+   * @param {{category:string|null, desc:string}} target
+   * @returns {Promise<{results:Array, total:number}>} results 含 aiScore
+   */
+  async searchByAISemantics(target, { limit = 80 } = {}) {
+    try {
+      const cat = target && target.category && target.category !== 'other' ? target.category : null;
+      const desc = (target && target.desc) || '';
+      await this.imageCache.buildCache();
+      const all = this.imageCache.getCache().allImages || [];
+      const scored = [];
+      for (const img of all) {
+        if (!img || !img.id) continue;
+        const catMatch = !!(cat && img.category === cat);
+        const descSim = desc && img.message ? this._textSimilarity(desc, img.message) : 0;
+        // 分类同桶 = 0.6 基分；描述相似最高加 0.4。无分类命中时描述要足够像才进结果。
+        if (!catMatch && descSim < 0.35) continue;
+        scored.push({ ...img, aiScore: (catMatch ? 0.6 : 0) + descSim * 0.4 });
+      }
+      scored.sort((a, b) => b.aiScore - a.aiScore || ((b.takenAt || 0) - (a.takenAt || 0)));
+      return { results: scored.slice(0, limit), total: all.length };
+    } catch (error) {
+      logger.error('AI 搜图失败:', error);
+      return { results: [], total: 0 };
+    }
+  }
+
+  /**
    * 按描述/关键词搜图：匹配 AI 描述(message) + 分类名 + 文件名 + 城市/国家。
    * 语义搜索依赖 AI 描述（只有多模态档分类过的图才有）；未打描述的图统计出来提示用户。
    * @param {string} query
@@ -542,18 +676,19 @@ class UnifiedDataService {
    */
   async readNewDiscoveredImages(limit = 12) {
     try {
-      // 获取上次扫描时间
+      // 获取扫描时间。「新发现」基准用 prevScanTime（上上次扫描）：
+      // 若用 lastScanTime，刚扫完该区就清空，两次扫描之间拍的内容扫完后也永远进不来（死循环）。
       const settings = await this.readSettings();
       const lastScanTime = settings?.lastScanTime;
-      
+
       if (!lastScanTime) {
         // 如果没有扫描记录，返回空结果
         logger.debug('没有扫描记录，返回空结果');
         return { total: 0, images: [] };
       }
-      
-      // 将 lastScanTime 转换为毫秒时间戳
-      const sinceTime = new Date(lastScanTime).getTime();
+
+      const baseTime = settings?.prevScanTime || lastScanTime;
+      const sinceTime = new Date(baseTime).getTime();
       
       if (isNaN(sinceTime)) {
         logger.error(`❌ lastScanTime 格式错误: ${lastScanTime}`);
@@ -592,7 +727,22 @@ class UnifiedDataService {
           offset: 0
         });
 
-        const allImages = mediaStoreService.convertBatchToCompatibleFormat(allResult.images || []);
+        let allImages = mediaStoreService.convertBatchToCompatibleFormat(allResult.images || []);
+
+        // MediaStore 查询只覆盖图片——视频从 DB 补（扫描已入库的视频按 takenAt 过滤），合并后按时间排
+        try {
+          const all = await this.readAllImages();
+          const newVideos = (Array.isArray(all) ? all : []).filter((img) =>
+            String(img.mimeType || '').startsWith('video/') &&
+            ((img.takenAt || img.timestamp || 0) >= sinceTime)
+          );
+          if (newVideos.length > 0) {
+            const seen = new Set(allImages.map((i) => i.id));
+            allImages = allImages.concat(newVideos.filter((v) => !seen.has(v.id)));
+            allImages.sort((a, b) => ((b.takenAt || b.timestamp || 0) - (a.takenAt || a.timestamp || 0)));
+          }
+        } catch (_) { /* 视频合并失败不影响图片展示 */ }
+
         const total = allImages.length;
 
         // 只返回前limit张用于显示

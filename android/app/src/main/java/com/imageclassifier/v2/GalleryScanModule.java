@@ -142,6 +142,20 @@ public class GalleryScanModule extends ReactContextBaseJavaModule {
     }
     
     /**
+     * 🛑 停止当前扫描（架构文档 3.3.2 设计的接口）。
+     * 优雅停止：已处理批次照常落库，剩余下次扫描自动续；停止后仍走 completeBasicScan 正常收尾。
+     */
+    @ReactMethod
+    public void stopScan(Promise promise) {
+        try {
+            GalleryScanService.requestStop();
+            promise.resolve(true);
+        } catch (Exception e) {
+            promise.reject("STOP_SCAN_ERROR", e.getMessage());
+        }
+    }
+
+    /**
      * 添加事件监听器（React Native NativeEventEmitter 要求）
      * @param eventName 事件名称
      */

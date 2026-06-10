@@ -276,6 +276,7 @@ class SQLiteAdapter {
         takenAt INTEGER,
         size INTEGER,
         mimeType TEXT,
+        duration REAL,
         width INTEGER,
         height INTEGER,
         createdAt TEXT,
@@ -343,6 +344,23 @@ class SQLiteAdapter {
         groupId TEXT PRIMARY KEY,
         imageIds TEXT,
         created_at TEXT
+      );
+
+      -- 图片特征表（颜色直方图等，相似检测时顺手持久化；以图搜图按此索引秒查）
+      CREATE TABLE IF NOT EXISTS image_features (
+        imageId TEXT PRIMARY KEY,
+        features TEXT,
+        updatedAt TEXT,
+        FOREIGN KEY (imageId) REFERENCES images(id) ON DELETE CASCADE
+      );
+
+      -- CLIP 向量索引表（AI 向量维度的以图搜图：L2 归一化 embedding，余弦=点积）
+      CREATE TABLE IF NOT EXISTS image_embeddings (
+        imageId TEXT PRIMARY KEY,
+        model TEXT,
+        vec TEXT,
+        updatedAt TEXT,
+        FOREIGN KEY (imageId) REFERENCES images(id) ON DELETE CASCADE
       );
 
       -- 暂存箱表
@@ -426,7 +444,8 @@ class SQLiteAdapter {
       { name: 'isoCategory', type: 'TEXT' },
       { name: 'apertureCategory', type: 'TEXT' },
       { name: 'shutterCategory', type: 'TEXT' },
-      { name: 'focalLengthCategory', type: 'TEXT' }
+      { name: 'focalLengthCategory', type: 'TEXT' },
+      { name: 'duration', type: 'REAL' }
     ];
     
     try {
@@ -682,12 +701,12 @@ class SQLiteAdapter {
             const sql = `
               INSERT OR REPLACE INTO images (
                 id, uri, fileName, category, confidence, timestamp, takenAt,
-                size, mimeType, width, height, createdAt, updatedAt,
+                size, mimeType, duration, width, height, createdAt, updatedAt,
                 latitude, longitude, altitude, accuracy,
                 address, city, country, province, district, street, locationSource, cityDistance,
                 idCardDetections, generalDetections, mobileNetV3Detections, imageDimensions, message,
                 cameraSettings, isoCategory, apertureCategory, shutterCategory, focalLengthCategory
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
             
             tx.executeSql(
@@ -702,6 +721,7 @@ class SQLiteAdapter {
                 image.takenAt,
                 image.size,
                 image.mimeType,
+                image.duration || 0,
                 image.width,
                 image.height,
                 image.createdAt,
@@ -3208,6 +3228,7 @@ class ImageStorageService {
           takenAt: row.takenAt,
           size: row.size,
           mimeType: row.mimeType,
+          duration: row.duration || 0,
           width: row.width,
           height: row.height,
           createdAt: row.createdAt,
@@ -3365,6 +3386,7 @@ class ImageStorageService {
           takenAt: row.takenAt,
           size: row.size,
           mimeType: row.mimeType,
+          duration: row.duration || 0,
           width: row.width,
           height: row.height,
           createdAt: row.createdAt,
@@ -3566,6 +3588,7 @@ class ImageStorageService {
             takenAt: row.takenAt,
             size: row.size,
             mimeType: row.mimeType,
+            duration: row.duration || 0,
             width: row.width,
             height: row.height,
             createdAt: row.createdAt,
@@ -4938,6 +4961,96 @@ class ImageStorageService {
    * 获取相似组索引
    * @returns {Promise<Object>} 相似组索引 {groupId: [imageId1, imageId2, ...]}
    */
+  /**
+   * 批量保存图片特征（颜色直方图等）。相似检测阶段顺手调用，给「以图搜图」建索引。
+   * @param {Array<{imageId: string, features: Object}>} entries
+   */
+  async saveImageFeaturesBatch(entries) {
+    try {
+      if (!entries || entries.length === 0) return true;
+      if (Platform.OS === 'web') return true;   // PC 端暂不支持以图搜图索引
+      await this.ensureInitialized();
+      const now = new Date().toISOString();
+      for (const e of entries) {
+        if (!e || !e.imageId || !e.features) continue;
+        await this.storage.db.executeSql(
+          'INSERT OR REPLACE INTO image_features (imageId, features, updatedAt) VALUES (?, ?, ?)',
+          [e.imageId, JSON.stringify(e.features), now]
+        );
+      }
+      return true;
+    } catch (error) {
+      logger.warn('保存图片特征失败:', error?.message || error);
+      return false;
+    }
+  }
+
+  /** 批量保存 CLIP 向量（量化 4 位小数省空间；L2 归一化向量，余弦=点积） */
+  async saveImageEmbeddingsBatch(entries, model) {
+    try {
+      if (!entries || entries.length === 0) return true;
+      if (Platform.OS === 'web') return true;
+      await this.ensureInitialized();
+      const now = new Date().toISOString();
+      for (const e of entries) {
+        if (!e || !e.imageId || !Array.isArray(e.vec)) continue;
+        const q = e.vec.map((v) => Math.round(v * 10000) / 10000);
+        await this.storage.db.executeSql(
+          'INSERT OR REPLACE INTO image_embeddings (imageId, model, vec, updatedAt) VALUES (?, ?, ?, ?)',
+          [e.imageId, model || '', JSON.stringify(q), now]
+        );
+      }
+      return true;
+    } catch (error) {
+      logger.warn('保存向量索引失败:', error?.message || error);
+      return false;
+    }
+  }
+
+  /** 读取全部 CLIP 向量 → { imageId: number[] }（仅指定模型的） */
+  async readAllImageEmbeddings(model) {
+    try {
+      if (Platform.OS === 'web') return {};
+      await this.ensureInitialized();
+      const results = await this.storage.db.executeSql(
+        'SELECT imageId, vec FROM image_embeddings WHERE model = ?', [model || '']
+      );
+      const result = results && results.length > 0 ? results[0] : null;
+      const map = {};
+      if (result && result.rows) {
+        for (let i = 0; i < result.rows.length; i++) {
+          const row = result.rows.item(i);
+          try { map[row.imageId] = JSON.parse(row.vec); } catch (_) {}
+        }
+      }
+      return map;
+    } catch (error) {
+      logger.warn('读取向量索引失败:', error?.message || error);
+      return {};
+    }
+  }
+
+  /** 读取全部图片特征 → { imageId: featuresObj }（以图搜图用） */
+  async readAllImageFeatures() {
+    try {
+      if (Platform.OS === 'web') return {};
+      await this.ensureInitialized();
+      const results = await this.storage.db.executeSql('SELECT imageId, features FROM image_features');
+      const result = results && results.length > 0 ? results[0] : null;
+      const map = {};
+      if (result && result.rows) {
+        for (let i = 0; i < result.rows.length; i++) {
+          const row = result.rows.item(i);
+          try { map[row.imageId] = JSON.parse(row.features); } catch (_) {}
+        }
+      }
+      return map;
+    } catch (error) {
+      logger.warn('读取图片特征失败:', error?.message || error);
+      return {};
+    }
+  }
+
   async getSimilarityGroupIndex() {
     try {
       await this.ensureInitialized();

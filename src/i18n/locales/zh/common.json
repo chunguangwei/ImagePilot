@@ -254,7 +254,26 @@
     "emptyTip": "输入关键词，按 AI 描述 / 分类 / 文件名搜图",
     "noResults": "没找到与「{{query}}」匹配的图",
     "resultCount": "{{count}} 张结果",
-    "untaggedHint": "还有 {{count}} 张图未打 AI 描述，用「多模态」档分类后才能被描述搜索到"
+    "untaggedHint": "还有 {{count}} 张图未打 AI 描述，用「多模态」档分类后才能被描述搜索到",
+    "similarTitle": "与此图相似的照片",
+    "similarNoIndex": "还没有建立特征索引：在首页「相似照片」里跑一次「重新检测」后即可以图搜图",
+    "similarNoResults": "没有找到相似的照片",
+    "modeKeyword": "关键字搜图",
+    "modeSemantic": "语义搜图",
+    "aiSearchTitle": "AI 搜图",
+    "aiSearchEngineAsk": "用哪种引擎识别这张图？",
+    "aiSearchClassifying": "AI 识别图片中…（多模态档较慢）",
+    "aiSearchMatching": "正在比对相似内容…",
+    "aiSearchClassifyFail": "识别失败：未能为这张图生成分类信息，可换一张或换引擎重试。",
+    "aiSearchNoResults": "没有找到语义相近的内容（库里同类/相近描述的图越多，效果越好）",
+    "aiRecognizedAs": "AI 识别",
+    "similarTitleColor": "颜色相似（构图/色调）",
+    "similarTitleVector": "AI 相似（内容语义）",
+    "vectorNoIndex": "还没有 AI 向量索引：点下方按钮建立（每张图约 0.1~0.3 秒，仅需一次）",
+    "vectorBuildBtn": "建立 AI 向量索引",
+    "vectorBuilding": "建索引中 {{done}}/{{total}}…",
+    "vectorPartialIndex": "向量索引 {{indexed}}/{{total}}，点此补全（覆盖更多图）",
+    "vectorModelMissing": "需先下载识别模型：设置 → 分类模型 → AI 智能识别"
   },
   "home": {
     "title": "首页",
@@ -403,7 +422,9 @@
       "scanCompleted": "扫描完成: 处理了 {{count}} 张照片",
       "scanningDirectory": "扫描目录: {{directory}}",
       "classificationSuccess": "分类成功: {{classified}}/{{total}}"
-    }
+    },
+    "aiClassifyEmptyCategory": "该目录暂无内容可分类",
+    "memoriesTitle": "那年今天"
   },
   "imagePreview": {
     "similarGroup": "相似组",
@@ -525,7 +546,11 @@
     "descPlaceholder": "写点描述，搜索时可按它找到这张图…",
     "descSearchableTip": "保存后可在「搜索」中按这段描述找到它",
     "descSaved": "描述已保存",
-    "descSaveFailed": "保存失败"
+    "descSaveFailed": "保存失败",
+    "findSimilar": "找相似",
+    "findSimilarAsk": "按哪种相似度找？",
+    "similarByColor": "颜色相似（构图/色调）",
+    "similarByVector": "AI 相似（内容语义）"
   },
   "enhanceResult": {
     "defaultPresetName": "照片创玩",
