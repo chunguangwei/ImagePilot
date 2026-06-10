@@ -235,6 +235,45 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
     }
   }
 
+  // MARK: - 视频抽帧（自动分类用）
+
+  /// 取视频时长中点的一帧，存为 ≤1024px 的临时 JPEG，返回 file:// 路径。
+  /// 用于视频自动分类：中间帧 → 现有图片分类链路（封面帧常是黑场，中点更具代表性）。
+  @objc(extractVideoFrame:resolver:rejecter:)
+  func extractVideoFrame(_ localIdentifier: String,
+                         resolver resolve: @escaping RCTPromiseResolveBlock,
+                         rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let fetch = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
+    guard let asset = fetch.firstObject, asset.mediaType == .video else {
+      reject("E_NO_VIDEO", "未找到该视频", nil); return
+    }
+    let opts = PHVideoRequestOptions()
+    opts.isNetworkAccessAllowed = true   // 允许拉 iCloud 视频
+    opts.deliveryMode = .fastFormat      // 抽帧不需要高码率
+    PHImageManager.default().requestAVAsset(forVideo: asset, options: opts) { avAsset, _, _ in
+      guard let avAsset = avAsset else { reject("E_LOAD", "无法加载视频资源", nil); return }
+      let gen = AVAssetImageGenerator(asset: avAsset)
+      gen.appliesPreferredTrackTransform = true
+      gen.maximumSize = CGSize(width: 1024, height: 1024)
+      // 容差 ±1s：允许就近取关键帧，避免逐帧解码慢
+      let tol = CMTime(seconds: 1, preferredTimescale: 600)
+      gen.requestedTimeToleranceBefore = tol
+      gen.requestedTimeToleranceAfter = tol
+      let mid = CMTimeMultiplyByFloat64(avAsset.duration, multiplier: 0.5)
+      do {
+        let cg = try gen.copyCGImage(at: mid, actualTime: nil)
+        guard let data = UIImage(cgImage: cg).jpegData(compressionQuality: 0.85) else {
+          reject("E_JPEG", "帧编码失败", nil); return
+        }
+        let path = NSTemporaryDirectory() + "vframe_\(abs(localIdentifier.hashValue)).jpg"
+        try data.write(to: URL(fileURLWithPath: path))
+        resolve("file://" + path)
+      } catch {
+        reject("E_FRAME", error.localizedDescription, error)
+      }
+    }
+  }
+
   // MARK: - 播放视频（系统播放器 AVPlayerViewController）
 
   /// 用系统播放器播放指定 localIdentifier 的视频（支持 iCloud 下载）。

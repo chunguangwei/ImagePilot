@@ -1232,10 +1232,10 @@ const HomeScreen = ({ navigation }) => {
       return;
     }
 
-    // 从缓存获取待分类照片数量
+    // 从缓存获取待分类数量（图片 NA + 待分类视频 NA_video，视频走抽帧自动分类）
     const cache = GlobalImageCache.getCache();
     const categoryCounts = cache.categoryCounts || {};
-    const naCount = categoryCounts['NA'] || categoryCounts.NA || 0;
+    const naCount = (categoryCounts['NA'] || 0) + (categoryCounts['NA_video'] || 0);
 
     // 判断是否已配置在线大模型（active 非 local-onnx 即视为已配置）
     let isLLMConfigured = false;
@@ -1730,7 +1730,7 @@ const HomeScreen = ({ navigation }) => {
   const handleAIClassifyNARef = useRef(null);
   handleAIClassifyNARef.current = handleAIClassifyNA;
   const handleCategoryLongPressNAById = useCallback((categoryId) => {
-    if (categoryId === 'NA') {
+    if (categoryId === 'NA' || categoryId === 'NA_video') {   // 待分类视频同样可启动（抽帧自动分类）
       logger.debug('🤖 长按待分类卡片，启动AI分类');
       const fn = handleAIClassifyNARef.current;
       if (typeof fn === 'function') fn();
@@ -1748,7 +1748,7 @@ const HomeScreen = ({ navigation }) => {
       color={category.color}
       recentImages={category.recentImages}
       displayName={getCategoryDisplayName(category.id)}
-      isNACategory={category.id === 'NA'}
+      isNACategory={category.id === 'NA' || category.id === 'NA_video'}  // 待分类视频也给「开始分类」（抽帧自动分类）
       styles={styles}
       screenWidth={winW}
       onPressById={handleCategoryPressById}
@@ -2448,6 +2448,7 @@ const HomeScreen = ({ navigation }) => {
                   activeOpacity={0.8}
                   onPress={() => {
                     if (!navigation) return;
+                    // 视频也进预览页（海报帧+居中▶）：可查看信息/改分类/编辑描述，点▶才播放
                     navigation.navigate('ImagePreview', {
                       image,
                       allImages: recentImages,
@@ -2461,6 +2462,12 @@ const HomeScreen = ({ navigation }) => {
                     style={styles.recentGridImage}
                     resizeMode="cover"
                   />
+                  {/* 视频角标 */}
+                  {String(image?.mimeType || '').startsWith('video/') && (
+                    <View style={styles.videoCatBadge} pointerEvents="none">
+                      <Text style={styles.videoCatBadgeIcon}>▶</Text>
+                    </View>
+                  )}
                   {/* 目录标签覆盖层 */}
                   <View style={styles.categoryOverlay}>
                     <Text style={styles.categoryName} numberOfLines={1}>
@@ -2859,10 +2866,11 @@ const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
   // iOS 风格：底部细窄半透明条 + 系统字号；名称 semibold 96% 白，计数 regular 70% 白；
   // 去掉计数胶囊背景，靠透明度区分主次，更接近 Apple Photos 的标签呈现。
   // 覆盖在缩略图上的半透明黑底 + 白字，light/dark 都用同一套（与图片自身对比）
+  // ▶ 放右下角（名称栏正上方）：顶部留给「开始分类」按钮，互不遮挡
   videoCatBadge: {
     position: 'absolute',
     right: 6,
-    top: 6,
+    bottom: 30,
     width: 22,
     height: 22,
     borderRadius: 11,
@@ -3093,13 +3101,14 @@ const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
     color: c.tertiaryLabel,
   },
   // 待分类卡片：显式「开始分类」按钮（替代隐蔽长按）—— 顶部蓝色条，醒目可点。
+  // 精简药丸：只占内容宽、水平居中，不再通栏——避免盖住待分类视频卡右上角的 ▶ 角标
   naClassifyBtn: {
     position: 'absolute',
     top: 5,
-    left: 5,
-    right: 5,
+    alignSelf: 'center',
     paddingVertical: 3,
-    borderRadius: 9,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     backgroundColor: 'rgba(0, 122, 255, 0.96)',
     alignItems: 'center',
     justifyContent: 'center',

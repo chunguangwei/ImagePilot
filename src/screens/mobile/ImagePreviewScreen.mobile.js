@@ -27,6 +27,8 @@ import {
   Platform,
   Pressable,
   StatusBar,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { PinchGestureHandler, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
@@ -142,6 +144,8 @@ const ImagePreviewScreen = ({ route, navigation }) => {
   // 遮挡（操作栏含图标+标签+padding 实际 80~95px，不同机型/字号会变，写死必踩坑）。
   const [actionsBarHeight, setActionsBarHeight] = useState(90);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [descEditorVisible, setDescEditorVisible] = useState(false); // AI 描述人工编辑浮层
+  const [descDraft, setDescDraft] = useState('');
   const [showEnhancePresets, setShowEnhancePresets] = useState(false);
   const [enhancePresets, setEnhancePresets] = useState({});
   const flatListRef = useRef(null);
@@ -1258,6 +1262,22 @@ const ImagePreviewScreen = ({ route, navigation }) => {
   };
 
   /**
+   * 播放视频：iOS 系统播放器(PhotoKitModule)；安卓 ACTION_VIEW intent(MediaStoreModule)。
+   * 与 CategoryScreen.playVideoRecord 同逻辑（iOS 记录 id 即 localIdentifier）。
+   */
+  const playVideoRecord = async (image) => {
+    const id = image?.id || image?.localIdentifier;
+    try {
+      const pk = NativeModules && NativeModules.PhotoKitModule;
+      if (pk && typeof pk.playVideo === 'function') { await pk.playVideo(id); return; }
+      const ms = NativeModules && NativeModules.MediaStoreModule;
+      if (ms && typeof ms.playVideo === 'function') { await ms.playVideo(image?.uri || id); return; }
+    } catch (e) {
+      logger.warn('播放视频失败:', e?.message || e);
+    }
+  };
+
+  /**
    * 渲染图片信息（与 PC 端保持一致）
    */
   const renderImageInfo = () => {
@@ -1514,15 +1534,24 @@ const ImagePreviewScreen = ({ route, navigation }) => {
             );
           })()}
 
-          {/* AI 描述信息 - 独立显示，即使没有检测结果也显示 */}
-          {currentImage.message && currentImage.message !== t('imagePreview.classificationComplete') && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>🤖 {t('imagePreview.aiDescription') || 'AI 描述'}:</Text>
-              <Text style={styles.infoValue}>
-                {currentImage.message}
-              </Text>
-            </View>
-          )}
+          {/* AI 描述信息 - 可人工编辑（改完立即可被搜索命中）；无描述也显示"添加"入口 */}
+          {(() => {
+            const realMsg = (currentImage.message && currentImage.message !== t('imagePreview.classificationComplete'))
+              ? currentImage.message : '';
+            return (
+              <TouchableOpacity
+                style={styles.infoRow}
+                activeOpacity={0.6}
+                onPress={() => { setDescDraft(realMsg); setDescEditorVisible(true); }}
+              >
+                <Text style={styles.infoLabel}>🤖 {t('imagePreview.aiDescription') || 'AI 描述'}:</Text>
+                <Text style={[styles.infoValue, !realMsg && { color: cTheme.tertiaryLabel }]}>
+                  {realMsg || (t('imagePreview.addDescription') || '点此添加描述（可被搜索）')}
+                  <Text style={{ color: cTheme.tertiaryLabel }}>  ✏️</Text>
+                </Text>
+              </TouchableOpacity>
+            );
+          })()}
 
           {/* 检测结果 - 只有在检测到物体时才显示 */}
           {(currentImage.idCardDetections && currentImage.idCardDetections.length > 0) ||
@@ -1722,19 +1751,23 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           <Text style={styles.actionLabel}>{t('common.delete')}</Text>
         </TouchableOpacity>
 
-        {/* 照片创玩按钮（所有分类都显示） */}
-        <TouchableOpacity style={styles.actionButton} onPress={openEnhanceModal}>
-          {actIcon('enhance', '✨')}
-          <Text style={styles.actionLabel}>{t('imagePreview.enhance')}</Text>
-        </TouchableOpacity>
+        {/* 照片创玩 / 滤镜：仅图片可用——视频（任何漏网入口进来的）隐藏，避免对 video uri 做图像处理 */}
+        {!String(currentImage?.mimeType || '').startsWith('video/') && (
+          <>
+            <TouchableOpacity style={styles.actionButton} onPress={openEnhanceModal}>
+              {actIcon('enhance', '✨')}
+              <Text style={styles.actionLabel}>{t('imagePreview.enhance')}</Text>
+            </TouchableOpacity>
 
-        {/* 🆕 滤镜修图（jimp 本地处理，离线） */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => displayUri && navigation.navigate('FilterEditor', { imageUri: displayUri, image: currentImage })}>
-          {actIcon('filter', '🎨')}
-          <Text style={styles.actionLabel}>{t('imagePreview.filter')}</Text>
-        </TouchableOpacity>
+            {/* 🆕 滤镜修图（jimp 本地处理，离线） */}
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => displayUri && navigation.navigate('FilterEditor', { imageUri: displayUri, image: currentImage })}>
+              {actIcon('filter', '🎨')}
+              <Text style={styles.actionLabel}>{t('imagePreview.filter')}</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
         {/* 分类按钮 */}
         <TouchableOpacity style={styles.actionButton} onPress={openCategoryModal}>
@@ -1766,8 +1799,10 @@ const ImagePreviewScreen = ({ route, navigation }) => {
 
     const currentLang = i18n.language || 'zh';
     const language = currentLang === 'en' ? 'english' : 'chinese';
-    // 合入自定义分类、再做终态排序（其他倒数第二、待分类末位）
-    const merged = [...builtIn];
+    // 合入自定义分类、再做终态排序（其他倒数第二、待分类末位）。
+    // NA_video 排除：它与 NA 同显示名「待分类」，并列会选混；移到待分类时数据层会按
+    // mimeType 自动路由（图→NA、视频→NA_video），选择器只需给一个「待分类」入口。
+    const merged = [...builtIn].filter((c) => c.id !== 'NA_video');
     for (const c of customCategoryList) {
       if (merged.some((x) => x.id === c.id)) continue;
       merged.push({ id: c.id, chinese: c.name, english: c.name });
@@ -1933,6 +1968,16 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   </View>
                 )}
                 </View>
+                {/* 视频：海报帧上盖居中▶播放键（点▶进系统播放器；查看信息/改分类/编辑描述都在预览页完成） */}
+                {String(item?.mimeType || '').startsWith('video/') && (
+                  <TouchableOpacity
+                    style={styles.videoPlayOverlay}
+                    activeOpacity={0.8}
+                    onPress={() => playVideoRecord(item)}
+                  >
+                    <Text style={styles.videoPlayOverlayIcon}>▶</Text>
+                  </TouchableOpacity>
+                )}
               </Pressable>
             );
           }}
@@ -1950,6 +1995,61 @@ const ImagePreviewScreen = ({ route, navigation }) => {
 
       {/* 分类选择器模态框 */}
       {renderCategoryModal()}
+
+      {/* AI 描述编辑浮层（inline overlay，同 categoryModal 避开 RN iOS Modal 偶发不关 bug） */}
+      {descEditorVisible && (
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setDescEditorVisible(false)}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000, backgroundColor: 'rgba(0,0,0,0.45)' }}
+        >
+          {/* KAV 必须 flex:1 占满全屏，padding 行为才能把居中的卡片顶到键盘上方（同 CustomCategories 弹窗已验证方案） */}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1, justifyContent: 'center' }}
+            pointerEvents="box-none"
+          >
+            <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{ marginHorizontal: 24, borderRadius: 14, backgroundColor: cTheme.card, padding: 16 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: cTheme.label, marginBottom: 10 }}>
+                🤖 {t('imagePreview.editDescription') || '编辑 AI 描述'}
+              </Text>
+              <TextInput
+                style={{ minHeight: 88, maxHeight: 180, borderWidth: StyleSheet.hairlineWidth, borderColor: cTheme.separator, borderRadius: 10, padding: 10, fontSize: 15, color: cTheme.label, textAlignVertical: 'top', backgroundColor: cTheme.groupedBg || 'rgba(120,120,128,0.08)' }}
+                value={descDraft}
+                onChangeText={setDescDraft}
+                multiline
+                autoFocus
+                placeholder={t('imagePreview.descPlaceholder') || '写点描述，搜索时可按它找到这张图…'}
+                placeholderTextColor={cTheme.tertiaryLabel}
+              />
+              <Text style={{ fontSize: 12, color: cTheme.tertiaryLabel, marginTop: 6 }}>
+                {t('imagePreview.descSearchableTip') || '保存后可在「搜索」中按这段描述找到它'}
+              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 14, gap: 18 }}>
+                <TouchableOpacity onPress={() => setDescEditorVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={{ fontSize: 16, color: cTheme.secondaryLabel }}>{t('common.cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  onPress={async () => {
+                    const text = descDraft.trim();
+                    const r = await UnifiedDataService.updateImageDescription(currentImage?.id, text);
+                    if (r && r.success) {
+                      setCurrentImage((prev) => ({ ...prev, message: text || null }));
+                      setToastMessage(t('imagePreview.descSaved') || '描述已保存');
+                    } else {
+                      setToastMessage(t('imagePreview.descSaveFailed') || '保存失败');
+                    }
+                    setDescEditorVisible(false);
+                  }}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: '#007AFF' }}>{t('common.save') || t('common.confirm')}</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </TouchableOpacity>
+      )}
 
       {toastMessage ? (
         <Toast message={toastMessage} onDone={() => setToastMessage(null)} placement="screenCenter" />
@@ -2047,6 +2147,27 @@ const createStyles = (c) => StyleSheet.create({
     backgroundColor: '#1C1C1E', // 位于黑色图片画布内：占位永远深灰，与主题无关
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // 视频页居中▶播放键（盖在海报帧上；只占 64px 圆，不挡左右滑动）
+  videoPlayOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -32,
+    marginLeft: -32,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  videoPlayOverlayIcon: {
+    color: '#FFFFFF',
+    fontSize: 26,
+    marginLeft: 4,   // ▶ 视觉居中微调
   },
   placeholderText: {
     color: '#8E8E93',

@@ -242,7 +242,12 @@
     "removingFromStaging": "正在从暂存箱移除{{count}}张图片",
     "processingImages": "正在处理图片",
     "selectEnhancePreset": "选择增强方案",
-    "selectEnhancePresetForImages": "为 {{count}} 张图片选择增强方案"
+    "selectEnhancePresetForImages": "为 {{count}} 张图片选择增强方案",
+    "aiClassify": "AI 分类",
+    "confirmAIClassifyTitle": "AI 分类",
+    "confirmAIClassifyMessage": "用设置中的分类模型对选中的 {{count}} 张重新分类（视频自动抽帧）。",
+    "aiClassifyPartialFail": "{{count}} 张分类失败（保持原分类），可稍后重试。",
+    "aiClassifyError": "AI 分类失败"
   },
   "search": {
     "placeholder": "搜描述、分类、文件名…",
@@ -514,7 +519,13 @@
     "localPresets": {
       "cutout": "背景移除",
       "inpaint": "物体消除"
-    }
+    },
+    "addDescription": "点此添加描述（可被搜索）",
+    "editDescription": "编辑 AI 描述",
+    "descPlaceholder": "写点描述，搜索时可按它找到这张图…",
+    "descSearchableTip": "保存后可在「搜索」中按这段描述找到它",
+    "descSaved": "描述已保存",
+    "descSaveFailed": "保存失败"
   },
   "enhanceResult": {
     "defaultPresetName": "照片创玩",
@@ -806,7 +817,12 @@
       "speedFast": "快",
       "speedMedium": "中等",
       "speedSlowest": "最慢",
-      "tierLabel": { "basic": "物体识别", "scene": "场景识别", "clip": "AI 智能识别", "vlm": "多模态大模型" },
+      "tierLabel": {
+        "basic": "物体识别",
+        "scene": "场景识别",
+        "clip": "AI 智能识别",
+        "vlm": "多模态大模型"
+      },
       "tierDesc": {
         "basic": "识别照片里的物品、动物、食物、设备等具体对象",
         "scene": "识别拍摄场景：厨房 / 海滩 / 办公室 / 教室 等 365 类",

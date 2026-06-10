@@ -2860,12 +2860,18 @@ class ImageStorageService {
     try {
       if (Platform.OS === 'web') return { moved: 0 };
       await this.ensureInitialized();
+      const now = new Date().toISOString();
       const [res] = await this.storage.db.executeSql(
         "UPDATE images SET category = 'NA_video', updatedAt = ? WHERE category = 'NA' AND mimeType LIKE 'video/%'",
-        [new Date().toISOString()]
+        [now]
       );
-      const moved = (res && res.rowsAffected) || 0;
-      if (moved > 0) logger.debug(`[migrate] ${moved} 个未分类视频 NA → NA_video`);
+      // 反向自愈：被误放进「待分类视频」的图片迁回「待分类」（如旧版选择器两个"待分类"并列时选错）
+      const [res2] = await this.storage.db.executeSql(
+        "UPDATE images SET category = 'NA', updatedAt = ? WHERE category = 'NA_video' AND (mimeType IS NULL OR mimeType NOT LIKE 'video/%')",
+        [now]
+      );
+      const moved = ((res && res.rowsAffected) || 0) + ((res2 && res2.rowsAffected) || 0);
+      if (moved > 0) logger.debug(`[migrate] 待分类归位 ${moved} 条（视频→NA_video / 图片→NA）`);
       return { moved };
     } catch (e) {
       logger.warn('迁移未分类视频失败:', e?.message || e);

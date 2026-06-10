@@ -28,32 +28,33 @@ const BUILTIN_IDS = ['single_person', 'social_activities', 'travel_scenery', 'pe
 // 内置分类参考（供用户查看"内置是怎么设置的"，照着写自定义分类规则）。内置分类靠模型识别、无显式规则，
 // 这里给出每类的含义说明作示例。名称取自 initialSettings.categoryNameMap。
 const BUILTIN_REFERENCE = [
-  { id: 'single_person', name: '单人照片', desc: '以单个人物为主体：自拍、个人写真、人像特写' },
-  { id: 'social_activities', name: '社交活动', desc: '多人聚会、聚餐、合影、活动、团建等社交场景' },
-  { id: 'kids', name: '儿童', desc: '以儿童、婴幼儿为主体的照片' },
-  { id: 'pets', name: '宠物萌照', desc: '猫、狗等宠物及动物的照片' },
-  { id: 'foods', name: '美食记录', desc: '食物、菜品、饮料、零食、美食摆盘' },
-  { id: 'travel_scenery', name: '旅行风景', desc: '旅行风光、自然或城市景观、打卡景点' },
-  { id: 'night_scene', name: '夜景', desc: '夜晚拍摄的夜景、灯光、霓虹、烟花' },
-  { id: 'architecture', name: '建筑', desc: '建筑物、楼宇、地标、室内外结构' },
-  { id: 'plants', name: '植物花卉', desc: '植物、花卉、绿植、园艺' },
-  { id: 'vehicles', name: '车辆', desc: '汽车、摩托、火车、飞机、船等交通工具' },
-  { id: 'sports', name: '运动健身', desc: '运动、健身、比赛、户外活动场景' },
-  { id: 'fashion', name: '服饰穿搭', desc: '服装搭配、穿搭、鞋包配饰' },
-  { id: 'products', name: '商品', desc: '商品、物品展示照、开箱、带货' },
-  { id: 'electronics', name: '电子产品', desc: '手机、电脑、相机、数码设备' },
-  { id: 'documents', name: '文档票据', desc: '文档、票据、发票、合同、纸质材料' },
-  { id: 'idcard', name: '证件照', desc: '身份证、护照、驾照等证件' },
-  { id: 'art', name: '艺术绘画', desc: '绘画、书法、雕塑等艺术作品' },
-  { id: 'cartoon', name: '卡通表情', desc: '卡通、动漫、表情包、梗图' },
-  { id: 'screenshot', name: '手机截图', desc: '手机或电脑的屏幕截图' },
-  { id: 'qrcode', name: '二维码', desc: '二维码、条形码' },
+  { id: 'single_person', name: '单人照片', desc: '以单个人物为主体：自拍、个人写真、人像特写', descEn: 'A single person as the subject: selfies, portraits, close-ups' },
+  { id: 'social_activities', name: '社交活动', desc: '多人聚会、聚餐、合影、活动、团建等社交场景', descEn: 'Group gatherings, dinners, group photos, events' },
+  { id: 'kids', name: '儿童', desc: '以儿童、婴幼儿为主体的照片', descEn: 'Photos of children and infants' },
+  { id: 'pets', name: '宠物萌照', desc: '猫、狗等宠物及动物的照片', descEn: 'Cats, dogs and other pets/animals' },
+  { id: 'foods', name: '美食记录', desc: '食物、菜品、饮料、零食、美食摆盘', descEn: 'Food, dishes, drinks, snacks, plating' },
+  { id: 'travel_scenery', name: '旅行风景', desc: '旅行风光、自然或城市景观、打卡景点', descEn: 'Travel scenery, natural or urban landscapes, landmarks' },
+  { id: 'night_scene', name: '夜景', desc: '夜晚拍摄的夜景、灯光、霓虹、烟花', descEn: 'Night shots: city lights, neon, fireworks' },
+  { id: 'architecture', name: '建筑', desc: '建筑物、楼宇、地标、室内外结构', descEn: 'Buildings, landmarks, interior/exterior structures' },
+  { id: 'plants', name: '植物花卉', desc: '植物、花卉、绿植、园艺', descEn: 'Plants, flowers, greenery, gardening' },
+  { id: 'vehicles', name: '车辆', desc: '汽车、摩托、火车、飞机、船等交通工具', descEn: 'Cars, motorcycles, trains, planes, boats' },
+  { id: 'sports', name: '运动健身', desc: '运动、健身、比赛、户外活动场景', descEn: 'Sports, fitness, matches, outdoor activities' },
+  { id: 'fashion', name: '服饰穿搭', desc: '服装搭配、穿搭、鞋包配饰', descEn: 'Outfits, fashion, shoes, bags, accessories' },
+  { id: 'products', name: '商品', desc: '商品、物品展示照、开箱、带货', descEn: 'Products, item showcases, unboxing' },
+  { id: 'electronics', name: '电子产品', desc: '手机、电脑、相机、数码设备', descEn: 'Phones, computers, cameras, gadgets' },
+  { id: 'documents', name: '文档票据', desc: '文档、票据、发票、合同、纸质材料', descEn: 'Documents, receipts, invoices, contracts' },
+  { id: 'idcard', name: '证件照', desc: '身份证、护照、驾照等证件', descEn: 'ID cards, passports, driver licenses' },
+  { id: 'art', name: '艺术绘画', desc: '绘画、书法、雕塑等艺术作品', descEn: 'Paintings, calligraphy, sculptures and other art' },
+  { id: 'cartoon', name: '卡通表情', desc: '卡通、动漫、表情包、梗图', descEn: 'Cartoons, anime, memes, stickers' },
+  { id: 'screenshot', name: '手机截图', desc: '手机或电脑的屏幕截图', descEn: 'Screenshots from phone or computer' },
+  { id: 'qrcode', name: '二维码', desc: '二维码、条形码', descEn: 'QR codes and barcodes' },
 ];
-const BUILTIN_DESC_BY_ID = BUILTIN_REFERENCE.reduce((m, b) => { m[b.id] = b.desc; return m; }, {});
+const BUILTIN_REF_BY_ID = BUILTIN_REFERENCE.reduce((m, b) => { m[b.id] = b; return m; }, {});
 
 export default function CustomCategoriesScreen({ navigation }) {
   const theme = useIosColors();
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
+  const isEn = String(i18n?.language || '').startsWith('en');
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   // 新增表单
@@ -80,7 +81,7 @@ export default function CustomCategoriesScreen({ navigation }) {
           const nameMap = builtinConfig.getCategoryNameMap?.() || {};
           const bl = order
             .filter((cid) => nameMap[cid] && cid !== 'NA' && cid !== 'NA_video' && cid !== 'other')   // NA_video 同 NA 是系统分类，不入"内置分类管理"
-            .map((cid) => ({ id: cid, name: (nameMap[cid] && (nameMap[cid].chinese || nameMap[cid].english)) || cid }));
+            .map((cid) => ({ id: cid, name: (nameMap[cid] && (isEn ? (nameMap[cid].english || nameMap[cid].chinese) : (nameMap[cid].chinese || nameMap[cid].english))) || cid }));
           setBuiltins(bl);
         } catch (_) { /* 内置列表取不到则只显示自定义部分 */ }
       } catch (e) {
@@ -106,7 +107,9 @@ export default function CustomCategoriesScreen({ navigation }) {
 
   // 查看内置分类含义：弹出该类说明，供用户照着写自定义分类「规则」。
   const onViewBuiltin = (cid, cname) => {
-    const desc = BUILTIN_DESC_BY_ID[cid] || t('customCategories.builtinNoDesc', { defaultValue: '此分类由模型自动识别，无需规则。' });
+    const ref = BUILTIN_REF_BY_ID[cid];
+    const desc = (ref && (isEn ? (ref.descEn || ref.desc) : ref.desc))
+      || t('customCategories.builtinNoDesc', { defaultValue: '此分类由模型自动识别，无需规则。' });
     Alert.alert(cname, desc);
   };
 

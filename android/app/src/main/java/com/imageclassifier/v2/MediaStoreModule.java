@@ -31,6 +31,9 @@ import com.facebook.react.bridge.WritableMap;
 import java.util.Collections;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import android.graphics.Bitmap;
+import android.media.MediaMetadataRetriever;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -337,6 +340,46 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
             promise.resolve(true);
         } catch (Exception e) {
             promise.reject("E_PLAY", e.getMessage());
+        }
+    }
+
+    /**
+     * 视频抽帧（自动分类用）：取时长中点一帧，存 ≤1024px JPEG 到 cacheDir，返回 file:// 路径。
+     * combinedUri 兼容 "content://...||/path" 组合格式（取 || 前的 content uri）。
+     */
+    @ReactMethod
+    public void extractVideoFrame(String combinedUri, Promise promise) {
+        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+        try {
+            String s = combinedUri == null ? "" : combinedUri;
+            int sep = s.indexOf("||");
+            String target = (sep >= 0) ? s.substring(0, sep) : s;
+            if (target.isEmpty()) { promise.reject("E_FRAME", "空 uri"); return; }
+            if (target.startsWith("content://")) {
+                mmr.setDataSource(getReactApplicationContext(), Uri.parse(target));
+            } else {
+                mmr.setDataSource(target.startsWith("file://") ? target.substring(7) : target);
+            }
+            String durStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+            long durMs = 0;
+            try { durMs = durStr != null ? Long.parseLong(durStr) : 0; } catch (NumberFormatException ignore) {}
+            // 中点帧；OPTION_CLOSEST_SYNC 就近取关键帧，避免逐帧解码慢
+            Bitmap bmp = mmr.getFrameAtTime(Math.max(durMs * 1000L / 2, 0), MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+            if (bmp == null) { promise.reject("E_FRAME", "getFrameAtTime 返回空"); return; }
+            int w = bmp.getWidth(), h = bmp.getHeight();
+            float scale = 1024f / Math.max(w, h);
+            if (scale < 1f) {
+                bmp = Bitmap.createScaledBitmap(bmp, Math.round(w * scale), Math.round(h * scale), true);
+            }
+            File out = new File(getReactApplicationContext().getCacheDir(), "vframe_" + Math.abs(s.hashCode()) + ".jpg");
+            FileOutputStream fos = new FileOutputStream(out);
+            bmp.compress(Bitmap.CompressFormat.JPEG, 85, fos);
+            fos.close();
+            promise.resolve("file://" + out.getAbsolutePath());
+        } catch (Exception e) {
+            promise.reject("E_FRAME", e.getMessage());
+        } finally {
+            try { mmr.release(); } catch (Exception ignore) {}
         }
     }
 
