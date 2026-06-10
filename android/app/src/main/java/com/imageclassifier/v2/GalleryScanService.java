@@ -78,6 +78,13 @@ public class GalleryScanService {
     private final ExecutorService executorService;
     private final Handler mainHandler;
     private final FileLogger fileLogger; // 🔥 文件日志记录器
+
+    // 🛑 用户停止扫描标志（架构文档 3.3.2 设计的 stopScan，此前未实现）。
+    // volatile 保证扫描线程立即可见；已处理的批次照常落库，停止后仍发 completeBasicScan
+    // 让 JS 层正常收尾（与 JS 分类循环的"优雅停止"语义一致：剩余的下次扫描续）。
+    private static volatile boolean sStopRequested = false;
+    public static void requestStop() { sStopRequested = true; }
+    public static void clearStopFlag() { sStopRequested = false; }
     
     // 🔥 并发控制：限制同时进行的HTTP请求数量（避免过多连接）
     private static final int MAX_CONCURRENT_REQUESTS = 3;
@@ -178,6 +185,7 @@ public class GalleryScanService {
         }
         
         // 在后台线程执行基础扫描阶段（EXIF提取、截图检测）
+        clearStopFlag();   // 新一轮扫描开始，清掉上次的停止标志
         executorService.execute(() -> {
             try {
                 performBasicScan(currentScanId, newImages);
@@ -815,8 +823,14 @@ public class GalleryScanService {
         int noDimensionsCount = 0; // 最终仍然没有尺寸的图片数量
         
         for (int i = 0; i < images.size(); i++) {
+            // 🛑 用户停止：已处理的批次照常落库（循环后还有 batchSaveData 收尾保存），
+            // 剩余图片下次扫描自动续（文件比对会再次识别为"新增"）。
+            if (sStopRequested) {
+                fileLogger.d(TAG, "🛑 用户停止基础扫描：已处理 " + processedThisPhase + "/" + totalFoundThisPhase);
+                break;
+            }
             ImageInfo image = images.get(i);
-            
+
             try {
                 // 1. 提取EXIF数据（包括GPS坐标）
                 ExifData exifData = extractExifData(image.uri);

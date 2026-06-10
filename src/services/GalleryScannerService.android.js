@@ -508,6 +508,12 @@ class GalleryScannerService {
     if (this.isScanning) {
       logger.info('🛑 用户请求停止分类（保留已分类结果，剩余下次续扫）');
       this._stopRequested = true;
+      // 原生基础扫描阶段（EXIF/截图检测，长循环在 Java）也要能停——通知原生置停止标志
+      try {
+        if (GalleryScanModule && typeof GalleryScanModule.stopScan === 'function') {
+          GalleryScanModule.stopScan().catch(() => {});
+        }
+      } catch (_) { /* 原生不可用时仅停 JS 循环 */ }
     }
   }
 
