@@ -1738,8 +1738,8 @@ class GalleryScannerService {
         this.lastLocationRefreshCount = filesProcessed;
         logger.debug(`🔄 位置信息补全刷新: 已处理 ${filesProcessed} 张图片（上次刷新: ${lastRefresh}）`);
       }
-    } else if (imagesClassified > 0 && imagesClassified - this.lastRefreshCount >= 50) {
-      // 其他阶段：每50张成功分类的图片刷新一次
+    } else if (imagesClassified > 0 && imagesClassified - this.lastRefreshCount >= 20) {
+      // 其他阶段：每20张成功分类刷新一次（与 iOS 对齐；分好的图边跑边归位，不用等全部完成）
       shouldRefresh = true;
       this.lastRefreshCount = imagesClassified;
     }

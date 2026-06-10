@@ -189,7 +189,9 @@ class GalleryScannerService {
       simpleMessage: stage === 'completed'
         ? `完成（已分类 ${imagesClassified}/${totalImagesToBeClassified}）`
         : `${stage} ${processedThisPhase}/${totalFoundThisPhase}`,
-      shouldRefresh: stage === 'completed',
+      // 分类中每 20 张也刷一次 UI：分好的图边跑边归位，不用等全部完成（"分类没反应"体感修复）
+      shouldRefresh: stage === 'completed'
+        || (processedThisPhase > 0 && processedThisPhase % 20 === 0),
     });
   }
 
