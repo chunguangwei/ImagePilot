@@ -244,6 +244,13 @@
     "selectEnhancePreset": "选择增强方案",
     "selectEnhancePresetForImages": "为 {{count}} 张图片选择增强方案"
   },
+  "search": {
+    "placeholder": "搜描述、分类、文件名…",
+    "emptyTip": "输入关键词，按 AI 描述 / 分类 / 文件名搜图",
+    "noResults": "没找到与「{{query}}」匹配的图",
+    "resultCount": "{{count}} 张结果",
+    "untaggedHint": "还有 {{count}} 张图未打 AI 描述，用「多模态」档分类后才能被描述搜索到"
+  },
   "home": {
     "title": "首页",
     "ready": "图片分类应用已就绪",
