@@ -1789,6 +1789,8 @@ class GalleryScannerService {
       // 检查之前的设置
       logger.debug(`🔍 保存前检查: 之前耗时=${settings.lastScanDurationSeconds}秒`);
       
+      // 记录上一次扫描时间：「新发现照片」=自上上次扫描以来的新增（否则刚扫完就清空，两次扫描间拍的永远看不到）
+      if (settings.lastScanTime) settings.prevScanTime = settings.lastScanTime;
       settings.lastScanTime = new Date().toISOString();
       settings.lastScanDuration = totalScanDuration; // 毫秒
       settings.lastScanDurationSeconds = Math.round(totalScanDuration / 1000); // 秒

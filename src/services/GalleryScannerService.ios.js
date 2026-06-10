@@ -268,6 +268,8 @@ class GalleryScannerService {
    */
   async _saveScanCompletionInfo(totalScanDurationMs) {
     const settings = await UnifiedDataService.readSettings();
+    // 记录上一次扫描时间：「新发现照片」=自上上次扫描以来的新增（否则刚扫完就清空，两次扫描间拍的永远看不到）
+    if (settings.lastScanTime) settings.prevScanTime = settings.lastScanTime;
     settings.lastScanTime = new Date().toISOString();
     settings.lastScanDuration = totalScanDurationMs;
     settings.lastScanDurationSeconds = Math.round(totalScanDurationMs / 1000);

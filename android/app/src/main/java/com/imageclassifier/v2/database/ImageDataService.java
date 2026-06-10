@@ -102,6 +102,7 @@ public class ImageDataService {
                         putLongIfNotNull(values, "takenAt", imageData.get("takenAt"));
                         putLongIfNotNull(values, "size", imageData.get("size"));
                         putStringIfNotNull(values, "mimeType", imageData.get("mimeType"));
+                        putDoubleIfNotNull(values, "duration", imageData.get("duration"));   // 视频时长（秒）
                         
                         // 🔧 确保 width 和 height 始终被设置（即使为0或null，也要设置默认值0）
                         Object widthObj = imageData.get("width");

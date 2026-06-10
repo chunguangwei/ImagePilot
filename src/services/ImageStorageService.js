@@ -354,6 +354,15 @@ class SQLiteAdapter {
         FOREIGN KEY (imageId) REFERENCES images(id) ON DELETE CASCADE
       );
 
+      -- CLIP 向量索引表（AI 向量维度的以图搜图：L2 归一化 embedding，余弦=点积）
+      CREATE TABLE IF NOT EXISTS image_embeddings (
+        imageId TEXT PRIMARY KEY,
+        model TEXT,
+        vec TEXT,
+        updatedAt TEXT,
+        FOREIGN KEY (imageId) REFERENCES images(id) ON DELETE CASCADE
+      );
+
       -- 暂存箱表
       CREATE TABLE IF NOT EXISTS staging_box (
         imageId TEXT PRIMARY KEY,
@@ -4973,6 +4982,51 @@ class ImageStorageService {
     } catch (error) {
       logger.warn('保存图片特征失败:', error?.message || error);
       return false;
+    }
+  }
+
+  /** 批量保存 CLIP 向量（量化 4 位小数省空间；L2 归一化向量，余弦=点积） */
+  async saveImageEmbeddingsBatch(entries, model) {
+    try {
+      if (!entries || entries.length === 0) return true;
+      if (Platform.OS === 'web') return true;
+      await this.ensureInitialized();
+      const now = new Date().toISOString();
+      for (const e of entries) {
+        if (!e || !e.imageId || !Array.isArray(e.vec)) continue;
+        const q = e.vec.map((v) => Math.round(v * 10000) / 10000);
+        await this.storage.db.executeSql(
+          'INSERT OR REPLACE INTO image_embeddings (imageId, model, vec, updatedAt) VALUES (?, ?, ?, ?)',
+          [e.imageId, model || '', JSON.stringify(q), now]
+        );
+      }
+      return true;
+    } catch (error) {
+      logger.warn('保存向量索引失败:', error?.message || error);
+      return false;
+    }
+  }
+
+  /** 读取全部 CLIP 向量 → { imageId: number[] }（仅指定模型的） */
+  async readAllImageEmbeddings(model) {
+    try {
+      if (Platform.OS === 'web') return {};
+      await this.ensureInitialized();
+      const results = await this.storage.db.executeSql(
+        'SELECT imageId, vec FROM image_embeddings WHERE model = ?', [model || '']
+      );
+      const result = results && results.length > 0 ? results[0] : null;
+      const map = {};
+      if (result && result.rows) {
+        for (let i = 0; i < result.rows.length; i++) {
+          const row = result.rows.item(i);
+          try { map[row.imageId] = JSON.parse(row.vec); } catch (_) {}
+        }
+      }
+      return map;
+    } catch (error) {
+      logger.warn('读取向量索引失败:', error?.message || error);
+      return {};
     }
   }
 

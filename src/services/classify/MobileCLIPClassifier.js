@@ -127,6 +127,26 @@ function cosineSim(a, b) {
   return s;
 }
 
+/** 余弦相似度（向量已 L2 归一化时=点积）——CLIP 向量检索复用 */
+export function cosineSimilarity(a, b) {
+  return cosineSim(a, b);
+}
+
+/**
+ * 只取图像 embedding（L2 归一化向量）——CLIP 向量检索用。
+ * 与 classifyImageWithMobileCLIP 同一条编码链路，但不做分类比对。
+ */
+export async function getImageEmbedding(imageUri, modelPath, clipModel) {
+  const cfg = clipModel ? buildCfg(clipModel) : DEFAULT_CFG;
+  const session = await ensureSession(modelPath);
+  const chw = await preprocessImage(imageUri, cfg);
+  const feeds = { [_inputName]: new Tensor('float32', chw, [1, 3, cfg.inputSize, cfg.inputSize]) };
+  const out = await session.run(feeds);
+  const embT = out[_outputName] || out[Object.keys(out)[0]];
+  if (!embT || !embT.data) throw new Error('CLIP 图编码器输出为空');
+  return Array.from(embT.data);
+}
+
 /**
  * 单张图 → top1 app 类。
  * @returns {Promise<{success, predictions, topPrediction, confidence, model, processingTime}>}

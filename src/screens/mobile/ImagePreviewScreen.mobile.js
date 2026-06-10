@@ -1767,10 +1767,26 @@ const ImagePreviewScreen = ({ route, navigation }) => {
               <Text style={styles.actionLabel}>{t('imagePreview.filter')}</Text>
             </TouchableOpacity>
 
-            {/* 🔎 以图搜图：按颜色特征找相似照片 */}
+            {/* 🔎 以图搜图：两个维度——颜色（直方图，找"长得像"）/ AI 向量（CLIP，找"内容像"） */}
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => navigation.navigate('Search', { similarTo: currentImage })}>
+              onPress={() => {
+                Alert.alert(
+                  t('imagePreview.findSimilar') || '找相似',
+                  t('imagePreview.findSimilarAsk') || '按哪种相似度找？',
+                  [
+                    { text: t('common.cancel'), style: 'cancel' },
+                    {
+                      text: t('imagePreview.similarByColor') || '颜色相似（构图/色调）',
+                      onPress: () => navigation.navigate('Search', { similarTo: currentImage, similarMode: 'color' }),
+                    },
+                    {
+                      text: t('imagePreview.similarByVector') || 'AI 相似（内容语义）',
+                      onPress: () => navigation.navigate('Search', { similarTo: currentImage, similarMode: 'vector' }),
+                    },
+                  ]
+                );
+              }}>
               {actIcon('similar', '🔎')}
               <Text style={styles.actionLabel}>{t('imagePreview.findSimilar') || '找相似'}</Text>
             </TouchableOpacity>
