@@ -1766,6 +1766,14 @@ const ImagePreviewScreen = ({ route, navigation }) => {
               {actIcon('filter', '🎨')}
               <Text style={styles.actionLabel}>{t('imagePreview.filter')}</Text>
             </TouchableOpacity>
+
+            {/* 🔎 以图搜图：按颜色特征找相似照片 */}
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => navigation.navigate('Search', { similarTo: currentImage })}>
+              {actIcon('similar', '🔎')}
+              <Text style={styles.actionLabel}>{t('imagePreview.findSimilar') || '找相似'}</Text>
+            </TouchableOpacity>
           </>
         )}
 

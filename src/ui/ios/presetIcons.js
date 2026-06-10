@@ -30,6 +30,7 @@ export const ACTION_ICONS = {
   share: 'share-outline',           // 分享
   clearClassify: 'refresh-outline', // 清理分类（退回待分类）
   aiClassify: 'hardware-chip-outline', // 对选中图跑 AI 分类
+  similar: 'images-outline',        // 以图搜图（找相似）
 };
 
 export default { PRESET_ICONS, presetIcon, ACTION_ICONS };

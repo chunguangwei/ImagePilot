@@ -571,14 +571,40 @@ class ImageSimilarityService {
       // 等待当前批次完成
       const batchResults = await Promise.all(batchPromises);
       results.push(...batchResults);
-      
+
       // 批次之间稍作延迟，让内存有时间释放
       if (i + CONCURRENT_LIMIT < windowImages.length) {
         await new Promise(resolve => setTimeout(resolve, 50));
       }
     }
-    
+
+    // 顺手持久化新提取的特征（image_features 表）：给「以图搜图」建索引，重检测也可复用。
+    // 异步 fire-and-forget，不阻塞相似检测主流程。
+    try {
+      const fresh = results.filter((r) => r && r.id && r.similarity_features && r.similarity_features.color_histogram);
+      if (fresh.length > 0) {
+        const UnifiedDataService = require('./UnifiedDataService.js').default;
+        UnifiedDataService.imageStorageService
+          .saveImageFeaturesBatch(fresh.map((r) => ({ imageId: r.id, features: r.similarity_features })))
+          .catch(() => {});
+      }
+    } catch (_) { /* 持久化失败不影响检测 */ }
+
     return results;
+  }
+
+  /** 对单张图提取特征（颜色直方图等）——「以图搜图」目标图无索引时现算。 */
+  async extractFeaturesForImage(image) {
+    return await this._extractColorHistogram(image);
+  }
+
+  /** 比较两个特征对象的相似度（0-1）——「以图搜图」打分用。 */
+  scoreFeatureSimilarity(features1, features2) {
+    if (!features1 || !features2) return 0;
+    return this._calculateSimilarity(
+      { similarity_features: features1 },
+      { similarity_features: features2 }
+    );
   }
 
   /**

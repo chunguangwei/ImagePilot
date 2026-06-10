@@ -198,6 +198,27 @@ export async function applyBackup(payload) {
     }
   }
 
+  // 恢复 AI 描述(message) / 背景色：上面只写了 category，这里按图补回（描述还原后立即可被搜索）。
+  // batchUpdateClassification 的动态 SET 只更新提供的字段，不会动 category / 置信度。
+  try {
+    const fieldUpdates = [];
+    for (const it of payload.items) {
+      const ids = keyToIds.get(it.key);
+      if (!ids || ids.length === 0) continue;
+      for (const id of ids) {
+        const upd = { id };
+        let has = false;
+        if (it.message) { upd.message = it.message; has = true; }
+        if (it.background_color) { upd.background_color = it.background_color; has = true; }
+        if (has) fieldUpdates.push(upd);
+      }
+    }
+    if (fieldUpdates.length > 0) {
+      await UnifiedDataService.batchUpdateClassification(fieldUpdates, false);
+      try { await UnifiedDataService.imageCache.refreshCache(); } catch (_) {}
+    }
+  } catch (_) { /* 描述恢复失败不阻断分类还原 */ }
+
   return { customAdded, matched, applied, skipped };
 }
 

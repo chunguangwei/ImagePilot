@@ -306,6 +306,47 @@ class UnifiedDataService {
   }
 
   /**
+   * 以图搜图：用目标图的颜色直方图特征与全库特征索引（image_features 表）比对，按相似度排序。
+   * 特征索引在「相似照片检测」时顺手建立；目标图无索引则现算一张（百毫秒级）。
+   * @param {Object} image 目标图记录（需 id/uri）
+   * @returns {Promise<{results:Array, indexedCount:number, total:number}>} results 含 similarScore
+   */
+  async searchSimilarImages(image, { limit = 60, minScore = 0.55 } = {}) {
+    try {
+      if (!image || !image.id) return { results: [], indexedCount: 0, total: 0 };
+      await this.imageCache.buildCache();
+      const sim = require('./ImageSimilarityService.js').default;
+      const featuresMap = await this.imageStorageService.readAllImageFeatures();
+      let target = featuresMap[image.id];
+      if (!target || !target.color_histogram) {
+        target = await sim.extractFeaturesForImage(image);   // 现算目标图特征
+        if (target && target.color_histogram) {
+          this.imageStorageService.saveImageFeaturesBatch([{ imageId: image.id, features: target }]).catch(() => {});
+        }
+      }
+      const all = this.imageCache.getCache().allImages || [];
+      const indexedCount = Object.keys(featuresMap).length;
+      if (!target || !target.color_histogram) {
+        return { results: [], indexedCount, total: all.length };
+      }
+      const scored = [];
+      for (const img of all) {
+        if (!img || img.id === image.id) continue;
+        if (String(img.mimeType || '').startsWith('video/')) continue;   // 视频不参与（直方图对视频无意义）
+        const f = featuresMap[img.id];
+        if (!f || !f.color_histogram) continue;
+        const score = sim.scoreFeatureSimilarity(target, f);
+        if (score >= minScore) scored.push({ ...img, similarScore: score });
+      }
+      scored.sort((a, b) => b.similarScore - a.similarScore);
+      return { results: scored.slice(0, limit), indexedCount, total: all.length };
+    } catch (error) {
+      logger.error('以图搜图失败:', error);
+      return { results: [], indexedCount: 0, total: 0 };
+    }
+  }
+
+  /**
    * 按描述/关键词搜图：匹配 AI 描述(message) + 分类名 + 文件名 + 城市/国家。
    * 语义搜索依赖 AI 描述（只有多模态档分类过的图才有）；未打描述的图统计出来提示用户。
    * @param {string} query

@@ -5,7 +5,7 @@
  * 「语义搜索」靠多模态档(Gemma)写的 AI 描述；未打描述的图会提示用户去分类。
  * 结果网格复用图片项（视频带 ▶ 角标，点击调系统播放器；图片进预览）。
  */
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList, Image,
   ActivityIndicator, StyleSheet, NativeModules, Keyboard, Platform, Alert,
@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { SafeAreaView, Icon, getUri, logger } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../../services/UnifiedDataService';
 import { useIosColors } from '../../ui/ios/theme';
+import { formatDuration } from '../../components/shared/categoryUI';
 
 const GRID_COLUMNS = 3;
 const GRID_PADDING = 8;
@@ -24,18 +25,42 @@ function isVideoRecord(img) {
   return String(img?.mimeType || '').startsWith('video/');
 }
 
-export default function SearchScreen({ navigation }) {
+export default function SearchScreen({ navigation, route }) {
   const { t } = useTranslation('common');
   const c = useIosColors();
   const { width: winW } = useWindowDimensions();
   const itemSize = (winW - GRID_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
 
+  // 以图搜图模式：从预览页「找相似」进入，带目标图记录；隐藏文字输入，按特征索引比对。
+  const similarTo = route?.params?.similarTo || null;
+
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [untaggedCount, setUntaggedCount] = useState(0);
+  const [indexedCount, setIndexedCount] = useState(-1);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const debounceRef = useRef(null);
+
+  // 以图搜图：进入即查（特征索引在「相似照片检测」时建立，比对为毫秒级）
+  useEffect(() => {
+    if (!similarTo) return;
+    (async () => {
+      setSearching(true);
+      try {
+        const r = await UnifiedDataService.searchSimilarImages(similarTo);
+        setResults(r.results || []);
+        setIndexedCount(r.indexedCount || 0);
+        setSearched(true);
+      } catch (e) {
+        logger.warn('以图搜图失败:', e?.message || e);
+        setResults([]); setSearched(true);
+      } finally {
+        setSearching(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const runSearch = useCallback(async (text) => {
     const q = String(text || '').trim();
@@ -96,8 +121,10 @@ export default function SearchScreen({ navigation }) {
       >
         <Image source={{ uri }} style={styles.thumb} resizeMode="cover" />
         {isVideoRecord(item) && (
-          <View style={styles.videoBadge} pointerEvents="none">
-            <Text style={styles.videoBadgeIcon}>▶</Text>
+          <View style={[styles.videoBadge, formatDuration(item.duration) ? styles.videoBadgeWide : null]} pointerEvents="none">
+            <Text style={styles.videoBadgeIcon}>
+              {'▶'}{formatDuration(item.duration) ? ` ${formatDuration(item.duration)}` : ''}
+            </Text>
           </View>
         )}
       </TouchableOpacity>
@@ -111,20 +138,30 @@ export default function SearchScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Icon name="arrow-back-ios" size={20} color={c.accent || '#007AFF'} />
         </TouchableOpacity>
-        <View style={[styles.searchBox, { backgroundColor: c.groupedBg || '#EFEFF4' }]}>
-          <Icon name="search" size={18} color={c.tertiaryLabel || '#9aa0a6'} />
-          <TextInput
-            style={[styles.searchInput, { color: c.label }]}
-            placeholder={t('search.placeholder', { defaultValue: '搜描述、分类、文件名…' })}
-            placeholderTextColor={c.tertiaryLabel || '#9aa0a6'}
-            value={query}
-            onChangeText={onChangeQuery}
-            autoFocus
-            returnKeyType="search"
-            onSubmitEditing={() => { Keyboard.dismiss(); runSearch(query); }}
-            clearButtonMode="while-editing"
-          />
-        </View>
+        {similarTo ? (
+          // 以图搜图模式：目标图缩略图 + 标题（无输入框）
+          <View style={[styles.searchBox, { backgroundColor: c.groupedBg || '#EFEFF4' }]}>
+            <Image source={{ uri: getUri(similarTo) || similarTo?.uri }} style={styles.similarTargetThumb} />
+            <Text style={[styles.similarTitle, { color: c.label }]} numberOfLines={1}>
+              {t('search.similarTitle', { defaultValue: '与此图相似的照片' })}
+            </Text>
+          </View>
+        ) : (
+          <View style={[styles.searchBox, { backgroundColor: c.groupedBg || '#EFEFF4' }]}>
+            <Icon name="search" size={18} color={c.tertiaryLabel || '#9aa0a6'} />
+            <TextInput
+              style={[styles.searchInput, { color: c.label }]}
+              placeholder={t('search.placeholder', { defaultValue: '搜描述、分类、文件名…' })}
+              placeholderTextColor={c.tertiaryLabel || '#9aa0a6'}
+              value={query}
+              onChangeText={onChangeQuery}
+              autoFocus
+              returnKeyType="search"
+              onSubmitEditing={() => { Keyboard.dismiss(); runSearch(query); }}
+              clearButtonMode="while-editing"
+            />
+          </View>
+        )}
       </View>
 
       {/* 未打标提示：有未打 AI 描述的图时，提示语义搜索覆盖不全 */}
@@ -139,14 +176,23 @@ export default function SearchScreen({ navigation }) {
 
       {searching ? (
         <View style={styles.center}><ActivityIndicator color={c.accent || '#007AFF'} /></View>
-      ) : !query.trim() ? (
+      ) : similarTo && results.length === 0 && searched ? (
+        <View style={styles.center}>
+          <Icon name="image-search" size={48} color={c.tertiaryLabel || '#C7C7CC'} />
+          <Text style={[styles.emptyText, { color: c.secondaryLabel }]}>
+            {indexedCount === 0
+              ? t('search.similarNoIndex', { defaultValue: '还没有建立特征索引：在首页「相似照片」里跑一次「重新检测」后即可以图搜图' })
+              : t('search.similarNoResults', { defaultValue: '没有找到相似的照片' })}
+          </Text>
+        </View>
+      ) : !similarTo && !query.trim() ? (
         <View style={styles.center} onStartShouldSetResponder={() => { Keyboard.dismiss(); return false; }}>
           <Icon name="search" size={48} color={c.tertiaryLabel || '#C7C7CC'} />
           <Text style={[styles.emptyText, { color: c.secondaryLabel }]}>
             {t('search.emptyTip', { defaultValue: '输入关键词，按 AI 描述 / 分类 / 文件名搜图' })}
           </Text>
         </View>
-      ) : results.length === 0 && searched ? (
+      ) : !similarTo && results.length === 0 && searched ? (
         <View style={styles.center} onStartShouldSetResponder={() => { Keyboard.dismiss(); return false; }}>
           <Icon name="image-search" size={48} color={c.tertiaryLabel || '#C7C7CC'} />
           <Text style={[styles.emptyText, { color: c.secondaryLabel }]}>
@@ -181,6 +227,9 @@ const styles = StyleSheet.create({
   backBtn: { paddingRight: 8, paddingVertical: 6 },
   searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 10, height: 38 },
   searchInput: { flex: 1, marginLeft: 6, fontSize: 16, padding: 0 },
+  // 以图搜图模式头部
+  similarTargetThumb: { width: 28, height: 28, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.06)' },
+  similarTitle: { flex: 1, marginLeft: 8, fontSize: 15, fontWeight: '600' },
   hint: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 12, paddingVertical: 8, gap: 6 },
   hintText: { flex: 1, fontSize: 12.5, lineHeight: 17 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
@@ -188,5 +237,6 @@ const styles = StyleSheet.create({
   countText: { fontSize: 12.5, marginBottom: 6, marginLeft: 2 },
   thumb: { width: '100%', height: '100%', borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.04)' },
   videoBadge: { position: 'absolute', right: 4, bottom: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
+  videoBadgeWide: { width: undefined, paddingHorizontal: 6 },
   videoBadgeIcon: { color: '#FFFFFF', fontSize: 11, marginLeft: 1 },
 });

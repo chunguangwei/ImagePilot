@@ -33,7 +33,7 @@ import WeChatAuthService from '../../services/WeChatAuthService';
 import GlobalImageCache from '../../services/GlobalImageCache';
 import configService from '../../services/ConfigService';
 import cityLocationService from '../../services/CityLocationService';
-import { sortCategoryList, getCategoryIconMeta } from '../../components/shared/categoryUI';
+import { sortCategoryList, getCategoryIconMeta, formatDuration } from '../../components/shared/categoryUI';
 import { Icon } from '../../adapters/WebAdapters';
 import { logger, getUri } from '../../adapters/WebAdapters';
 
@@ -1443,52 +1443,65 @@ const CategoryScreen = ({ route, navigation }) => {
   };
 
   /**
-   * 对选中图/视频跑 AI 分类（设备端，按设置的分类模型档位；视频自动抽中间帧）。
+   * 对选中图/视频跑 AI 分类（按设置的分类模型档位；视频自动抽中间帧）。
+   * 已配置在线大模型时可选「本地/云端」（与首页长按目录一致）；未配置直接本地。
    * 复用扫描服务的 aiImageClassifyByContent(time, imagesToClassify) 指定图模式。
    */
+  const runBatchAIClassify = async (imageIds, forceLocal) => {
+    try {
+      const records = images.filter((img) => imageIds.includes(img.id));
+      imageIds.forEach((id) => UnifiedDataService.setImageSelection(id, false));
+      setSelectionMode(false);
+      setShowUpdateProgress(true);
+      setUpdateOperationType('aiClassify');
+      setUpdateProgress({ filesProcessed: 0, filesFailed: 0, total: records.length });
+
+      const GalleryScannerService = (await import('../../services/GalleryScannerService')).default;
+      const svc = new GalleryScannerService();
+      await svc.initialize();
+      svc.onProgress = (p) => {
+        if (p && typeof p.imagesClassified === 'number') {
+          setUpdateProgress((prev) => ({ ...prev, filesProcessed: p.imagesClassified }));
+        }
+      };
+      const result = await svc.aiImageClassifyByContent(new Date(), records, { forceLocal });
+
+      setShowUpdateProgress(false);
+      try { await UnifiedDataService.imageCache.refreshCache(); } catch (_) {}
+      await loadImages();   // 分好类的图离开当前视图（如在待分类视图）
+      const failed = (result && result.failedCount) || 0;
+      if (failed > 0) {
+        Alert.alert(t('common.tip'), t('category.aiClassifyPartialFail', { count: failed, defaultValue: `${failed} 张分类失败（保持原分类），可稍后重试。` }));
+      }
+    } catch (error) {
+      logger.error('❌ 批量AI分类失败:', error);
+      setShowUpdateProgress(false);
+      Alert.alert(t('settings.operationFailed'), error?.message || t('category.aiClassifyError', { defaultValue: 'AI 分类失败' }));
+    }
+  };
+
   const batchAIClassify = async (imageIds) => {
+    // 是否已配置在线大模型（active 非 local-onnx 即视为已配置）——与首页判定一致
+    let isLLMConfigured = false;
+    try {
+      const aiProviderConfigService = (await import('../../services/llm/adapters/UnifiedDataConfigService')).default;
+      const aiCfg = await aiProviderConfigService.getAIProviderConfig();
+      isLLMConfigured = !!(aiCfg && aiCfg.active && aiCfg.active !== 'local-onnx');
+    } catch (_) { isLLMConfigured = false; }
+
+    const buttons = [{ text: t('common.cancel'), style: 'cancel' }];
+    if (isLLMConfigured) {
+      buttons.push(
+        { text: t('home.aiClassifyUseLocal', { defaultValue: '离线分类' }), onPress: () => runBatchAIClassify(imageIds, true) },
+        { text: t('home.aiClassifyUseCloud', { defaultValue: '云端分类' }), onPress: () => runBatchAIClassify(imageIds, false) },
+      );
+    } else {
+      buttons.push({ text: t('common.confirm', { defaultValue: '确定' }), onPress: () => runBatchAIClassify(imageIds, true) });
+    }
     Alert.alert(
       t('category.confirmAIClassifyTitle', { defaultValue: 'AI 分类' }),
       t('category.confirmAIClassifyMessage', { count: imageIds.length, defaultValue: `用设置中的分类模型对选中的 ${imageIds.length} 张重新分类（视频自动抽帧）。` }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.confirm', { defaultValue: '确定' }),
-          onPress: async () => {
-            try {
-              const records = images.filter((img) => imageIds.includes(img.id));
-              imageIds.forEach((id) => UnifiedDataService.setImageSelection(id, false));
-              setSelectionMode(false);
-              setShowUpdateProgress(true);
-              setUpdateOperationType('aiClassify');
-              setUpdateProgress({ filesProcessed: 0, filesFailed: 0, total: records.length });
-
-              const GalleryScannerService = (await import('../../services/GalleryScannerService')).default;
-              const svc = new GalleryScannerService();
-              await svc.initialize();
-              svc.onProgress = (p) => {
-                if (p && typeof p.imagesClassified === 'number') {
-                  setUpdateProgress((prev) => ({ ...prev, filesProcessed: p.imagesClassified }));
-                }
-              };
-              // forceLocal：走设备端档位（基础/场景/CLIP/多模态），小批量即点即分、离线可用
-              const result = await svc.aiImageClassifyByContent(new Date(), records, { forceLocal: true });
-
-              setShowUpdateProgress(false);
-              try { await UnifiedDataService.imageCache.refreshCache(); } catch (_) {}
-              await loadImages();   // 分好类的图离开当前视图（如在待分类视图）
-              const failed = (result && result.failedCount) || 0;
-              if (failed > 0) {
-                Alert.alert(t('common.tip'), t('category.aiClassifyPartialFail', { count: failed, defaultValue: `${failed} 张分类失败（保持原分类），可稍后重试。` }));
-              }
-            } catch (error) {
-              logger.error('❌ 批量AI分类失败:', error);
-              setShowUpdateProgress(false);
-              Alert.alert(t('settings.operationFailed'), error?.message || t('category.aiClassifyError', { defaultValue: 'AI 分类失败' }));
-            }
-          },
-        },
-      ]
+      buttons
     );
   };
 
@@ -1952,8 +1965,10 @@ const CategoryScreen = ({ route, navigation }) => {
                       resizeMode="cover"
                     />
                     {String(image.mimeType || '').startsWith('video/') && (
-                      <View style={styles.videoBadge} pointerEvents="none">
-                        <Text style={styles.videoBadgeIcon}>▶</Text>
+                      <View style={[styles.videoBadge, formatDuration(image.duration) ? styles.videoBadgeWide : null]} pointerEvents="none">
+                        <Text style={styles.videoBadgeIcon}>
+                          {'▶'}{formatDuration(image.duration) ? ` ${formatDuration(image.duration)}` : ''}
+                        </Text>
                       </View>
                     )}
                     {selectionMode && (
@@ -2415,6 +2430,11 @@ const createStyles = (c) => StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // 有时长时变药丸：▶ 0:32
+  videoBadgeWide: {
+    width: undefined,
+    paddingHorizontal: 6,
   },
   videoBadgeIcon: {
     color: '#FFFFFF',

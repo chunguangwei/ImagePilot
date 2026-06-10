@@ -84,6 +84,7 @@ function toImageRecord(asset) {
     width: asset.width || 0,
     height: asset.height || 0,
     mimeType: asset.mimeType || 'image/jpeg',
+    duration: (typeof asset.duration === 'number' && asset.duration > 0) ? asset.duration : 0,   // 视频时长（秒），图片 0
     // 视频单独归入「待分类视频」(NA_video)，与未分类图片(NA)分开；手动分类后移到目标类。
     category: systemCat || ((asset.isVideo || String(asset.mimeType || '').startsWith('video/')) ? 'NA_video' : 'NA'),
     confidence: systemCat ? 'system' : null,
@@ -533,10 +534,15 @@ class GalleryScannerService {
         await UnifiedDataService.imageCache.buildCache();
         try { naImages = await UnifiedDataService.readImagesByCategory('NA'); }
         catch (e) { logger.error('❌ 读取 NA 图片失败:', e); naImages = []; }
+        // 待分类视频也纳入云端分类（抽中间帧上传）
+        try {
+          const naVideos = await UnifiedDataService.readImagesByCategory('NA_video');
+          if (naVideos && naVideos.length > 0) naImages = naImages.concat(naVideos);
+        } catch (_) {}
       }
       this.totalImagesToBeClassified = naImages.length;
       this.imagesClassified = 0;
-      logger.info(`📊 [iOS] 云端分类目标：${naImages.length} 张 NA 图片`);
+      logger.info(`📊 [iOS] 云端分类目标：${naImages.length} 张 NA 图片（含待分类视频）`);
       await this.sendProgressMessage('initializing', 0, naImages.length, 0, naImages.length);
 
       if (naImages.length === 0) {
@@ -560,8 +566,20 @@ class GalleryScannerService {
         const inputs = [];
         const validResults = [];
         for (const image of batch) {
+          let frameTemp = null;
           try {
-            const sourceUri = getUri(image) || image?.uri;
+            let sourceUri = getUri(image) || image?.uri;
+            // 视频：抽中间帧 → 压缩上传（与设备端分类同策略；抽帧失败保持待分类视频）
+            if (String(image.mimeType || '').startsWith('video/')) {
+              try {
+                const localId = String(image.uri || '').replace(/^ph:\/\//, '');
+                frameTemp = await NativeModules.PhotoKitModule.extractVideoFrame(localId);
+                sourceUri = frameTemp;
+              } catch (fe) {
+                logger.warn(`⚠️ [iOS] 云端分类视频抽帧失败: ${fe?.message || fe}`);
+                failedCount++; continue;
+              }
+            }
             if (!sourceUri) { failedCount++; continue; }
             const resized = await ImageProcessor.resizeImage(sourceUri, CLOUD_LLM_MAX_EDGE, CLOUD_LLM_MAX_EDGE, {
               maintainAspectRatio: true, outputFormat: 'jpeg', quality: CLOUD_LLM_JPEG_QUALITY,
@@ -575,6 +593,8 @@ class GalleryScannerService {
           } catch (e) {
             logger.warn(`⚠️ [iOS] 云端分类预处理失败: ${e?.message || e}`);
             failedCount++;
+          } finally {
+            if (frameTemp) { try { await RNFS.unlink(frameTemp.replace(/^file:\/\//, '')); } catch (_) {} }
           }
         }
         if (inputs.length === 0) continue;

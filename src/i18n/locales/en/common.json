@@ -254,7 +254,10 @@
     "emptyTip": "Type a keyword to search by AI description / category / file name",
     "noResults": "No photos match \"{{query}}\"",
     "resultCount": "{{count}} result(s)",
-    "untaggedHint": "{{count}} photo(s) have no AI description yet — classify with the multimodal tier to make them searchable by description"
+    "untaggedHint": "{{count}} photo(s) have no AI description yet — classify with the multimodal tier to make them searchable by description",
+    "similarTitle": "Photos similar to this one",
+    "similarNoIndex": "No feature index yet — run \"Re-detect\" in Similar Photos on Home first",
+    "similarNoResults": "No similar photos found"
   },
   "home": {
     "title": "Home",
@@ -403,7 +406,9 @@
       "scanCompleted": "Scan Completed: Processed {{count}} photos",
       "scanningDirectory": "Scanning Directory: {{directory}}",
       "classificationSuccess": "Classification Success: {{classified}}/{{total}}"
-    }
+    },
+    "aiClassifyEmptyCategory": "Nothing to classify in this folder",
+    "memoriesTitle": "On This Day"
   },
   "imagePreview": {
     "similarGroup": "Similar Group",
@@ -525,7 +530,8 @@
     "descPlaceholder": "Write a description — you can find this photo by it in Search…",
     "descSearchableTip": "After saving, you can find it in Search by this description",
     "descSaved": "Description saved",
-    "descSaveFailed": "Save failed"
+    "descSaveFailed": "Save failed",
+    "findSimilar": "Similar"
   },
   "enhanceResult": {
     "defaultPresetName": "Photo Enhancement",

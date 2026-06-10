@@ -543,6 +543,7 @@ public class GalleryScanService {
                 vProj.add(MediaStore.Video.Media.WIDTH);
                 vProj.add(MediaStore.Video.Media.HEIGHT);
                 vProj.add(MediaStore.Video.Media.MIME_TYPE);
+                vProj.add(MediaStore.Video.Media.DURATION);
                 vProj.add(MediaStore.Video.Media.DATA);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     vProj.add(MediaStore.Video.Media.RELATIVE_PATH);
@@ -589,6 +590,8 @@ public class GalleryScanService {
                         vi.width = width;
                         vi.height = height;
                         vi.mimeType = (mimeType != null && !mimeType.isEmpty()) ? mimeType : "video/mp4";
+                        int durCol = vCursor.getColumnIndex(MediaStore.Video.Media.DURATION);
+                        if (durCol >= 0) vi.duration = vCursor.getLong(durCol) / 1000.0;   // ms → 秒
                         if (scanPaths == null || scanPaths.isEmpty() || isPathMatched(vi, scanPaths)) {
                             images.add(vi);
                         }
@@ -1042,6 +1045,7 @@ public class GalleryScanService {
                 
                 imageData.put("size", item.image.size);
                 imageData.put("mimeType", item.image.mimeType);
+                imageData.put("duration", item.image.duration);
                 
                 // 设置已验证的尺寸字段（已验证 > 0）
                 imageData.put("width", finalWidth);
@@ -3229,6 +3233,7 @@ public class GalleryScanService {
             
             imageData.put("size", image.size);
             imageData.put("mimeType", image.mimeType);
+            imageData.put("duration", image.duration);
             
             // 优先使用EXIF中的尺寸，如果没有则使用MediaStore的尺寸
             int finalWidth = 0;
@@ -3439,6 +3444,7 @@ public class GalleryScanService {
         public int width;
         public int height;
         public String mimeType;
+        public double duration;     // 视频时长（秒）；图片为 0
     }
     
     /**
