@@ -247,19 +247,21 @@
     "confirmAIClassifyTitle": "AI 分类",
     "confirmAIClassifyMessage": "用设置中的分类模型对选中的 {{count}} 张重新分类（视频自动抽帧）。",
     "aiClassifyPartialFail": "{{count}} 张分类失败（保持原分类），可稍后重试。",
-    "aiClassifyError": "AI 分类失败"
+    "aiClassifyError": "AI 分类失败",
+    "aiClassifyRunning": "AI 分类中 {{done}}/{{total}}",
+    "aiClassifyDone": "AI 分类完成（{{total}} 张）"
   },
   "search": {
-    "placeholder": "搜描述、分类、文件名…",
-    "emptyTip": "输入关键词，按 AI 描述 / 分类 / 文件名搜图",
+    "placeholder": "搜索照片和视频…",
+    "emptyTip": "输入关键词搜照片和视频，试试：",
     "noResults": "没找到与「{{query}}」匹配的图",
     "resultCount": "{{count}} 张结果",
     "untaggedHint": "还有 {{count}} 张图未打 AI 描述，用「多模态」档分类后才能被描述搜索到",
     "similarTitle": "与此图相似的照片",
     "similarNoIndex": "还没有建立特征索引：在首页「相似照片」里跑一次「重新检测」后即可以图搜图",
     "similarNoResults": "没有找到相似的照片",
-    "modeKeyword": "关键字搜图",
-    "modeSemantic": "语义搜图",
+    "modeKeyword": "默认搜索",
+    "modeSemantic": "AI 搜索",
     "aiSearchTitle": "AI 搜图",
     "aiSearchEngineAsk": "用哪种引擎识别这张图？",
     "aiSearchClassifying": "AI 识别图片中…（多模态档较慢）",
@@ -273,7 +275,13 @@
     "vectorBuildBtn": "建立 AI 向量索引",
     "vectorBuilding": "建索引中 {{done}}/{{total}}…",
     "vectorPartialIndex": "向量索引 {{indexed}}/{{total}}，点此补全（覆盖更多图）",
-    "vectorModelMissing": "需先下载识别模型：设置 → 分类模型 → AI 智能识别"
+    "vectorModelMissing": "需先下载识别模型：设置 → 分类模型 → AI 智能识别",
+    "dimsTip": "支持：AI 描述 · 分类 · 城市 · 时间 · 格式 · 分辨率 · 方向 · 拍摄参数 · 目录 · 大小",
+    "semanticEmptyTip": "像说话一样描述想找的画面，试试：",
+    "semanticEx1": "海边日落",
+    "semanticEx2": "一群人聚餐",
+    "semanticEx3": "小狗在草地",
+    "semanticDimsTip": "按 AI 描述的语义匹配（多模态档分类过的内容效果最佳）"
   },
   "home": {
     "title": "首页",
@@ -428,7 +436,9 @@
     "duplicatesEntry": "重复清理",
     "tripsTitle": "旅行回忆",
     "tripCardTitle": "{{city}}之旅",
-    "tripDays": "{{days}}天"
+    "tripDays": "{{days}}天",
+    "statusTitle": "扫描状态",
+    "scanningShort": "处理中…"
   },
   "imagePreview": {
     "similarGroup": "相似组",
@@ -900,7 +910,9 @@
       "rebuildTitle": "重建向量索引",
       "rebuildMessage": "清空现有索引并对全库重新编码（每张约 0.1~0.3 秒）。一般只在索引异常或更换模型后需要。",
       "buildFailed": "建索引失败"
-    }
+    },
+    "huaweiInstallHintTitle": "华为设备安装提示",
+    "huaweiInstallHintMessage": "若系统提示\"恶意安装来源，禁止安装\"（华为误报）：\n\n方法一：设置 → 系统和更新 → 纯净模式 → 关闭后重试；\n方法二：打开系统\"文件管理\" → 内部存储 → Download → 点按 imagepilot-update.apk 安装。"
   },
   "directoryPicker": {
     "selectScanDirectory": "选择扫描目录",

@@ -366,8 +366,8 @@ export default function SearchScreen({ navigation, route }) {
       {!similarTo && !aiTarget && (
         <View style={[styles.modeRow, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
           {[
-            { key: 'keyword', label: t('search.modeKeyword', { defaultValue: '关键字搜图' }) },
-            { key: 'semantic', label: t('search.modeSemantic', { defaultValue: '语义搜图' }) },
+            { key: 'keyword', label: t('search.modeKeyword', { defaultValue: '默认搜索' }) },
+            { key: 'semantic', label: t('search.modeSemantic', { defaultValue: 'AI 搜索' }) },
           ].map((m) => (
             <TouchableOpacity
               key={m.key}
@@ -469,9 +469,53 @@ export default function SearchScreen({ navigation, route }) {
       ) : !similarTo && !query.trim() ? (
         <View style={styles.center} onStartShouldSetResponder={() => { Keyboard.dismiss(); return false; }}>
           <Icon name="search" size={48} color={c.tertiaryLabel || '#C7C7CC'} />
-          <Text style={[styles.emptyText, { color: c.secondaryLabel }]}>
-            {t('search.emptyTip', { defaultValue: '输入关键词，按 AI 描述 / 分类 / 文件名搜图' })}
-          </Text>
+          {searchMode === 'semantic' ? (
+            <>
+              {/* AI 搜索（语义）：像说话一样描述画面，与关键字维度不是一个逻辑 */}
+              <Text style={[styles.emptyText, { color: c.secondaryLabel }]}>
+                {t('search.semanticEmptyTip', { defaultValue: '像说话一样描述想找的画面，试试：' })}
+              </Text>
+              <View style={styles.exampleWrap}>
+                {[
+                  t('search.semanticEx1', { defaultValue: '海边日落' }),
+                  t('search.semanticEx2', { defaultValue: '一群人聚餐' }),
+                  t('search.semanticEx3', { defaultValue: '小狗在草地' }),
+                ].map((ex) => (
+                  <TouchableOpacity
+                    key={ex}
+                    style={[styles.exampleChip, { backgroundColor: c.card }]}
+                    onPress={() => { setQuery(ex); runSearch(ex); }}
+                  >
+                    <Text style={[styles.exampleChipText, { color: c.accent || '#007AFF' }]}>{ex}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={[styles.dimsText, { color: c.tertiaryLabel }]}>
+                {t('search.semanticDimsTip', { defaultValue: '按 AI 描述的语义匹配（多模态档分类过的内容效果最佳）' })}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.emptyText, { color: c.secondaryLabel }]}>
+                {t('search.emptyTip', { defaultValue: '输入关键词搜照片和视频，试试：' })}
+              </Text>
+              {/* 可点的示例词：点一下直接搜（占位符放不下的"可搜维度"在这里展示） */}
+              <View style={styles.exampleWrap}>
+                {['2024', '5月', '视频', 'jpg', '4k', '横屏', '大文件'].map((ex) => (
+                  <TouchableOpacity
+                    key={ex}
+                    style={[styles.exampleChip, { backgroundColor: c.card }]}
+                    onPress={() => { setQuery(ex); runSearch(ex); }}
+                  >
+                    <Text style={[styles.exampleChipText, { color: c.accent || '#007AFF' }]}>{ex}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={[styles.dimsText, { color: c.tertiaryLabel }]}>
+                {t('search.dimsTip', { defaultValue: '支持：AI 描述 · 分类 · 城市 · 时间 · 格式 · 分辨率 · 方向 · 拍摄参数 · 目录 · 大小' })}
+              </Text>
+            </>
+          )}
         </View>
       ) : !similarTo && results.length === 0 && searched ? (
         <View style={styles.center} onStartShouldSetResponder={() => { Keyboard.dismiss(); return false; }}>
@@ -520,6 +564,11 @@ const styles = StyleSheet.create({
   hintText: { flex: 1, fontSize: 12.5, lineHeight: 17 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyText: { marginTop: 12, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  // 空态示例词（可点直搜）+ 维度说明
+  exampleWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 14, maxWidth: 320 },
+  exampleChip: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 15 },
+  exampleChipText: { fontSize: 13.5, fontWeight: '600' },
+  dimsText: { marginTop: 16, fontSize: 12, textAlign: 'center', lineHeight: 18, maxWidth: 320 },
   countText: { fontSize: 12.5, marginBottom: 6, marginLeft: 2 },
   thumb: { width: '100%', height: '100%', borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.04)' },
   videoBadge: { position: 'absolute', right: 4, bottom: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },

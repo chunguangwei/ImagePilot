@@ -247,19 +247,21 @@
     "confirmAIClassifyTitle": "AI Classify",
     "confirmAIClassifyMessage": "Re-classify the {{count}} selected item(s) with the classifier model in Settings (videos use an extracted frame).",
     "aiClassifyPartialFail": "{{count}} item(s) failed to classify (kept as-is). Try again later.",
-    "aiClassifyError": "AI classification failed"
+    "aiClassifyError": "AI classification failed",
+    "aiClassifyRunning": "Classifying {{done}}/{{total}}",
+    "aiClassifyDone": "Classification done ({{total}})"
   },
   "search": {
-    "placeholder": "Search description, category, file name…",
-    "emptyTip": "Type a keyword to search by AI description / category / file name",
+    "placeholder": "Search photos & videos…",
+    "emptyTip": "Type a keyword, or try:",
     "noResults": "No photos match \"{{query}}\"",
     "resultCount": "{{count}} result(s)",
     "untaggedHint": "{{count}} photo(s) have no AI description yet — classify with the multimodal tier to make them searchable by description",
     "similarTitle": "Photos similar to this one",
     "similarNoIndex": "No feature index yet — run \"Re-detect\" in Similar Photos on Home first",
     "similarNoResults": "No similar photos found",
-    "modeKeyword": "Keyword",
-    "modeSemantic": "Semantic",
+    "modeKeyword": "Default",
+    "modeSemantic": "AI Search",
     "aiSearchTitle": "AI Search",
     "aiSearchEngineAsk": "Which engine should analyze this photo?",
     "aiSearchClassifying": "Analyzing photo with AI… (multimodal tier is slower)",
@@ -273,7 +275,13 @@
     "vectorBuildBtn": "Build AI Vector Index",
     "vectorBuilding": "Indexing {{done}}/{{total}}…",
     "vectorPartialIndex": "Vector index {{indexed}}/{{total}} — tap to complete coverage",
-    "vectorModelMissing": "Download the recognition model first: Settings → Classifier Model → AI smart recognition"
+    "vectorModelMissing": "Download the recognition model first: Settings → Classifier Model → AI smart recognition",
+    "dimsTip": "Searchable: AI description · category · city · date · format · resolution · orientation · camera params · folder · size",
+    "semanticEmptyTip": "Describe the scene you want, e.g.:",
+    "semanticEx1": "sunset at the beach",
+    "semanticEx2": "group dinner",
+    "semanticEx3": "dog on the grass",
+    "semanticDimsTip": "Matches AI descriptions semantically (works best on content classified with the multimodal tier)"
   },
   "home": {
     "title": "Home",
@@ -428,7 +436,9 @@
     "duplicatesEntry": "Duplicates",
     "tripsTitle": "Trips",
     "tripCardTitle": "Trip to {{city}}",
-    "tripDays": "{{days}}d"
+    "tripDays": "{{days}}d",
+    "statusTitle": "Scan Status",
+    "scanningShort": "Working…"
   },
   "imagePreview": {
     "similarGroup": "Similar Group",
@@ -900,7 +910,9 @@
       "rebuildTitle": "Rebuild Vector Index",
       "rebuildMessage": "Clears the index and re-encodes the whole library (~0.1–0.3s per photo). Only needed if the index is corrupted or after switching models.",
       "buildFailed": "Index build failed"
-    }
+    },
+    "huaweiInstallHintTitle": "Huawei Device Note",
+    "huaweiInstallHintMessage": "If the system blocks the install (\"malicious install source\", a Huawei false positive):\n\nOption 1: Settings → System & updates → Pure Mode → turn off, then retry;\nOption 2: Open the system Files app → Download → tap imagepilot-update.apk to install."
   },
   "directoryPicker": {
     "selectScanDirectory": "Select Scan Directory",

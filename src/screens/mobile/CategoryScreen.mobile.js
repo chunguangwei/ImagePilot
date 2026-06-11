@@ -34,6 +34,7 @@ import GlobalImageCache from '../../services/GlobalImageCache';
 import configService from '../../services/ConfigService';
 import cityLocationService from '../../services/CityLocationService';
 import { sortCategoryList, getCategoryIconMeta, formatDuration } from '../../components/shared/categoryUI';
+import ClassifyProgressPill from '../../components/shared/ClassifyProgressPill';
 import { Icon } from '../../adapters/WebAdapters';
 import { logger, getUri } from '../../adapters/WebAdapters';
 
@@ -1452,21 +1453,23 @@ const CategoryScreen = ({ route, navigation }) => {
       const records = images.filter((img) => imageIds.includes(img.id));
       imageIds.forEach((id) => UnifiedDataService.setImageSelection(id, false));
       setSelectionMode(false);
-      setShowUpdateProgress(true);
-      setUpdateOperationType('aiClassify');
-      setUpdateProgress({ filesProcessed: 0, filesFailed: 0, total: records.length });
+      // 非阻塞全局进度（classifyProgressStore）：悬浮胶囊跨页面存活（首页/分类页都渲染），
+      // 切走再切回还能看到"分类中 x/y"，完成变 ✅ 停留 4 秒。
+      const progressStore = require('../../services/classifyProgressStore');
+      progressStore.startClassifyProgress(records.length);
 
       const GalleryScannerService = (await import('../../services/GalleryScannerService')).default;
       const svc = new GalleryScannerService();
       await svc.initialize();
       svc.onProgress = (p) => {
         if (p && typeof p.imagesClassified === 'number') {
-          setUpdateProgress((prev) => ({ ...prev, filesProcessed: p.imagesClassified }));
+          progressStore.updateClassifyProgress(p.imagesClassified);
         }
       };
-      const result = await svc.aiImageClassifyByContent(new Date(), records, { forceLocal });
+      // 精细化仅在「用户主动对单张图 AI 分类」时启用（多图/长按目录一律快速短描述）
+      const result = await svc.aiImageClassifyByContent(new Date(), records, { forceLocal, detailed: imageIds.length === 1 });
 
-      setShowUpdateProgress(false);
+      progressStore.finishClassifyProgress();
       try { await UnifiedDataService.imageCache.refreshCache(); } catch (_) {}
       await loadImages();   // 分好类的图离开当前视图（如在待分类视图）
       const failed = (result && result.failedCount) || 0;
@@ -1475,7 +1478,7 @@ const CategoryScreen = ({ route, navigation }) => {
       }
     } catch (error) {
       logger.error('❌ 批量AI分类失败:', error);
-      setShowUpdateProgress(false);
+      try { require('../../services/classifyProgressStore').clearClassifyProgress(); } catch (_) {}
       Alert.alert(t('settings.operationFailed'), error?.message || t('category.aiClassifyError', { defaultValue: 'AI 分类失败' }));
     }
   };
@@ -2216,6 +2219,9 @@ const CategoryScreen = ({ route, navigation }) => {
           </View>
         </View>
       )}
+
+      {/* AI 分类全局进度胶囊：跨页面存活（store 驱动），不挡操作 */}
+      <ClassifyProgressPill bottom={96} />
     </SafeAreaView>
   );
 };

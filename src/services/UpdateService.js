@@ -181,7 +181,10 @@ export async function downloadAndInstall(apkUrl, onProgress) {
   if (!ApkInstaller || typeof ApkInstaller.install !== 'function') {
     throw new Error('ApkInstaller 原生模块不可用');
   }
-  const dest = `${RNFS.CachesDirectoryPath}/imagepilot-update.apk`;
+  // 存到公共 Download 目录：华为纯净模式误报"恶意安装来源"拦截应用内安装时，
+  // 用户可改用系统"文件管理 → Download"手动点装（换安装来源即绕开对本应用的信誉判定）。
+  // FileProvider 的 file_paths.xml 已覆盖 external Download，应用内直装不受影响。
+  const dest = `${RNFS.DownloadDirectoryPath || RNFS.CachesDirectoryPath}/imagepilot-update.apk`;
   const part = `${dest}.part`;
 
   // 跑掉重定向，给 RNFS 一个最终直链
