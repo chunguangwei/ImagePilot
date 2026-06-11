@@ -260,8 +260,8 @@
     "similarTitle": "与此图相似的照片",
     "similarNoIndex": "还没有建立特征索引：在首页「相似照片」里跑一次「重新检测」后即可以图搜图",
     "similarNoResults": "没有找到相似的照片",
-    "modeKeyword": "关键字搜图",
-    "modeSemantic": "语义搜图",
+    "modeKeyword": "默认搜索",
+    "modeSemantic": "AI 搜索",
     "aiSearchTitle": "AI 搜图",
     "aiSearchEngineAsk": "用哪种引擎识别这张图？",
     "aiSearchClassifying": "AI 识别图片中…（多模态档较慢）",
@@ -276,7 +276,12 @@
     "vectorBuilding": "建索引中 {{done}}/{{total}}…",
     "vectorPartialIndex": "向量索引 {{indexed}}/{{total}}，点此补全（覆盖更多图）",
     "vectorModelMissing": "需先下载识别模型：设置 → 分类模型 → AI 智能识别",
-    "dimsTip": "支持：AI 描述 · 分类 · 城市 · 时间 · 格式 · 分辨率 · 方向 · 拍摄参数 · 目录 · 大小"
+    "dimsTip": "支持：AI 描述 · 分类 · 城市 · 时间 · 格式 · 分辨率 · 方向 · 拍摄参数 · 目录 · 大小",
+    "semanticEmptyTip": "像说话一样描述想找的画面，试试：",
+    "semanticEx1": "海边日落",
+    "semanticEx2": "一群人聚餐",
+    "semanticEx3": "小狗在草地",
+    "semanticDimsTip": "按 AI 描述的语义匹配（多模态档分类过的内容效果最佳）"
   },
   "home": {
     "title": "首页",

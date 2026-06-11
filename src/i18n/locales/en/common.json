@@ -260,8 +260,8 @@
     "similarTitle": "Photos similar to this one",
     "similarNoIndex": "No feature index yet — run \"Re-detect\" in Similar Photos on Home first",
     "similarNoResults": "No similar photos found",
-    "modeKeyword": "Keyword",
-    "modeSemantic": "Semantic",
+    "modeKeyword": "Default",
+    "modeSemantic": "AI Search",
     "aiSearchTitle": "AI Search",
     "aiSearchEngineAsk": "Which engine should analyze this photo?",
     "aiSearchClassifying": "Analyzing photo with AI… (multimodal tier is slower)",
@@ -276,7 +276,12 @@
     "vectorBuilding": "Indexing {{done}}/{{total}}…",
     "vectorPartialIndex": "Vector index {{indexed}}/{{total}} — tap to complete coverage",
     "vectorModelMissing": "Download the recognition model first: Settings → Classifier Model → AI smart recognition",
-    "dimsTip": "Searchable: AI description · category · city · date · format · resolution · orientation · camera params · folder · size"
+    "dimsTip": "Searchable: AI description · category · city · date · format · resolution · orientation · camera params · folder · size",
+    "semanticEmptyTip": "Describe the scene you want, e.g.:",
+    "semanticEx1": "sunset at the beach",
+    "semanticEx2": "group dinner",
+    "semanticEx3": "dog on the grass",
+    "semanticDimsTip": "Matches AI descriptions semantically (works best on content classified with the multimodal tier)"
   },
   "home": {
     "title": "Home",
