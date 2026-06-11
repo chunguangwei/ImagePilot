@@ -285,20 +285,6 @@ export default function SearchScreen({ navigation, route }) {
     debounceRef.current = setTimeout(() => runSearch(text), 300);
   };
 
-  const playVideoRecord = async (image) => {
-    const id = image?.id || image?.localIdentifier;
-    try {
-      const PhotoKitModule = NativeModules && NativeModules.PhotoKitModule;
-      if (PhotoKitModule && typeof PhotoKitModule.playVideo === 'function') {
-        await PhotoKitModule.playVideo(id); return;
-      }
-      const MediaStoreModule = NativeModules && NativeModules.MediaStoreModule;
-      if (MediaStoreModule && typeof MediaStoreModule.playVideo === 'function') {
-        await MediaStoreModule.playVideo(image?.uri || id); return;
-      }
-    } catch (e) { logger.warn('播放视频失败:', e?.message || e); }
-  };
-
   const onPressItem = (image, index) => {
     // 视频也进预览页（海报帧+居中▶）：可查看信息/改分类/编辑描述，点▶才播放
     navigation.navigate('ImagePreview', {

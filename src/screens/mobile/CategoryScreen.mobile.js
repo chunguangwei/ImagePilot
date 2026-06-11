@@ -935,27 +935,6 @@ const CategoryScreen = ({ route, navigation }) => {
   /**
    * 执行批量操作
    */
-  // 播放视频：iOS 调系统播放器(PhotoKitModule.playVideo)；安卓系统播放器 intent 后续接入。
-  const playVideoRecord = async (image) => {
-    const id = image?.id || image?.localIdentifier;
-    const PhotoKitModule = NativeModules && NativeModules.PhotoKitModule;
-    try {
-      if (PhotoKitModule && typeof PhotoKitModule.playVideo === 'function') {
-        await PhotoKitModule.playVideo(id);
-        return;
-      }
-      const MediaStoreModule = NativeModules && NativeModules.MediaStoreModule;
-      if (MediaStoreModule && typeof MediaStoreModule.playVideo === 'function') {
-        await MediaStoreModule.playVideo(image?.uri || id);   // Android：系统播放器 intent
-        return;
-      }
-      Alert.alert(t('common.tip'), t('category.videoPlaySoon', { defaultValue: '视频播放即将支持' }));
-    } catch (e) {
-      logger.warn('播放视频失败:', e?.message || e);
-      Alert.alert(t('settings.operationFailed'), t('category.videoPlayError', { defaultValue: '播放失败' }));
-    }
-  };
-
   const handleBatchAction = async (actionId) => {
     try {
       // 点击任意底部按钮时，自动收起“照片创玩”面板
