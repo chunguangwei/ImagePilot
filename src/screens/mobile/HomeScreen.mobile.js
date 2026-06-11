@@ -509,18 +509,7 @@ const HomeScreen = ({ navigation }) => {
         loadCategories(),
         loadRecentImages(),
         (async () => loadMemories())(),
-        (async () => {
-          try {
-            const r = await UnifiedDataService.findTrips();
-            setTrips((r && r.trips) || []);
-          } catch (_) { setTrips([]); }
-        })(),
-        (async () => {
-          try {
-            const r = await UnifiedDataService.findHolidayMemories();
-            setHolidayCards((r && r.cards) || []);
-          } catch (_) { setHolidayCards([]); }
-        })(),
+
       ]);
 
       // 延迟加载次要数据（第二优先级）：先 Promise.all 拿原始数据，再一次性 setState 批处理
@@ -2024,14 +2013,7 @@ const HomeScreen = ({ navigation }) => {
             >
               <Text style={styles.toggleButtonText}>{t('home.duplicatesEntry', { defaultValue: '重复清理' })}</Text>
             </TouchableOpacity>
-            {/* 随便看看：按年份分桶随机抽样，"考古"老照片 */}
-            <TouchableOpacity
-              style={styles.toggleButton}
-              onPress={openRandomBrowse}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.toggleButtonText}>{t('home.randomBrowse', { defaultValue: '随便看看' })}</Text>
-            </TouchableOpacity>
+
           {similarityGroups && similarityGroups.length > 0 && (
             <>
               <TouchableOpacity
@@ -2864,8 +2846,6 @@ const HomeScreen = ({ navigation }) => {
           </View>
         ) : null}
         {renderMemoriesSection()}
-        {renderHolidaysSection()}
-        {renderTripsSection()}
         {renderTimeSection()}
         {renderCategoriesSection()}
         {renderCitiesSection()}

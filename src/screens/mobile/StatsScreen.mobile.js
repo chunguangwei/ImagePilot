@@ -34,9 +34,10 @@ export default function StatsScreen({ navigation }) {
     if (sharing) return;
     setSharing(true);
     try {
+      // 截内部内容 View（完整高度、含屏外部分）；snapshotContentContainer 对 ScrollView
+      // 整体截图在 iOS 上易崩，改为标准做法：内容包一层 View 直接截它。
       const uri = await captureRef(shotRef, {
-        format: 'png', quality: 1, result: 'tmpfile',
-        snapshotContentContainer: true,   // 截整个滚动内容（不止可视区）
+        format: 'png', quality: 0.95, result: 'tmpfile',
       });
       const fileUrl = uri.startsWith('file://') ? uri : `file://${uri}`;
       if (Platform.OS === 'ios') {
@@ -106,7 +107,8 @@ export default function StatsScreen({ navigation }) {
       {loading || !stats ? (
         <View style={styles.center}><ActivityIndicator color={c.accent || '#007AFF'} /></View>
       ) : (
-        <ScrollView ref={shotRef} style={{ backgroundColor: c.groupedBg || '#F2F2F7' }} contentContainerStyle={{ padding: 12, paddingBottom: 32 }}>
+        <ScrollView style={{ backgroundColor: c.groupedBg || '#F2F2F7' }} contentContainerStyle={{ padding: 12, paddingBottom: 32 }}>
+          <View ref={shotRef} collapsable={false} style={{ backgroundColor: c.groupedBg || '#F2F2F7' }}>
           {/* 总览 */}
           <Card>
             <Text style={[styles.cardTitle, { color: c.label }]}>📦 {t('stats.overview', { defaultValue: '总览' })}</Text>
@@ -170,6 +172,7 @@ export default function StatsScreen({ navigation }) {
               <Text style={[styles.rowLabel, { color: c.tertiaryLabel }]}>{t('stats.funEmpty', { defaultValue: '扫描后这里会更精彩' })}</Text>
             ) : null}
           </Card>
+          </View>
         </ScrollView>
       )}
     </SafeAreaView>
