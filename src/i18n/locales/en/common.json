@@ -281,7 +281,8 @@
     "semanticEx1": "sunset at the beach",
     "semanticEx2": "group dinner",
     "semanticEx3": "dog on the grass",
-    "semanticDimsTip": "Matches AI descriptions semantically (works best on content classified with the multimodal tier)"
+    "semanticDimsTip": "Matches AI descriptions semantically (works best on content classified with the multimodal tier)",
+    "rewriteFailed": "Rewrite failed"
   },
   "home": {
     "title": "Home",
@@ -438,7 +439,11 @@
     "tripCardTitle": "Trip to {{city}}",
     "tripDays": "{{days}}d",
     "statusTitle": "Scan Status",
-    "scanningShort": "Working…"
+    "scanningShort": "Working…",
+    "slideshowBtn": "▶ Play",
+    "randomBrowse": "Surprise Me",
+    "randomBrowseSub": "{{count}} random · tap again for a new batch",
+    "holidaysTitle": "Holidays"
   },
   "imagePreview": {
     "similarGroup": "Similar Group",
@@ -1148,6 +1153,7 @@
     "fun": "Records",
     "busiestDay": "Busiest Day",
     "longestVideo": "Longest Video",
-    "funEmpty": "Scan to unlock more"
+    "funEmpty": "Scan to unlock more",
+    "shareFailed": "Share failed"
   }
 }

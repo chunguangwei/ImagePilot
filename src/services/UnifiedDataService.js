@@ -419,6 +419,63 @@ class UnifiedDataService {
   }
 
   /**
+   * 节日回忆：历年节日（春节/国庆/中秋/元旦/五一/圣诞）期间拍的照片聚合卡片。
+   * 纯内存（毫秒级）；每张卡 = 节日+年份，≥3 张才成卡。
+   * @returns {Promise<{cards:Array<{key,name,nameEn,year,count,cover,images,ts}>}>} 按时间倒序
+   */
+  async findHolidayMemories({ minPhotos = 3 } = {}) {
+    try {
+      await this.imageCache.buildCache();
+      const all = (this.imageCache.getCache().allImages || []).filter((img) => {
+        const ts = img && (img.takenAt || img.timestamp);
+        return img && img.id && ts > 0;
+      });
+      if (all.length === 0) return { cards: [] };
+      const { holidayRangesForYear } = require('../components/shared/holidays');
+      // 预生成涉及年份的节日范围
+      const years = new Set(all.map((i) => new Date(i.takenAt || i.timestamp).getFullYear()));
+      const ranges = [];
+      for (const y of years) {
+        for (const r of holidayRangesForYear(y)) {
+          ranges.push({ ...r, year: y, startMs: r.start.getTime(), endMs: r.end.getTime() + 86399999 });
+        }
+      }
+      const buckets = new Map();   // `${key}-${year}` → { range, images }
+      for (const img of all) {
+        const ts = img.takenAt || img.timestamp;
+        for (const r of ranges) {
+          if (ts >= r.startMs && ts <= r.endMs) {
+            const k = `${r.key}-${r.year}`;
+            if (!buckets.has(k)) buckets.set(k, { range: r, images: [] });
+            buckets.get(k).images.push(img);
+            break;
+          }
+        }
+      }
+      const cards = [];
+      for (const { range, images } of buckets.values()) {
+        if (images.length < minPhotos) continue;
+        images.sort((a, b) => (a.takenAt || a.timestamp) - (b.takenAt || b.timestamp));
+        cards.push({
+          key: range.key,
+          name: range.zh,
+          nameEn: range.en,
+          year: range.year,
+          count: images.length,
+          cover: images[Math.floor(images.length / 2)],
+          images,
+          ts: range.startMs,
+        });
+      }
+      cards.sort((a, b) => b.ts - a.ts);
+      return { cards };
+    } catch (error) {
+      logger.error('节日回忆失败:', error);
+      return { cards: [] };
+    }
+  }
+
+  /**
    * 相册统计（年报）：纯内存聚合，毫秒级。
    */
   async getAlbumStats() {

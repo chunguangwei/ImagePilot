@@ -264,6 +264,7 @@ const HomeScreen = ({ navigation }) => {
   const [recentImagesTotal, setRecentImagesTotal] = useState(0); // 新发现照片的总数
   const [memories, setMemories] = useState([]); // 回忆/那年今天（历年同月同日）
   const [trips, setTrips] = useState([]); // 旅行回忆（异地连续拍摄自动聚簇）
+  const [holidayCards, setHolidayCards] = useState([]); // 节日回忆（春节/国庆/中秋…历年）
   const [isRefreshingRecent, setIsRefreshingRecent] = useState(false); // 「重新检测」按钮 loading 态
   
   // 扫描状态
@@ -513,6 +514,12 @@ const HomeScreen = ({ navigation }) => {
             const r = await UnifiedDataService.findTrips();
             setTrips((r && r.trips) || []);
           } catch (_) { setTrips([]); }
+        })(),
+        (async () => {
+          try {
+            const r = await UnifiedDataService.findHolidayMemories();
+            setHolidayCards((r && r.cards) || []);
+          } catch (_) { setHolidayCards([]); }
         })(),
       ]);
 
@@ -2017,6 +2024,14 @@ const HomeScreen = ({ navigation }) => {
             >
               <Text style={styles.toggleButtonText}>{t('home.duplicatesEntry', { defaultValue: '重复清理' })}</Text>
             </TouchableOpacity>
+            {/* 随便看看：按年份分桶随机抽样，"考古"老照片 */}
+            <TouchableOpacity
+              style={styles.toggleButton}
+              onPress={openRandomBrowse}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.toggleButtonText}>{t('home.randomBrowse', { defaultValue: '随便看看' })}</Text>
+            </TouchableOpacity>
           {similarityGroups && similarityGroups.length > 0 && (
             <>
               <TouchableOpacity
@@ -2564,6 +2579,14 @@ const HomeScreen = ({ navigation }) => {
               <Text style={styles.countBadgeText}>{memories.length}</Text>
             </View>
           </View>
+          {/* 幻灯片放映（视频自动跳过） */}
+          <TouchableOpacity
+            style={styles.toggleButton}
+            onPress={() => navigation && navigation.navigate('Slideshow', { images: memories, title: t('home.memoriesTitle', { defaultValue: '那年今天' }) })}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.toggleButtonText}>{t('home.slideshowBtn', { defaultValue: '▶ 放映' })}</Text>
+          </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 2 }}>
           {memories.map((img, idx) => (
@@ -2589,6 +2612,41 @@ const HomeScreen = ({ navigation }) => {
         </ScrollView>
       </View>
     );
+  };
+
+  /**
+   * 随便看看：按年份分桶轮询随机抽 30 张（时间多样性，老照片也有出场机会）→ 集合页。
+   */
+  const openRandomBrowse = () => {
+    try {
+      const pool = (GlobalImageCache.getCache().allImages || []).filter((i) => i && i.id);
+      if (pool.length === 0) return;
+      const byYear = new Map();
+      for (const img of pool) {
+        const ts = img.takenAt || img.timestamp || 0;
+        const y = ts > 0 ? new Date(ts).getFullYear() : 0;
+        if (!byYear.has(y)) byYear.set(y, []);
+        byYear.get(y).push(img);
+      }
+      const buckets = [...byYear.values()].map((arr) => arr.sort(() => Math.random() - 0.5));
+      const out = [];
+      let bi = 0;
+      let guard = 0;
+      while (out.length < 30 && guard < 10000 && buckets.some((b) => b.length > 0)) {
+        const b = buckets[bi % buckets.length];
+        if (b.length > 0) out.push(b.pop());
+        bi++; guard++;
+      }
+      if (navigation) {
+        navigation.navigate('Collection', {
+          title: t('home.randomBrowse', { defaultValue: '随便看看' }),
+          subtitle: t('home.randomBrowseSub', { count: out.length, defaultValue: `随机 ${out.length} 张 · 回去再点一次换一批` }),
+          images: out,
+        });
+      }
+    } catch (e) {
+      logger.debug('随便看看失败:', e?.message || e);
+    }
   };
 
   /**
@@ -2636,6 +2694,52 @@ const HomeScreen = ({ navigation }) => {
               </View>
             </TouchableOpacity>
           ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  /**
+   * 节日回忆：历年节日照片聚合（"2024 国庆 · 23"），横滑卡片 → 集合页。无卡不渲染。
+   */
+  const renderHolidaysSection = () => {
+    if (!holidayCards || holidayCards.length === 0) return null;
+    const isEn = String(i18n.language || '').startsWith('en');
+    return (
+      <View style={[styles.section, dynSection]}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleContainer}>
+            <SectionIcon name="gift-outline" emoji="🎉" tint="#FF2D55" />
+            <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>
+              {t('home.holidaysTitle', { defaultValue: '节日回忆' })}
+            </Text>
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeText}>{holidayCards.length}</Text>
+            </View>
+          </View>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 2 }}>
+          {holidayCards.slice(0, 20).map((card) => {
+            const name = isEn ? card.nameEn : card.name;
+            return (
+              <TouchableOpacity
+                key={`${card.key}-${card.year}`}
+                style={styles.tripCard}
+                activeOpacity={0.85}
+                onPress={() => navigation && navigation.navigate('Collection', {
+                  title: `${card.year} ${name}`,
+                  subtitle: `${card.count}`,
+                  images: card.images,
+                })}
+              >
+                <Image source={{ uri: getUri(card.cover) || card.cover?.uri }} style={styles.tripImage} resizeMode="cover" />
+                <View style={styles.tripOverlay} pointerEvents="none">
+                  <Text style={styles.tripCity} numberOfLines={1}>{card.year} {name}</Text>
+                  <Text style={styles.tripMeta} numberOfLines={1}>{card.count}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </View>
     );
@@ -2760,6 +2864,7 @@ const HomeScreen = ({ navigation }) => {
           </View>
         ) : null}
         {renderMemoriesSection()}
+        {renderHolidaysSection()}
         {renderTripsSection()}
         {renderTimeSection()}
         {renderCategoriesSection()}

@@ -1,6 +1,6 @@
 {
   "name": "imagepilot",
-  "version": "1.5.38",
+  "version": "1.5.39",
   "description": "ImagePilot-智能分类，便捷管理，仅你可见",
   "displayName": "ImagePilot",
   "main": "index.js",
@@ -59,6 +59,7 @@
     "react-native-screens": "^3.29.0",
     "react-native-sqlite-storage": "^6.0.1",
     "react-native-vector-icons": "^9.2.0",
+    "react-native-view-shot": "^4.0.3",
     "react-native-webview": "^13.16.0",
     "react-window": "^2.1.0",
     "react-window-infinite-loader": "^1.0.10",
