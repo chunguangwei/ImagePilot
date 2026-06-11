@@ -95,24 +95,33 @@ export function getCategoryList() {
  * prompt：参考在线大模型 —— 同时要"分类 id"和"一句简短理解描述"。
  * 分类用于正常落库（一个类 + 百分比），描述写进 message → 显示为「🤖 AI 描述」。跟随 App 语言。
  */
-export function buildPrompt(cats, lang) {
+export function buildPrompt(cats, lang, opts = {}) {
+  // detailed：用户对单张图主动点 AI 分类时启用——描述加长（主体/动作/场景/可见文字/细节），
+  // 信息更精细也更利于搜索；批量扫描仍用 15 字短描述（快、省 token）。
+  const detailed = !!opts.detailed;
   if (lang === 'en') {
     // 带「规则」的自定义分类，把规则一并给模型 → 像在线模型一样按规则归类。
     const lines = cats.map((c) => `${c.id} = ${c.en}${c.rule ? ` (rule: ${c.rule})` : ''}`).join('\n');
+    const descLine = detailed
+      ? 'desc: 2-3 detailed English sentences (30-50 words): main subject, what it is doing, scene/background, any visible text, notable details.\n'
+      : 'desc: one short English sentence (max 15 words) describing the image.\n';
     return (
       'Look at the image carefully, understand its content, then pick the single best category from the list.\n' +
       'Output EXACTLY two lines:\n' +
-      'desc: one short English sentence (max 15 words) describing the image.\n' +
+      descLine +
       'cat: output ONE category id from the list. For categories that have a rule, prefer the one whose rule matches the image. If none fits, use other.\n\n' +
       `Categories (id = meaning, rule in parentheses):\n${lines}\n\n` +
       'desc: '
     );
   }
   const lines = cats.map((c) => `${c.id} = ${c.zh}${c.rule ? `（规则：${c.rule}）` : ''}`).join('\n');
+  const descLine = detailed
+    ? '描述: 用50~80字简体中文详细描述：主体是什么、在做什么、所处场景/背景、画面中可见的文字、其它显著细节（必须用中文）。\n'
+    : '描述: 一句不超过15字的简体中文图片内容概括（必须用中文）。\n';
   return (
     '仔细看图，先理解图片内容，再从下面的分类清单里选出最贴近的一类。\n' +
     '严格输出两行：\n' +
-    '描述: 一句不超过15字的简体中文图片内容概括（必须用中文）。\n' +
+    descLine +
     '分类: 只输出清单里的一个分类 id；带「规则」的分类优先按规则判断是否符合；都不符合时输出 other。\n\n' +
     `分类清单（id = 含义，括号内为判定规则）：\n${lines}\n\n` +
     '描述: '

@@ -7,7 +7,7 @@
  *
  * 索引：对库内每张图片跑一次 CLIP image encoder（~百毫秒/张），embedding 存 image_embeddings 表。
  * 检索：目标图编码一次 + 全库点积（L2 归一化向量，余弦=点积），毫秒级。
- * 视频不参与（帧代表性放到后续考虑）。
+ * 视频也参与：抽中点帧（与分类同策略）编码入索引，「AI 相似」可搜到视频。
  */
 import { logger } from '../adapters/WebAdapters';
 import UnifiedDataService from './UnifiedDataService';
@@ -46,6 +46,30 @@ class ClipVectorIndexService {
     try { return !!(await this._resolveModel()); } catch (_) { return false; }
   }
 
+  /**
+   * 取可编码 uri：图片直接用；视频抽中点帧（返回 temp 路径，用后删）。
+   * @returns {Promise<{uri:string, temp:string|null}>}
+   */
+  async _getEncodableUri(img) {
+    const { getUri } = require('../adapters/WebAdapters');
+    if (!String(img.mimeType || '').startsWith('video/')) {
+      return { uri: getUri(img) || img.uri, temp: null };
+    }
+    const { NativeModules } = require('react-native');
+    const pk = NativeModules.PhotoKitModule;
+    if (pk && typeof pk.extractVideoFrame === 'function') {
+      const localId = String(img.uri || '').replace(/^ph:\/\//, '');
+      const p = await pk.extractVideoFrame(localId);
+      return { uri: p, temp: p };
+    }
+    const ms = NativeModules.MediaStoreModule;
+    if (ms && typeof ms.extractVideoFrame === 'function') {
+      const p = await ms.extractVideoFrame(img.uri || String(img.id || ''));
+      return { uri: p, temp: p };
+    }
+    throw new Error('无可用抽帧模块');
+  }
+
   /** 已建索引数量 / 候选图片总数 */
   async getIndexStats() {
     try {
@@ -54,7 +78,7 @@ class ClipVectorIndexService {
       const map = await UnifiedDataService.imageStorageService.readAllImageEmbeddings(clipModel.id);
       await UnifiedDataService.imageCache.buildCache();
       const all = UnifiedDataService.imageCache.getCache().allImages || [];
-      const candidates = all.filter((i) => i && i.id && !String(i.mimeType || '').startsWith('video/'));
+      const candidates = all.filter((i) => i && i.id);   // 视频也参与索引（抽帧编码）
       return { indexed: Object.keys(map).length, total: candidates.length };
     } catch (e) {
       return { indexed: 0, total: 0 };
@@ -63,6 +87,13 @@ class ClipVectorIndexService {
 
   requestStop() { this._stopRequested = true; }
   get isBuilding() { return this._building; }
+
+  /** 清空当前模型的向量索引（设置页「重建」用：清空后再 buildIndex 即全量重编） */
+  async clearIndex() {
+    const { readActiveClipModel } = require('./classify/classifyByTier');
+    const clipModel = await readActiveClipModel();
+    await UnifiedDataService.imageStorageService.deleteAllImageEmbeddings(clipModel.id);
+  }
 
   /**
    * 建/补向量索引（增量：已有向量的图跳过）。
@@ -83,25 +114,28 @@ class ClipVectorIndexService {
       const existing = await UnifiedDataService.imageStorageService.readAllImageEmbeddings(clipModel.id);
       await UnifiedDataService.imageCache.buildCache();
       const all = UnifiedDataService.imageCache.getCache().allImages || [];
-      const todo = all.filter((i) =>
-        i && i.id && !String(i.mimeType || '').startsWith('video/') && !existing[i.id]
-      );
+      const todo = all.filter((i) => i && i.id && !existing[i.id]);   // 视频也入索引（抽帧编码）
       const total = todo.length + Object.keys(existing).length;
       let done = Object.keys(existing).length;
       let indexed = 0; let failed = 0; let stopped = false;
 
+      const { RNFS } = require('../adapters/WebAdapters');
       let batch = [];
       for (const img of todo) {
         if (this._stopRequested) { stopped = true; break; }
+        let temp = null;
         try {
-          const uri = getUri(img) || img.uri;
-          if (!uri) { failed++; continue; }
-          const vec = await getImageEmbedding(uri, modelPath, clipModel);
+          const enc = await this._getEncodableUri(img);
+          temp = enc.temp;
+          if (!enc.uri) { failed++; continue; }
+          const vec = await getImageEmbedding(enc.uri, modelPath, clipModel);
           batch.push({ imageId: img.id, vec });
           indexed++;
         } catch (e) {
           failed++;
           logger.debug(`[ClipIndex] 编码失败 ${img.fileName || img.id}: ${e?.message || e}`);
+        } finally {
+          if (temp) { try { await RNFS.unlink(temp.replace(/^file:\/\//, '')); } catch (_) {} }
         }
         done++;
         if (batch.length >= 20) {

@@ -885,6 +885,18 @@
       "downloadFailed": "Download Failed",
       "cancelDownload": "Cancel",
       "presetsDesc": "Preset enhancement profiles, with custom prompts"
+    },
+    "vectorIndex": {
+      "title": "AI Vector Index",
+      "needModel": "Download the \"AI smart recognition\" model first (in Classifier Model above)",
+      "stats": "Indexed {{indexed}}/{{total}} ({{percent}}%). Used by AI Similar / AI Search; new photos auto-indexed after scans, or complete/rebuild here.",
+      "loading": "Loading index status…",
+      "complete": "Complete Index",
+      "building": "Working {{done}}/{{total}}",
+      "rebuild": "Rebuild",
+      "rebuildTitle": "Rebuild Vector Index",
+      "rebuildMessage": "Clears the index and re-encodes the whole library (~0.1–0.3s per photo). Only needed if the index is corrupted or after switching models.",
+      "buildFailed": "Index build failed"
     }
   },
   "directoryPicker": {

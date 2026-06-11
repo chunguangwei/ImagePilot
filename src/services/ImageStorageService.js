@@ -2043,7 +2043,12 @@ class ImageStorageService {
             setParts.push('message = ?');
             params.push(classificationData.message);
           }
-          
+
+          if (classificationData.duration !== undefined) {
+            setParts.push('duration = ?');
+            params.push(classificationData.duration);
+          }
+
           if (classificationData.background_color !== undefined) {
             setParts.push('background_color = ?');
             params.push(classificationData.background_color);
@@ -5003,6 +5008,19 @@ class ImageStorageService {
       return true;
     } catch (error) {
       logger.warn('保存向量索引失败:', error?.message || error);
+      return false;
+    }
+  }
+
+  /** 清空指定模型的全部 CLIP 向量（重建索引用） */
+  async deleteAllImageEmbeddings(model) {
+    try {
+      if (Platform.OS === 'web') return true;
+      await this.ensureInitialized();
+      await this.storage.db.executeSql('DELETE FROM image_embeddings WHERE model = ?', [model || '']);
+      return true;
+    } catch (error) {
+      logger.warn('清空向量索引失败:', error?.message || error);
       return false;
     }
   }

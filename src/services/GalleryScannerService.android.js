@@ -395,6 +395,29 @@ class GalleryScannerService {
           }).catch(() => {});
         } catch (_) { /* 服务不可用不影响扫描 */ }
 
+        // 存量视频时长回填（fire-and-forget，幂等）：旧版扫入库的视频 duration=0，
+        // 原生增量扫描不会重写它们——批量取 MediaMetadataRetriever 时长补进 DB（每轮最多 200 条）。
+        (async () => {
+          try {
+            const all = await UnifiedDataService.readAllImages();
+            const missing = (Array.isArray(all) ? all : [])
+              .filter((i) => String(i.mimeType || '').startsWith('video/') && !(i.duration > 0))
+              .slice(0, 200);
+            if (missing.length === 0) return;
+            const map = await NativeModules.MediaStoreModule.getVideoDurations(missing.map((m) => m.uri));
+            const updates = missing
+              .filter((m) => map && map[m.uri] > 0)
+              .map((m) => ({ id: m.id, duration: map[m.uri] }));
+            if (updates.length > 0) {
+              await UnifiedDataService.batchUpdateClassification(updates, false);
+              try { await UnifiedDataService.imageCache.refreshCache(); } catch (_) {}
+              logger.info(`⏱️ 存量视频时长回填 ${updates.length} 条`);
+            }
+          } catch (e) {
+            logger.debug('视频时长回填失败（不影响扫描）:', e?.message || e);
+          }
+        })();
+
       } catch (error) {
         logger.error('❌ 后续处理失败:', error);
         await this.sendProgressMessage('error', 0, 0);
@@ -604,6 +627,7 @@ class GalleryScannerService {
         }
         const batch = naImages.slice(i, i + BATCH);
         const classificationDataArray = [];
+        let perImageDone = i;   // 批内逐张进度计数（进度平滑滚动）
         // 当前批次共用一个 tier（每批读一次 settings，避免单图 IO）
         const activeTier = await readActiveTier();
         for (const image of batch) {
@@ -628,7 +652,7 @@ class GalleryScannerService {
             }
             if (!imageUri) { failedCount++; continue; }
             // P1：按 tier 路由（basic→ImageNet / scene→Places365 / clip→未接入回退）
-            const r = await classifyImageByTier(imageUri, activeTier, { imageClassifier: this.imageClassifier });
+            const r = await classifyImageByTier(imageUri, activeTier, { imageClassifier: this.imageClassifier, detailed: naImages.length === 1 });
             const top = r?.topPrediction || null;
             const conf = (typeof r?.confidence === 'number') ? r.confidence : 0;
             let category;
@@ -659,6 +683,9 @@ class GalleryScannerService {
             // 删抽帧临时文件（失败无妨，cacheDir 系统会自清）
             if (frameTemp) { try { await RNFS.unlink(frameTemp.replace(/^file:\/\//, '')); } catch (_) {} }
           }
+          // 批内逐张发进度：百分比平滑滚动，不再 20 张跳一次（界面数据刷新仍按每 20 张节流）
+          perImageDone++;
+          await this.sendProgressMessage('remote_inference', Math.min(perImageDone, naImages.length), naImages.length, this.imagesClassified, naImages.length);
         }
         if (classificationDataArray.length > 0) {
           try {

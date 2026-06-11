@@ -66,7 +66,7 @@ function buildTaxonomy(aiCfg, lang) {
   return out;
 }
 
-function buildPromptZH(taxonomy) {
+function buildPromptZH(taxonomy, detailed = false) {
   const taxoLines = taxonomy
     .map(t => `  - ${t.id}：${t.name}${t.rule ? `（${t.rule}）` : ''}`)
     .join('\n');
@@ -79,7 +79,7 @@ ${taxoLines}
 - primaryCategory: 字符串（必须是上面的 id 之一；若图片不属于任何一类，用 "other"，不要硬选）
 - tags: 字符串数组，1~5 个语义标签（每个 2~6 个汉字，要"具体"，如「夜景」「会议白板」「咖啡馆」「菜单」「行车记录」，**不要**用"图片/照片/风景"这种泛词）
 - shortLabel: 字符串，4~12 个汉字，概括图片核心（如「夜景人像」「工作 PPT」「外卖菜单」）
-- description: 字符串，≤24 字的一句具体描述，补充 shortLabel 没体现的信息（人物动作、文字片段、地点细节等）
+- description: ${detailed ? '字符串，50~80 字详细描述：主体、动作、场景/背景、可见文字、显著细节（单图精细模式）' : '字符串，≤24 字的一句具体描述，补充 shortLabel 没体现的信息（人物动作、文字片段、地点细节等）'}
 - confidence: 0.0~1.0 数字
 - colorTheme: 单选 blue | green | red | yellow | black | white | warm | cold | mixed
 - containsText: 布尔，画面里是否含明显文字
@@ -92,7 +92,7 @@ ${taxoLines}
 4. tags 用中文短词，要能让人靠这些词搜回这张图`;
 }
 
-function buildPromptEN(taxonomy) {
+function buildPromptEN(taxonomy, detailed = false) {
   const taxoLines = taxonomy
     .map(t => `  - ${t.id}: ${t.name}${t.rule ? ` (${t.rule})` : ''}`)
     .join('\n');
@@ -105,7 +105,7 @@ ${taxoLines}
 - primaryCategory: string (must be one of the ids above; if nothing fits, use "other" — do NOT guess)
 - tags: array of 1-5 short semantic tags (2-5 words each, specific not generic — e.g. "night portrait", "meeting whiteboard", "coffee shop", "restaurant menu"; avoid words like "photo", "image", "scenery")
 - shortLabel: 2-5 words summarizing the core (e.g. "night portrait", "code screenshot")
-- description: one concise sentence < 14 words adding what tags don't capture (action, readable text, location detail)
+- description: ${detailed ? '2-3 detailed sentences (30-50 words): subject, action, scene, visible text, notable details' : "one concise sentence < 14 words adding what tags don't capture (action, readable text, location detail)"}
 - confidence: 0.0-1.0
 - colorTheme: pick one of blue | green | red | yellow | black | white | warm | cold | mixed
 - containsText: boolean (visible text on screen?)
@@ -190,7 +190,9 @@ export async function classifyCloudBatchV2({ imageClassifier, platform, inputs, 
       items: validResults.map(v => ({ imageData: v.imageData, success: false, error: 'empty taxonomy' })),
     };
   }
-  const prompt = lang === 'en' ? buildPromptEN(taxonomy) : buildPromptZH(taxonomy);
+  // 单图（用户主动点单张 AI 分类）→ 精细模式：描述加长，信息更丰富
+  const detailed = (inputs && inputs.length === 1);
+  const prompt = lang === 'en' ? buildPromptEN(taxonomy, detailed) : buildPromptZH(taxonomy, detailed);
 
   logger.info(`☁️ LLMClassifyOrchestrator: taxonomy=${taxonomy.length} 项, lang=${lang}, concurrent=${aiCfg?.concurrent || 3}`);
 

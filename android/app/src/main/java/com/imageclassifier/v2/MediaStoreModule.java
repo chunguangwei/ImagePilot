@@ -383,6 +383,42 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
         }
     }
 
+    /**
+     * 批量取视频时长（秒）——存量视频 duration 回填用。
+     * 入参 combinedUri 数组（兼容 "content://...||/path"），返回 { uri: seconds } 映射；取不到的不返回。
+     */
+    @ReactMethod
+    public void getVideoDurations(ReadableArray uris, Promise promise) {
+        WritableMap out = Arguments.createMap();
+        try {
+            int n = uris != null ? uris.size() : 0;
+            for (int i = 0; i < n; i++) {
+                String s = uris.getString(i);
+                if (s == null || s.isEmpty()) continue;
+                MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                try {
+                    int sep = s.indexOf("||");
+                    String target = (sep >= 0) ? s.substring(0, sep) : s;
+                    if (target.startsWith("content://")) {
+                        mmr.setDataSource(getReactApplicationContext(), Uri.parse(target));
+                    } else {
+                        mmr.setDataSource(target.startsWith("file://") ? target.substring(7) : target);
+                    }
+                    String durStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                    long durMs = durStr != null ? Long.parseLong(durStr) : 0;
+                    if (durMs > 0) out.putDouble(s, durMs / 1000.0);
+                } catch (Exception ignore) {
+                    // 单个失败跳过，不影响其它
+                } finally {
+                    try { mmr.release(); } catch (Exception ignore) {}
+                }
+            }
+            promise.resolve(out);
+        } catch (Exception e) {
+            promise.reject("E_DURATIONS", e.getMessage());
+        }
+    }
+
     @ReactMethod
     public void getFileInfo(String filePath, Promise promise) {
         try {

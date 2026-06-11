@@ -87,6 +87,10 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   // 分类模型 / AI 修图预设两段默认折叠（只显示当前选中），点开才露完整选择/下载，避免设置页过长
   const [classifierExpanded, setClassifierExpanded] = useState(false);
   const [srExpanded, setSrExpanded] = useState(false);
+  // AI 向量索引（CLIP embedding，「AI 相似/AI 搜图」用）：覆盖率 + 手动补全/重建
+  const [vecReady, setVecReady] = useState(false);
+  const [vecStats, setVecStats] = useState(null);          // { indexed, total }
+  const [vecBuilding, setVecBuilding] = useState(false);
   // CLIP 档具体用哪个模型变体（默认 MobileCLIP2-S2；可选旧版 S1 兜底）
   const [clipModelId, setClipModelId] = useState(DEFAULT_CLIP_MODEL);
   // VLM 档具体用哪个模型变体（默认 SmolVLM-500M；可选 Qwen3-VL-2B）
@@ -157,6 +161,34 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     const unsub = navigation.addListener?.('focus', refreshIosPhotoAuth);
     return () => { try { unsub && unsub(); } catch (_) {} };
   }, [navigation]);
+
+  // AI 向量索引状态（进设置页取一次：模型是否就绪 + 覆盖率）
+  useEffect(() => {
+    (async () => {
+      try {
+        const svc = require('../../services/ClipVectorIndexService').default;
+        const ready = await svc.isReady();
+        setVecReady(ready);
+        if (ready) setVecStats(await svc.getIndexStats());
+      } catch (_) { /* 不可用则不显示操作区 */ }
+    })();
+  }, []);
+
+  /** 补全（增量）或重建（清空后全量）向量索引，带进度 */
+  const runVecIndex = async (rebuild = false) => {
+    if (vecBuilding) return;
+    setVecBuilding(true);
+    try {
+      const svc = require('../../services/ClipVectorIndexService').default;
+      if (rebuild) await svc.clearIndex();
+      await svc.buildIndex((done, total) => setVecStats({ indexed: done, total }));
+      setVecStats(await svc.getIndexStats());
+    } catch (e) {
+      Alert.alert(t('common.tip', { defaultValue: '提示' }), e?.message || t('settings.vectorIndex.buildFailed', { defaultValue: '建索引失败' }));
+    } finally {
+      setVecBuilding(false);
+    }
+  };
 
   // 监听语言变化，同步更新 currentLanguage 状态
   useEffect(() => {
@@ -1735,6 +1767,53 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
                   );
                 })}
               </View>
+            </View>
+
+            {/* AI 向量索引 - 子区块（覆盖率 + 补全/重建；供「AI 相似 / AI 搜图」使用） */}
+            <View style={styles.switchItemCompact}>
+              <Text style={styles.switchLabelCompact}>{SetIonicons ? <SetIonicons name="albums-outline" size={15} color={c.accent} /> : null} {t('settings.vectorIndex.title', { defaultValue: 'AI 向量索引' })}</Text>
+              <Text style={styles.switchDescriptionCompact}>
+                {!vecReady
+                  ? t('settings.vectorIndex.needModel', { defaultValue: '需先下载「AI 智能识别」模型（上方分类模型处）后可用' })
+                  : vecStats
+                    ? t('settings.vectorIndex.stats', {
+                        indexed: vecStats.indexed, total: vecStats.total,
+                        percent: vecStats.total > 0 ? Math.round((vecStats.indexed / vecStats.total) * 100) : 0,
+                        defaultValue: `已索引 ${vecStats.indexed}/${vecStats.total}（${vecStats.total > 0 ? Math.round((vecStats.indexed / vecStats.total) * 100) : 0}%）。供「AI 相似/AI 搜图」使用；扫描后自动补新图，也可在此手动补全或重建。`,
+                      })
+                    : t('settings.vectorIndex.loading', { defaultValue: '读取索引状态…' })}
+              </Text>
+              {vecReady && (
+                <View style={styles.quickDirectoryRow}>
+                  <TouchableOpacity
+                    style={[styles.quickDirectoryButton, vecBuilding && styles.quickDirectoryButtonDetecting]}
+                    onPress={() => runVecIndex(false)}
+                    disabled={vecBuilding}
+                  >
+                    <Text style={styles.quickDirectoryButtonText}>
+                      {vecBuilding
+                        ? t('settings.vectorIndex.building', { done: vecStats?.indexed || 0, total: vecStats?.total || 0, defaultValue: `进行中 ${vecStats?.indexed || 0}/${vecStats?.total || 0}` })
+                        : t('settings.vectorIndex.complete', { defaultValue: '补全索引' })}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.quickDirectoryButton}
+                    disabled={vecBuilding}
+                    onPress={() => {
+                      Alert.alert(
+                        t('settings.vectorIndex.rebuildTitle', { defaultValue: '重建向量索引' }),
+                        t('settings.vectorIndex.rebuildMessage', { defaultValue: '清空现有索引并对全库重新编码（每张约 0.1~0.3 秒）。一般只在索引异常或更换模型后需要。' }),
+                        [
+                          { text: t('common.cancel'), style: 'cancel' },
+                          { text: t('common.confirm', { defaultValue: '确定' }), style: 'destructive', onPress: () => runVecIndex(true) },
+                        ]
+                      );
+                    }}
+                  >
+                    <Text style={styles.quickDirectoryButtonText}>{t('settings.vectorIndex.rebuild', { defaultValue: '重建' })}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
 

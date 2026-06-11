@@ -885,6 +885,18 @@
       "downloadFailed": "下载失败",
       "cancelDownload": "取消",
       "presetsDesc": "AI 修图的预设方案，可自定义提示词"
+    },
+    "vectorIndex": {
+      "title": "AI 向量索引",
+      "needModel": "需先下载「AI 智能识别」模型（上方分类模型处）后可用",
+      "stats": "已索引 {{indexed}}/{{total}}（{{percent}}%）。供「AI 相似/AI 搜图」使用；扫描后自动补新图，也可在此手动补全或重建。",
+      "loading": "读取索引状态…",
+      "complete": "补全索引",
+      "building": "进行中 {{done}}/{{total}}",
+      "rebuild": "重建",
+      "rebuildTitle": "重建向量索引",
+      "rebuildMessage": "清空现有索引并对全库重新编码（每张约 0.1~0.3 秒）。一般只在索引异常或更换模型后需要。",
+      "buildFailed": "建索引失败"
     }
   },
   "directoryPicker": {
