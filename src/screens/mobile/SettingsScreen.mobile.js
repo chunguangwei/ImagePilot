@@ -858,6 +858,17 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         setUpdateProgress((prev) => prev ? { ...prev, percent: p } : prev);
       });
       setUpdateProgress((prev) => prev ? { ...prev, percent: 1, status: 'installing' } : null);
+      // 华为/荣耀纯净模式可能拦截应用内安装（"恶意安装来源"误报，云端对包名签名档案的启发式判定）。
+      // 给出绕行引导：关纯净模式 或 用系统文件管理打开已下载的 APK（换"安装来源"即可绕开对本应用的信誉判定）。
+      try {
+        const manu = String((Platform.constants && (Platform.constants.Manufacturer || Platform.constants.Brand)) || '').toLowerCase();
+        if (Platform.OS === 'android' && /huawei|honor/.test(manu)) {
+          Alert.alert(
+            t('settings.huaweiInstallHintTitle', { defaultValue: '华为设备安装提示' }),
+            t('settings.huaweiInstallHintMessage', { defaultValue: '若系统提示"恶意安装来源，禁止安装"（华为误报）：\n\n方法一：设置 → 系统和更新 → 纯净模式 → 关闭后重试；\n方法二：打开系统"文件管理" → Download/ImagePilot 目录 → 点按已下载的安装包安装。' })
+          );
+        }
+      } catch (_) { /* 检测失败不影响安装流程 */ }
     } catch (e) {
       if (e && e.code === 'E_NEED_PERMISSION') {
         setUpdateProgress(null);
