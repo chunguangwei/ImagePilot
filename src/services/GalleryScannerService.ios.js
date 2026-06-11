@@ -244,6 +244,17 @@ class GalleryScannerService {
       emit({ stage: 'completed', message: `完成（${duration}ms）`, processed: records.length, total: records.length, shouldRefresh: true });
       logger.debug(`[iOS] 扫描 + 落库完成，共 ${records.length} 张，耗时 ${duration}ms`);
 
+      // 向量索引自动维护：CLIP 模型已下载时，后台增量补新照片的 embedding（fire-and-forget，
+      // 不阻塞扫描收尾；已索引的跳过，无新图时秒返）。手动建索引入口仍保留（带进度）。
+      try {
+        const clipIndex = require('./ClipVectorIndexService').default;
+        clipIndex.isReady().then((ok) => {
+          if (ok && !clipIndex.isBuilding) {
+            clipIndex.buildIndex().catch(() => {});
+          }
+        }).catch(() => {});
+      } catch (_) { /* 服务不可用不影响扫描 */ }
+
       return { success: true, total: records.length };
     } catch (e) {
       logger.warn('[iOS] 扫描失败:', e?.message || e);

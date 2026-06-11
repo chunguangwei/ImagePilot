@@ -424,7 +424,8 @@
       "classificationSuccess": "分类成功: {{classified}}/{{total}}"
     },
     "aiClassifyEmptyCategory": "该目录暂无内容可分类",
-    "memoriesTitle": "那年今天"
+    "memoriesTitle": "那年今天",
+    "duplicatesEntry": "重复清理"
   },
   "imagePreview": {
     "similarGroup": "相似组",
@@ -1086,5 +1087,20 @@
     "actionShare": "分享",
     "actionRestore": "还原",
     "actionDelete": "删除"
+  },
+  "duplicates": {
+    "title": "重复照片清理",
+    "scanning": "正在比对全库照片…",
+    "empty": "没有发现重复照片 🎉",
+    "summary": "{{groups}} 组重复 · 可删 {{count}} 张 · 释放 {{size}}",
+    "groupTitle": "{{count}} 张相同",
+    "cleanGroup": "清理该组",
+    "keep": "保留",
+    "remove": "删除",
+    "confirmTitle": "清理重复照片",
+    "confirmGroupMessage": "删除该组 {{count}} 张重复（保留 1 张），释放 {{size}}。",
+    "confirmAllMessage": "删除全部 {{count}} 张重复（每组各保留 1 张），释放 {{size}}。",
+    "cleanAll": "一键清理全部（释放 {{size}}）",
+    "deleting": "删除中 {{done}}/{{total}}…"
   }
 }
