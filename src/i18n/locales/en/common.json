@@ -1152,6 +1152,7 @@
     "fun": "Records",
     "busiestDay": "Busiest Day",
     "longestVideo": "Longest Video",
-    "funEmpty": "Scan to unlock more"
+    "funEmpty": "Scan to unlock more",
+    "shareFailed": "Share failed"
   }
 }

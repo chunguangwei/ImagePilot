@@ -1152,6 +1152,7 @@
     "fun": "相册之最",
     "busiestDay": "拍得最多的一天",
     "longestVideo": "最长的视频",
-    "funEmpty": "扫描后这里会更精彩"
+    "funEmpty": "扫描后这里会更精彩",
+    "shareFailed": "分享失败"
   }
 }

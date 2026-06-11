@@ -4,8 +4,9 @@
  * UnifiedDataService.getAlbumStats() 纯本地聚合：总量/体积/年度分布/Top分类/Top城市/
  * 拍照最多的一天/最长视频/AI 描述覆盖率。可玩可晒，零联网。
  */
-import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet, Share, Platform, NativeModules, Alert } from 'react-native';
+import { captureRef } from 'react-native-view-shot';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, Icon, useFocusEffect } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../../services/UnifiedDataService';
@@ -25,6 +26,35 @@ export default function StatsScreen({ navigation }) {
   const c = useIosColors();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sharing, setSharing] = useState(false);
+  const shotRef = useRef(null);
+
+  /** 年报分享成图：截取整页内容 → iOS 系统分享 / 安卓走现有 MultiImageShare（content:// 授权齐全） */
+  const shareReport = async () => {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      const uri = await captureRef(shotRef, {
+        format: 'png', quality: 1, result: 'tmpfile',
+        snapshotContentContainer: true,   // 截整个滚动内容（不止可视区）
+      });
+      const fileUrl = uri.startsWith('file://') ? uri : `file://${uri}`;
+      if (Platform.OS === 'ios') {
+        await Share.share({ url: fileUrl });
+      } else {
+        const ms = NativeModules.MultiImageShare;
+        if (ms && typeof ms.shareMultipleImages === 'function') {
+          await ms.shareMultipleImages([fileUrl.replace(/^file:\/\//, '')]);
+        } else {
+          await Share.share({ message: fileUrl });
+        }
+      }
+    } catch (e) {
+      Alert.alert(t('common.tip', { defaultValue: '提示' }), e?.message || t('stats.shareFailed', { defaultValue: '分享失败' }));
+    } finally {
+      setSharing(false);
+    }
+  };
 
   useFocusEffect(useCallback(() => {
     (async () => {
@@ -61,13 +91,22 @@ export default function StatsScreen({ navigation }) {
           <Icon name="arrow-back-ios" size={20} color={c.accent || '#007AFF'} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: c.label }]}>{t('stats.title', { defaultValue: '相册报告' })}</Text>
-        <View style={styles.backBtn} />
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={shareReport}
+          disabled={sharing || loading || !stats}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          {sharing
+            ? <ActivityIndicator size="small" color={c.accent || '#007AFF'} />
+            : <Icon name="ios-share" size={22} color={c.accent || '#007AFF'} />}
+        </TouchableOpacity>
       </View>
 
       {loading || !stats ? (
         <View style={styles.center}><ActivityIndicator color={c.accent || '#007AFF'} /></View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 32 }}>
+        <ScrollView ref={shotRef} style={{ backgroundColor: c.groupedBg || '#F2F2F7' }} contentContainerStyle={{ padding: 12, paddingBottom: 32 }}>
           {/* 总览 */}
           <Card>
             <Text style={[styles.cardTitle, { color: c.label }]}>📦 {t('stats.overview', { defaultValue: '总览' })}</Text>
