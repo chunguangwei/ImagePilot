@@ -262,6 +262,7 @@ const HomeScreen = ({ navigation }) => {
   const [recentImages, setRecentImages] = useState([]);
   const [recentImagesTotal, setRecentImagesTotal] = useState(0); // 新发现照片的总数
   const [memories, setMemories] = useState([]); // 回忆/那年今天（历年同月同日）
+  const [trips, setTrips] = useState([]); // 旅行回忆（异地连续拍摄自动聚簇）
   const [isRefreshingRecent, setIsRefreshingRecent] = useState(false); // 「重新检测」按钮 loading 态
   
   // 扫描状态
@@ -506,6 +507,12 @@ const HomeScreen = ({ navigation }) => {
         loadCategories(),
         loadRecentImages(),
         (async () => loadMemories())(),
+        (async () => {
+          try {
+            const r = await UnifiedDataService.findTrips();
+            setTrips((r && r.trips) || []);
+          } catch (_) { setTrips([]); }
+        })(),
       ]);
 
       // 延迟加载次要数据（第二优先级）：先 Promise.all 拿原始数据，再一次性 setState 批处理
@@ -2584,6 +2591,56 @@ const HomeScreen = ({ navigation }) => {
   };
 
   /**
+   * 旅行回忆：异地连续拍摄自动聚簇成"XX之旅"，横滑卡片 → 通用集合页。无行程不渲染。
+   */
+  const renderTripsSection = () => {
+    if (!trips || trips.length === 0) return null;
+    const fmtDate = (ts) => {
+      const d = new Date(ts);
+      return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`;
+    };
+    return (
+      <View style={[styles.section, dynSection]}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleContainer}>
+            <SectionIcon name="airplane-outline" emoji="🧳" tint="#FF9500" />
+            <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>
+              {t('home.tripsTitle', { defaultValue: '旅行回忆' })}
+            </Text>
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeText}>{trips.length}</Text>
+            </View>
+          </View>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 2 }}>
+          {trips.slice(0, 20).map((trip, idx) => (
+            <TouchableOpacity
+              key={`${trip.city}-${trip.startDay}`}
+              style={styles.tripCard}
+              activeOpacity={0.85}
+              onPress={() => navigation && navigation.navigate('Collection', {
+                title: t('home.tripCardTitle', { city: trip.city, defaultValue: `${trip.city}之旅` }),
+                subtitle: `${fmtDate(trip.startDay)} · ${t('home.tripDays', { days: trip.days, defaultValue: `${trip.days}天` })} · ${trip.count}`,
+                images: trip.images,
+              })}
+            >
+              <Image source={{ uri: getUri(trip.cover) || trip.cover?.uri }} style={styles.tripImage} resizeMode="cover" />
+              <View style={styles.tripOverlay} pointerEvents="none">
+                <Text style={styles.tripCity} numberOfLines={1}>
+                  {t('home.tripCardTitle', { city: trip.city, defaultValue: `${trip.city}之旅` })}
+                </Text>
+                <Text style={styles.tripMeta} numberOfLines={1}>
+                  {fmtDate(trip.startDay)} · {t('home.tripDays', { days: trip.days, defaultValue: `${trip.days}天` })} · {trip.count}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  /**
    * 渲染FAB扫描按钮
    */
   const renderFAB = () => (
@@ -2640,6 +2697,14 @@ const HomeScreen = ({ navigation }) => {
         >
           <Text style={[styles.headerTitle, { color: c.label }]}>{t('app.name')}</Text>
         </Pressable>
+        {/* 相册报告（年报统计）入口 */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Stats')}
+          style={styles.headerSearchBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          {HomeIonicons ? <HomeIonicons name="stats-chart-outline" size={21} color={c.label} /> : <Text style={{ fontSize: 19 }}>📊</Text>}
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={() => navigation.navigate('Search')}
           style={styles.headerSearchBtn}
@@ -2687,6 +2752,7 @@ const HomeScreen = ({ navigation }) => {
           </View>
         ) : null}
         {renderMemoriesSection()}
+        {renderTripsSection()}
         {renderTimeSection()}
         {renderCategoriesSection()}
         {renderCitiesSection()}
@@ -3015,6 +3081,25 @@ const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // 旅行回忆卡片（横滑，宽幅）
+  tripCard: {
+    width: 200,
+    height: 124,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginRight: 10,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  tripImage: { width: '100%', height: '100%' },
+  tripOverlay: {
+    position: 'absolute',
+    left: 0, right: 0, bottom: 0,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  tripCity: { color: '#FFFFFF', fontSize: 14.5, fontWeight: '700' },
+  tripMeta: { color: 'rgba(255,255,255,0.85)', fontSize: 11.5, marginTop: 1 },
   videoCatBadgeIcon: {
     color: '#FFFFFF',
     fontSize: 11,
