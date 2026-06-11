@@ -2619,7 +2619,7 @@ const HomeScreen = ({ navigation }) => {
               style={styles.tripCard}
               activeOpacity={0.85}
               onPress={() => navigation && navigation.navigate('Collection', {
-                title: t('home.tripCardTitle', { city: trip.city, defaultValue: `${trip.city}之旅` }),
+                title: t('home.tripCardTitle', { city: trip.cityName || trip.city, defaultValue: `${trip.cityName || trip.city}之旅` }),
                 subtitle: `${fmtDate(trip.startDay)} · ${t('home.tripDays', { days: trip.days, defaultValue: `${trip.days}天` })} · ${trip.count}`,
                 images: trip.images,
               })}
@@ -2627,7 +2627,7 @@ const HomeScreen = ({ navigation }) => {
               <Image source={{ uri: getUri(trip.cover) || trip.cover?.uri }} style={styles.tripImage} resizeMode="cover" />
               <View style={styles.tripOverlay} pointerEvents="none">
                 <Text style={styles.tripCity} numberOfLines={1}>
-                  {t('home.tripCardTitle', { city: trip.city, defaultValue: `${trip.city}之旅` })}
+                  {t('home.tripCardTitle', { city: trip.cityName || trip.city, defaultValue: `${trip.cityName || trip.city}之旅` })}
                 </Text>
                 <Text style={styles.tripMeta} numberOfLines={1}>
                   {fmtDate(trip.startDay)} · {t('home.tripDays', { days: trip.days, defaultValue: `${trip.days}天` })} · {trip.count}

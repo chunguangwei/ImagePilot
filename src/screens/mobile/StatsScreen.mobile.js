@@ -11,7 +11,7 @@ import { SafeAreaView, Icon, useFocusEffect } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../../services/UnifiedDataService';
 import configService from '../../services/ConfigService';
 import { useIosColors } from '../../ui/ios/theme';
-import { formatDuration } from '../../components/shared/categoryUI';
+import { formatDuration, formatCityName } from '../../components/shared/categoryUI';
 
 function fmtBytes(b) {
   const n = Number(b) || 0;
@@ -113,7 +113,7 @@ export default function StatsScreen({ navigation }) {
             <Card>
               <Text style={[styles.cardTitle, { color: c.label }]}>🗺️ {t('stats.topCities', { defaultValue: '城市足迹 Top5' })}</Text>
               {stats.topCities.map(([city, n], i) => (
-                <Row key={city} label={`${i + 1}. ${city}`} value={`${n}`} />
+                <Row key={city} label={`${i + 1}. ${formatCityName(city) || city}`} value={`${n}`} />
               ))}
             </Card>
           )}
