@@ -438,7 +438,11 @@
     "tripCardTitle": "{{city}}之旅",
     "tripDays": "{{days}}天",
     "statusTitle": "扫描状态",
-    "scanningShort": "处理中…"
+    "scanningShort": "处理中…",
+    "slideshowBtn": "▶ 放映",
+    "randomBrowse": "随便看看",
+    "randomBrowseSub": "随机 {{count}} 张 · 回去再点一次换一批",
+    "holidaysTitle": "节日回忆"
   },
   "imagePreview": {
     "similarGroup": "相似组",

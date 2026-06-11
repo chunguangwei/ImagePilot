@@ -438,7 +438,11 @@
     "tripCardTitle": "Trip to {{city}}",
     "tripDays": "{{days}}d",
     "statusTitle": "Scan Status",
-    "scanningShort": "Working…"
+    "scanningShort": "Working…",
+    "slideshowBtn": "▶ Play",
+    "randomBrowse": "Surprise Me",
+    "randomBrowseSub": "{{count}} random · tap again for a new batch",
+    "holidaysTitle": "Holidays"
   },
   "imagePreview": {
     "similarGroup": "Similar Group",

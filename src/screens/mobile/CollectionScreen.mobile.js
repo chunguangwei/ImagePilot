@@ -61,7 +61,14 @@ export default function CollectionScreen({ navigation, route }) {
           <Text style={[styles.title, { color: c.label }]} numberOfLines={1}>{title}</Text>
           {subtitle ? <Text style={[styles.subtitle, { color: c.tertiaryLabel }]} numberOfLines={1}>{subtitle}</Text> : null}
         </View>
-        <View style={styles.backBtn} />
+        {/* 幻灯片放映（视频自动跳过） */}
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.navigate('Slideshow', { images, title })}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Icon name="play-circle-outline" size={24} color={c.accent || '#007AFF'} />
+        </TouchableOpacity>
       </View>
       <FlatList
         data={images}
