@@ -128,3 +128,19 @@ export function formatDuration(seconds) {
   const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
   return (h > 0 ? `${h}:` : '') + `${mm}:${String(sec).padStart(2, '0')}`;
 }
+
+/**
+ * 城市显示名清洗：images.city 存的是内部 location_id（如 CN_unknown_杭州 / UN_unknown_jakarta，
+ * 格式 国家码_admin1_城市，离线地理编码 admin1 恒为 unknown）。取末段有效值 + 拉丁名首字母大写。
+ */
+export function formatCityName(city) {
+  let s = String(city || '').trim();
+  if (!s) return s;
+  s = s.replace(/^[A-Z]{2}[_-]/, '').replace(/^unknown[_-]/i, '');
+  if (s.includes('_')) {
+    const parts = s.split('_').filter((p) => p && p.toLowerCase() !== 'unknown');
+    if (parts.length > 0) s = parts[parts.length - 1];
+  }
+  if (/^[a-z]/.test(s)) s = s.charAt(0).toUpperCase() + s.slice(1);
+  return s;
+}

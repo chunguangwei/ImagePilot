@@ -360,16 +360,23 @@ class UnifiedDataService {
         return img && img.id && img.city && ts > 0;
       });
       if (all.length === 0) return { trips: [] };
-      // 常驻城市：出现最多的 city（多常驻地场景取 top1 已够实用）
+      const { formatCityName } = require('../components/shared/categoryUI');
+      // 常驻城市集合：占比 >=15% 的城市都算常驻（双城生活——工作地+老家——不再被误判成"旅行"）
       const cityCount = new Map();
       for (const img of all) cityCount.set(img.city, (cityCount.get(img.city) || 0) + 1);
-      const homeCity = [...cityCount.entries()].sort((a, b) => b[1] - a[1])[0][0];
+      const homeCities = new Set(
+        [...cityCount.entries()].filter(([, n]) => n / all.length >= 0.15).map(([c]) => c)
+      );
+      if (homeCities.size === 0) {
+        homeCities.add([...cityCount.entries()].sort((a, b) => b[1] - a[1])[0][0]);
+      }
 
       const dayOf = (img) => Math.floor((img.takenAt || img.timestamp) / 86400000);
-      // 异地照片按 city 分组 → 组内按天聚簇
+      // 异地照片按 city 分组 → 组内按天聚簇（city 解析失败的不参与）
       const byCity = new Map();
       for (const img of all) {
-        if (img.city === homeCity) continue;
+        if (homeCities.has(img.city)) continue;
+        if (!formatCityName(img.city)) continue;
         if (!byCity.has(img.city)) byCity.set(img.city, []);
         byCity.get(img.city).push(img);
       }
@@ -378,12 +385,17 @@ class UnifiedDataService {
         imgs.sort((a, b) => (a.takenAt || a.timestamp) - (b.takenAt || b.timestamp));
         let cluster = [];
         const flush = () => {
-          if (cluster.length >= minPhotos) {
+          const days = cluster.length > 0
+            ? dayOf(cluster[cluster.length - 1]) - dayOf(cluster[0]) + 1 : 0;
+          // 误报过滤：多天行程 >=minPhotos 张即可；单日簇要 >=8 张（去邻市办事/路过拍几张不算旅行）
+          const qualifies = cluster.length >= minPhotos && (days >= 2 || cluster.length >= 8);
+          if (qualifies) {
             trips.push({
               city,
+              cityName: formatCityName(city),   // 显示名（清洗掉 CN_unknown_ 等内部前缀）
               startDay: cluster[0].takenAt || cluster[0].timestamp,
               endDay: cluster[cluster.length - 1].takenAt || cluster[cluster.length - 1].timestamp,
-              days: dayOf(cluster[cluster.length - 1]) - dayOf(cluster[0]) + 1,
+              days,
               count: cluster.length,
               cover: cluster[Math.floor(cluster.length / 2)],   // 中段照片当封面（首尾常是路途）
               images: cluster,
