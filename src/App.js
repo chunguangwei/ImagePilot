@@ -36,6 +36,7 @@ import DuplicatesScreen from './screens/mobile/DuplicatesScreen.mobile';
 import CollectionScreen from './screens/mobile/CollectionScreen.mobile';
 import StatsScreen from './screens/mobile/StatsScreen.mobile';
 import SlideshowScreen from './screens/mobile/SlideshowScreen.mobile';
+import MomentsScreen from './screens/mobile/MomentsScreen.mobile';
 console.log('📦 App.js: CategoryScreen 导入成功');
 import ImagePreviewScreen from './screens/mobile/ImagePreviewScreen.mobile';
 console.log('📦 App.js: ImagePreviewScreen 导入成功');
@@ -84,6 +85,7 @@ let Ionicons = null;
 try { Ionicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { Ionicons = null; }
 const TAB_ICONS = {
   Home: { on: 'home', off: 'home-outline', emoji: '🏠' },
+  Moments: { on: 'time', off: 'time-outline', emoji: '🕰️' },
   StagingBox: { on: 'create', off: 'create-outline', emoji: '✏️' },
   Settings: { on: 'settings', off: 'settings-outline', emoji: '⚙️' },
 };
@@ -159,6 +161,14 @@ const MainTabNavigator = ({ stagingBoxCount }) => {
       options={{ 
         title: t('home.title'),
         tabBarLabel: t('home.title'),
+      }}
+    />
+    <Tab.Screen
+      name="Moments"
+      component={MomentsScreen}
+      options={{
+        title: t('moments.title', { defaultValue: '时刻' }),
+        tabBarLabel: t('moments.title', { defaultValue: '时刻' }),
       }}
     />
     <Tab.Screen 

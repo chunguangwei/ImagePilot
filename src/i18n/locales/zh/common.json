@@ -1155,5 +1155,9 @@
     "longestVideo": "最长的视频",
     "funEmpty": "扫描后这里会更精彩",
     "shareFailed": "分享失败"
+  },
+  "moments": {
+    "title": "时刻",
+    "empty": "扫描相册后，这里会浮现你的那年今天、节日与旅行回忆"
   }
 }

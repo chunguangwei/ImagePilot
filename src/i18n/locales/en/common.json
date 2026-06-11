@@ -1155,5 +1155,9 @@
     "longestVideo": "Longest Video",
     "funEmpty": "Scan to unlock more",
     "shareFailed": "Share failed"
+  },
+  "moments": {
+    "title": "Moments",
+    "empty": "After scanning, your On-This-Day, holiday and trip memories will appear here"
   }
 }
