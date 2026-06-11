@@ -45,7 +45,36 @@ export default function SearchScreen({ navigation, route }) {
   // AI 搜图：选一张图 → 本地/云模型打分类+描述 → 与库中分类/描述比相似度（语义级，含视频）
   const [aiTarget, setAiTarget] = useState(null);          // { uri }
   const [aiPhase, setAiPhase] = useState('');              // 'classifying' | 'matching' | ''
+  // ✨查询润色（AI 搜索模式 + 已配云端时可用）：口语查询 → LLM 改写成检索友好描述
+  const [rewriteAvailable, setRewriteAvailable] = useState(false);
+  const [rewriting, setRewriting] = useState(false);
   const debounceRef = useRef(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { isRewriteAvailable } = require('../../services/llm/queryRewrite');
+        setRewriteAvailable(await isRewriteAvailable());
+      } catch (_) { setRewriteAvailable(false); }
+    })();
+  }, []);
+
+  /** ✨改写：云端 LLM 把口语查询规整成画面描述，回填并立即搜索 */
+  const onRewriteQuery = async () => {
+    const q = query.trim();
+    if (!q || rewriting) return;
+    setRewriting(true);
+    try {
+      const { rewriteSearchQuery } = require('../../services/llm/queryRewrite');
+      const better = await rewriteSearchQuery(q);
+      setQuery(better);
+      runSearch(better, 'semantic');
+    } catch (e) {
+      Alert.alert(t('common.tip', { defaultValue: '提示' }), e?.message || t('search.rewriteFailed', { defaultValue: '改写失败' }));
+    } finally {
+      setRewriting(false);
+    }
+  };
 
   /** 用指定引擎给目标图打分类+描述，然后做语义比对 */
   const runAISearch = async (pickedUri, forceLocal) => {
@@ -353,6 +382,14 @@ export default function SearchScreen({ navigation, route }) {
               clearButtonMode="while-editing"
             />
           </View>
+        )}
+        {/* ✨查询润色：AI 搜索模式 + 已配云端时显示（口语 → 检索友好描述） */}
+        {!similarTo && !aiTarget && searchMode === 'semantic' && rewriteAvailable && (
+          <TouchableOpacity onPress={onRewriteQuery} style={styles.aiSearchBtn} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }} disabled={rewriting}>
+            {rewriting
+              ? <ActivityIndicator size="small" color={c.accent || '#007AFF'} />
+              : <Icon name="auto-fix-high" size={22} color={c.accent || '#007AFF'} />}
+          </TouchableOpacity>
         )}
         {/* AI 搜图入口：选一张图 → AI 识别 → 按分类+描述语义找相似（文字搜索模式下显示） */}
         {!similarTo && !aiTarget && (

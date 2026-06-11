@@ -281,7 +281,8 @@
     "semanticEx1": "海边日落",
     "semanticEx2": "一群人聚餐",
     "semanticEx3": "小狗在草地",
-    "semanticDimsTip": "按 AI 描述的语义匹配（多模态档分类过的内容效果最佳）"
+    "semanticDimsTip": "按 AI 描述的语义匹配（多模态档分类过的内容效果最佳）",
+    "rewriteFailed": "改写失败"
   },
   "home": {
     "title": "首页",

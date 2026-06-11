@@ -281,7 +281,8 @@
     "semanticEx1": "sunset at the beach",
     "semanticEx2": "group dinner",
     "semanticEx3": "dog on the grass",
-    "semanticDimsTip": "Matches AI descriptions semantically (works best on content classified with the multimodal tier)"
+    "semanticDimsTip": "Matches AI descriptions semantically (works best on content classified with the multimodal tier)",
+    "rewriteFailed": "Rewrite failed"
   },
   "home": {
     "title": "Home",
