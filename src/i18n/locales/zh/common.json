@@ -252,8 +252,8 @@
     "aiClassifyDone": "AI 分类完成（{{total}} 张）"
   },
   "search": {
-    "placeholder": "搜描述、城市、时间、格式、目录…",
-    "emptyTip": "输入关键词，按 AI 描述 / 分类 / 文件名搜图",
+    "placeholder": "搜索照片和视频…",
+    "emptyTip": "输入关键词搜照片和视频，试试：",
     "noResults": "没找到与「{{query}}」匹配的图",
     "resultCount": "{{count}} 张结果",
     "untaggedHint": "还有 {{count}} 张图未打 AI 描述，用「多模态」档分类后才能被描述搜索到",
@@ -275,7 +275,8 @@
     "vectorBuildBtn": "建立 AI 向量索引",
     "vectorBuilding": "建索引中 {{done}}/{{total}}…",
     "vectorPartialIndex": "向量索引 {{indexed}}/{{total}}，点此补全（覆盖更多图）",
-    "vectorModelMissing": "需先下载识别模型：设置 → 分类模型 → AI 智能识别"
+    "vectorModelMissing": "需先下载识别模型：设置 → 分类模型 → AI 智能识别",
+    "dimsTip": "支持：AI 描述 · 分类 · 城市 · 时间 · 格式 · 分辨率 · 方向 · 拍摄参数 · 目录 · 大小"
   },
   "home": {
     "title": "首页",

@@ -252,8 +252,8 @@
     "aiClassifyDone": "Classification done ({{total}})"
   },
   "search": {
-    "placeholder": "Search description, city, date, format, folder…",
-    "emptyTip": "Type a keyword to search by AI description / category / file name",
+    "placeholder": "Search photos & videos…",
+    "emptyTip": "Type a keyword, or try:",
     "noResults": "No photos match \"{{query}}\"",
     "resultCount": "{{count}} result(s)",
     "untaggedHint": "{{count}} photo(s) have no AI description yet — classify with the multimodal tier to make them searchable by description",
@@ -275,7 +275,8 @@
     "vectorBuildBtn": "Build AI Vector Index",
     "vectorBuilding": "Indexing {{done}}/{{total}}…",
     "vectorPartialIndex": "Vector index {{indexed}}/{{total}} — tap to complete coverage",
-    "vectorModelMissing": "Download the recognition model first: Settings → Classifier Model → AI smart recognition"
+    "vectorModelMissing": "Download the recognition model first: Settings → Classifier Model → AI smart recognition",
+    "dimsTip": "Searchable: AI description · category · city · date · format · resolution · orientation · camera params · folder · size"
   },
   "home": {
     "title": "Home",
