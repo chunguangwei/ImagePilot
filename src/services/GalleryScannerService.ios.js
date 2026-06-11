@@ -382,6 +382,10 @@ class GalleryScannerService {
    * 所以 imageClassifier.classifyImageWithMobileNetV3(imageUri) 链路无需改动。
    */
   async _classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify) {
+    // 🛡️ 防 OOM：分类期间停掉后台向量索引构建（CLIP 推理与分类引擎并发驻留内存
+    // 在安卓上易触发 OOM 崩溃）；索引下次扫描完成后自动续建。
+    try { require('./ClipVectorIndexService').default.requestStop(); } catch (_) {}
+
     logger.info('🚀 [iOS] 启动 JS 端离线 AI 分类（MobileNetV3）');
     this.isScanning = true;
     this._stopRequested = false;   // 用户停止标志（requestStop 置 true，循环逐张检测后优雅退出）
@@ -541,6 +545,10 @@ class GalleryScannerService {
    * 不会连接任何第三方/作者服务器。
    */
   async _classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg) {
+    // 🛡️ 防 OOM：分类期间停掉后台向量索引构建（CLIP 推理与分类引擎并发驻留内存
+    // 在安卓上易触发 OOM 崩溃）；索引下次扫描完成后自动续建。
+    try { require('./ClipVectorIndexService').default.requestStop(); } catch (_) {}
+
     logger.info(`🚀 [iOS] 启动 JS 端云端 AI 分类（${aiCfg.active}）`);
     this.isScanning = true;
     this._stopRequested = false;

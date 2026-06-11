@@ -347,6 +347,117 @@ class UnifiedDataService {
   }
 
   /**
+   * 旅行回忆：自动识别"出行"。
+   * 常驻城市 = 出现次数最多的 city；行程 = 在非常驻城市、按天连续（断档 ≤1 天）的照片簇，≥5 张成行程。
+   * 纯内存计算（毫秒级）。
+   * @returns {Promise<{trips:Array}>} trips 按时间倒序，含 {city,startDay,endDay,days,count,cover,images}
+   */
+  async findTrips({ minPhotos = 5, maxGapDays = 1 } = {}) {
+    try {
+      await this.imageCache.buildCache();
+      const all = (this.imageCache.getCache().allImages || []).filter((img) => {
+        const ts = img && (img.takenAt || img.timestamp);
+        return img && img.id && img.city && ts > 0;
+      });
+      if (all.length === 0) return { trips: [] };
+      // 常驻城市：出现最多的 city（多常驻地场景取 top1 已够实用）
+      const cityCount = new Map();
+      for (const img of all) cityCount.set(img.city, (cityCount.get(img.city) || 0) + 1);
+      const homeCity = [...cityCount.entries()].sort((a, b) => b[1] - a[1])[0][0];
+
+      const dayOf = (img) => Math.floor((img.takenAt || img.timestamp) / 86400000);
+      // 异地照片按 city 分组 → 组内按天聚簇
+      const byCity = new Map();
+      for (const img of all) {
+        if (img.city === homeCity) continue;
+        if (!byCity.has(img.city)) byCity.set(img.city, []);
+        byCity.get(img.city).push(img);
+      }
+      const trips = [];
+      for (const [city, imgs] of byCity.entries()) {
+        imgs.sort((a, b) => (a.takenAt || a.timestamp) - (b.takenAt || b.timestamp));
+        let cluster = [];
+        const flush = () => {
+          if (cluster.length >= minPhotos) {
+            trips.push({
+              city,
+              startDay: cluster[0].takenAt || cluster[0].timestamp,
+              endDay: cluster[cluster.length - 1].takenAt || cluster[cluster.length - 1].timestamp,
+              days: dayOf(cluster[cluster.length - 1]) - dayOf(cluster[0]) + 1,
+              count: cluster.length,
+              cover: cluster[Math.floor(cluster.length / 2)],   // 中段照片当封面（首尾常是路途）
+              images: cluster,
+            });
+          }
+          cluster = [];
+        };
+        for (const img of imgs) {
+          if (cluster.length === 0 || dayOf(img) - dayOf(cluster[cluster.length - 1]) <= maxGapDays) {
+            cluster.push(img);
+          } else { flush(); cluster = [img]; }
+        }
+        flush();
+      }
+      trips.sort((a, b) => b.endDay - a.endDay);
+      return { trips };
+    } catch (error) {
+      logger.error('行程识别失败:', error);
+      return { trips: [] };
+    }
+  }
+
+  /**
+   * 相册统计（年报）：纯内存聚合，毫秒级。
+   */
+  async getAlbumStats() {
+    try {
+      await this.imageCache.buildCache();
+      const all = (this.imageCache.getCache().allImages || []).filter((i) => i && i.id);
+      let photos = 0; let videos = 0; let totalBytes = 0; let withDesc = 0;
+      let videoSeconds = 0; let longestVideo = null;
+      const byYear = new Map(); const byCategory = new Map(); const byCity = new Map(); const byDay = new Map();
+      let earliest = null; let latest = null;
+      for (const img of all) {
+        const isVideo = String(img.mimeType || '').startsWith('video/');
+        if (isVideo) {
+          videos++;
+          videoSeconds += img.duration || 0;
+          if (!longestVideo || (img.duration || 0) > (longestVideo.duration || 0)) longestVideo = img;
+        } else { photos++; }
+        totalBytes += img.size || 0;
+        if (img.message) withDesc++;
+        const ts = img.takenAt || img.timestamp || 0;
+        if (ts > 0) {
+          if (!earliest || ts < earliest) earliest = ts;
+          if (!latest || ts > latest) latest = ts;
+          const d = new Date(ts);
+          byYear.set(d.getFullYear(), (byYear.get(d.getFullYear()) || 0) + 1);
+          const dayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          byDay.set(dayKey, (byDay.get(dayKey) || 0) + 1);
+        }
+        if (img.category && img.category !== 'NA' && img.category !== 'NA_video') {
+          byCategory.set(img.category, (byCategory.get(img.category) || 0) + 1);
+        }
+        if (img.city) byCity.set(img.city, (byCity.get(img.city) || 0) + 1);
+      }
+      const topN = (m, n) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
+      const busiest = topN(byDay, 1)[0] || null;
+      return {
+        total: all.length, photos, videos, totalBytes,
+        withDesc, videoSeconds, longestVideo,
+        earliest, latest,
+        years: [...byYear.entries()].sort((a, b) => a[0] - b[0]),
+        topCategories: topN(byCategory, 5),
+        topCities: topN(byCity, 5),
+        busiestDay: busiest ? { day: busiest[0], count: busiest[1] } : null,
+      };
+    } catch (error) {
+      logger.error('相册统计失败:', error);
+      return null;
+    }
+  }
+
+  /**
    * 查找完全重复的照片（字节级同一张图的多份拷贝）。
    * 分组键 = size|takenAt|宽x高 ——三者全同且 size 精确相等，实践上即同一文件
    * （连拍/相似图的字节数几乎必然不同）；有颜色特征索引时再用直方图 ≥0.985 复核剔除碰撞。

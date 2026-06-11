@@ -425,7 +425,10 @@
     },
     "aiClassifyEmptyCategory": "Nothing to classify in this folder",
     "memoriesTitle": "On This Day",
-    "duplicatesEntry": "Duplicates"
+    "duplicatesEntry": "Duplicates",
+    "tripsTitle": "Trips",
+    "tripCardTitle": "Trip to {{city}}",
+    "tripDays": "{{days}}d"
   },
   "imagePreview": {
     "similarGroup": "Similar Group",
@@ -1114,5 +1117,25 @@
     "confirmAllMessage": "Delete all {{count}} duplicates (keep 1 per group), freeing {{size}}.",
     "cleanAll": "Clean All (free {{size}})",
     "deleting": "Deleting {{done}}/{{total}}…"
+  },
+  "collection": {
+    "defaultTitle": "Collection"
+  },
+  "stats": {
+    "title": "Album Report",
+    "overview": "Overview",
+    "photos": "Photos",
+    "videos": "Videos",
+    "totalDuration": "total",
+    "storage": "Storage",
+    "span": "Time Span",
+    "aiCoverage": "AI Description Coverage",
+    "byYear": "By Year",
+    "topCategories": "Most Photographed",
+    "topCities": "Top 5 Cities",
+    "fun": "Records",
+    "busiestDay": "Busiest Day",
+    "longestVideo": "Longest Video",
+    "funEmpty": "Scan to unlock more"
   }
 }

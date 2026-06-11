@@ -33,6 +33,8 @@ console.log('📦 App.js: HomeScreen 导入成功');
 import CategoryScreen from './screens/mobile/CategoryScreen.mobile';
 import SearchScreen from './screens/mobile/SearchScreen.mobile';
 import DuplicatesScreen from './screens/mobile/DuplicatesScreen.mobile';
+import CollectionScreen from './screens/mobile/CollectionScreen.mobile';
+import StatsScreen from './screens/mobile/StatsScreen.mobile';
 console.log('📦 App.js: CategoryScreen 导入成功');
 import ImagePreviewScreen from './screens/mobile/ImagePreviewScreen.mobile';
 console.log('📦 App.js: ImagePreviewScreen 导入成功');
@@ -387,6 +389,8 @@ function AppInner() {
           <Stack.Screen name="Category" component={CategoryScreen} />
           <Stack.Screen name="Search" component={SearchScreen} />
           <Stack.Screen name="Duplicates" component={DuplicatesScreen} />
+          <Stack.Screen name="Collection" component={CollectionScreen} />
+          <Stack.Screen name="Stats" component={StatsScreen} />
           <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} />
           <Stack.Screen name="EnhanceResult" component={EnhanceResultScreen} options={{ presentation: 'modal' }} />
           <Stack.Screen name="CustomCategories" component={CustomCategoriesScreen} />

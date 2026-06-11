@@ -425,7 +425,10 @@
     },
     "aiClassifyEmptyCategory": "该目录暂无内容可分类",
     "memoriesTitle": "那年今天",
-    "duplicatesEntry": "重复清理"
+    "duplicatesEntry": "重复清理",
+    "tripsTitle": "旅行回忆",
+    "tripCardTitle": "{{city}}之旅",
+    "tripDays": "{{days}}天"
   },
   "imagePreview": {
     "similarGroup": "相似组",
@@ -1114,5 +1117,25 @@
     "confirmAllMessage": "删除全部 {{count}} 张重复（每组各保留 1 张），释放 {{size}}。",
     "cleanAll": "一键清理全部（释放 {{size}}）",
     "deleting": "删除中 {{done}}/{{total}}…"
+  },
+  "collection": {
+    "defaultTitle": "照片集合"
+  },
+  "stats": {
+    "title": "相册报告",
+    "overview": "总览",
+    "photos": "照片",
+    "videos": "视频",
+    "totalDuration": "合计",
+    "storage": "占用空间",
+    "span": "时间跨度",
+    "aiCoverage": "AI 描述覆盖",
+    "byYear": "年度分布",
+    "topCategories": "最常拍的内容",
+    "topCities": "城市足迹 Top5",
+    "fun": "相册之最",
+    "busiestDay": "拍得最多的一天",
+    "longestVideo": "最长的视频",
+    "funEmpty": "扫描后这里会更精彩"
   }
 }
