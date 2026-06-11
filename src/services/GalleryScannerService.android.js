@@ -627,6 +627,7 @@ class GalleryScannerService {
         }
         const batch = naImages.slice(i, i + BATCH);
         const classificationDataArray = [];
+        let perImageDone = i;   // 批内逐张进度计数（进度平滑滚动）
         // 当前批次共用一个 tier（每批读一次 settings，避免单图 IO）
         const activeTier = await readActiveTier();
         for (const image of batch) {
@@ -651,7 +652,7 @@ class GalleryScannerService {
             }
             if (!imageUri) { failedCount++; continue; }
             // P1：按 tier 路由（basic→ImageNet / scene→Places365 / clip→未接入回退）
-            const r = await classifyImageByTier(imageUri, activeTier, { imageClassifier: this.imageClassifier });
+            const r = await classifyImageByTier(imageUri, activeTier, { imageClassifier: this.imageClassifier, detailed: naImages.length === 1 });
             const top = r?.topPrediction || null;
             const conf = (typeof r?.confidence === 'number') ? r.confidence : 0;
             let category;
@@ -682,6 +683,9 @@ class GalleryScannerService {
             // 删抽帧临时文件（失败无妨，cacheDir 系统会自清）
             if (frameTemp) { try { await RNFS.unlink(frameTemp.replace(/^file:\/\//, '')); } catch (_) {} }
           }
+          // 批内逐张发进度：百分比平滑滚动，不再 20 张跳一次（界面数据刷新仍按每 20 张节流）
+          perImageDone++;
+          await this.sendProgressMessage('remote_inference', Math.min(perImageDone, naImages.length), naImages.length, this.imagesClassified, naImages.length);
         }
         if (classificationDataArray.length > 0) {
           try {

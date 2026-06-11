@@ -210,7 +210,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
         // eslint-disable-next-line global-require
         _vlmMod = require('./VLMClassifier');
       }
-      const r = await _vlmMod.classifyImageWithVLM(imageUri, { model: modelUri, mmproj: mmprojUri }, vlmModel);
+      const r = await _vlmMod.classifyImageWithVLM(imageUri, { model: modelUri, mmproj: mmprojUri }, vlmModel, { detailed: !!opts.detailed });
       if (!r.success) {
         const fb = await runImageNet(imageUri, sharedClassifier);
         return { ...fb, fallback: 'engine-error' };

@@ -24,7 +24,7 @@ export async function disposeVLMContext() {
  * 单张图 → top1 app 类（VLM / LiteRT-LM-Gemma）。
  * @param paths { model: file://... }  （Gemma 单文件，无 mmproj）
  */
-export async function classifyImageWithVLM(imageUri, paths, vlmModel) {
+export async function classifyImageWithVLM(imageUri, paths, vlmModel, opts = {}) {
   const t0 = Date.now();
   let tmpFile = null;
   try {
@@ -33,7 +33,7 @@ export async function classifyImageWithVLM(imageUri, paths, vlmModel) {
     }
     const cats = getCategoryList();
     const lang = currentLang();
-    const prompt = buildPrompt(cats, lang);
+    const prompt = buildPrompt(cats, lang, opts);
     const imgUrl = await prepareImageFile(imageUri);
     tmpFile = imgUrl;
 
