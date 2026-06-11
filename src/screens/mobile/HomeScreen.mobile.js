@@ -2000,9 +2000,18 @@ const HomeScreen = ({ navigation }) => {
             <SectionIcon name="copy-outline" emoji="🔗" tint={SECTION_TINTS.similarity} />
             <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>{t('home.similarPhotos')}</Text>
           </View>
+          <View style={styles.headerButtonsContainer}>
+            {/* 重复照片清理入口：字节级相同的多份拷贝，一键释放存储（与"相似照片"互补，始终可达） */}
+            <TouchableOpacity
+              style={styles.toggleButton}
+              onPress={() => navigation && navigation.navigate('Duplicates')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.toggleButtonText}>{t('home.duplicatesEntry', { defaultValue: '重复清理' })}</Text>
+            </TouchableOpacity>
           {similarityGroups && similarityGroups.length > 0 && (
-            <View style={styles.headerButtonsContainer}>
-              <TouchableOpacity 
+            <>
+              <TouchableOpacity
                 style={[
                   styles.toggleButton,
                   (isScanning || isSimilarityDetecting) && styles.toggleButtonDisabled
@@ -2039,8 +2048,9 @@ const HomeScreen = ({ navigation }) => {
                   <Text style={styles.toggleButtonText}>{t('home.showLess')}</Text>
                 </TouchableOpacity>
               )}
-            </View>
+            </>
           )}
+          </View>
         </View>
         
         {similarityGroups && similarityGroups.length > 0 ? (

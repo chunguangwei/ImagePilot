@@ -346,6 +346,67 @@ class UnifiedDataService {
     }
   }
 
+  /**
+   * 查找完全重复的照片（字节级同一张图的多份拷贝）。
+   * 分组键 = size|takenAt|宽x高 ——三者全同且 size 精确相等，实践上即同一文件
+   * （连拍/相似图的字节数几乎必然不同）；有颜色特征索引时再用直方图 ≥0.985 复核剔除碰撞。
+   * 视频不参与。每组按 timestamp 升序，第一张为「保留」，其余为冗余。
+   * @returns {Promise<{groups:Array, totalRedundant:number, totalWastedBytes:number}>}
+   */
+  async findExactDuplicates() {
+    try {
+      await this.imageCache.buildCache();
+      const all = (this.imageCache.getCache().allImages || []).filter((img) =>
+        img && img.id && !String(img.mimeType || '').startsWith('video/') && (img.size || 0) > 0
+      );
+      const byKey = new Map();
+      for (const img of all) {
+        const key = `${img.size}|${img.takenAt || 0}|${img.width || 0}x${img.height || 0}`;
+        if (!byKey.has(key)) byKey.set(key, []);
+        byKey.get(key).push(img);
+      }
+      let featuresMap = null;
+      const groups = [];
+      let totalRedundant = 0;
+      let totalWastedBytes = 0;
+      for (const [key, imgs] of byKey.entries()) {
+        if (imgs.length < 2) continue;
+        // 直方图复核（有索引才做）：与组内第一张相似度 <0.985 视为元数据碰撞，踢出该组
+        let members = imgs;
+        try {
+          if (featuresMap === null) featuresMap = await this.imageStorageService.readAllImageFeatures();
+          const sim = require('./ImageSimilarityService.js').default;
+          const f0 = featuresMap[imgs[0].id];
+          if (f0 && f0.color_histogram) {
+            members = imgs.filter((m, i) => {
+              if (i === 0) return true;
+              const f = featuresMap[m.id];
+              if (!f || !f.color_histogram) return true;   // 无特征不否决（元数据条件已极强）
+              return sim.scoreFeatureSimilarity(f0, f) >= 0.985;
+            });
+          }
+        } catch (_) { /* 复核失败按元数据分组 */ }
+        if (members.length < 2) continue;
+        members.sort((a, b) => ((a.timestamp || a.takenAt || 0) - (b.timestamp || b.takenAt || 0)));
+        const redundantIds = members.slice(1).map((m) => m.id);
+        groups.push({
+          key,
+          images: members,
+          keepId: members[0].id,
+          redundantIds,
+          wastedBytes: (members[0].size || 0) * redundantIds.length,
+        });
+        totalRedundant += redundantIds.length;
+        totalWastedBytes += (members[0].size || 0) * redundantIds.length;
+      }
+      groups.sort((a, b) => b.wastedBytes - a.wastedBytes);
+      return { groups, totalRedundant, totalWastedBytes };
+    } catch (error) {
+      logger.error('查找重复照片失败:', error);
+      return { groups: [], totalRedundant: 0, totalWastedBytes: 0 };
+    }
+  }
+
   /** 文本 → 字符 bigram 集合（去空白/标点、转小写）。中文无分词，bigram 比 token 稳。 */
   _bigrams(text) {
     const s = String(text || '').toLowerCase().replace(/[\s\p{P}]+/gu, '');

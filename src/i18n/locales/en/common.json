@@ -424,7 +424,8 @@
       "classificationSuccess": "Classification Success: {{classified}}/{{total}}"
     },
     "aiClassifyEmptyCategory": "Nothing to classify in this folder",
-    "memoriesTitle": "On This Day"
+    "memoriesTitle": "On This Day",
+    "duplicatesEntry": "Duplicates"
   },
   "imagePreview": {
     "similarGroup": "Similar Group",
@@ -1086,5 +1087,20 @@
     "actionShare": "Share",
     "actionRestore": "Restore",
     "actionDelete": "Delete"
+  },
+  "duplicates": {
+    "title": "Duplicate Photos",
+    "scanning": "Comparing your library…",
+    "empty": "No duplicate photos found 🎉",
+    "summary": "{{groups}} groups · {{count}} removable · frees {{size}}",
+    "groupTitle": "{{count}} identical",
+    "cleanGroup": "Clean group",
+    "keep": "Keep",
+    "remove": "Delete",
+    "confirmTitle": "Clean Duplicates",
+    "confirmGroupMessage": "Delete {{count}} duplicates in this group (keep 1), freeing {{size}}.",
+    "confirmAllMessage": "Delete all {{count}} duplicates (keep 1 per group), freeing {{size}}.",
+    "cleanAll": "Clean All (free {{size}})",
+    "deleting": "Deleting {{done}}/{{total}}…"
   }
 }

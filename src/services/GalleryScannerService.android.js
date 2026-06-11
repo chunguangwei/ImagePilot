@@ -381,8 +381,19 @@ class GalleryScannerService {
         // 发送基础扫描完成消息（AI分类需要用户手动触发）
         // 注意：completed 消息会触发 processProgressData 自动重建缓存
         await this.sendProgressMessage('completed', this.imagesClassified, this.totalImagesToBeClassified, this.imagesClassified, this.totalImagesToBeClassified);
-        
+
         logger.info('✅ 基础扫描完全结束（AI分类需要用户手动触发）');
+
+        // 向量索引自动维护：CLIP 模型已下载时，后台增量补新照片的 embedding（fire-and-forget，
+        // 不阻塞扫描收尾；已索引的跳过，无新图时秒返）。手动建索引入口仍保留（带进度）。
+        try {
+          const clipIndex = require('./ClipVectorIndexService').default;
+          clipIndex.isReady().then((ok) => {
+            if (ok && !clipIndex.isBuilding) {
+              clipIndex.buildIndex().catch(() => {});
+            }
+          }).catch(() => {});
+        } catch (_) { /* 服务不可用不影响扫描 */ }
 
       } catch (error) {
         logger.error('❌ 后续处理失败:', error);
