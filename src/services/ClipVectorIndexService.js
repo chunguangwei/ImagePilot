@@ -152,6 +152,12 @@ class ClipVectorIndexService {
     } finally {
       this._building = false;
       this._stopRequested = false;
+      // 释放 CLIP ONNX session：避免与本地分类（尤其 Gemma 多模态 2.6GB）并发驻留内存导致
+      // 安卓 OOM 崩溃；下次建索引/CLIP 分类时自动重载（~1s 一次性成本）。
+      try {
+        const { disposeMobileCLIPSession } = require('./classify/MobileCLIPClassifier');
+        disposeMobileCLIPSession();
+      } catch (_) {}
     }
   }
 
