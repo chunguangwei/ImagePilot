@@ -252,7 +252,7 @@
     "aiClassifyDone": "Classification done ({{total}})"
   },
   "search": {
-    "placeholder": "Search description, category, file name…",
+    "placeholder": "Search description, city, date, format, folder…",
     "emptyTip": "Type a keyword to search by AI description / category / file name",
     "noResults": "No photos match \"{{query}}\"",
     "resultCount": "{{count}} result(s)",

@@ -252,7 +252,7 @@
     "aiClassifyDone": "AI 分类完成（{{total}} 张）"
   },
   "search": {
-    "placeholder": "搜描述、分类、文件名…",
+    "placeholder": "搜描述、城市、时间、格式、目录…",
     "emptyTip": "输入关键词，按 AI 描述 / 分类 / 文件名搜图",
     "noResults": "没找到与「{{query}}」匹配的图",
     "resultCount": "{{count}} 张结果",

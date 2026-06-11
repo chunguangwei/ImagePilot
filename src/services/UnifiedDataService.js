@@ -629,6 +629,57 @@ class UnifiedDataService {
    * @param {string} query
    * @returns {Promise<{results:Array, untaggedCount:number, total:number, withDescCount:number}>}
    */
+  /**
+   * 扩展检索词：时间(2024/5月)、格式(jpg/视频)、分辨率(4k/1080p/宽x高)、方向(横屏/竖屏)、
+   * 拍摄参数分类(含中文翻译)、目录名、大小(Nmb/大文件)——全部进关键字索引。
+   */
+  _searchHaystackExtras(img) {
+    const parts = [];
+    const ts = img.takenAt || img.timestamp || 0;
+    if (ts > 0) {
+      const d = new Date(ts);
+      const y = d.getFullYear(); const m = d.getMonth() + 1; const day = d.getDate();
+      parts.push(`${y}`, `${y}年`, `${m}月`, `${y}年${m}月`, `${y}-${String(m).padStart(2, '0')}`, `${m}月${day}日`);
+    }
+    const mt = String(img.mimeType || '');
+    const sub = (mt.split('/')[1] || '').toLowerCase();
+    if (sub) { parts.push(sub); if (sub === 'jpeg') parts.push('jpg'); }
+    if (mt.startsWith('video/')) parts.push('视频', 'video');
+    const w = img.width || 0; const h = img.height || 0;
+    if (w > 0 && h > 0) {
+      parts.push(`${w}x${h}`);
+      const long = Math.max(w, h);
+      if (long >= 3840) parts.push('4k', '超高清');
+      else if (long >= 1920) parts.push('1080p', '高清');
+      if (w > h) parts.push('横屏', '横向', 'landscape');
+      else if (h > w) parts.push('竖屏', '竖向', 'portrait');
+      else parts.push('方形', 'square');
+    }
+    try {
+      const { getCameraSettingsCategoryTranslation } = require('../i18n');
+      for (const [type, val] of [['iso', img.isoCategory], ['aperture', img.apertureCategory], ['shutter', img.shutterCategory], ['focalLength', img.focalLengthCategory]]) {
+        if (val) {
+          parts.push(String(val));
+          const tr = getCameraSettingsCategoryTranslation(type, val);
+          if (tr && tr !== val) parts.push(String(tr));
+        }
+      }
+    } catch (_) { /* 翻译不可用就只搜原始值 */ }
+    const uri = String(img.uri || '');
+    if (!uri.startsWith('ph://')) {
+      const path = uri.includes('||') ? (uri.split('||')[1] || uri.split('||')[0]) : uri;
+      const segs = path.replace(/^file:\/\//, '').split('/').filter(Boolean);
+      if (segs.length >= 2) parts.push(segs[segs.length - 2]);   // 目录名（倒数第二段）
+    }
+    const size = img.size || 0;
+    if (size > 0) {
+      const mb = size / (1024 * 1024);
+      parts.push(`${Math.max(1, Math.round(mb))}mb`);
+      if (mb >= 20) parts.push('大文件');
+    }
+    return parts.join(' ');
+  }
+
   async searchImages(query) {
     try {
       const q = String(query || '').trim().toLowerCase();
@@ -651,6 +702,7 @@ class UnifiedDataService {
           img.fileName || '',
           img.city || '',
           img.country || '',
+          this._searchHaystackExtras(img),
         ].join(' ').toLowerCase();
         if (hay.includes(q) || terms.every((t) => hay.includes(t))) {
           results.push(img);
