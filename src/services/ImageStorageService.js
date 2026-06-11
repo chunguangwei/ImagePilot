@@ -2043,7 +2043,12 @@ class ImageStorageService {
             setParts.push('message = ?');
             params.push(classificationData.message);
           }
-          
+
+          if (classificationData.duration !== undefined) {
+            setParts.push('duration = ?');
+            params.push(classificationData.duration);
+          }
+
           if (classificationData.background_color !== undefined) {
             setParts.push('background_color = ?');
             params.push(classificationData.background_color);

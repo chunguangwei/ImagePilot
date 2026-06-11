@@ -90,6 +90,7 @@ build 处理完后（会收到邮件）：
 - **版本号(MARKETING_VERSION)**：发新版本时按
   `.cursor/skills/update-version/SKILL.md` 一起改（含 iOS 两处）。
 - 同一个 MARKETING_VERSION 下可以传多个递增的 build（如修小问题重传）。
+- **上传记录**：2026-06-11 备好 1.5.34 (build 2)（Claude 已代办 build 号 1→2，随 PR #138 合入）。
 - 隐私清单 `ios/ImagePilot/PrivacyInfo.xcprivacy` 已含 FileTimestamp/UserDefaults/SystemBootTime/DiskSpace
   四类 Required Reason 声明（2026-06 校验过），新增第三方 SDK 时才需要重审。
 
