@@ -430,7 +430,9 @@
     "duplicatesEntry": "Duplicates",
     "tripsTitle": "Trips",
     "tripCardTitle": "Trip to {{city}}",
-    "tripDays": "{{days}}d"
+    "tripDays": "{{days}}d",
+    "statusTitle": "Scan Status",
+    "scanningShort": "Working…"
   },
   "imagePreview": {
     "similarGroup": "Similar Group",

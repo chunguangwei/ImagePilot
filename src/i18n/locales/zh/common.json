@@ -430,7 +430,9 @@
     "duplicatesEntry": "重复清理",
     "tripsTitle": "旅行回忆",
     "tripCardTitle": "{{city}}之旅",
-    "tripDays": "{{days}}天"
+    "tripDays": "{{days}}天",
+    "statusTitle": "扫描状态",
+    "scanningShort": "处理中…"
   },
   "imagePreview": {
     "similarGroup": "相似组",

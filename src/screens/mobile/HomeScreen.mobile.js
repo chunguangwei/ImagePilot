@@ -2698,6 +2698,18 @@ const HomeScreen = ({ navigation }) => {
         >
           <Text style={[styles.headerTitle, { color: c.label }]}>{t('app.name')}</Text>
         </Pressable>
+        {/* 扫描/分类状态：进行中转圈、有消息时 ⓘ，点开看完整消息（替代原第二行消息横幅） */}
+        {(isScanning || globalMessage) ? (
+          <TouchableOpacity
+            onPress={() => Alert.alert(t('home.statusTitle', { defaultValue: '扫描状态' }), globalMessage || t('home.scanningShort', { defaultValue: '处理中…' }))}
+            style={styles.headerSearchBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            {isScanning
+              ? <ActivityIndicator size="small" color={c.accent} />
+              : (HomeIonicons ? <HomeIonicons name="information-circle-outline" size={21} color={c.secondaryLabel} /> : <Text style={{ fontSize: 18 }}>ⓘ</Text>)}
+          </TouchableOpacity>
+        ) : null}
         {/* 相册报告（年报统计）入口 */}
         <TouchableOpacity
           onPress={() => navigation.navigate('Stats')}
@@ -2715,12 +2727,7 @@ const HomeScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* 消息提示区（首扫前 globalMessage 为空 → 整条不渲染，避免占空高度） */}
-      {globalMessage ? (
-        <View style={styles.messageBanner}>
-          <Text style={[styles.messageText, { color: c.secondaryLabel }]}>{globalMessage}</Text>
-        </View>
-      ) : null}
+      {/* 扫描消息条已收进 header 状态小按钮（信息量太大占一整行）；点 header 转圈/ⓘ 可看完整消息 */}
 
       {/* 主内容区 */}
       <ScrollView
