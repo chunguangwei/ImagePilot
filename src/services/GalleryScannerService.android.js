@@ -563,7 +563,7 @@ class GalleryScannerService {
    * @param {Date|null} scanStartTime
    * @param {Array|null} imagesToClassify - null 则取所有 NA 分类图片
    */
-  async _classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify) {
+  async _classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify, clsOpts = {}) {
     // 🛡️ 防 OOM：分类期间停掉后台向量索引构建（CLIP 推理与分类引擎并发驻留内存
     // 在安卓上易触发 OOM 崩溃）；索引下次扫描完成后自动续建。
     try { require('./ClipVectorIndexService').default.requestStop(); } catch (_) {}
@@ -656,7 +656,7 @@ class GalleryScannerService {
             }
             if (!imageUri) { failedCount++; continue; }
             // P1：按 tier 路由（basic→ImageNet / scene→Places365 / clip→未接入回退）
-            const r = await classifyImageByTier(imageUri, activeTier, { imageClassifier: this.imageClassifier, detailed: naImages.length === 1 });
+            const r = await classifyImageByTier(imageUri, activeTier, { imageClassifier: this.imageClassifier, detailed: !!clsOpts.detailed });
             const top = r?.topPrediction || null;
             const conf = (typeof r?.confidence === 'number') ? r.confidence : 0;
             let category;
@@ -736,7 +736,7 @@ class GalleryScannerService {
    * @param {Array|null} imagesToClassify
    * @param {object} aiCfg - getAIProviderConfig() 结果（已确认 active != 'local-onnx'）
    */
-  async _classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg) {
+  async _classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg, clsOpts = {}) {
     // 🛡️ 防 OOM：分类期间停掉后台向量索引构建（CLIP 推理与分类引擎并发驻留内存
     // 在安卓上易触发 OOM 崩溃）；索引下次扫描完成后自动续建。
     try { require('./ClipVectorIndexService').default.requestStop(); } catch (_) {}
@@ -828,7 +828,7 @@ class GalleryScannerService {
           batchOut = await classifyCloudBatch({
             imageClassifier: this.imageClassifier,
             platform: Platform.OS,
-            inputs, validResults, aiCfg,
+            inputs, validResults, aiCfg, detailed: !!clsOpts.detailed,
           });
         } catch (e) {
           logger.error(`❌ 云端 LLM 调用失败: ${e?.message || e}`);
@@ -903,7 +903,7 @@ class GalleryScannerService {
     //   - forceLocal=true 或 active='local-onnx' → 设备端 MobileNetV3
     //   - active=云端 Provider                    → JS 端 wireLLMRouting（用户自配）
     if (opts && opts.forceLocal === true) {
-      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify);
+      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify, { detailed: !!(opts && opts.detailed) });
     }
     let aiCfg = null;
     try {
@@ -914,9 +914,9 @@ class GalleryScannerService {
     }
     const isCloud = !!(aiCfg && aiCfg.active && aiCfg.active !== 'local-onnx');
     if (!isCloud) {
-      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify);
+      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify, { detailed: !!(opts && opts.detailed) });
     }
-    return await this._classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg);
+    return await this._classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg, { detailed: !!(opts && opts.detailed) });
 
     // 检查原生模块是否可用
     /* eslint-disable no-unreachable */

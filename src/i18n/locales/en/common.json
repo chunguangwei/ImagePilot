@@ -247,7 +247,8 @@
     "confirmAIClassifyTitle": "AI Classify",
     "confirmAIClassifyMessage": "Re-classify the {{count}} selected item(s) with the classifier model in Settings (videos use an extracted frame).",
     "aiClassifyPartialFail": "{{count}} item(s) failed to classify (kept as-is). Try again later.",
-    "aiClassifyError": "AI classification failed"
+    "aiClassifyError": "AI classification failed",
+    "aiClassifyRunning": "Classifying {{done}}/{{total}}"
   },
   "search": {
     "placeholder": "Search description, category, file name…",

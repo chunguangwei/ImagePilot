@@ -123,6 +123,8 @@ const CategoryScreen = ({ route, navigation }) => {
   
   // ==================== 状态管理 ====================
   const [images, setImages] = useState([]);
+  // AI 分类非阻塞进度（悬浮转圈胶囊）：{ done, total } | null
+  const [aiClassifyProgress, setAiClassifyProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -1452,21 +1454,20 @@ const CategoryScreen = ({ route, navigation }) => {
       const records = images.filter((img) => imageIds.includes(img.id));
       imageIds.forEach((id) => UnifiedDataService.setImageSelection(id, false));
       setSelectionMode(false);
-      setShowUpdateProgress(true);
-      setUpdateOperationType('aiClassify');
-      setUpdateProgress({ filesProcessed: 0, filesFailed: 0, total: records.length });
+      // 非阻塞进度：悬浮转圈胶囊（不再用全屏"处理照片"弹窗——多图/精细模式慢，不该卡住整个界面）
+      setAiClassifyProgress({ done: 0, total: records.length });
 
       const GalleryScannerService = (await import('../../services/GalleryScannerService')).default;
       const svc = new GalleryScannerService();
       await svc.initialize();
       svc.onProgress = (p) => {
         if (p && typeof p.imagesClassified === 'number') {
-          setUpdateProgress((prev) => ({ ...prev, filesProcessed: p.imagesClassified }));
+          setAiClassifyProgress((prev) => (prev ? { ...prev, done: p.imagesClassified } : prev));
         }
       };
-      const result = await svc.aiImageClassifyByContent(new Date(), records, { forceLocal });
+      // 精细化仅在「用户主动对单张图 AI 分类」时启用（多图/长按目录一律快速短描述）
+      const result = await svc.aiImageClassifyByContent(new Date(), records, { forceLocal, detailed: imageIds.length === 1 });
 
-      setShowUpdateProgress(false);
       try { await UnifiedDataService.imageCache.refreshCache(); } catch (_) {}
       await loadImages();   // 分好类的图离开当前视图（如在待分类视图）
       const failed = (result && result.failedCount) || 0;
@@ -1475,8 +1476,9 @@ const CategoryScreen = ({ route, navigation }) => {
       }
     } catch (error) {
       logger.error('❌ 批量AI分类失败:', error);
-      setShowUpdateProgress(false);
       Alert.alert(t('settings.operationFailed'), error?.message || t('category.aiClassifyError', { defaultValue: 'AI 分类失败' }));
+    } finally {
+      setAiClassifyProgress(null);
     }
   };
 
@@ -2216,6 +2218,19 @@ const CategoryScreen = ({ route, navigation }) => {
           </View>
         </View>
       )}
+
+      {/* AI 分类非阻塞进度胶囊：不挡操作，分好的图每 20 张自动归位 */}
+      {aiClassifyProgress ? (
+        <View style={styles.aiClassifyPill} pointerEvents="none">
+          <ActivityIndicator size="small" color="#FFFFFF" />
+          <Text style={styles.aiClassifyPillText}>
+            {t('category.aiClassifyRunning', {
+              done: aiClassifyProgress.done, total: aiClassifyProgress.total,
+              defaultValue: `AI 分类中 ${aiClassifyProgress.done}/${aiClassifyProgress.total}`,
+            })}
+          </Text>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 };
@@ -2441,6 +2456,20 @@ const createStyles = (c) => StyleSheet.create({
     fontSize: 11,
     marginLeft: 1,
   },
+  // AI 分类非阻塞进度胶囊（悬浮底部居中，不挡操作）
+  aiClassifyPill: {
+    position: 'absolute',
+    bottom: 96,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+  },
+  aiClassifyPillText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
   timelineSelectionOverlay: {
     position: 'absolute',
     top: 4,

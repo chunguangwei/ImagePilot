@@ -178,7 +178,7 @@ function normalizeTags(raw) {
  * @param {object} args.aiCfg
  * @returns {Promise<{success:boolean,total:number,success_count:number,fail_count:number,items:Array}>}
  */
-export async function classifyCloudBatchV2({ imageClassifier, platform, inputs, validResults, aiCfg }) {
+export async function classifyCloudBatchV2({ imageClassifier, platform, inputs, validResults, aiCfg, detailed = false }) {
   const llm = getLLM(imageClassifier, platform);
   const lang = (aiCfg && aiCfg.promptLang) || i18n.language || 'zh';
   const taxonomy = buildTaxonomy(aiCfg, lang);
@@ -190,8 +190,7 @@ export async function classifyCloudBatchV2({ imageClassifier, platform, inputs, 
       items: validResults.map(v => ({ imageData: v.imageData, success: false, error: 'empty taxonomy' })),
     };
   }
-  // 单图（用户主动点单张 AI 分类）→ 精细模式：描述加长，信息更丰富
-  const detailed = (inputs && inputs.length === 1);
+  // 精细模式由调用方显式指定（仅"单图主动 AI 分类"场景）；长按目录/批量扫描一律快速短描述
   const prompt = lang === 'en' ? buildPromptEN(taxonomy, detailed) : buildPromptZH(taxonomy, detailed);
 
   logger.info(`☁️ LLMClassifyOrchestrator: taxonomy=${taxonomy.length} 项, lang=${lang}, concurrent=${aiCfg?.concurrent || 3}`);
