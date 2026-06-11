@@ -248,7 +248,8 @@
     "confirmAIClassifyMessage": "用设置中的分类模型对选中的 {{count}} 张重新分类（视频自动抽帧）。",
     "aiClassifyPartialFail": "{{count}} 张分类失败（保持原分类），可稍后重试。",
     "aiClassifyError": "AI 分类失败",
-    "aiClassifyRunning": "AI 分类中 {{done}}/{{total}}"
+    "aiClassifyRunning": "AI 分类中 {{done}}/{{total}}",
+    "aiClassifyDone": "AI 分类完成（{{total}} 张）"
   },
   "search": {
     "placeholder": "搜描述、分类、文件名…",

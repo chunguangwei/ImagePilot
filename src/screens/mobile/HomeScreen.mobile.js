@@ -42,6 +42,7 @@ import cityLocationService from '../../services/CityLocationService';
 import SkeuomorphicCamera from '../../ui/ios/SkeuomorphicCamera';
 import { useIosColors } from '../../ui/ios/theme';
 import { sortCategoryList, formatDuration } from '../../components/shared/categoryUI';
+import ClassifyProgressPill from '../../components/shared/ClassifyProgressPill';
 import { logger, getUri, getLocalPath } from '../../adapters/WebAdapters';
 import { getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
 
@@ -2798,6 +2799,9 @@ const HomeScreen = ({ navigation }) => {
 
       {/* FAB扫描按钮 */}
       {renderFAB()}
+
+      {/* 多选 AI 分类全局进度胶囊（跨页面存活；放 FAB 上方避开） */}
+      <ClassifyProgressPill bottom={150 + insets.bottom} />
     </SafeAreaView>
   );
 };
