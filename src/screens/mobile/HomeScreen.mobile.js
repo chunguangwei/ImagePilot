@@ -262,9 +262,7 @@ const HomeScreen = ({ navigation }) => {
   // 最近照片
   const [recentImages, setRecentImages] = useState([]);
   const [recentImagesTotal, setRecentImagesTotal] = useState(0); // 新发现照片的总数
-  const [memories, setMemories] = useState([]); // 回忆/那年今天（历年同月同日）
-  const [trips, setTrips] = useState([]); // 旅行回忆（异地连续拍摄自动聚簇）
-  const [holidayCards, setHolidayCards] = useState([]); // 节日回忆（春节/国庆/中秋…历年）
+  const [memories, setMemories] = useState([]); // 回忆/那年今天（历年同月同日；节日/旅行已迁「时刻」Tab）
   const [isRefreshingRecent, setIsRefreshingRecent] = useState(false); // 「重新检测」按钮 loading 态
   
   // 扫描状态
@@ -2597,137 +2595,6 @@ const HomeScreen = ({ navigation }) => {
   };
 
   /**
-   * 随便看看：按年份分桶轮询随机抽 30 张（时间多样性，老照片也有出场机会）→ 集合页。
-   */
-  const openRandomBrowse = () => {
-    try {
-      const pool = (GlobalImageCache.getCache().allImages || []).filter((i) => i && i.id);
-      if (pool.length === 0) return;
-      const byYear = new Map();
-      for (const img of pool) {
-        const ts = img.takenAt || img.timestamp || 0;
-        const y = ts > 0 ? new Date(ts).getFullYear() : 0;
-        if (!byYear.has(y)) byYear.set(y, []);
-        byYear.get(y).push(img);
-      }
-      const buckets = [...byYear.values()].map((arr) => arr.sort(() => Math.random() - 0.5));
-      const out = [];
-      let bi = 0;
-      let guard = 0;
-      while (out.length < 30 && guard < 10000 && buckets.some((b) => b.length > 0)) {
-        const b = buckets[bi % buckets.length];
-        if (b.length > 0) out.push(b.pop());
-        bi++; guard++;
-      }
-      if (navigation) {
-        navigation.navigate('Collection', {
-          title: t('home.randomBrowse', { defaultValue: '随便看看' }),
-          subtitle: t('home.randomBrowseSub', { count: out.length, defaultValue: `随机 ${out.length} 张 · 回去再点一次换一批` }),
-          images: out,
-        });
-      }
-    } catch (e) {
-      logger.debug('随便看看失败:', e?.message || e);
-    }
-  };
-
-  /**
-   * 旅行回忆：异地连续拍摄自动聚簇成"XX之旅"，横滑卡片 → 通用集合页。无行程不渲染。
-   */
-  const renderTripsSection = () => {
-    if (!trips || trips.length === 0) return null;
-    const fmtDate = (ts) => {
-      const d = new Date(ts);
-      return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`;
-    };
-    return (
-      <View style={[styles.section, dynSection]}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleContainer}>
-            <SectionIcon name="airplane-outline" emoji="🧳" tint="#FF9500" />
-            <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>
-              {t('home.tripsTitle', { defaultValue: '旅行回忆' })}
-            </Text>
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>{trips.length}</Text>
-            </View>
-          </View>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 2 }}>
-          {trips.slice(0, 20).map((trip, idx) => (
-            <TouchableOpacity
-              key={`${trip.city}-${trip.startDay}`}
-              style={styles.tripCard}
-              activeOpacity={0.85}
-              onPress={() => navigation && navigation.navigate('Collection', {
-                title: t('home.tripCardTitle', { city: trip.cityName || trip.city, defaultValue: `${trip.cityName || trip.city}之旅` }),
-                subtitle: `${fmtDate(trip.startDay)} · ${t('home.tripDays', { days: trip.days, defaultValue: `${trip.days}天` })} · ${trip.count}`,
-                images: trip.images,
-              })}
-            >
-              <Image source={{ uri: getUri(trip.cover) || trip.cover?.uri }} style={styles.tripImage} resizeMode="cover" />
-              <View style={styles.tripOverlay} pointerEvents="none">
-                <Text style={styles.tripCity} numberOfLines={1}>
-                  {t('home.tripCardTitle', { city: trip.cityName || trip.city, defaultValue: `${trip.cityName || trip.city}之旅` })}
-                </Text>
-                <Text style={styles.tripMeta} numberOfLines={1}>
-                  {fmtDate(trip.startDay)} · {t('home.tripDays', { days: trip.days, defaultValue: `${trip.days}天` })} · {trip.count}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-    );
-  };
-
-  /**
-   * 节日回忆：历年节日照片聚合（"2024 国庆 · 23"），横滑卡片 → 集合页。无卡不渲染。
-   */
-  const renderHolidaysSection = () => {
-    if (!holidayCards || holidayCards.length === 0) return null;
-    const isEn = String(i18n.language || '').startsWith('en');
-    return (
-      <View style={[styles.section, dynSection]}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleContainer}>
-            <SectionIcon name="gift-outline" emoji="🎉" tint="#FF2D55" />
-            <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>
-              {t('home.holidaysTitle', { defaultValue: '节日回忆' })}
-            </Text>
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>{holidayCards.length}</Text>
-            </View>
-          </View>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 2 }}>
-          {holidayCards.slice(0, 20).map((card) => {
-            const name = isEn ? card.nameEn : card.name;
-            return (
-              <TouchableOpacity
-                key={`${card.key}-${card.year}`}
-                style={styles.tripCard}
-                activeOpacity={0.85}
-                onPress={() => navigation && navigation.navigate('Collection', {
-                  title: `${card.year} ${name}`,
-                  subtitle: `${card.count}`,
-                  images: card.images,
-                })}
-              >
-                <Image source={{ uri: getUri(card.cover) || card.cover?.uri }} style={styles.tripImage} resizeMode="cover" />
-                <View style={styles.tripOverlay} pointerEvents="none">
-                  <Text style={styles.tripCity} numberOfLines={1}>{card.year} {name}</Text>
-                  <Text style={styles.tripMeta} numberOfLines={1}>{card.count}</Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-    );
-  };
-
-  /**
    * 渲染FAB扫描按钮
    */
   const renderFAB = () => (
@@ -3177,25 +3044,6 @@ const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // 旅行回忆卡片（横滑，宽幅）
-  tripCard: {
-    width: 200,
-    height: 124,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginRight: 10,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-  },
-  tripImage: { width: '100%', height: '100%' },
-  tripOverlay: {
-    position: 'absolute',
-    left: 0, right: 0, bottom: 0,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  tripCity: { color: '#FFFFFF', fontSize: 14.5, fontWeight: '700' },
-  tripMeta: { color: 'rgba(255,255,255,0.85)', fontSize: 11.5, marginTop: 1 },
   videoCatBadgeIcon: {
     color: '#FFFFFF',
     fontSize: 11,
@@ -3419,28 +3267,6 @@ const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
     color: c.tertiaryLabel,
   },
   // 待分类卡片：显式「开始分类」按钮（替代隐蔽长按）—— 顶部蓝色条，醒目可点。
-  // 精简药丸：只占内容宽、水平居中，不再通栏——避免盖住待分类视频卡右上角的 ▶ 角标
-  naClassifyBtn: {
-    position: 'absolute',
-    top: 5,
-    alignSelf: 'center',
-    paddingVertical: 3,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0, 122, 255, 0.96)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  naClassifyBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
 });
 
 export default HomeScreen;

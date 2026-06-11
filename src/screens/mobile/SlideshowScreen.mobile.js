@@ -45,11 +45,12 @@ export default function SlideshowScreen({ navigation, route }) {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [index, paused, speedIdx, goTo, images.length]);
 
-  if (images.length === 0) {
-    // 全是视频或空集合：直接退出
-    setTimeout(() => navigation.goBack(), 0);
-    return null;
-  }
+  // 全是视频或空集合：安全退出（effect 中导航，避免 render 期副作用竞态）
+  useEffect(() => {
+    if (images.length === 0) navigation.goBack();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [images.length]);
+  if (images.length === 0) return null;
 
   const img = images[index];
   const uri = getUri(img) || img?.uri;

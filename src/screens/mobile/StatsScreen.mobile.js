@@ -43,9 +43,10 @@ export default function StatsScreen({ navigation }) {
       if (Platform.OS === 'ios') {
         await Share.share({ url: fileUrl });
       } else {
-        const ms = NativeModules.MultiImageShare;
-        if (ms && typeof ms.shareMultipleImages === 'function') {
-          await ms.shareMultipleImages([fileUrl.replace(/^file:\/\//, '')]);
+        // 安卓：模块注册名是 MultiImageShareModule；shareFile 接文件路径并内部走 FileProvider
+        const ms = NativeModules.MultiImageShareModule;
+        if (ms && typeof ms.shareFile === 'function') {
+          await ms.shareFile(fileUrl.replace(/^file:\/\//, ''), 'image/png', t('stats.title', { defaultValue: '相册报告' }));
         } else {
           await Share.share({ message: fileUrl });
         }
@@ -113,7 +114,7 @@ export default function StatsScreen({ navigation }) {
           <Card>
             <Text style={[styles.cardTitle, { color: c.label }]}>📦 {t('stats.overview', { defaultValue: '总览' })}</Text>
             <Row label={t('stats.photos', { defaultValue: '照片' })} value={`${stats.photos}`} />
-            <Row label={t('stats.videos', { defaultValue: '视频' })} value={`${stats.videos}${stats.videoSeconds > 0 ? `（${t('stats.totalDuration', { defaultValue: '合计' })} ${formatDuration(stats.videoSeconds)}）` : ''}`} />
+            <Row label={t('stats.videos', { defaultValue: '视频' })} value={`${stats.videos}${stats.videoSeconds > 0 ? ` · ${t('stats.totalDuration', { defaultValue: '合计' })} ${formatDuration(stats.videoSeconds)}` : ''}`} />
             <Row label={t('stats.storage', { defaultValue: '占用空间' })} value={fmtBytes(stats.totalBytes)} />
             {stats.earliest ? (
               <Row label={t('stats.span', { defaultValue: '时间跨度' })}
@@ -163,7 +164,7 @@ export default function StatsScreen({ navigation }) {
           <Card>
             <Text style={[styles.cardTitle, { color: c.label }]}>🏆 {t('stats.fun', { defaultValue: '相册之最' })}</Text>
             {stats.busiestDay ? (
-              <Row label={t('stats.busiestDay', { defaultValue: '拍得最多的一天' })} value={`${stats.busiestDay.day}（${stats.busiestDay.count} 张）`} />
+              <Row label={t('stats.busiestDay', { defaultValue: '拍得最多的一天' })} value={`${stats.busiestDay.day} · ${stats.busiestDay.count}`} />
             ) : null}
             {stats.longestVideo && (stats.longestVideo.duration || 0) > 0 ? (
               <Row label={t('stats.longestVideo', { defaultValue: '最长的视频' })} value={formatDuration(stats.longestVideo.duration)} />
