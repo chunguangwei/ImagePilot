@@ -5012,6 +5012,19 @@ class ImageStorageService {
     }
   }
 
+  /** 清空指定模型的全部 CLIP 向量（重建索引用） */
+  async deleteAllImageEmbeddings(model) {
+    try {
+      if (Platform.OS === 'web') return true;
+      await this.ensureInitialized();
+      await this.storage.db.executeSql('DELETE FROM image_embeddings WHERE model = ?', [model || '']);
+      return true;
+    } catch (error) {
+      logger.warn('清空向量索引失败:', error?.message || error);
+      return false;
+    }
+  }
+
   /** 读取全部 CLIP 向量 → { imageId: number[] }（仅指定模型的） */
   async readAllImageEmbeddings(model) {
     try {

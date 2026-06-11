@@ -88,6 +88,13 @@ class ClipVectorIndexService {
   requestStop() { this._stopRequested = true; }
   get isBuilding() { return this._building; }
 
+  /** 清空当前模型的向量索引（设置页「重建」用：清空后再 buildIndex 即全量重编） */
+  async clearIndex() {
+    const { readActiveClipModel } = require('./classify/classifyByTier');
+    const clipModel = await readActiveClipModel();
+    await UnifiedDataService.imageStorageService.deleteAllImageEmbeddings(clipModel.id);
+  }
+
   /**
    * 建/补向量索引（增量：已有向量的图跳过）。
    * @param {(done:number, total:number)=>void} onProgress
