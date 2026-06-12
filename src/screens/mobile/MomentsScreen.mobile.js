@@ -6,13 +6,14 @@
  */
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, Image, StyleSheet,
+  View, Text, TouchableOpacity, ScrollView, Image, StyleSheet, Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, useFocusEffect, getUri, logger } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../../services/UnifiedDataService';
 import GlobalImageCache from '../../services/GlobalImageCache';
 import { useIosColors } from '../../ui/ios/theme';
+import VIcon from '../../components/shared/VIcon';
 
 export default function MomentsScreen({ navigation }) {
   const { t, i18n } = useTranslation('common');
@@ -22,6 +23,7 @@ export default function MomentsScreen({ navigation }) {
   const [memories, setMemories] = useState([]);
   const [holidayCards, setHolidayCards] = useState([]);
   const [trips, setTrips] = useState([]);
+  const [showcases, setShowcases] = useState([]);   // 时刻秀（用户自建放映集，按创建时间倒序）
 
   const load = useCallback(async () => {
     try {
@@ -47,6 +49,15 @@ export default function MomentsScreen({ navigation }) {
       ]);
       setHolidayCards((h && h.cards) || []);
       setTrips((tr && tr.trips) || []);
+      // 时刻秀：解析 imageIds → 记录（缓存秒查）
+      try {
+        const list = await UnifiedDataService.imageStorageService.listShowcases();
+        const byId = new Map((GlobalImageCache.getCache().allImages || []).map((i) => [i.id, i]));
+        setShowcases(list.map((sc) => ({
+          ...sc,
+          images: sc.imageIds.map((id) => byId.get(id)).filter(Boolean),
+        })).filter((sc) => sc.images.length > 0));
+      } catch (_) { setShowcases([]); }
     } catch (e) {
       logger.debug('时刻加载失败:', e?.message || e);
     }
@@ -82,11 +93,29 @@ export default function MomentsScreen({ navigation }) {
     } catch (e) { logger.debug('随便看看失败:', e?.message || e); }
   };
 
+  const deleteShowcase = (sc) => {
+    Alert.alert(
+      t('showcase.deleteTitle', { defaultValue: '删除时刻秀' }),
+      t('showcase.deleteMessage', { name: sc.name, defaultValue: `删除「${sc.name}」？（不会删除照片本身）` }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete', { defaultValue: '删除' }), style: 'destructive',
+          onPress: async () => {
+            try { await UnifiedDataService.imageStorageService.deleteShowcase(sc.id); } catch (_) {}
+            load();
+          },
+        },
+      ]
+    );
+  };
+
   const fmtDate = (ts) => { const dd = new Date(ts); return `${dd.getFullYear()}.${dd.getMonth() + 1}.${dd.getDate()}`; };
 
-  const SectionTitle = ({ emoji, title, count, onPlay }) => (
+  const SectionTitle = ({ icon, tint, emoji, title, count, onPlay }) => (
     <View style={styles.sectionHeader}>
-      <Text style={[styles.sectionTitle, { color: c.label }]}>{emoji} {title}</Text>
+      <VIcon name={icon} size={18} color={tint} emoji={emoji} />
+      <Text style={[styles.sectionTitle, { color: c.label }]}>{title}</Text>
       {count > 0 ? (
         <View style={[styles.countBadge, { backgroundColor: 'rgba(120,120,128,0.16)' }]}>
           <Text style={[styles.countBadgeText, { color: c.secondaryLabel }]}>{count}</Text>
@@ -111,15 +140,16 @@ export default function MomentsScreen({ navigation }) {
     </TouchableOpacity>
   );
 
-  const empty = memories.length === 0 && holidayCards.length === 0 && trips.length === 0;
+  const empty = memories.length === 0 && holidayCards.length === 0 && trips.length === 0 && showcases.length === 0;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.groupedBg || '#F2F2F7' }]}>
       {/* 头部：标题 + 随便看看 */}
       <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
         <Text style={[styles.headerTitle, { color: c.label }]}>{t('moments.title', { defaultValue: '时刻' })}</Text>
-        <TouchableOpacity onPress={openRandomBrowse} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={[styles.playLink, { color: c.accent || '#007AFF' }]}>🎲 {t('home.randomBrowse', { defaultValue: '随便看看' })}</Text>
+        <TouchableOpacity onPress={openRandomBrowse} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <VIcon name="shuffle" size={17} color={c.accent || '#007AFF'} emoji="🎲" />
+          <Text style={[styles.playLink, { color: c.accent || '#007AFF' }]}>{t('home.randomBrowse', { defaultValue: '随便看看' })}</Text>
         </TouchableOpacity>
       </View>
 
@@ -133,10 +163,40 @@ export default function MomentsScreen({ navigation }) {
           </View>
         ) : (
           <>
+            {/* 时刻秀（用户自建放映集） */}
+            {showcases.length > 0 && (
+              <View style={styles.section}>
+                <SectionTitle icon="film" tint="#AF52DE" emoji="🎬" title={t('showcase.sectionTitle', { defaultValue: '时刻秀' })} count={showcases.length} />
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
+                  {showcases.map((sc) => (
+                    <TouchableOpacity
+                      key={sc.id}
+                      style={styles.wideCard}
+                      activeOpacity={0.85}
+                      onPress={() => navigation.navigate('Slideshow', {
+                        images: sc.images, title: sc.name, mode: sc.mode, interval: sc.interval, musicPath: sc.musicPath,
+                      })}
+                      onLongPress={() => deleteShowcase(sc)}
+                    >
+                      <Image source={{ uri: getUri(sc.images[0]) || sc.images[0]?.uri }} style={styles.wideImage} resizeMode="cover" />
+                      <View style={styles.wideOverlay} pointerEvents="none">
+                        <Text style={styles.wideTitle} numberOfLines={1}>{sc.name}</Text>
+                        <Text style={styles.wideMeta} numberOfLines={1}>
+                          {sc.description ? sc.description : `${sc.images.length} · ${fmtDate(new Date(sc.createdAt).getTime())}`}
+                        </Text>
+                      </View>
+                      <View style={styles.playBadge} pointerEvents="none"><VIcon name="play" size={12} emoji="▶" style={{ marginLeft: 1 }} /></View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
             {/* 那年今天 */}
             {memories.length > 0 && (
               <View style={styles.section}>
                 <SectionTitle
+                  icon="time" tint="#0A84FF"
                   emoji="🕰️"
                   title={t('home.memoriesTitle', { defaultValue: '那年今天' })}
                   count={memories.length}
@@ -163,7 +223,7 @@ export default function MomentsScreen({ navigation }) {
             {/* 节日回忆 */}
             {holidayCards.length > 0 && (
               <View style={styles.section}>
-                <SectionTitle emoji="🎉" title={t('home.holidaysTitle', { defaultValue: '节日回忆' })} count={holidayCards.length} />
+                <SectionTitle icon="gift" tint="#FF2D55" emoji="🎉" title={t('home.holidaysTitle', { defaultValue: '节日回忆' })} count={holidayCards.length} />
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
                   {holidayCards.slice(0, 20).map((card) => {
                     const name = isEn ? card.nameEn : card.name;
@@ -185,7 +245,7 @@ export default function MomentsScreen({ navigation }) {
             {/* 旅行回忆 */}
             {trips.length > 0 && (
               <View style={styles.section}>
-                <SectionTitle emoji="🧳" title={t('home.tripsTitle', { defaultValue: '旅行回忆' })} count={trips.length} />
+                <SectionTitle icon="airplane" tint="#FF9500" emoji="🧳" title={t('home.tripsTitle', { defaultValue: '旅行回忆' })} count={trips.length} />
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
                   {trips.slice(0, 20).map((trip) => (
                     <WideCard
@@ -234,6 +294,8 @@ const styles = StyleSheet.create({
   wideOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: 'rgba(0,0,0,0.45)' },
   wideTitle: { color: '#FFFFFF', fontSize: 14.5, fontWeight: '700' },
   wideMeta: { color: 'rgba(255,255,255,0.85)', fontSize: 11.5, marginTop: 1 },
+  playBadge: { position: 'absolute', right: 8, top: 8, width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
+  playBadgeIcon: { color: '#FFFFFF', fontSize: 12, marginLeft: 1 },
   empty: { alignItems: 'center', paddingTop: 120, paddingHorizontal: 40 },
   emptyText: { marginTop: 12, fontSize: 14, textAlign: 'center', lineHeight: 21 },
 });

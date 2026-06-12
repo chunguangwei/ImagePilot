@@ -36,6 +36,7 @@ import DuplicatesScreen from './screens/mobile/DuplicatesScreen.mobile';
 import CollectionScreen from './screens/mobile/CollectionScreen.mobile';
 import StatsScreen from './screens/mobile/StatsScreen.mobile';
 import SlideshowScreen from './screens/mobile/SlideshowScreen.mobile';
+import ShowcaseCreateScreen from './screens/mobile/ShowcaseCreateScreen.mobile';
 import MomentsScreen from './screens/mobile/MomentsScreen.mobile';
 console.log('📦 App.js: CategoryScreen 导入成功');
 import ImagePreviewScreen from './screens/mobile/ImagePreviewScreen.mobile';
@@ -403,6 +404,7 @@ function AppInner() {
           <Stack.Screen name="Collection" component={CollectionScreen} />
           <Stack.Screen name="Stats" component={StatsScreen} />
           <Stack.Screen name="Slideshow" component={SlideshowScreen} />
+          <Stack.Screen name="ShowcaseCreate" component={ShowcaseCreateScreen} />
           <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} />
           <Stack.Screen name="EnhanceResult" component={EnhanceResultScreen} options={{ presentation: 'modal' }} />
           <Stack.Screen name="CustomCategories" component={CustomCategoriesScreen} />

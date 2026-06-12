@@ -282,7 +282,10 @@
     "semanticEx2": "一群人聚餐",
     "semanticEx3": "小狗在草地",
     "semanticDimsTip": "按 AI 描述的语义匹配（多模态档分类过的内容效果最佳）",
-    "rewriteFailed": "改写失败"
+    "rewriteFailed": "改写失败",
+    "selectedCount": "已选 {{count}}",
+    "selectAll": "全选",
+    "batchCategorized": "已将 {{count}} 项移入所选分类"
   },
   "home": {
     "title": "首页",
@@ -1159,5 +1162,27 @@
   "moments": {
     "title": "时刻",
     "empty": "扫描相册后，这里会浮现你的那年今天、节日与旅行回忆"
+  },
+  "showcase": {
+    "entry": "时刻秀",
+    "sectionTitle": "时刻秀",
+    "createTitle": "生成时刻秀",
+    "photoCount": "共 {{count}} 项（视频将自动播放）",
+    "nameLabel": "名称",
+    "namePlaceholder": "如：宝宝的夏天、毕业旅行…",
+    "descLabel": "描述（可选，✨可按名字生成）",
+    "descPlaceholder": "一句话描述这组时刻…",
+    "modeLabel": "播放模式",
+    "intervalLabel": "单图时长",
+    "musicComing": "🎵 背景音乐功能即将到来",
+    "saveBtn": "保存到「时刻」",
+    "nameRequired": "给这组时刻起个名字吧",
+    "saveFailed": "保存失败",
+    "polishNeedCloud": "润色需要先在设置中配置在线大模型",
+    "deleteTitle": "删除时刻秀",
+    "deleteMessage": "删除「{{name}}」？（不会删除照片本身）",
+    "musicLabel": "背景音乐（可选）",
+    "musicPick": "🎵 选择本地音乐文件…",
+    "musicPickFailed": "选择音乐失败"
   }
 }

@@ -35,6 +35,7 @@ import configService from '../../services/ConfigService';
 import cityLocationService from '../../services/CityLocationService';
 import { sortCategoryList, getCategoryIconMeta, formatDuration } from '../../components/shared/categoryUI';
 import ClassifyProgressPill from '../../components/shared/ClassifyProgressPill';
+import VIcon from '../../components/shared/VIcon';
 import { Icon } from '../../adapters/WebAdapters';
 import { logger, getUri } from '../../adapters/WebAdapters';
 
@@ -216,6 +217,8 @@ const CategoryScreen = ({ route, navigation }) => {
             : [{ id: 'clearClassification', label: t('category.clearClassification', { defaultValue: '清理分类' }), iconKey: 'clearClassify', emoji: '♻️' }]),
           // AI 分类：对选中图/视频按设置的分类模型重跑（与"清理分类"对称，清完可立即重分）
           { id: 'aiClassify', label: t('category.aiClassify', { defaultValue: 'AI 分类' }), iconKey: 'aiClassify', emoji: '🤖' },
+          // 时刻秀：选中图/视频生成放映集（命名/模式/时长/背景乐 → 时刻 Tab）
+          { id: 'showcase', label: t('showcase.entry', { defaultValue: '时刻秀' }), iconKey: 'similar', emoji: '🎬' },
           { id: 'share', label: t('category.share'), iconKey: 'share', emoji: '📤' },
         ];
 
@@ -964,6 +967,13 @@ const CategoryScreen = ({ route, navigation }) => {
         case 'aiClassify':
           await batchAIClassify(selectedIds);
           break;
+        case 'showcase': {
+          const sel = images.filter((img) => selectedIds.includes(img.id));
+          selectedIds.forEach((id) => { try { UnifiedDataService.setImageSelection(id, false); } catch (_) {} });
+          setSelectionMode(false);
+          if (sel.length > 0) navigation.navigate('ShowcaseCreate', { images: sel });
+          break;
+        }
         case 'delete':
           await batchDelete(selectedIds);
           break;
@@ -1948,9 +1958,8 @@ const CategoryScreen = ({ route, navigation }) => {
                     />
                     {String(image.mimeType || '').startsWith('video/') && (
                       <View style={[styles.videoBadge, formatDuration(image.duration) ? styles.videoBadgeWide : null]} pointerEvents="none">
-                        <Text style={styles.videoBadgeIcon}>
-                          {'▶'}{formatDuration(image.duration) ? ` ${formatDuration(image.duration)}` : ''}
-                        </Text>
+                        <VIcon name="play" size={10} emoji="▶" />
+                        {formatDuration(image.duration) ? <Text style={styles.videoBadgeIcon}> {formatDuration(image.duration)}</Text> : null}
                       </View>
                     )}
                     {selectionMode && (
@@ -2413,6 +2422,7 @@ const createStyles = (c) => StyleSheet.create({
     height: 22,
     borderRadius: 11,
     backgroundColor: 'rgba(0,0,0,0.55)',
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },

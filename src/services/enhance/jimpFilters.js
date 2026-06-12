@@ -68,6 +68,61 @@ export const hasIntensity = (id) => ['bright', 'contrast', 'soften', 'vivid', 'f
  * @param {string} base64 含/不含 data: 前缀
  * @param {number} intensity 0..1
  */
+/**
+ * #4b 美颜（二期·仅人脸）：只在人脸椭圆区域内做保边平滑+提亮+暖肤，边缘径向羽化自然过渡。
+ * faces: 归一化 [{x,y,width,height}]（左上原点）。脸框外扩（宽1.5x/高1.7x）盖住额头下巴。
+ */
+export async function applyBeautyToFacesBase64(base64, intensity = 0.8, faces = []) {
+  const clean = base64.startsWith('data:') ? base64.split(',')[1] : base64;
+  const img = await Jimp.read(Buffer.from(clean, 'base64'));
+  const W = img.bitmap.width; const H = img.bitmap.height;
+  const radius = Math.max(2, Math.round(2 + intensity * 4));
+  await yieldToEventLoop();
+  const blurred = img.clone().blur(radius);
+  await yieldToEventLoop();
+  const keep = 0.5 - 0.28 * intensity;
+  const od = img.bitmap.data;
+  const bd = blurred.bitmap.data;
+  // 每张脸：外扩椭圆 + 羽化权重（d∈[0.65,1] 线性衰减到 0）
+  const ellipses = faces.map((f) => {
+    const cx = (f.x + f.width / 2) * W;
+    const cy = (f.y + f.height / 2) * H;
+    const rx = Math.max(8, (f.width * 1.5 * W) / 2);
+    const ry = Math.max(8, (f.height * 1.7 * H) / 2);
+    return {
+      cx, cy, rx, ry,
+      x0: Math.max(0, Math.floor(cx - rx)), x1: Math.min(W - 1, Math.ceil(cx + rx)),
+      y0: Math.max(0, Math.floor(cy - ry)), y1: Math.min(H - 1, Math.ceil(cy + ry)),
+    };
+  });
+  const brighten = 255 * 0.06 * intensity;   // 脸部提亮
+  const warm = 6 * intensity;                // 脸部暖肤（红通道）
+  let rowsDone = 0;
+  for (const e of ellipses) {
+    for (let y = e.y0; y <= e.y1; y++) {
+      const dy = (y - e.cy) / e.ry;
+      for (let x = e.x0; x <= e.x1; x++) {
+        const dx = (x - e.cx) / e.rx;
+        const d = dx * dx + dy * dy;
+        if (d > 1) continue;
+        const wgt = d <= 0.65 ? 1 : (1 - d) / 0.35;   // 羽化
+        const k = x * 4 + y * W * 4;
+        const effKeep = 1 - (1 - keep) * wgt;
+        for (let c = 0; c < 3; c++) {
+          let v = bd[k + c] + (od[k + c] - bd[k + c]) * effKeep;
+          v += (c === 0 ? brighten + warm : brighten) * wgt;   // 提亮+暖肤随权重
+          od[k + c] = v < 0 ? 0 : v > 255 ? 255 : v;
+        }
+      }
+      // 分行让出事件循环（同全图版策略）
+      rowsDone++;
+      if (rowsDone % 64 === 0) await yieldToEventLoop();
+    }
+  }
+  await yieldToEventLoop();
+  return img.getBase64Async(Jimp.MIME_JPEG);
+}
+
 export async function applyBeautyToBase64(base64, intensity = 0.8) {
   const clean = base64.startsWith('data:') ? base64.split(',')[1] : base64;
   const img = await Jimp.read(Buffer.from(clean, 'base64'));

@@ -43,6 +43,7 @@ import SkeuomorphicCamera from '../../ui/ios/SkeuomorphicCamera';
 import { useIosColors } from '../../ui/ios/theme';
 import { sortCategoryList, formatDuration } from '../../components/shared/categoryUI';
 import ClassifyProgressPill from '../../components/shared/ClassifyProgressPill';
+import VIcon from '../../components/shared/VIcon';
 import { logger, getUri, getLocalPath } from '../../adapters/WebAdapters';
 import { getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
 
@@ -161,7 +162,7 @@ const CategoryCard = React.memo(function CategoryCard({
       </View>
       {isVideoCategory && (
         <View style={styles.videoCatBadge} pointerEvents="none">
-          <Text style={styles.videoCatBadgeIcon}>▶</Text>
+          <VIcon name="play" size={11} emoji="▶" style={{ marginLeft: 1 }} />
         </View>
       )}
       {/* 「开始分类」按钮已移除：统一改为长按目录卡触发 AI 分类（范围限该目录） */}
@@ -2522,9 +2523,8 @@ const HomeScreen = ({ navigation }) => {
                   {/* 视频角标（带时长） */}
                   {String(image?.mimeType || '').startsWith('video/') && (
                     <View style={[styles.videoCatBadge, formatDuration(image?.duration) ? styles.videoCatBadgeWide : null]} pointerEvents="none">
-                      <Text style={styles.videoCatBadgeIcon}>
-                        {'▶'}{formatDuration(image?.duration) ? ` ${formatDuration(image?.duration)}` : ''}
-                      </Text>
+                      <VIcon name="play" size={10} emoji="▶" />
+                      {formatDuration(image?.duration) ? <Text style={styles.videoCatBadgeIcon}> {formatDuration(image?.duration)}</Text> : null}
                     </View>
                   )}
                   {/* 目录标签覆盖层 */}
@@ -2584,7 +2584,7 @@ const HomeScreen = ({ navigation }) => {
               </View>
               {String(img?.mimeType || '').startsWith('video/') && (
                 <View style={styles.memoryPlayBadge} pointerEvents="none">
-                  <Text style={styles.videoCatBadgeIcon}>▶</Text>
+                  <VIcon name="play" size={11} emoji="▶" style={{ marginLeft: 1 }} />
                 </View>
               )}
             </TouchableOpacity>
@@ -3005,6 +3005,7 @@ const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
     height: 22,
     borderRadius: 11,
     backgroundColor: 'rgba(0,0,0,0.55)',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },

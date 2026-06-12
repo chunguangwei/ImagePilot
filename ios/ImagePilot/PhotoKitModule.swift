@@ -23,6 +23,7 @@
 import Foundation
 import ImageIO
 import Photos
+import Vision
 import PhotosUI
 import React
 import UIKit
@@ -235,6 +236,38 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
     }
   }
 
+  // MARK: - 人脸检测（人像美颜「仅人脸区域」用）
+
+  /// Vision 检测人脸矩形。入参：本地文件路径；返回归一化 [{x,y,width,height}]（左上原点）。
+  @objc(detectFaces:resolver:rejecter:)
+  func detectFaces(_ path: String,
+                   resolver resolve: @escaping RCTPromiseResolveBlock,
+                   rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let p = path.hasPrefix("file://") ? String(path.dropFirst(7)) : path
+    guard let img = UIImage(contentsOfFile: p), let cg = img.cgImage else {
+      reject("E_FACE", "无法读取图片", nil); return
+    }
+    DispatchQueue.global(qos: .userInitiated).async {
+      let request = VNDetectFaceRectanglesRequest()
+      let handler = VNImageRequestHandler(cgImage: cg, options: [:])
+      do {
+        try handler.perform([request])
+        let faces: [[String: Double]] = (request.results ?? []).map { obs in
+          let b = obs.boundingBox   // Vision 为左下原点归一化坐标 → 转左上
+          return [
+            "x": Double(b.origin.x),
+            "y": Double(1.0 - b.origin.y - b.size.height),
+            "width": Double(b.size.width),
+            "height": Double(b.size.height),
+          ]
+        }
+        resolve(faces)
+      } catch {
+        reject("E_FACE", error.localizedDescription, error)
+      }
+    }
+  }
+
   // MARK: - 视频抽帧（自动分类用）
 
   /// 取视频时长中点的一帧，存为 ≤1024px 的临时 JPEG，返回 file:// 路径。
@@ -270,6 +303,29 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
         resolve("file://" + path)
       } catch {
         reject("E_FRAME", error.localizedDescription, error)
+      }
+    }
+  }
+
+  // MARK: - 取视频可播放文件 URL（时刻秀混播用：react-native-video 不识别 ph://）
+
+  /// 返回视频原始文件的 file:// URL（本地可用时；iCloud 未下载则允许网络拉取）。
+  @objc(getVideoFileUrl:resolver:rejecter:)
+  func getVideoFileUrl(_ localIdentifier: String,
+                       resolver resolve: @escaping RCTPromiseResolveBlock,
+                       rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let fetch = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
+    guard let asset = fetch.firstObject, asset.mediaType == .video else {
+      reject("E_NO_VIDEO", "未找到该视频", nil); return
+    }
+    let opts = PHVideoRequestOptions()
+    opts.isNetworkAccessAllowed = true
+    opts.deliveryMode = .automatic
+    PHImageManager.default().requestAVAsset(forVideo: asset, options: opts) { avAsset, _, _ in
+      if let urlAsset = avAsset as? AVURLAsset {
+        resolve(urlAsset.url.absoluteString)
+      } else {
+        reject("E_LOAD", "无法获取视频文件（可能是 iCloud 慢动作合成资源）", nil)
       }
     }
   }

@@ -282,7 +282,10 @@
     "semanticEx2": "group dinner",
     "semanticEx3": "dog on the grass",
     "semanticDimsTip": "Matches AI descriptions semantically (works best on content classified with the multimodal tier)",
-    "rewriteFailed": "Rewrite failed"
+    "rewriteFailed": "Rewrite failed",
+    "selectedCount": "{{count}} selected",
+    "selectAll": "All",
+    "batchCategorized": "{{count}} item(s) moved to the selected category"
   },
   "home": {
     "title": "Home",
@@ -1159,5 +1162,27 @@
   "moments": {
     "title": "Moments",
     "empty": "After scanning, your On-This-Day, holiday and trip memories will appear here"
+  },
+  "showcase": {
+    "entry": "Showtime",
+    "sectionTitle": "Showtime",
+    "createTitle": "Create Showtime",
+    "photoCount": "{{count}} items (videos auto-play)",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Baby Summer, Graduation Trip…",
+    "descLabel": "Description (optional, ✨ generate from name)",
+    "descPlaceholder": "One line about these moments…",
+    "modeLabel": "Playback Mode",
+    "intervalLabel": "Per-photo Duration",
+    "musicComing": "🎵 Background music coming soon",
+    "saveBtn": "Save to Moments",
+    "nameRequired": "Give these moments a name",
+    "saveFailed": "Save failed",
+    "polishNeedCloud": "Polishing requires an online LLM configured in Settings",
+    "deleteTitle": "Delete Showtime",
+    "deleteMessage": "Delete \"{{name}}\"? (Photos are kept)",
+    "musicLabel": "Background Music (optional)",
+    "musicPick": "🎵 Pick a local audio file…",
+    "musicPickFailed": "Failed to pick music"
   }
 }

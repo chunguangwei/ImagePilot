@@ -33,6 +33,8 @@ import java.util.Collections;
 import java.io.File;
 import java.io.FileOutputStream;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.PointF;
 import android.media.MediaMetadataRetriever;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -380,6 +382,52 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
             promise.reject("E_FRAME", e.getMessage());
         } finally {
             try { mmr.release(); } catch (Exception ignore) {}
+        }
+    }
+
+    /**
+     * 人脸检测（人像美颜「仅人脸区域」用）：android.media.FaceDetector（系统自带零依赖）。
+     * 入参本地文件路径；返回归一化 [{x,y,width,height}]（左上原点）。由眼距推脸框。
+     */
+    @ReactMethod
+    public void detectFaces(String path, Promise promise) {
+        try {
+            String p = (path != null && path.startsWith("file://")) ? path.substring(7) : path;
+            BitmapFactory.Options opt = new BitmapFactory.Options();
+            opt.inPreferredConfig = Bitmap.Config.RGB_565;   // FaceDetector 要求 565
+            Bitmap bmp = BitmapFactory.decodeFile(p, opt);
+            if (bmp == null) { promise.reject("E_FACE", "无法读取图片"); return; }
+            int w = bmp.getWidth();
+            int h = bmp.getHeight();
+            if (w % 2 == 1) {   // FaceDetector 要求偶数宽
+                bmp = Bitmap.createBitmap(bmp, 0, 0, w - 1, h);
+                w = w - 1;
+            }
+            int maxFaces = 6;
+            android.media.FaceDetector fd = new android.media.FaceDetector(w, h, maxFaces);
+            android.media.FaceDetector.Face[] faces = new android.media.FaceDetector.Face[maxFaces];
+            int n = fd.findFaces(bmp, faces);
+            WritableArray out = Arguments.createArray();
+            for (int i = 0; i < n; i++) {
+                android.media.FaceDetector.Face f = faces[i];
+                if (f == null) continue;
+                PointF mid = new PointF();
+                f.getMidPoint(mid);
+                float eyes = f.eyesDistance();
+                float fw = eyes * 2.6f;          // 经验比例：脸宽约眼距 2.6 倍
+                float fh = eyes * 3.2f;
+                float x = mid.x - fw / 2f;
+                float y = mid.y - fh * 0.45f;    // 中点略偏上（额头多留些）
+                WritableMap m = Arguments.createMap();
+                m.putDouble("x", Math.max(0, x) / (double) w);
+                m.putDouble("y", Math.max(0, y) / (double) h);
+                m.putDouble("width", Math.min(fw, w) / (double) w);
+                m.putDouble("height", Math.min(fh, h) / (double) h);
+                out.pushMap(m);
+            }
+            promise.resolve(out);
+        } catch (Exception e) {
+            promise.reject("E_FACE", e.getMessage());
         }
     }
 

@@ -35,6 +35,14 @@ RCT_EXTERN_METHOD(extractVideoFrame:(NSString *)localIdentifier
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(detectFaces:(NSString *)path
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(getVideoFileUrl:(NSString *)localIdentifier
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 RCT_EXTERN_METHOD(saveImageToGallery:(NSString *)sourcePath
                   fileName:(NSString *)fileName
                   resolver:(RCTPromiseResolveBlock)resolve

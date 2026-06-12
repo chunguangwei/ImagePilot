@@ -13,6 +13,7 @@ import UnifiedDataService from '../../services/UnifiedDataService';
 import configService from '../../services/ConfigService';
 import { useIosColors } from '../../ui/ios/theme';
 import { formatDuration, formatCityName } from '../../components/shared/categoryUI';
+import VIcon from '../../components/shared/VIcon';
 
 function fmtBytes(b) {
   const n = Number(b) || 0;
@@ -36,8 +37,12 @@ export default function StatsScreen({ navigation }) {
     try {
       // 截内部内容 View（完整高度、含屏外部分）；snapshotContentContainer 对 ScrollView
       // 整体截图在 iOS 上易崩，改为标准做法：内容包一层 View 直接截它。
+      // 文件名 ImagePilot 开头（分享出去对方看到的名字）
+      const day = new Date();
+      const stamp = `${day.getFullYear()}${String(day.getMonth() + 1).padStart(2, '0')}${String(day.getDate()).padStart(2, '0')}`;
       const uri = await captureRef(shotRef, {
         format: 'png', quality: 0.95, result: 'tmpfile',
+        fileName: `ImagePilot-Report-${stamp}`,
       });
       const fileUrl = uri.startsWith('file://') ? uri : `file://${uri}`;
       if (Platform.OS === 'ios') {
@@ -112,7 +117,7 @@ export default function StatsScreen({ navigation }) {
           <View ref={shotRef} collapsable={false} style={{ backgroundColor: c.groupedBg || '#F2F2F7' }}>
           {/* 总览 */}
           <Card>
-            <Text style={[styles.cardTitle, { color: c.label }]}>📦 {t('stats.overview', { defaultValue: '总览' })}</Text>
+            <View style={styles.cardTitleRow}><VIcon name="cube" size={17} color="#0A84FF" /><Text style={[styles.cardTitle, { color: c.label }]}>{t('stats.overview', { defaultValue: '总览' })}</Text></View>
             <Row label={t('stats.photos', { defaultValue: '照片' })} value={`${stats.photos}`} />
             <Row label={t('stats.videos', { defaultValue: '视频' })} value={`${stats.videos}${stats.videoSeconds > 0 ? ` · ${t('stats.totalDuration', { defaultValue: '合计' })} ${formatDuration(stats.videoSeconds)}` : ''}`} />
             <Row label={t('stats.storage', { defaultValue: '占用空间' })} value={fmtBytes(stats.totalBytes)} />
@@ -127,7 +132,7 @@ export default function StatsScreen({ navigation }) {
           {/* 年度分布 */}
           {stats.years.length > 0 && (
             <Card>
-              <Text style={[styles.cardTitle, { color: c.label }]}>📈 {t('stats.byYear', { defaultValue: '年度分布' })}</Text>
+              <View style={styles.cardTitleRow}><VIcon name="bar-chart" size={17} color="#34C759" /><Text style={[styles.cardTitle, { color: c.label }]}>{t('stats.byYear', { defaultValue: '年度分布' })}</Text></View>
               {stats.years.map(([year, n]) => (
                 <View key={year} style={styles.barRow}>
                   <Text style={[styles.barLabel, { color: c.secondaryLabel }]}>{year}</Text>
@@ -143,7 +148,7 @@ export default function StatsScreen({ navigation }) {
           {/* Top 分类 */}
           {stats.topCategories.length > 0 && (
             <Card>
-              <Text style={[styles.cardTitle, { color: c.label }]}>🏷️ {t('stats.topCategories', { defaultValue: '最常拍的内容' })}</Text>
+              <View style={styles.cardTitleRow}><VIcon name="pricetags" size={17} color="#FF9500" /><Text style={[styles.cardTitle, { color: c.label }]}>{t('stats.topCategories', { defaultValue: '最常拍的内容' })}</Text></View>
               {stats.topCategories.map(([cid, n], i) => (
                 <Row key={cid} label={`${i + 1}. ${catName(cid)}`} value={`${n}`} />
               ))}
@@ -153,7 +158,7 @@ export default function StatsScreen({ navigation }) {
           {/* Top 城市 */}
           {stats.topCities.length > 0 && (
             <Card>
-              <Text style={[styles.cardTitle, { color: c.label }]}>🗺️ {t('stats.topCities', { defaultValue: '城市足迹 Top5' })}</Text>
+              <View style={styles.cardTitleRow}><VIcon name="map" size={17} color="#AF52DE" /><Text style={[styles.cardTitle, { color: c.label }]}>{t('stats.topCities', { defaultValue: '城市足迹 Top5' })}</Text></View>
               {stats.topCities.map(([city, n], i) => (
                 <Row key={city} label={`${i + 1}. ${formatCityName(city) || city}`} value={`${n}`} />
               ))}
@@ -162,7 +167,7 @@ export default function StatsScreen({ navigation }) {
 
           {/* 趣味之最 */}
           <Card>
-            <Text style={[styles.cardTitle, { color: c.label }]}>🏆 {t('stats.fun', { defaultValue: '相册之最' })}</Text>
+            <View style={styles.cardTitleRow}><VIcon name="trophy" size={17} color="#FFD60A" /><Text style={[styles.cardTitle, { color: c.label }]}>{t('stats.fun', { defaultValue: '相册之最' })}</Text></View>
             {stats.busiestDay ? (
               <Row label={t('stats.busiestDay', { defaultValue: '拍得最多的一天' })} value={`${stats.busiestDay.day} · ${stats.busiestDay.count}`} />
             ) : null}
@@ -187,7 +192,8 @@ const styles = StyleSheet.create({
   title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   card: { borderRadius: 12, padding: 14, marginBottom: 10 },
-  cardTitle: { fontSize: 15, fontWeight: '700', marginBottom: 8 },
+  cardTitle: { fontSize: 15, fontWeight: '700' },
+  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
   rowLabel: { fontSize: 14 },
   rowValue: { fontSize: 14, fontWeight: '600' },
