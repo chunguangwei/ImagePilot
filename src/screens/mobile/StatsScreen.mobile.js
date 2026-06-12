@@ -36,8 +36,12 @@ export default function StatsScreen({ navigation }) {
     try {
       // 截内部内容 View（完整高度、含屏外部分）；snapshotContentContainer 对 ScrollView
       // 整体截图在 iOS 上易崩，改为标准做法：内容包一层 View 直接截它。
+      // 文件名 ImagePilot 开头（分享出去对方看到的名字）
+      const day = new Date();
+      const stamp = `${day.getFullYear()}${String(day.getMonth() + 1).padStart(2, '0')}${String(day.getDate()).padStart(2, '0')}`;
       const uri = await captureRef(shotRef, {
         format: 'png', quality: 0.95, result: 'tmpfile',
+        fileName: `ImagePilot-Report-${stamp}`,
       });
       const fileUrl = uri.startsWith('file://') ? uri : `file://${uri}`;
       if (Platform.OS === 'ios') {
