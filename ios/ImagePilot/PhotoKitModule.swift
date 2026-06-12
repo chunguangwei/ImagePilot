@@ -236,6 +236,192 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
     }
   }
 
+  // MARK: - 时刻秀导出视频（AVAssetWriter：图片序列 + 交叉淡入 + 背景乐混音）
+
+  /// options: { imagePaths: [String], interval: Double(秒/张), musicPath: String?, width: Int?, height: Int? }
+  /// 产出 1080x1920(默认) H.264 mp4，返回 file:// 路径。背景乐循环铺满并淡出。
+  @objc(exportSlideshow:resolver:rejecter:)
+  func exportSlideshow(_ options: NSDictionary,
+                       resolver resolve: @escaping RCTPromiseResolveBlock,
+                       rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard let paths = options["imagePaths"] as? [String], !paths.isEmpty else {
+      reject("E_EXPORT", "没有可导出的图片", nil); return
+    }
+    let interval = (options["interval"] as? Double) ?? 3.0
+    let musicPath = (options["musicPath"] as? String) ?? ""
+    let outW = (options["width"] as? Int) ?? 1080
+    let outH = (options["height"] as? Int) ?? 1920
+    DispatchQueue.global(qos: .userInitiated).async {
+      do {
+        let videoURL = try self.writeSlideshowVideo(paths: paths, interval: interval, w: outW, h: outH)
+        if musicPath.isEmpty {
+          DispatchQueue.main.async { resolve(videoURL.absoluteString) }
+          return
+        }
+        // 混入背景乐（循环铺满视频时长）
+        self.muxAudio(videoURL: videoURL, musicPath: musicPath) { result, err in
+          DispatchQueue.main.async {
+            if let r = result { resolve(r.absoluteString) }
+            else { resolve(videoURL.absoluteString) }   // 混音失败退纯视频，不让导出整体失败
+            _ = err
+          }
+        }
+      } catch {
+        DispatchQueue.main.async { reject("E_EXPORT", error.localizedDescription, error) }
+      }
+    }
+  }
+
+  /// 图片序列 → H.264 视频（30fps；张间 0.4s 交叉淡入）
+  private func writeSlideshowVideo(paths: [String], interval: Double, w: Int, h: Int) throws -> URL {
+    let fps: Int32 = 30
+    let stillFrames = max(1, Int(interval * Double(fps)))
+    let fadeFrames = paths.count > 1 ? 12 : 0   // 0.4s 交叉淡入
+
+    let outURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("showcase_\(Int(Date().timeIntervalSince1970)).mp4")
+    try? FileManager.default.removeItem(at: outURL)
+
+    let writer = try AVAssetWriter(outputURL: outURL, fileType: .mp4)
+    let settings: [String: Any] = [
+      AVVideoCodecKey: AVVideoCodecType.h264,
+      AVVideoWidthKey: w,
+      AVVideoHeightKey: h,
+      AVVideoCompressionPropertiesKey: [AVVideoAverageBitRateKey: 8_000_000],
+    ]
+    let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
+    input.expectsMediaDataInRealTime = false
+    let adaptor = AVAssetWriterInputPixelBufferAdaptor(
+      assetWriterInput: input,
+      sourcePixelBufferAttributes: [
+        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32ARGB,
+        kCVPixelBufferWidthKey as String: w,
+        kCVPixelBufferHeightKey as String: h,
+      ])
+    writer.add(input)
+    writer.startWriting()
+    writer.startSession(atSourceTime: .zero)
+
+    // 预渲染每张图为画布大小 CGImage（UIImage.draw 自带 EXIF 方向处理；等比适配 + 黑底）
+    func canvasImage(_ path: String) -> CGImage? {
+      let p = path.hasPrefix("file://") ? String(path.dropFirst(7)) : path
+      guard let ui = UIImage(contentsOfFile: p) else { return nil }
+      let fmt = UIGraphicsImageRendererFormat()
+      fmt.scale = 1
+      let renderer = UIGraphicsImageRenderer(size: CGSize(width: w, height: h), format: fmt)
+      let img = renderer.image { ctx in
+        UIColor.black.setFill()
+        ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
+        let iw = ui.size.width, ih = ui.size.height
+        let scale = min(CGFloat(w) / iw, CGFloat(h) / ih)
+        let dw = iw * scale, dh = ih * scale
+        ui.draw(in: CGRect(x: (CGFloat(w) - dw) / 2, y: (CGFloat(h) - dh) / 2, width: dw, height: dh))
+      }
+      return img.cgImage
+    }
+
+    func makeBuffer(_ draw: (CGContext) -> Void) -> CVPixelBuffer? {
+      var pb: CVPixelBuffer?
+      CVPixelBufferCreate(kCFAllocatorDefault, w, h, kCVPixelFormatType_32ARGB,
+                          [kCVPixelBufferCGImageCompatibilityKey: true,
+                           kCVPixelBufferCGBitmapContextCompatibilityKey: true] as CFDictionary, &pb)
+      guard let buf = pb else { return nil }
+      CVPixelBufferLockBaseAddress(buf, [])
+      defer { CVPixelBufferUnlockBaseAddress(buf, []) }
+      guard let ctx = CGContext(data: CVPixelBufferGetBaseAddress(buf),
+                                width: w, height: h, bitsPerComponent: 8,
+                                bytesPerRow: CVPixelBufferGetBytesPerRow(buf),
+                                space: CGColorSpaceCreateDeviceRGB(),
+                                bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue) else { return nil }
+      draw(ctx)
+      return buf
+    }
+
+    var frameIdx: Int64 = 0
+    func appendFrame(_ buf: CVPixelBuffer) {
+      while !input.isReadyForMoreMediaData { Thread.sleep(forTimeInterval: 0.01) }
+      adaptor.append(buf, withPresentationTime: CMTime(value: frameIdx, timescale: fps))
+      frameIdx += 1
+    }
+
+    var prev: CGImage? = nil
+    for path in paths {
+      guard let cur = canvasImage(path) else { continue }
+      let rect = CGRect(x: 0, y: 0, width: w, height: h)
+      // 交叉淡入（上一张 → 当前张）
+      if let pv = prev, fadeFrames > 0 {
+        for f in 1...fadeFrames {
+          let alpha = CGFloat(f) / CGFloat(fadeFrames)
+          if let buf = makeBuffer({ ctx in
+            ctx.draw(pv, in: rect)
+            ctx.setAlpha(alpha)
+            ctx.draw(cur, in: rect)
+            ctx.setAlpha(1)
+          }) { appendFrame(buf) }
+        }
+      }
+      // 静止帧
+      if let buf = makeBuffer({ ctx in ctx.draw(cur, in: rect) }) {
+        for _ in 0..<stillFrames { appendFrame(buf) }
+      }
+      prev = cur
+    }
+    guard frameIdx > 0 else { throw NSError(domain: "Showcase", code: 1, userInfo: [NSLocalizedDescriptionKey: "没有可用图片"]) }
+
+    input.markAsFinished()
+    let sem = DispatchSemaphore(value: 0)
+    writer.finishWriting { sem.signal() }
+    sem.wait()
+    if writer.status != .completed {
+      throw writer.error ?? NSError(domain: "Showcase", code: 2, userInfo: [NSLocalizedDescriptionKey: "视频写入失败"])
+    }
+    return outURL
+  }
+
+  /// 背景乐混音：音频循环插入铺满视频时长 → AVAssetExportSession 导出
+  private func muxAudio(videoURL: URL, musicPath: String, done: @escaping (URL?, Error?) -> Void) {
+    let mPath = musicPath.hasPrefix("file://") ? String(musicPath.dropFirst(7)) : musicPath
+    let videoAsset = AVURLAsset(url: videoURL)
+    let audioAsset = AVURLAsset(url: URL(fileURLWithPath: mPath))
+    guard let vTrack = videoAsset.tracks(withMediaType: .video).first,
+          let aTrack = audioAsset.tracks(withMediaType: .audio).first else {
+      done(nil, nil); return
+    }
+    let comp = AVMutableComposition()
+    guard let cv = comp.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
+          let ca = comp.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
+      done(nil, nil); return
+    }
+    do {
+      let vDur = videoAsset.duration
+      try cv.insertTimeRange(CMTimeRange(start: .zero, duration: vDur), of: vTrack, at: .zero)
+      // 音频循环铺满
+      var cursor = CMTime.zero
+      let aDur = audioAsset.duration
+      while cursor < vDur {
+        let remain = CMTimeSubtract(vDur, cursor)
+        let chunk = CMTimeMinimum(aDur, remain)
+        try ca.insertTimeRange(CMTimeRange(start: .zero, duration: chunk), of: aTrack, at: cursor)
+        cursor = CMTimeAdd(cursor, chunk)
+      }
+    } catch { done(nil, error); return }
+
+    let outURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("showcase_mux_\(Int(Date().timeIntervalSince1970)).mp4")
+    try? FileManager.default.removeItem(at: outURL)
+    guard let exporter = AVAssetExportSession(asset: comp, presetName: AVAssetExportPresetHighestQuality) else {
+      done(nil, nil); return
+    }
+    exporter.outputURL = outURL
+    exporter.outputFileType = .mp4
+    exporter.exportAsynchronously {
+      if exporter.status == .completed {
+        try? FileManager.default.removeItem(at: videoURL)   // 删中间纯视频
+        done(outURL, nil)
+      } else {
+        done(nil, exporter.error)
+      }
+    }
+  }
+
   // MARK: - 人脸检测（人像美颜「仅人脸区域」用）
 
   /// Vision 检测人脸矩形。入参：本地文件路径；返回归一化 [{x,y,width,height}]（左上原点）。

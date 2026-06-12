@@ -41,6 +41,20 @@ export function isLocalPreset(presetId) {
 }
 
 /**
+ * 支持「修图深度」横向拉杆的预设及默认强度（EnhanceResultScreen 用）。
+ * enhance 的深度=超分结果与原图的混合比（推理只跑一次，拉杆走 blendSuperResWithOriginal）；
+ * portrait/color 的深度=jimp 处理强度（重跑，秒级）。
+ */
+export const DEPTH_PRESETS = Object.freeze({
+  portrait: 0.8,
+  color: 0.85,
+  enhance: 1.0,
+});
+export function supportsDepth(presetId) {
+  return Object.prototype.hasOwnProperty.call(DEPTH_PRESETS, presetId);
+}
+
+/**
  * 给本地处理加超时兜底：CPU/推理在 Hermes 下可能很慢，若卡住超过 ms 就抛错，
  * 避免界面永远停在「处理中」。失败/超时由调用方提示用户。
  */
@@ -59,17 +73,36 @@ const LOCAL_TIMEOUT_MS = 60000;
  * @param {string} imageUri 原图 URI（file:// / content://）
  * @param {string} presetId 预设 id
  * @param {(p:{done:number,total:number})=>void} [onProgress] 分块进度
+ * @param {{intensity?:number}} [opts] intensity：修图深度 0..1（仅 portrait/color 用；enhance 的深度走 blendSuperResWithOriginal）
  * @returns {Promise<string>} data URL
  */
-export async function enhanceImageLocally(imageUri, presetId, onProgress) {
+export async function enhanceImageLocally(imageUri, presetId, onProgress, opts = {}) {
   const handler = LOCAL_PRESET_HANDLERS[presetId];
+  const intensity = typeof opts.intensity === 'number' ? opts.intensity : undefined;
   let p;
   if (handler === 'superres') p = runSuperRes(imageUri, onProgress);
   else if (handler === 'matting') p = runMatting(imageUri, onProgress);
-  else if (handler === 'beauty') p = runBeauty(imageUri, onProgress);
-  else if (handler === 'colorize') p = runColor(imageUri, onProgress);
+  else if (handler === 'beauty') p = runBeauty(imageUri, onProgress, intensity);
+  else if (handler === 'colorize') p = runColor(imageUri, onProgress, intensity);
   else throw new Error('该预设暂不支持本地处理');
   return withTimeout(p, LOCAL_TIMEOUT_MS, '增强');
+}
+
+/**
+ * 「清晰增强」深度调节：超分全强度结果与原图按 t 混合（廉价，免再推理）。
+ * @param {string} imageUri 原图 URI
+ * @param {string} srDataUrl 已缓存的全强度超分结果（data URL）
+ * @param {number} t 0..1（1=完全用超分结果）
+ * @returns {Promise<string>} data URL
+ */
+export async function blendSuperResWithOriginal(imageUri, srDataUrl, t) {
+  const run = async () => {
+    if (t >= 0.995) return srDataUrl;
+    const origB64 = await readResizedBase64(imageUri, 1024);
+    const mod = await import('./jimpFilters.js');
+    return mod.blendBase64Pair(origB64, srDataUrl, t);
+  };
+  return withTimeout(run(), LOCAL_TIMEOUT_MS, '调节');
 }
 
 /**
@@ -106,7 +139,7 @@ async function runSuperRes(imageUri, onProgress) {
  * 人像美颜（二期·仅人脸）：先原生人脸检测（iOS Vision / 安卓 FaceDetector，零依赖），
  * 只磨人脸椭圆区域并羽化过渡；未识别到人脸 → 抛错提示（调用方 Alert 展示）。
  */
-async function runBeauty(imageUri, onProgress) {
+async function runBeauty(imageUri, onProgress, intensity) {
   const base64 = await readResizedBase64(imageUri, 1024); // 控耗时（全分辨率磨皮在 Hermes 下较慢）
   if (onProgress) onProgress({ done: 0, total: 1 });
   // 写临时文件给原生检测（检测与处理用同一张缩放图，坐标天然对齐）
@@ -131,7 +164,7 @@ async function runBeauty(imageUri, onProgress) {
   }
   logger.debug(`🟦 检测到 ${faces.length} 张人脸，仅对人脸区域美颜`);
   const mod = await import('./jimpFilters.js');
-  const out = await mod.applyBeautyToFacesBase64(base64, 0.8, faces);
+  const out = await mod.applyBeautyToFacesBase64(base64, intensity ?? DEPTH_PRESETS.portrait, faces);
   if (onProgress) onProgress({ done: 1, total: 1 });
   logger.debug('🟦 本地美颜完成（仅人脸）', { imageUri });
   return out;
@@ -142,12 +175,12 @@ async function runBeauty(imageUri, onProgress) {
  * 限 1024 长边：色调操作要逐像素做 RGB↔HSL 转换，Hermes 下处理 1536px(~7MP)
  * 容易跑满 CPU 而被 60s 超时打断；1024 与 runBeauty 对齐，~1MP 内能在 <30s 完成。
  */
-async function runColor(imageUri, onProgress) {
+async function runColor(imageUri, onProgress, intensity) {
   const base64 = await readResizedBase64(imageUri, 1024);
   const mod = await import('./jimpFilters.js');
   if (onProgress) onProgress({ done: 0, total: 1 });
   logger.debug('🟦 本地色彩优化：开始 jimp 处理');
-  const out = await mod.applyColorEnhanceToBase64(base64, 0.85);
+  const out = await mod.applyColorEnhanceToBase64(base64, intensity ?? DEPTH_PRESETS.color);
   if (onProgress) onProgress({ done: 1, total: 1 });
   logger.debug('🟦 本地色彩优化完成', { imageUri });
   return out;
