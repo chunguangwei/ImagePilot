@@ -216,6 +216,8 @@ const CategoryScreen = ({ route, navigation }) => {
             : [{ id: 'clearClassification', label: t('category.clearClassification', { defaultValue: '清理分类' }), iconKey: 'clearClassify', emoji: '♻️' }]),
           // AI 分类：对选中图/视频按设置的分类模型重跑（与"清理分类"对称，清完可立即重分）
           { id: 'aiClassify', label: t('category.aiClassify', { defaultValue: 'AI 分类' }), iconKey: 'aiClassify', emoji: '🤖' },
+          // 时刻秀：选中图/视频生成放映集（命名/模式/时长/背景乐 → 时刻 Tab）
+          { id: 'showcase', label: t('showcase.entry', { defaultValue: '时刻秀' }), iconKey: 'similar', emoji: '🎬' },
           { id: 'share', label: t('category.share'), iconKey: 'share', emoji: '📤' },
         ];
 
@@ -964,6 +966,13 @@ const CategoryScreen = ({ route, navigation }) => {
         case 'aiClassify':
           await batchAIClassify(selectedIds);
           break;
+        case 'showcase': {
+          const sel = images.filter((img) => selectedIds.includes(img.id));
+          selectedIds.forEach((id) => { try { UnifiedDataService.setImageSelection(id, false); } catch (_) {} });
+          setSelectionMode(false);
+          if (sel.length > 0) navigation.navigate('ShowcaseCreate', { images: sel });
+          break;
+        }
         case 'delete':
           await batchDelete(selectedIds);
           break;
