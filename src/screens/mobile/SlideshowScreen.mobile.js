@@ -23,6 +23,7 @@ export default function SlideshowScreen({ navigation, route }) {
   const startIndex = Math.min(Math.max(route?.params?.startIndex || 0, 0), Math.max(images.length - 1, 0));
   const mode = route?.params?.mode || 'fade';
   const initialInterval = route?.params?.interval ? Math.round(route.params.interval * 1000) : 3000;
+  const musicPath = route?.params?.musicPath || '';
 
   const [index, setIndex] = useState(startIndex);
   const [paused, setPaused] = useState(false);
@@ -35,6 +36,35 @@ export default function SlideshowScreen({ navigation, route }) {
   const slide = useRef(new Animated.Value(0)).current;
   const zoom = useRef(new Animated.Value(1)).current;
   const timerRef = useRef(null);
+  const soundRef = useRef(null);
+
+  // 背景乐：进场加载循环播放，暂停联动，退出释放（react-native-sound）
+  useEffect(() => {
+    if (!musicPath) return undefined;
+    let sound = null;
+    try {
+      const Sound = require('react-native-sound');
+      Sound.setCategory('Playback');   // iOS 静音键下也出声（放映场景预期行为）
+      sound = new Sound(musicPath, '', (err) => {
+        if (err) return;   // 加载失败静默（不阻断放映）
+        sound.setNumberOfLoops(-1);
+        sound.play();
+      });
+      soundRef.current = sound;
+    } catch (_) { /* 模块不可用不阻断放映 */ }
+    return () => {
+      try { if (sound) { sound.stop(); sound.release(); } } catch (_) {}
+      soundRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [musicPath]);
+
+  // 暂停/继续联动音乐
+  useEffect(() => {
+    const sd = soundRef.current;
+    if (!sd) return;
+    try { if (paused) sd.pause(); else sd.play(); } catch (_) {}
+  }, [paused]);
 
   const goTo = useCallback((nextIdx) => {
     if (images.length === 0) return;

@@ -1180,6 +1180,9 @@
     "saveFailed": "Save failed",
     "polishNeedCloud": "Polishing requires an online LLM configured in Settings",
     "deleteTitle": "Delete Showtime",
-    "deleteMessage": "Delete \"{{name}}\"? (Photos are kept)"
+    "deleteMessage": "Delete \"{{name}}\"? (Photos are kept)",
+    "musicLabel": "Background Music (optional)",
+    "musicPick": "🎵 Pick a local audio file…",
+    "musicPickFailed": "Failed to pick music"
   }
 }

@@ -1180,6 +1180,9 @@
     "saveFailed": "保存失败",
     "polishNeedCloud": "润色需要先在设置中配置在线大模型",
     "deleteTitle": "删除时刻秀",
-    "deleteMessage": "删除「{{name}}」？（不会删除照片本身）"
+    "deleteMessage": "删除「{{name}}」？（不会删除照片本身）",
+    "musicLabel": "背景音乐（可选）",
+    "musicPick": "🎵 选择本地音乐文件…",
+    "musicPickFailed": "选择音乐失败"
   }
 }

@@ -186,6 +186,8 @@ dependencies {
     implementation project(':onnxruntime-react-native')
     implementation project(':react-native-community-blur')
     implementation project(':react-native-view-shot')
+    implementation project(':react-native-sound')
+    implementation project(':react-native-document-picker')
 
     // AndroidX ExifInterface - 用于读取图片EXIF信息（MediaStore需要）
     implementation 'androidx.exifinterface:exifinterface:1.3.6'

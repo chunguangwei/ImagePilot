@@ -12,7 +12,7 @@ import {
   ActivityIndicator, StyleSheet, Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { SafeAreaView, Icon, getUri, logger } from '../../adapters/WebAdapters';
+import { SafeAreaView, Icon, getUri, logger, RNFS } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../../services/UnifiedDataService';
 import { useIosColors } from '../../ui/ios/theme';
 
@@ -36,6 +36,30 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
   const [interval, setIntervalSec] = useState(3);
   const [polishing, setPolishing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [musicPath, setMusicPath] = useState('');
+  const [musicName, setMusicName] = useState('');
+
+  /** 选本地音乐：文件选择器 → 拷贝到应用目录（持久可读，原路径授权会过期） */
+  const pickMusic = async () => {
+    try {
+      const DocumentPicker = require('react-native-document-picker').default;
+      const res = await DocumentPicker.pickSingle({ type: [DocumentPicker.types.audio], copyTo: 'documentDirectory' });
+      const src = res.fileCopyUri || res.uri;
+      if (!src) return;
+      const dir = `${RNFS.DocumentDirectoryPath}/showcase-music`;
+      try { await RNFS.mkdir(dir); } catch (_) {}
+      const safeName = String(res.name || `music_${Date.now()}.mp3`).replace(/[^\w.\-\u4e00-\u9fa5]+/g, '_');
+      const dest = `${dir}/${Date.now()}_${safeName}`;
+      await RNFS.copyFile(src.replace(/^file:\/\//, ''), dest);
+      setMusicPath(dest);
+      setMusicName(res.name || safeName);
+    } catch (e) {
+      const DocumentPicker = require('react-native-document-picker').default;
+      if (DocumentPicker.isCancel && DocumentPicker.isCancel(e)) return;
+      logger.warn('选音乐失败:', e?.message || e);
+      Alert.alert(t('common.tip', { defaultValue: '提示' }), e?.message || t('showcase.musicPickFailed', { defaultValue: '选择音乐失败' }));
+    }
+  };
 
   /** ✨润色：把名字扩写成一句温暖描述（云端 LLM，已配置时可用） */
   const polish = async () => {
@@ -83,7 +107,7 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
         imageIds: images.map((i) => i.id),
         mode,
         interval,
-        musicPath: '',
+        musicPath,
         createdAt: new Date().toISOString(),
       });
       if (!ok) throw new Error(t('showcase.saveFailed', { defaultValue: '保存失败' }));
@@ -177,10 +201,20 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
           ))}
         </View>
 
-        {/* 背景乐占位（A2 接入） */}
-        <Text style={[styles.musicHint, { color: c.tertiaryLabel }]}>
-          {t('showcase.musicComing', { defaultValue: '🎵 背景音乐功能即将到来' })}
-        </Text>
+        {/* 背景乐：本地音频文件（不接系统音乐库——DRM 曲目读不出来） */}
+        <Text style={[styles.label, { color: c.label }]}>{t('showcase.musicLabel', { defaultValue: '背景音乐（可选）' })}</Text>
+        <View style={styles.nameRow}>
+          <TouchableOpacity style={[styles.input, styles.musicBtn, { backgroundColor: c.card }]} onPress={pickMusic}>
+            <Text style={{ color: musicName ? c.label : c.tertiaryLabel, fontSize: 15 }} numberOfLines={1}>
+              {musicName || t('showcase.musicPick', { defaultValue: '🎵 选择本地音乐文件…' })}
+            </Text>
+          </TouchableOpacity>
+          {musicPath ? (
+            <TouchableOpacity onPress={() => { setMusicPath(''); setMusicName(''); }} style={styles.polishBtn} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+              <Icon name="close" size={20} color={c.secondaryLabel} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
         {/* 保存 */}
         <TouchableOpacity
@@ -213,7 +247,7 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16 },
   chipText: { fontSize: 14, fontWeight: '600' },
-  musicHint: { fontSize: 12.5, marginTop: 18 },
+  musicBtn: { justifyContent: 'center' },
   saveBtn: { marginTop: 22, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   saveText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });

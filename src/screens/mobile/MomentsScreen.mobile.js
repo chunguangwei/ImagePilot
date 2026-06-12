@@ -171,7 +171,7 @@ export default function MomentsScreen({ navigation }) {
                       style={styles.wideCard}
                       activeOpacity={0.85}
                       onPress={() => navigation.navigate('Slideshow', {
-                        images: sc.images, title: sc.name, mode: sc.mode, interval: sc.interval,
+                        images: sc.images, title: sc.name, mode: sc.mode, interval: sc.interval, musicPath: sc.musicPath,
                       })}
                       onLongPress={() => deleteShowcase(sc)}
                     >
