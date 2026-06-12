@@ -23,6 +23,7 @@
 import Foundation
 import ImageIO
 import Photos
+import Vision
 import PhotosUI
 import React
 import UIKit
@@ -231,6 +232,38 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
 
       DispatchQueue.main.async {
         resolve(["count": items.count, "items": items])
+      }
+    }
+  }
+
+  // MARK: - 人脸检测（人像美颜「仅人脸区域」用）
+
+  /// Vision 检测人脸矩形。入参：本地文件路径；返回归一化 [{x,y,width,height}]（左上原点）。
+  @objc(detectFaces:resolver:rejecter:)
+  func detectFaces(_ path: String,
+                   resolver resolve: @escaping RCTPromiseResolveBlock,
+                   rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let p = path.hasPrefix("file://") ? String(path.dropFirst(7)) : path
+    guard let img = UIImage(contentsOfFile: p), let cg = img.cgImage else {
+      reject("E_FACE", "无法读取图片", nil); return
+    }
+    DispatchQueue.global(qos: .userInitiated).async {
+      let request = VNDetectFaceRectanglesRequest()
+      let handler = VNImageRequestHandler(cgImage: cg, options: [:])
+      do {
+        try handler.perform([request])
+        let faces: [[String: Double]] = (request.results ?? []).map { obs in
+          let b = obs.boundingBox   // Vision 为左下原点归一化坐标 → 转左上
+          return [
+            "x": Double(b.origin.x),
+            "y": Double(1.0 - b.origin.y - b.size.height),
+            "width": Double(b.size.width),
+            "height": Double(b.size.height),
+          ]
+        }
+        resolve(faces)
+      } catch {
+        reject("E_FACE", error.localizedDescription, error)
       }
     }
   }

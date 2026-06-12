@@ -102,14 +102,38 @@ async function runSuperRes(imageUri, onProgress) {
   return runner.enhance(base64, onProgress); // data URL（image/jpeg）
 }
 
-/** 人像美颜（一期·全局磨皮，纯 jimp，免模型）：读 base64→磨皮→data URL */
+/**
+ * 人像美颜（二期·仅人脸）：先原生人脸检测（iOS Vision / 安卓 FaceDetector，零依赖），
+ * 只磨人脸椭圆区域并羽化过渡；未识别到人脸 → 抛错提示（调用方 Alert 展示）。
+ */
 async function runBeauty(imageUri, onProgress) {
   const base64 = await readResizedBase64(imageUri, 1024); // 控耗时（全分辨率磨皮在 Hermes 下较慢）
-  const mod = await import('./jimpFilters.js');
   if (onProgress) onProgress({ done: 0, total: 1 });
-  const out = await mod.applyBeautyToBase64(base64, 0.8);
+  // 写临时文件给原生检测（检测与处理用同一张缩放图，坐标天然对齐）
+  const { NativeModules, Platform } = require('react-native');
+  const { RNFS } = require('../../adapters/WebAdapters');
+  const tmp = `${RNFS.CachesDirectoryPath}/beauty_detect_${Date.now()}.jpg`;
+  let faces = [];
+  try {
+    await RNFS.writeFile(tmp, base64.startsWith('data:') ? base64.split(',')[1] : base64, 'base64');
+    const native = Platform.OS === 'ios' ? NativeModules.PhotoKitModule : NativeModules.MediaStoreModule;
+    if (native && typeof native.detectFaces === 'function') {
+      faces = await native.detectFaces(tmp);
+    }
+  } catch (e) {
+    logger.warn('人脸检测失败（按未识别处理）:', e?.message || e);
+    faces = [];
+  } finally {
+    try { await RNFS.unlink(tmp); } catch (_) {}
+  }
+  if (!faces || faces.length === 0) {
+    throw new Error('未识别到人脸，美颜仅对人物照片生效');
+  }
+  logger.debug(`🟦 检测到 ${faces.length} 张人脸，仅对人脸区域美颜`);
+  const mod = await import('./jimpFilters.js');
+  const out = await mod.applyBeautyToFacesBase64(base64, 0.8, faces);
   if (onProgress) onProgress({ done: 1, total: 1 });
-  logger.debug('🟦 本地美颜完成', { imageUri });
+  logger.debug('🟦 本地美颜完成（仅人脸）', { imageUri });
   return out;
 }
 
