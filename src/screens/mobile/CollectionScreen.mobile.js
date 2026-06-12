@@ -118,6 +118,16 @@ export default function CollectionScreen({ navigation, route }) {
               {t('category.changeCategory', { defaultValue: '改分类' })}
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity onPress={() => {
+            if (selectedIds.size === 0) return;
+            const sel = images.filter((it) => selectedIds.has(it.id));
+            exitSelMode();
+            navigation.navigate('ShowcaseCreate', { images: sel });
+          }} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
+            <Text style={[styles.selAction, { color: selectedIds.size > 0 ? (c.accent || '#007AFF') : c.tertiaryLabel }]}>
+              {t('showcase.entry', { defaultValue: '时刻秀' })}
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={exitSelMode} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
             <Text style={[styles.selAction, { color: c.secondaryLabel }]}>{t('common.cancel')}</Text>
           </TouchableOpacity>

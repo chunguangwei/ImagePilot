@@ -363,6 +363,18 @@ class SQLiteAdapter {
         FOREIGN KEY (imageId) REFERENCES images(id) ON DELETE CASCADE
       );
 
+      -- 时刻秀（用户自建放映集：选图+播放配置+命名，展示在「时刻」Tab）
+      CREATE TABLE IF NOT EXISTS showcases (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        description TEXT,
+        imageIds TEXT,
+        mode TEXT,
+        interval REAL,
+        musicPath TEXT,
+        createdAt TEXT
+      );
+
       -- 暂存箱表
       CREATE TABLE IF NOT EXISTS staging_box (
         imageId TEXT PRIMARY KEY,
@@ -4978,6 +4990,58 @@ class ImageStorageService {
    * 获取相似组索引
    * @returns {Promise<Object>} 相似组索引 {groupId: [imageId1, imageId2, ...]}
    */
+  /** 保存时刻秀（放映集） */
+  async saveShowcase(sc) {
+    try {
+      if (Platform.OS === 'web') return false;
+      await this.ensureInitialized();
+      await this.storage.db.executeSql(
+        'INSERT OR REPLACE INTO showcases (id, name, description, imageIds, mode, interval, musicPath, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [sc.id, sc.name || '', sc.description || '', JSON.stringify(sc.imageIds || []), sc.mode || 'fade', sc.interval || 3, sc.musicPath || '', sc.createdAt || new Date().toISOString()]
+      );
+      return true;
+    } catch (e) {
+      logger.warn('保存时刻秀失败:', e?.message || e);
+      return false;
+    }
+  }
+
+  /** 时刻秀列表（按创建时间倒序） */
+  async listShowcases() {
+    try {
+      if (Platform.OS === 'web') return [];
+      await this.ensureInitialized();
+      const results = await this.storage.db.executeSql('SELECT * FROM showcases ORDER BY createdAt DESC');
+      const result = results && results.length > 0 ? results[0] : null;
+      const out = [];
+      if (result && result.rows) {
+        for (let i = 0; i < result.rows.length; i++) {
+          const row = result.rows.item(i);
+          let ids = [];
+          try { ids = JSON.parse(row.imageIds || '[]'); } catch (_) {}
+          out.push({ ...row, imageIds: ids });
+        }
+      }
+      return out;
+    } catch (e) {
+      logger.warn('读取时刻秀失败:', e?.message || e);
+      return [];
+    }
+  }
+
+  /** 删除时刻秀 */
+  async deleteShowcase(id) {
+    try {
+      if (Platform.OS === 'web') return false;
+      await this.ensureInitialized();
+      await this.storage.db.executeSql('DELETE FROM showcases WHERE id = ?', [id]);
+      return true;
+    } catch (e) {
+      logger.warn('删除时刻秀失败:', e?.message || e);
+      return false;
+    }
+  }
+
   /**
    * 批量保存图片特征（颜色直方图等）。相似检测阶段顺手调用，给「以图搜图」建索引。
    * @param {Array<{imageId: string, features: Object}>} entries

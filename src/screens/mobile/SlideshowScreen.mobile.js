@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { getUri } from '../../adapters/WebAdapters';
 
 const SPEEDS = [2000, 3000, 5000];
+// 播放模式：fade 淡入 | slide 平移 | zoom 缓慢放大(Ken Burns 简化) | none 直切
 
 export default function SlideshowScreen({ navigation, route }) {
   const { t } = useTranslation('common');
@@ -20,23 +21,54 @@ export default function SlideshowScreen({ navigation, route }) {
   // 视频不参与放映（自动翻页放视频体验割裂）
   const images = useMemo(() => all.filter((i) => i && !String(i.mimeType || '').startsWith('video/')), [all]);
   const startIndex = Math.min(Math.max(route?.params?.startIndex || 0, 0), Math.max(images.length - 1, 0));
+  const mode = route?.params?.mode || 'fade';
+  const initialInterval = route?.params?.interval ? Math.round(route.params.interval * 1000) : 3000;
 
   const [index, setIndex] = useState(startIndex);
   const [paused, setPaused] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(false);
-  const [speedIdx, setSpeedIdx] = useState(1);   // 默认 3s
+  const [speedIdx, setSpeedIdx] = useState(() => {
+    const i = SPEEDS.indexOf(initialInterval);
+    return i >= 0 ? i : 1;
+  });
   const fade = useRef(new Animated.Value(1)).current;
+  const slide = useRef(new Animated.Value(0)).current;
+  const zoom = useRef(new Animated.Value(1)).current;
   const timerRef = useRef(null);
 
   const goTo = useCallback((nextIdx) => {
     if (images.length === 0) return;
     const ni = (nextIdx + images.length) % images.length;
-    // 淡出 → 换图 → 淡入
+    if (mode === 'none') {
+      setIndex(ni);
+      return;
+    }
+    if (mode === 'slide') {
+      // 滑出 → 换图 → 从另一侧滑入
+      Animated.timing(slide, { toValue: -1, duration: 200, useNativeDriver: true }).start(() => {
+        setIndex(ni);
+        slide.setValue(1);
+        Animated.timing(slide, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+      });
+      return;
+    }
+    // fade / zoom 共用淡入淡出；zoom 在停留期间缓慢放大（见 effect）
     Animated.timing(fade, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
       setIndex(ni);
+      if (mode === 'zoom') zoom.setValue(1);
       Animated.timing(fade, { toValue: 1, duration: 220, useNativeDriver: true }).start();
     });
-  }, [images.length, fade]);
+  }, [images.length, fade, slide, zoom, mode]);
+
+  // zoom 模式：每张停留期间 1 → 1.08 缓慢放大
+  useEffect(() => {
+    if (mode !== 'zoom' || paused) return undefined;
+    zoom.setValue(1);
+    const anim = Animated.timing(zoom, { toValue: 1.08, duration: SPEEDS[speedIdx], useNativeDriver: true });
+    anim.start();
+    return () => anim.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, mode, paused, speedIdx]);
 
   // 自动播放定时器
   useEffect(() => {
@@ -63,7 +95,18 @@ export default function SlideshowScreen({ navigation, route }) {
         activeOpacity={1}
         onPress={() => setControlsVisible((v) => !v)}
       >
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: fade }]}>
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            mode === 'slide'
+              ? { transform: [{ translateX: slide.interpolate({ inputRange: [-1, 0, 1], outputRange: [-60, 0, 60] }) }], opacity: slide.interpolate({ inputRange: [-1, 0, 1], outputRange: [0, 1, 0] }) }
+              : mode === 'zoom'
+                ? { opacity: fade, transform: [{ scale: zoom }] }
+                : mode === 'none'
+                  ? null
+                  : { opacity: fade },
+          ]}
+        >
           <Image source={{ uri }} style={styles.image} resizeMode="contain" />
         </Animated.View>
       </TouchableOpacity>
