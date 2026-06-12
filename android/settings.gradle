@@ -39,3 +39,6 @@ project(':onnxruntime-react-native').projectDir = new File(rootProject.projectDi
 include ':react-native-community-blur'
 project(':react-native-community-blur').projectDir = new File(rootProject.projectDir, '../node_modules/@react-native-community/blur/android')
 
+
+include ':react-native-view-shot'
+project(':react-native-view-shot').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-view-shot/android')

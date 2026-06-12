@@ -19,6 +19,7 @@ import com.rnfs.RNFSPackage;
 import com.imagepicker.ImagePickerPackage;
 import fr.bamlab.rnimageresizer.ImageResizerPackage;
 import com.oblador.vectoricons.VectorIconsPackage;
+import fr.greweb.reactnativeviewshot.RNViewShotPackage;
 import org.pgsqlite.SQLitePluginPackage;
 import ai.onnxruntime.reactnative.OnnxruntimePackage;
 import com.imageclassifier.v2.MediaStorePackage;
@@ -51,6 +52,7 @@ public class MainApplication extends Application implements ReactApplication {
             new ImagePickerPackage(),
             new ImageResizerPackage(),
             new VectorIconsPackage(),
+            new RNViewShotPackage(),
             new SQLitePluginPackage(),
             new OnnxruntimePackage(),
             new MediaStorePackage(),  // 添加MediaStore原生模块
