@@ -282,7 +282,10 @@
     "semanticEx2": "group dinner",
     "semanticEx3": "dog on the grass",
     "semanticDimsTip": "Matches AI descriptions semantically (works best on content classified with the multimodal tier)",
-    "rewriteFailed": "Rewrite failed"
+    "rewriteFailed": "Rewrite failed",
+    "selectedCount": "{{count}} selected",
+    "selectAll": "All",
+    "batchCategorized": "{{count}} item(s) moved to the selected category"
   },
   "home": {
     "title": "Home",

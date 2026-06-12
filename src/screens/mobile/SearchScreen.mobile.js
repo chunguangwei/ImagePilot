@@ -16,6 +16,7 @@ import { SafeAreaView, Icon, getUri, logger } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../../services/UnifiedDataService';
 import { useIosColors } from '../../ui/ios/theme';
 import { formatDuration } from '../../components/shared/categoryUI';
+import CategoryPickerOverlay from '../../components/shared/CategoryPickerOverlay';
 
 const GRID_COLUMNS = 3;
 const GRID_PADDING = 8;
@@ -48,7 +49,34 @@ export default function SearchScreen({ navigation, route }) {
   // ✨查询润色（AI 搜索模式 + 已配云端时可用）：口语查询 → LLM 改写成检索友好描述
   const [rewriteAvailable, setRewriteAvailable] = useState(false);
   const [rewriting, setRewriting] = useState(false);
+  // 多选批量人工分类（长按进入；全选；改分类）
+  const [selMode, setSelMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [pickerVisible, setPickerVisible] = useState(false);
   const debounceRef = useRef(null);
+
+  const exitSelMode = () => { setSelMode(false); setSelectedIds(new Set()); setPickerVisible(false); };
+  const toggleSel = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const selectAll = () => setSelectedIds(new Set(results.map((r) => r.id)));
+  const applyCategory = async (categoryId) => {
+    const ids = [...selectedIds];
+    setPickerVisible(false);
+    if (ids.length === 0) return;
+    try {
+      await UnifiedDataService.updateImagesCategory(ids, categoryId, 'manual');
+      try { await UnifiedDataService.imageCache.refreshCache(); } catch (_) {}
+      Alert.alert(t('common.tip', { defaultValue: '提示' }), t('search.batchCategorized', { count: ids.length, defaultValue: `已将 ${ids.length} 项移入所选分类` }));
+    } catch (e) {
+      Alert.alert(t('settings.operationFailed', { defaultValue: '操作失败' }), e?.message || '');
+    }
+    exitSelMode();
+  };
 
   useEffect(() => {
     (async () => {
@@ -306,12 +334,18 @@ export default function SearchScreen({ navigation, route }) {
       <TouchableOpacity
         style={{ width: itemSize, height: itemSize, marginRight: (index % GRID_COLUMNS === GRID_COLUMNS - 1) ? 0 : GRID_GAP, marginBottom: GRID_GAP }}
         activeOpacity={0.8}
-        onPress={() => onPressItem(item, index)}
+        onPress={() => { if (selMode) { toggleSel(item.id); } else { onPressItem(item, index); } }}
+        onLongPress={() => { if (!selMode) { setSelMode(true); setSelectedIds(new Set([item.id])); } }}
       >
         <Image source={{ uri }} style={styles.thumb} resizeMode="cover" />
         {showScore && (
           <View style={styles.scoreBadge} pointerEvents="none">
             <Text style={styles.scoreBadgeText}>{Math.round(Math.min(1, score) * 100)}%</Text>
+          </View>
+        )}
+        {selMode && (
+          <View style={[styles.selOverlay, selectedIds.has(item.id) && styles.selOverlayOn]} pointerEvents="none">
+            {selectedIds.has(item.id) ? <Text style={styles.selCheck}>✓</Text> : null}
           </View>
         )}
         {isVideoRecord(item) && (
@@ -384,6 +418,27 @@ export default function SearchScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* 多选工具条 */}
+      {selMode && (
+        <View style={[styles.selBar, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
+          <Text style={[styles.selCount, { color: c.label }]}>
+            {t('search.selectedCount', { count: selectedIds.size, defaultValue: `已选 ${selectedIds.size}` })}
+          </Text>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity onPress={selectAll} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
+            <Text style={[styles.selAction, { color: c.accent || '#007AFF' }]}>{t('search.selectAll', { defaultValue: '全选' })}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => selectedIds.size > 0 && setPickerVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
+            <Text style={[styles.selAction, { color: selectedIds.size > 0 ? (c.accent || '#007AFF') : c.tertiaryLabel }]}>
+              {t('category.changeCategory', { defaultValue: '改分类' })}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={exitSelMode} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
+            <Text style={[styles.selAction, { color: c.secondaryLabel }]}>{t('common.cancel')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* 关键字 / 语义 模式切换（文字搜索时显示） */}
       {!similarTo && !aiTarget && (
@@ -565,6 +620,11 @@ export default function SearchScreen({ navigation, route }) {
           }
         />
       )}
+      <CategoryPickerOverlay
+        visible={pickerVisible}
+        onClose={() => setPickerVisible(false)}
+        onSelect={applyCategory}
+      />
     </SafeAreaView>
   );
 }
@@ -597,6 +657,13 @@ const styles = StyleSheet.create({
   videoBadge: { position: 'absolute', right: 4, bottom: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
   scoreBadge: { position: 'absolute', left: 4, top: 4, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 7, backgroundColor: 'rgba(0,0,0,0.55)' },
   scoreBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
+  // 多选
+  selBar: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 14, paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth },
+  selCount: { fontSize: 14, fontWeight: '600' },
+  selAction: { fontSize: 14, fontWeight: '600' },
+  selOverlay: { ...StyleSheet.absoluteFillObject, borderWidth: 2, borderColor: 'rgba(255,255,255,0.65)', borderRadius: 4, alignItems: 'flex-end' },
+  selOverlayOn: { borderColor: '#007AFF', backgroundColor: 'rgba(0,122,255,0.22)' },
+  selCheck: { color: '#FFFFFF', fontSize: 13, fontWeight: '800', backgroundColor: '#007AFF', width: 20, height: 20, borderRadius: 10, textAlign: 'center', lineHeight: 20, margin: 4, overflow: 'hidden' },
   videoBadgeWide: { width: undefined, paddingHorizontal: 6 },
   videoBadgeIcon: { color: '#FFFFFF', fontSize: 11, marginLeft: 1 },
 });

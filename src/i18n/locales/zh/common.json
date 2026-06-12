@@ -282,7 +282,10 @@
     "semanticEx2": "一群人聚餐",
     "semanticEx3": "小狗在草地",
     "semanticDimsTip": "按 AI 描述的语义匹配（多模态档分类过的内容效果最佳）",
-    "rewriteFailed": "改写失败"
+    "rewriteFailed": "改写失败",
+    "selectedCount": "已选 {{count}}",
+    "selectAll": "全选",
+    "batchCategorized": "已将 {{count}} 项移入所选分类"
   },
   "home": {
     "title": "首页",
