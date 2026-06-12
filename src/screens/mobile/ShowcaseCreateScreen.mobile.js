@@ -20,6 +20,10 @@ const MODES = [
   { key: 'fade', zh: '淡入', en: 'Fade' },
   { key: 'slide', zh: '平移', en: 'Slide' },
   { key: 'zoom', zh: '缩放', en: 'Zoom' },
+  { key: 'push', zh: '推入', en: 'Push' },
+  { key: 'flip', zh: '翻转', en: 'Flip' },
+  { key: 'spring', zh: '弹入', en: 'Bounce' },
+  { key: 'rise', zh: '上浮', en: 'Rise' },
   { key: 'none', zh: '直切', en: 'Cut' },
 ];
 const INTERVALS = [2, 3, 5];
@@ -152,7 +156,7 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
           ) : null}
         </ScrollView>
         <Text style={[styles.countText, { color: c.tertiaryLabel }]}>
-          {t('showcase.photoCount', { count: images.length, defaultValue: `共 ${images.length} 项（视频在放映时跳过）` })}
+          {t('showcase.photoCount', { count: images.length, defaultValue: `共 ${images.length} 项（视频将自动播放）` })}
         </Text>
 
         {/* 名称 + 润色 */}

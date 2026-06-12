@@ -307,6 +307,29 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
     }
   }
 
+  // MARK: - 取视频可播放文件 URL（时刻秀混播用：react-native-video 不识别 ph://）
+
+  /// 返回视频原始文件的 file:// URL（本地可用时；iCloud 未下载则允许网络拉取）。
+  @objc(getVideoFileUrl:resolver:rejecter:)
+  func getVideoFileUrl(_ localIdentifier: String,
+                       resolver resolve: @escaping RCTPromiseResolveBlock,
+                       rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let fetch = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
+    guard let asset = fetch.firstObject, asset.mediaType == .video else {
+      reject("E_NO_VIDEO", "未找到该视频", nil); return
+    }
+    let opts = PHVideoRequestOptions()
+    opts.isNetworkAccessAllowed = true
+    opts.deliveryMode = .automatic
+    PHImageManager.default().requestAVAsset(forVideo: asset, options: opts) { avAsset, _, _ in
+      if let urlAsset = avAsset as? AVURLAsset {
+        resolve(urlAsset.url.absoluteString)
+      } else {
+        reject("E_LOAD", "无法获取视频文件（可能是 iCloud 慢动作合成资源）", nil)
+      }
+    }
+  }
+
   // MARK: - 播放视频（系统播放器 AVPlayerViewController）
 
   /// 用系统播放器播放指定 localIdentifier 的视频（支持 iCloud 下载）。

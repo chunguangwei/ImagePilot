@@ -1167,7 +1167,7 @@
     "entry": "Showtime",
     "sectionTitle": "Showtime",
     "createTitle": "Create Showtime",
-    "photoCount": "{{count}} items (videos skipped during playback)",
+    "photoCount": "{{count}} items (videos auto-play)",
     "nameLabel": "Name",
     "namePlaceholder": "e.g. Baby Summer, Graduation Trip…",
     "descLabel": "Description (optional, ✨ generate from name)",

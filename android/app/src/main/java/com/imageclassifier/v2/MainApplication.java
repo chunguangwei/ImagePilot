@@ -22,6 +22,7 @@ import com.oblador.vectoricons.VectorIconsPackage;
 import fr.greweb.reactnativeviewshot.RNViewShotPackage;
 import com.zmxv.RNSound.RNSoundPackage;
 import com.reactnativedocumentpicker.RNDocumentPickerPackage;
+import com.brentvatne.react.ReactVideoPackage;
 import org.pgsqlite.SQLitePluginPackage;
 import ai.onnxruntime.reactnative.OnnxruntimePackage;
 import com.imageclassifier.v2.MediaStorePackage;
@@ -57,6 +58,7 @@ public class MainApplication extends Application implements ReactApplication {
             new RNViewShotPackage(),
             new RNSoundPackage(),
             new RNDocumentPickerPackage(),
+            new ReactVideoPackage(),
             new SQLitePluginPackage(),
             new OnnxruntimePackage(),
             new MediaStorePackage(),  // 添加MediaStore原生模块
