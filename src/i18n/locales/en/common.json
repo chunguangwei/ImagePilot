@@ -614,7 +614,8 @@
     "saveAndStage": "Save & stage",
     "showOriginal": "Show Original",
     "showEnhanced": "Show {{preset}}",
-    "showEnhancedShort": "Show result"
+    "showEnhancedShort": "Show result",
+    "depth": "Depth"
   },
   "settings": {
     "title": "Settings",

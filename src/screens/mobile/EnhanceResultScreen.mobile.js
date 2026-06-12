@@ -17,7 +17,8 @@ import { Alert, RNFS, logger, getUri } from '../../adapters/WebAdapters';
 import { useIosColors } from '../../ui/ios/theme';
 import UnifiedDataService from '../../services/UnifiedDataService';
 import ImageEnhanceService from '../../services/ImageEnhanceService';
-import { isLocalPreset, enhanceImageLocally } from '../../services/enhance/localEnhance';
+import { isLocalPreset, enhanceImageLocally, supportsDepth, DEPTH_PRESETS, blendSuperResWithOriginal } from '../../services/enhance/localEnhance';
+import DepthSlider from '../../components/shared/DepthSlider';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -134,6 +135,10 @@ export default function EnhanceResultScreen({ route, navigation }) {
   const [taskProcessing, setTaskProcessing] = useState(false);
   const abortControllerRef = useRef(null);
   const saveSuccessAnim = useRef(new Animated.Value(0)).current;
+  // 修图深度（美颜/清晰增强/色彩优化）：拖横杆选强度，松手按新深度重出图
+  const depthable = supportsDepth(presetId);
+  const [depth, setDepth] = useState(DEPTH_PRESETS[presetId] ?? 0.8);
+  const srCacheRef = useRef({}); // 清晰增强：id → 全强度超分 data URL（推理只跑一次，拉杆只重混合）
 
   // 计算任务键，用于防止重复提交
   const taskKey = useMemo(() => {
@@ -331,6 +336,44 @@ export default function EnhanceResultScreen({ route, navigation }) {
     setShowEnhanced((v) => !v);
   };
 
+  // 深度拉杆松手：按新强度重出当前这张图。美颜/色彩=jimp 重跑（秒级）；
+  // 清晰增强=缓存的全强度超分结果与原图重混合（免再推理）。新结果清 saved，可再次保存。
+  const onDepthComplete = useCallback(async (v) => {
+    setDepth(v);
+    const img = selected[index];
+    if (!img || !depthable) return;
+    const uri = getUri(img) || img.uri;
+    if (!uri) return;
+    setLocalResults((prev) => ({ ...prev, [img.id]: { ...(prev[img.id] || {}), status: 'processing', progress: 0 } }));
+    try {
+      let dataUrl;
+      if (presetId === 'enhance') {
+        let raw = srCacheRef.current[img.id];
+        if (!raw) {
+          raw = await enhanceImageLocally(uri, presetId, ({ done, total, phase }) => {
+            setLocalResults((prev) => ({ ...prev, [img.id]: { ...(prev[img.id] || {}), status: 'processing', progress: total ? done / total : 0, phase: phase || 'process' } }));
+          });
+          srCacheRef.current[img.id] = raw;
+        }
+        dataUrl = await blendSuperResWithOriginal(uri, raw, v);
+      } else {
+        dataUrl = await enhanceImageLocally(uri, presetId, ({ done, total, phase }) => {
+          setLocalResults((prev) => ({ ...prev, [img.id]: { ...(prev[img.id] || {}), status: 'processing', progress: total ? done / total : 0, phase: phase || 'process' } }));
+        }, { intensity: v });
+      }
+      userToggleRef.current = false; // 重出图后回到自动展示增强图
+      setLocalResults((prev) => ({
+        ...prev,
+        [img.id]: { ...(prev[img.id] || {}), status: 'done', enhancedUri: dataUrl, saved: false },
+      }));
+    } catch (e) {
+      logger.error('深度重处理失败:', e);
+      const raw = e?.message || String(e);
+      setLocalResults((prev) => ({ ...prev, [img.id]: { ...(prev[img.id] || {}), status: 'failed', error: raw } }));
+      Alert.alert(t('enhanceResult.failed') || '处理失败', raw);
+    }
+  }, [selected, index, depthable, presetId, t]);
+
   // 提交任务并开始轮询（如果传递了 presetId 且结果为空，说明需要提交新任务）
   useEffect(() => {
     if (!taskKey || Object.keys(results).length > 0) {
@@ -356,6 +399,8 @@ export default function EnhanceResultScreen({ route, navigation }) {
               [img.id]: { ...(prev[img.id] || {}), status: 'processing', progress: total ? done / total : 0, phase: phase || 'process' },
             }));
           });
+          // 清晰增强首跑即全强度结果，缓存给深度拉杆重混合用（免再推理）
+          if (presetId === 'enhance') srCacheRef.current[img.id] = dataUrl;
           setLocalResults((prev) => ({
             ...prev,
             [img.id]: { ...(prev[img.id] || {}), status: 'done', enhancedUri: dataUrl },
@@ -685,6 +730,15 @@ export default function EnhanceResultScreen({ route, navigation }) {
         <TouchableOpacity style={styles.rightZone} onPress={goNext} />
       </View>
 
+      {/* 修图深度横杆：美颜/清晰增强/色彩优化可拉（处理中隐藏，防并发重处理） */}
+      {depthable && enhancedReady && !processing && !isSaving && (
+        <View style={styles.depthRow}>
+          <Text style={styles.depthLabel} numberOfLines={1}>{t('enhanceResult.depth', { defaultValue: '修图深度' })}</Text>
+          <DepthSlider value={depth} onChange={setDepth} onComplete={onDepthComplete} trackWidth={SCREEN_WIDTH - 190} />
+          <Text style={styles.depthValue}>{Math.round(depth * 100)}%</Text>
+        </View>
+      )}
+
       {/* 底部栏：iOS Photos 风格 — 主 CTA 几何居中，索引/对比按钮绝对定位在两侧。
           之前用 flex 行布局，长 toggle 文案把中间 save 挤出几何中心还触发 ellipsis；
           现改成 absolute 定位：center 不受两侧元素长度影响，永远在屏幕正中。*/}
@@ -756,6 +810,13 @@ const createStyles = (c) => StyleSheet.create({
   processingHint: { color: 'rgba(255,255,255,0.55)', fontSize: 12, marginTop: 10 },
   leftZone: { position: 'absolute', left: 0, top: 0, bottom: 0, width: SCREEN_WIDTH / 2, zIndex: 1 },
   rightZone: { position: 'absolute', right: 0, top: 0, bottom: 0, width: SCREEN_WIDTH / 2, zIndex: 1 },
+  // 深度拉杆行：label + 滑杆 + 百分比，黑底白字与整页 chrome 一致
+  depthRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingBottom: 2, gap: 10,
+  },
+  depthLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 13, width: 80 },
+  depthValue: { color: '#fff', fontSize: 13, fontWeight: '600', width: 44, textAlign: 'right', fontVariant: ['tabular-nums'] },
   footer: {
     height: 56,
     flexDirection: 'row',

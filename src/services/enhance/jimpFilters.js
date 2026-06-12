@@ -295,4 +295,38 @@ export async function applyColorEnhanceToBase64(base64, intensity = 0.85) {
   return img.getBase64Async(Jimp.MIME_JPEG);
 }
 
+/**
+ * 把两张图按比例混合：out = base*(1-t) + over*t。用于「清晰增强深度」——
+ * 超分推理只跑一次（全强度缓存），拉杆只重跑这步廉价混合，免去每次 10s+ 的再推理。
+ * base 会被缩放到 over 的尺寸（两者来自同一原图，纵横比一致）。
+ * @param {string} baseB64 原图 base64（含/不含 data: 前缀）
+ * @param {string} overB64 全强度结果 base64/data URL
+ * @param {number} t 0..1 混合比例（1=完全用增强结果）
+ */
+export async function blendBase64Pair(baseB64, overB64, t) {
+  const cleanBase = baseB64.startsWith('data:') ? baseB64.split(',')[1] : baseB64;
+  const cleanOver = overB64.startsWith('data:') ? overB64.split(',')[1] : overB64;
+  const over = await Jimp.read(Buffer.from(cleanOver, 'base64'));
+  await yieldToEventLoop();
+  const base = await Jimp.read(Buffer.from(cleanBase, 'base64'));
+  if (base.bitmap.width !== over.bitmap.width || base.bitmap.height !== over.bitmap.height) {
+    base.resize(over.bitmap.width, over.bitmap.height);
+  }
+  await yieldToEventLoop();
+  const od = over.bitmap.data; const bd2 = base.bitmap.data;
+  const keep = 1 - t;
+  const chunkBytes = PIXEL_LOOP_YIELD_CHUNK * 4;
+  for (let chunkStart = 0; chunkStart < od.length; chunkStart += chunkBytes) {
+    const chunkEnd = Math.min(chunkStart + chunkBytes, od.length);
+    for (let k = chunkStart; k < chunkEnd; k += 4) {
+      for (let c = 0; c < 3; c++) {
+        od[k + c] = bd2[k + c] * keep + od[k + c] * t;
+      }
+    }
+    if (chunkEnd < od.length) await yieldToEventLoop();
+  }
+  await yieldToEventLoop();
+  return over.getBase64Async(Jimp.MIME_JPEG);
+}
+
 export default JIMP_FILTERS;

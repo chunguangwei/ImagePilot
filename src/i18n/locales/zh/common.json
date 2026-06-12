@@ -614,7 +614,8 @@
     "saveAndStage": "保存并暂存",
     "showOriginal": "显示原图",
     "showEnhanced": "显示{{preset}}",
-    "showEnhancedShort": "显示效果"
+    "showEnhancedShort": "显示效果",
+    "depth": "修图深度"
   },
   "settings": {
     "title": "设置",
