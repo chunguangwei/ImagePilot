@@ -17,6 +17,7 @@ import UnifiedDataService from '../../services/UnifiedDataService';
 import { useIosColors } from '../../ui/ios/theme';
 import { formatDuration } from '../../components/shared/categoryUI';
 import CategoryPickerOverlay from '../../components/shared/CategoryPickerOverlay';
+import VIcon from '../../components/shared/VIcon';
 
 const GRID_COLUMNS = 3;
 const GRID_PADDING = 8;
@@ -350,9 +351,8 @@ export default function SearchScreen({ navigation, route }) {
         )}
         {isVideoRecord(item) && (
           <View style={[styles.videoBadge, formatDuration(item.duration) ? styles.videoBadgeWide : null]} pointerEvents="none">
-            <Text style={styles.videoBadgeIcon}>
-              {'▶'}{formatDuration(item.duration) ? ` ${formatDuration(item.duration)}` : ''}
-            </Text>
+            <VIcon name="play" size={10} emoji="▶" />
+            {formatDuration(item.duration) ? <Text style={styles.videoBadgeIcon}> {formatDuration(item.duration)}</Text> : null}
           </View>
         )}
       </TouchableOpacity>
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
   dimsText: { marginTop: 16, fontSize: 12, textAlign: 'center', lineHeight: 18, maxWidth: 320 },
   countText: { fontSize: 12.5, marginBottom: 6, marginLeft: 2 },
   thumb: { width: '100%', height: '100%', borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.04)' },
-  videoBadge: { position: 'absolute', right: 4, bottom: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
+  videoBadge: { position: 'absolute', right: 4, bottom: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.55)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   scoreBadge: { position: 'absolute', left: 4, top: 4, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 7, backgroundColor: 'rgba(0,0,0,0.55)' },
   scoreBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
   // 多选

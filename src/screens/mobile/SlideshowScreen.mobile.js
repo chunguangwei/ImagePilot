@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { NativeModules, Platform } from 'react-native';
 import Video from 'react-native-video';
 import { getUri, logger } from '../../adapters/WebAdapters';
+import VIcon from '../../components/shared/VIcon';
 
 function isVideoItem(it) {
   return String(it?.mimeType || '').startsWith('video/');
@@ -209,7 +210,7 @@ export default function SlideshowScreen({ navigation, route }) {
           {/* 顶部：关闭 + 进度 */}
           <View style={styles.topBar}>
             <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Text style={styles.ctrlText}>✕</Text>
+              <VIcon name="close" size={24} emoji="✕" />
             </TouchableOpacity>
             <Text style={styles.counter}>{index + 1} / {images.length}</Text>
             <TouchableOpacity
@@ -222,13 +223,13 @@ export default function SlideshowScreen({ navigation, route }) {
           {/* 底部：上一张 / 播放暂停 / 下一张 */}
           <View style={styles.bottomBar}>
             <TouchableOpacity onPress={() => goTo(index - 1)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Text style={styles.ctrlText}>⏮</Text>
+              <VIcon name="play-skip-back" size={26} emoji="⏮" />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setPaused((p) => !p)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Text style={[styles.ctrlText, styles.playBtn]}>{paused ? '▶' : '⏸'}</Text>
+              <VIcon name={paused ? 'play-circle' : 'pause-circle'} size={46} emoji={paused ? '▶' : '⏸'} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => goTo(index + 1)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Text style={styles.ctrlText}>⏭</Text>
+              <VIcon name="play-skip-forward" size={26} emoji="⏭" />
             </TouchableOpacity>
           </View>
         </>

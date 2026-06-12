@@ -14,6 +14,7 @@ import { SafeAreaView, Icon, getUri } from '../../adapters/WebAdapters';
 import { useIosColors } from '../../ui/ios/theme';
 import { formatDuration } from '../../components/shared/categoryUI';
 import CategoryPickerOverlay from '../../components/shared/CategoryPickerOverlay';
+import VIcon from '../../components/shared/VIcon';
 import UnifiedDataService from '../../services/UnifiedDataService';
 import { Alert } from 'react-native';
 
@@ -71,9 +72,8 @@ export default function CollectionScreen({ navigation, route }) {
         <Image source={{ uri }} style={styles.thumb} resizeMode="cover" />
         {isVideo && (
           <View style={[styles.videoBadge, formatDuration(item.duration) ? styles.videoBadgeWide : null]} pointerEvents="none">
-            <Text style={styles.videoBadgeIcon}>
-              {'▶'}{formatDuration(item.duration) ? ` ${formatDuration(item.duration)}` : ''}
-            </Text>
+            <VIcon name="play" size={10} emoji="▶" />
+            {formatDuration(item.duration) ? <Text style={styles.videoBadgeIcon}> {formatDuration(item.duration)}</Text> : null}
           </View>
         )}
         {selMode && (
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '600' },
   subtitle: { fontSize: 11.5, marginTop: 1 },
   thumb: { width: '100%', height: '100%', borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.04)' },
-  videoBadge: { position: 'absolute', right: 4, bottom: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
+  videoBadge: { position: 'absolute', right: 4, bottom: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.55)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   videoBadgeWide: { width: undefined, paddingHorizontal: 6 },
   videoBadgeIcon: { color: '#FFFFFF', fontSize: 11, marginLeft: 1 },
   // 多选

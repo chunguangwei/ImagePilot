@@ -13,6 +13,7 @@ import { SafeAreaView, useFocusEffect, getUri, logger } from '../../adapters/Web
 import UnifiedDataService from '../../services/UnifiedDataService';
 import GlobalImageCache from '../../services/GlobalImageCache';
 import { useIosColors } from '../../ui/ios/theme';
+import VIcon from '../../components/shared/VIcon';
 
 export default function MomentsScreen({ navigation }) {
   const { t, i18n } = useTranslation('common');
@@ -111,9 +112,10 @@ export default function MomentsScreen({ navigation }) {
 
   const fmtDate = (ts) => { const dd = new Date(ts); return `${dd.getFullYear()}.${dd.getMonth() + 1}.${dd.getDate()}`; };
 
-  const SectionTitle = ({ emoji, title, count, onPlay }) => (
+  const SectionTitle = ({ icon, tint, emoji, title, count, onPlay }) => (
     <View style={styles.sectionHeader}>
-      <Text style={[styles.sectionTitle, { color: c.label }]}>{emoji} {title}</Text>
+      <VIcon name={icon} size={18} color={tint} emoji={emoji} />
+      <Text style={[styles.sectionTitle, { color: c.label }]}>{title}</Text>
       {count > 0 ? (
         <View style={[styles.countBadge, { backgroundColor: 'rgba(120,120,128,0.16)' }]}>
           <Text style={[styles.countBadgeText, { color: c.secondaryLabel }]}>{count}</Text>
@@ -145,8 +147,9 @@ export default function MomentsScreen({ navigation }) {
       {/* 头部：标题 + 随便看看 */}
       <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
         <Text style={[styles.headerTitle, { color: c.label }]}>{t('moments.title', { defaultValue: '时刻' })}</Text>
-        <TouchableOpacity onPress={openRandomBrowse} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={[styles.playLink, { color: c.accent || '#007AFF' }]}>🎲 {t('home.randomBrowse', { defaultValue: '随便看看' })}</Text>
+        <TouchableOpacity onPress={openRandomBrowse} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <VIcon name="shuffle" size={17} color={c.accent || '#007AFF'} emoji="🎲" />
+          <Text style={[styles.playLink, { color: c.accent || '#007AFF' }]}>{t('home.randomBrowse', { defaultValue: '随便看看' })}</Text>
         </TouchableOpacity>
       </View>
 
@@ -163,7 +166,7 @@ export default function MomentsScreen({ navigation }) {
             {/* 时刻秀（用户自建放映集） */}
             {showcases.length > 0 && (
               <View style={styles.section}>
-                <SectionTitle emoji="🎬" title={t('showcase.sectionTitle', { defaultValue: '时刻秀' })} count={showcases.length} />
+                <SectionTitle icon="film" tint="#AF52DE" emoji="🎬" title={t('showcase.sectionTitle', { defaultValue: '时刻秀' })} count={showcases.length} />
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
                   {showcases.map((sc) => (
                     <TouchableOpacity
@@ -182,7 +185,7 @@ export default function MomentsScreen({ navigation }) {
                           {sc.description ? sc.description : `${sc.images.length} · ${fmtDate(new Date(sc.createdAt).getTime())}`}
                         </Text>
                       </View>
-                      <View style={styles.playBadge} pointerEvents="none"><Text style={styles.playBadgeIcon}>▶</Text></View>
+                      <View style={styles.playBadge} pointerEvents="none"><VIcon name="play" size={12} emoji="▶" style={{ marginLeft: 1 }} /></View>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -193,6 +196,7 @@ export default function MomentsScreen({ navigation }) {
             {memories.length > 0 && (
               <View style={styles.section}>
                 <SectionTitle
+                  icon="time" tint="#0A84FF"
                   emoji="🕰️"
                   title={t('home.memoriesTitle', { defaultValue: '那年今天' })}
                   count={memories.length}
@@ -219,7 +223,7 @@ export default function MomentsScreen({ navigation }) {
             {/* 节日回忆 */}
             {holidayCards.length > 0 && (
               <View style={styles.section}>
-                <SectionTitle emoji="🎉" title={t('home.holidaysTitle', { defaultValue: '节日回忆' })} count={holidayCards.length} />
+                <SectionTitle icon="gift" tint="#FF2D55" emoji="🎉" title={t('home.holidaysTitle', { defaultValue: '节日回忆' })} count={holidayCards.length} />
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
                   {holidayCards.slice(0, 20).map((card) => {
                     const name = isEn ? card.nameEn : card.name;
@@ -241,7 +245,7 @@ export default function MomentsScreen({ navigation }) {
             {/* 旅行回忆 */}
             {trips.length > 0 && (
               <View style={styles.section}>
-                <SectionTitle emoji="🧳" title={t('home.tripsTitle', { defaultValue: '旅行回忆' })} count={trips.length} />
+                <SectionTitle icon="airplane" tint="#FF9500" emoji="🧳" title={t('home.tripsTitle', { defaultValue: '旅行回忆' })} count={trips.length} />
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
                   {trips.slice(0, 20).map((trip) => (
                     <WideCard

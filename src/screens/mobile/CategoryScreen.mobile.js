@@ -35,6 +35,7 @@ import configService from '../../services/ConfigService';
 import cityLocationService from '../../services/CityLocationService';
 import { sortCategoryList, getCategoryIconMeta, formatDuration } from '../../components/shared/categoryUI';
 import ClassifyProgressPill from '../../components/shared/ClassifyProgressPill';
+import VIcon from '../../components/shared/VIcon';
 import { Icon } from '../../adapters/WebAdapters';
 import { logger, getUri } from '../../adapters/WebAdapters';
 
@@ -1957,9 +1958,8 @@ const CategoryScreen = ({ route, navigation }) => {
                     />
                     {String(image.mimeType || '').startsWith('video/') && (
                       <View style={[styles.videoBadge, formatDuration(image.duration) ? styles.videoBadgeWide : null]} pointerEvents="none">
-                        <Text style={styles.videoBadgeIcon}>
-                          {'▶'}{formatDuration(image.duration) ? ` ${formatDuration(image.duration)}` : ''}
-                        </Text>
+                        <VIcon name="play" size={10} emoji="▶" />
+                        {formatDuration(image.duration) ? <Text style={styles.videoBadgeIcon}> {formatDuration(image.duration)}</Text> : null}
                       </View>
                     )}
                     {selectionMode && (
@@ -2422,6 +2422,7 @@ const createStyles = (c) => StyleSheet.create({
     height: 22,
     borderRadius: 11,
     backgroundColor: 'rgba(0,0,0,0.55)',
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },

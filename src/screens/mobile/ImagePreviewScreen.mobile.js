@@ -66,6 +66,7 @@ import WeChatAuthService from '../../services/WeChatAuthService';
 import configService from '../../services/ConfigService';
 import cityLocationService from '../../services/CityLocationService';
 import { sortCategoryList, getCategoryIconMeta } from '../../components/shared/categoryUI';
+import VIcon from '../../components/shared/VIcon';
 import { Icon } from '../../adapters/WebAdapters';
 import { logger, getUri, getLocalPath } from '../../adapters/WebAdapters';
 import Haptics from '../../utils/haptics';
@@ -1999,7 +2000,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                     activeOpacity={0.8}
                     onPress={() => playVideoRecord(item)}
                   >
-                    <Text style={styles.videoPlayOverlayIcon}>▶</Text>
+                    <VIcon name="play" size={30} emoji="▶" style={{ marginLeft: 3 }} />
                   </TouchableOpacity>
                 )}
               </Pressable>
