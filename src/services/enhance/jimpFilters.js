@@ -69,18 +69,22 @@ export const hasIntensity = (id) => ['bright', 'contrast', 'soften', 'vivid', 'f
  * @param {number} intensity 0..1
  */
 /**
- * #4b 美颜（二期·仅人脸）：只在人脸椭圆区域内做保边平滑+提亮+暖肤，边缘径向羽化自然过渡。
+ * #4b 美颜（三期·仅人脸·保边磨皮）：人脸椭圆内只平滑「低反差的肤色像素」——
+ * 五官/发丝是高反差边缘（原图与模糊图差值大），差值越大保留越多原图（surface blur 思路）；
+ * 再叠 YCbCr 肤色门控，眼白/瞳孔/深色眉发不参与磨皮。修复二期"整脸一律混模糊图把五官糊掉"的问题。
  * faces: 归一化 [{x,y,width,height}]（左上原点）。脸框外扩（宽1.5x/高1.7x）盖住额头下巴。
  */
 export async function applyBeautyToFacesBase64(base64, intensity = 0.8, faces = []) {
   const clean = base64.startsWith('data:') ? base64.split(',')[1] : base64;
   const img = await Jimp.read(Buffer.from(clean, 'base64'));
   const W = img.bitmap.width; const H = img.bitmap.height;
-  const radius = Math.max(2, Math.round(2 + intensity * 4));
+  const radius = Math.max(2, Math.round(2 + intensity * 2)); // 磨皮只需小半径（大半径靠边缘保护也救不回轮廓）
   await yieldToEventLoop();
   const blurred = img.clone().blur(radius);
   await yieldToEventLoop();
-  const keep = 0.5 - 0.28 * intensity;
+  const maxBlend = 0.4 + 0.3 * intensity;  // 纯平滑肤色处最多混入模糊图的比例（全强度 0.64）
+  // 边缘保护双阈值：亮度差 ≤T1 视为皮肤纹理/瑕疵全力磨，≥T2 视为五官/轮廓完全保留，中间线性过渡
+  const EDGE_T1 = 14; const EDGE_T2 = 40;
   const od = img.bitmap.data;
   const bd = blurred.bitmap.data;
   // 每张脸：外扩椭圆 + 羽化权重（d∈[0.65,1] 线性衰减到 0）
@@ -95,8 +99,8 @@ export async function applyBeautyToFacesBase64(base64, intensity = 0.8, faces = 
       y0: Math.max(0, Math.floor(cy - ry)), y1: Math.min(H - 1, Math.ceil(cy + ry)),
     };
   });
-  const brighten = 255 * 0.06 * intensity;   // 脸部提亮
-  const warm = 6 * intensity;                // 脸部暖肤（红通道）
+  const brighten = 255 * 0.05 * intensity;   // 肤色处提亮
+  const warm = 5 * intensity;                // 肤色处暖肤（红通道）
   let rowsDone = 0;
   for (const e of ellipses) {
     for (let y = e.y0; y <= e.y1; y++) {
@@ -105,12 +109,28 @@ export async function applyBeautyToFacesBase64(base64, intensity = 0.8, faces = 
         const dx = (x - e.cx) / e.rx;
         const d = dx * dx + dy * dy;
         if (d > 1) continue;
-        const wgt = d <= 0.65 ? 1 : (1 - d) / 0.35;   // 羽化
+        const wgt = d <= 0.65 ? 1 : (1 - d) / 0.35;   // 椭圆羽化
         const k = x * 4 + y * W * 4;
-        const effKeep = 1 - (1 - keep) * wgt;
+        const r = od[k]; const g = od[k + 1]; const b = od[k + 2];
+        // ① 肤色门控（YCbCr 经典窗口，窗口边缘 ±8 软过渡）×亮度门控（深棕瞳孔/眉/发
+        //    也落在 YCbCr 肤色窗内，但亮度远低于皮肤——Y<50 完全不动，50→80 渐入）
+        const cb = 128 - 0.169 * r - 0.331 * g + 0.5 * b;
+        const cr = 128 + 0.5 * r - 0.419 * g - 0.081 * b;
+        const sCb = cb < 77 ? Math.max(0, 1 - (77 - cb) / 8) : cb > 127 ? Math.max(0, 1 - (cb - 127) / 8) : 1;
+        const sCr = cr < 133 ? Math.max(0, 1 - (133 - cr) / 8) : cr > 177 ? Math.max(0, 1 - (cr - 177) / 8) : 1;
+        const yLuma = 0.299 * r + 0.587 * g + 0.114 * b;
+        const yW = yLuma <= 50 ? 0 : yLuma >= 80 ? 1 : (yLuma - 50) / 30;
+        const skinW = sCb * sCr * yW;
+        if (skinW <= 0) continue;
+        // ② 边缘保护：原图 vs 模糊图亮度差大 = 五官/轮廓，T1~T2 间线性压低混合量
+        const diff = Math.abs(r - bd[k]) * 0.3 + Math.abs(g - bd[k + 1]) * 0.59 + Math.abs(b - bd[k + 2]) * 0.11;
+        if (diff >= EDGE_T2) continue;
+        const edgeW = diff <= EDGE_T1 ? 1 : (EDGE_T2 - diff) / (EDGE_T2 - EDGE_T1);
+        const blend = maxBlend * wgt * skinW * edgeW;
+        const tone = wgt * skinW;
         for (let c = 0; c < 3; c++) {
-          let v = bd[k + c] + (od[k + c] - bd[k + c]) * effKeep;
-          v += (c === 0 ? brighten + warm : brighten) * wgt;   // 提亮+暖肤随权重
+          let v = od[k + c] + (bd[k + c] - od[k + c]) * blend;
+          v += (c === 0 ? brighten + warm : brighten) * tone;  // 提亮+暖肤只作用于肤色
           od[k + c] = v < 0 ? 0 : v > 255 ? 255 : v;
         }
       }
