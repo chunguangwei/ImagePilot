@@ -1183,6 +1183,12 @@
     "deleteMessage": "Delete \"{{name}}\"? (Photos are kept)",
     "musicLabel": "Background Music (optional)",
     "musicPick": "🎵 Pick a local audio file…",
-    "musicPickFailed": "Failed to pick music"
+    "musicPickFailed": "Failed to pick music",
+    "actionsMessage": "What would you like to do?",
+    "exportBtn": "Export as Video & Share",
+    "exportPreparing": "Preparing {{done}}/{{total}}",
+    "exportEncoding": "Encoding video…",
+    "exportFailed": "Export failed",
+    "exportComingAndroid": "Video export is coming to Android soon"
   }
 }

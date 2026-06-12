@@ -6,7 +6,7 @@
  */
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, Image, StyleSheet, Alert,
+  View, Text, TouchableOpacity, ScrollView, Image, StyleSheet, Alert, Share, ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, useFocusEffect, getUri, logger } from '../../adapters/WebAdapters';
@@ -93,17 +93,56 @@ export default function MomentsScreen({ navigation }) {
     } catch (e) { logger.debug('随便看看失败:', e?.message || e); }
   };
 
+  const [exporting, setExporting] = useState(null);   // { name, phase, done, total } | null
+
+  /** 导出为视频并分享（iOS 先行；安卓提示即将到来） */
+  const exportShowcase = async (sc) => {
+    const { isExportSupported, exportShowcaseVideo } = require('../../services/showcaseExport');
+    if (!isExportSupported()) {
+      Alert.alert(t('common.tip', { defaultValue: '提示' }), t('showcase.exportComingAndroid', { defaultValue: '导出视频功能即将登陆安卓，先用播放功能哦' }));
+      return;
+    }
+    setExporting({ name: sc.name, phase: 'prepare', done: 0, total: sc.images.length });
+    try {
+      const mp4 = await exportShowcaseVideo(sc, (phase, done, total) => {
+        setExporting({ name: sc.name, phase, done, total });
+      });
+      setExporting(null);
+      await Share.share({ url: mp4 });
+    } catch (e) {
+      setExporting(null);
+      Alert.alert(t('settings.operationFailed', { defaultValue: '操作失败' }), e?.message || t('showcase.exportFailed', { defaultValue: '导出失败' }));
+    }
+  };
+
+  /** 长按菜单：导出为视频 / 删除 */
   const deleteShowcase = (sc) => {
     Alert.alert(
-      t('showcase.deleteTitle', { defaultValue: '删除时刻秀' }),
-      t('showcase.deleteMessage', { name: sc.name, defaultValue: `删除「${sc.name}」？（不会删除照片本身）` }),
+      sc.name,
+      t('showcase.actionsMessage', { defaultValue: '要对这个时刻秀做什么？' }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
+          text: t('showcase.exportBtn', { defaultValue: '导出为视频并分享' }),
+          onPress: () => exportShowcase(sc),
+        },
+        {
           text: t('common.delete', { defaultValue: '删除' }), style: 'destructive',
-          onPress: async () => {
-            try { await UnifiedDataService.imageStorageService.deleteShowcase(sc.id); } catch (_) {}
-            load();
+          onPress: () => {
+            Alert.alert(
+              t('showcase.deleteTitle', { defaultValue: '删除时刻秀' }),
+              t('showcase.deleteMessage', { name: sc.name, defaultValue: `删除「${sc.name}」？（不会删除照片本身）` }),
+              [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                  text: t('common.delete', { defaultValue: '删除' }), style: 'destructive',
+                  onPress: async () => {
+                    try { await UnifiedDataService.imageStorageService.deleteShowcase(sc.id); } catch (_) {}
+                    load();
+                  },
+                },
+              ]
+            );
           },
         },
       ]
@@ -267,6 +306,18 @@ export default function MomentsScreen({ navigation }) {
           </>
         )}
       </ScrollView>
+
+      {/* 导出进度胶囊 */}
+      {exporting ? (
+        <View style={styles.exportPill} pointerEvents="none">
+          <ActivityIndicator size="small" color="#FFFFFF" />
+          <Text style={styles.exportPillText}>
+            {exporting.phase === 'prepare'
+              ? t('showcase.exportPreparing', { done: exporting.done, total: exporting.total, defaultValue: `准备图片 ${exporting.done}/${exporting.total}` })
+              : t('showcase.exportEncoding', { defaultValue: '正在合成视频…' })}
+          </Text>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -296,6 +347,13 @@ const styles = StyleSheet.create({
   wideMeta: { color: 'rgba(255,255,255,0.85)', fontSize: 11.5, marginTop: 1 },
   playBadge: { position: 'absolute', right: 8, top: 8, width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
   playBadgeIcon: { color: '#FFFFFF', fontSize: 12, marginLeft: 1 },
+  exportPill: {
+    position: 'absolute', bottom: 100, alignSelf: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.72)', zIndex: 900,
+  },
+  exportPillText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
   empty: { alignItems: 'center', paddingTop: 120, paddingHorizontal: 40 },
   emptyText: { marginTop: 12, fontSize: 14, textAlign: 'center', lineHeight: 21 },
 });

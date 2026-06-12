@@ -1183,6 +1183,12 @@
     "deleteMessage": "删除「{{name}}」？（不会删除照片本身）",
     "musicLabel": "背景音乐（可选）",
     "musicPick": "🎵 选择本地音乐文件…",
-    "musicPickFailed": "选择音乐失败"
+    "musicPickFailed": "选择音乐失败",
+    "actionsMessage": "要对这个时刻秀做什么？",
+    "exportBtn": "导出为视频并分享",
+    "exportPreparing": "准备图片 {{done}}/{{total}}",
+    "exportEncoding": "正在合成视频…",
+    "exportFailed": "导出失败",
+    "exportComingAndroid": "导出视频功能即将登陆安卓，先用播放功能哦"
   }
 }
