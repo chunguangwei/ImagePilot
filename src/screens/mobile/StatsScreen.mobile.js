@@ -28,6 +28,7 @@ export default function StatsScreen({ navigation }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+  const [customCats, setCustomCats] = useState([]); // 自定义分类 {id,name}：Top 分类要按名称展示
   const shotRef = useRef(null);
 
   /** 年报分享成图：截取整页内容 → iOS 系统分享 / 安卓走现有 MultiImageShare（content:// 授权齐全） */
@@ -66,7 +67,20 @@ export default function StatsScreen({ navigation }) {
   useFocusEffect(useCallback(() => {
     (async () => {
       setLoading(true);
-      try { setStats(await UnifiedDataService.getAlbumStats()); }
+      try {
+        // 自定义分类名与统计并行取（Top 分类里自定义 id 要解析成用户起的名字）
+        const [s, cfg] = await Promise.all([
+          UnifiedDataService.getAlbumStats(),
+          (async () => {
+            try {
+              const cfgSvc = (await import('../../services/llm/adapters/UnifiedDataConfigService')).default;
+              return await cfgSvc.getAIProviderConfig();
+            } catch (_) { return null; }
+          })(),
+        ]);
+        setCustomCats(Array.isArray(cfg?.customCategories) ? cfg.customCategories : []);
+        setStats(s);
+      }
       finally { setLoading(false); }
     })();
   }, []));
@@ -75,7 +89,11 @@ export default function StatsScreen({ navigation }) {
     try {
       const m = configService.getCategoryNameMap() || {};
       const isEn = String(i18n?.language || '').startsWith('en');
-      return (m[cid] && (isEn ? (m[cid].english || m[cid].chinese) : (m[cid].chinese || m[cid].english))) || cid;
+      const builtIn = m[cid] && (isEn ? (m[cid].english || m[cid].chinese) : (m[cid].chinese || m[cid].english));
+      if (builtIn) return builtIn;
+      // 自定义分类：内置名表里没有，按 id 找用户起的名称（否则显示原始 id）
+      const cu = customCats.find((x) => x && x.id === cid);
+      return (cu && cu.name) || cid;
     } catch (_) { return cid; }
   };
 
