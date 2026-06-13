@@ -101,6 +101,8 @@ export class OllamaProvider extends BaseProvider {
         `Cannot parse JSON from Ollama: ${content.slice(0, 200)}`,
         LLMErrorCode.INVALID_RESPONSE,
         true,
+        null,
+        content,
       );
     }
 
