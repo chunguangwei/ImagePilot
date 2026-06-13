@@ -6,7 +6,7 @@
  */
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, Image, StyleSheet, Alert, Share, ActivityIndicator,
+  View, Text, TouchableOpacity, ScrollView, Image, StyleSheet, Alert, Share, ActivityIndicator, Modal,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, useFocusEffect, getUri, logger } from '../../adapters/WebAdapters';
@@ -117,37 +117,21 @@ export default function MomentsScreen({ navigation }) {
   };
 
   /** 长按菜单：导出为视频 / 删除 */
-  const deleteShowcase = (sc) => {
+  // 时刻秀长按动作面板（自定义底部菜单：安卓系统 Alert 最多 3 按钮会吞掉「删除」，故自绘）
+  const [menuSc, setMenuSc] = useState(null);
+
+  const confirmDeleteShowcase = (sc) => {
+    setMenuSc(null);
     Alert.alert(
-      sc.name,
-      t('showcase.actionsMessage', { defaultValue: '要对这个时刻秀做什么？' }),
+      t('showcase.deleteTitle', { defaultValue: '删除时刻秀' }),
+      t('showcase.deleteMessage', { name: sc.name, defaultValue: `删除「${sc.name}」？（不会删除照片本身）` }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
-          text: t('showcase.editBtn', { defaultValue: '编辑' }),
-          onPress: () => navigation.navigate('ShowcaseCreate', { editShowcase: sc }),
-        },
-        {
-          text: t('showcase.exportBtn', { defaultValue: '导出为视频并分享' }),
-          onPress: () => exportShowcase(sc),
-        },
-        {
           text: t('common.delete', { defaultValue: '删除' }), style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              t('showcase.deleteTitle', { defaultValue: '删除时刻秀' }),
-              t('showcase.deleteMessage', { name: sc.name, defaultValue: `删除「${sc.name}」？（不会删除照片本身）` }),
-              [
-                { text: t('common.cancel'), style: 'cancel' },
-                {
-                  text: t('common.delete', { defaultValue: '删除' }), style: 'destructive',
-                  onPress: async () => {
-                    try { await UnifiedDataService.imageStorageService.deleteShowcase(sc.id); } catch (_) {}
-                    load();
-                  },
-                },
-              ]
-            );
+          onPress: async () => {
+            try { await UnifiedDataService.imageStorageService.deleteShowcase(sc.id); } catch (_) {}
+            load();
           },
         },
       ]
@@ -220,7 +204,7 @@ export default function MomentsScreen({ navigation }) {
                       onPress={() => navigation.navigate('Slideshow', {
                         images: sc.images, title: sc.name, mode: sc.mode, interval: sc.interval, musicPath: sc.musicPath,
                       })}
-                      onLongPress={() => deleteShowcase(sc)}
+                      onLongPress={() => setMenuSc(sc)}
                     >
                       <Image source={{ uri: getUri(sc.cover) || sc.cover?.uri }} style={styles.wideImage} resizeMode="cover" />
                       <View style={styles.wideOverlay} pointerEvents="none">
@@ -323,6 +307,30 @@ export default function MomentsScreen({ navigation }) {
           </Text>
         </View>
       ) : null}
+
+      {/* 时刻秀长按动作面板 */}
+      <Modal visible={!!menuSc} transparent animationType="fade" onRequestClose={() => setMenuSc(null)}>
+        <TouchableOpacity style={styles.sheetBackdrop} activeOpacity={1} onPress={() => setMenuSc(null)}>
+          <View style={[styles.sheet, { backgroundColor: c.card }]}>
+            <Text style={[styles.sheetTitle, { color: c.secondaryLabel }]} numberOfLines={1}>{menuSc?.name || ''}</Text>
+            <TouchableOpacity style={styles.sheetItem} onPress={() => { const sc = menuSc; setMenuSc(null); navigation.navigate('ShowcaseCreate', { editShowcase: sc }); }}>
+              <VIcon name="create-outline" size={19} color={c.label} emoji="✏️" />
+              <Text style={[styles.sheetItemText, { color: c.label }]}>{t('showcase.editBtn', { defaultValue: '编辑' })}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.sheetItem} onPress={() => { const sc = menuSc; setMenuSc(null); exportShowcase(sc); }}>
+              <VIcon name="film-outline" size={19} color={c.label} emoji="🎬" />
+              <Text style={[styles.sheetItemText, { color: c.label }]}>{t('showcase.exportBtn', { defaultValue: '导出为视频并分享' })}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.sheetItem} onPress={() => confirmDeleteShowcase(menuSc)}>
+              <VIcon name="trash-outline" size={19} color="#FF3B30" emoji="🗑️" />
+              <Text style={[styles.sheetItemText, { color: '#FF3B30' }]}>{t('common.delete', { defaultValue: '删除' })}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.sheetItem, styles.sheetCancel]} onPress={() => setMenuSc(null)}>
+              <Text style={[styles.sheetItemText, { color: c.secondaryLabel, textAlign: 'center', flex: 1 }]}>{t('common.cancel', { defaultValue: '取消' })}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -343,6 +351,12 @@ const styles = StyleSheet.create({
   hList: { paddingHorizontal: 14 },
   memoryItem: { width: 108, height: 144, borderRadius: 10, overflow: 'hidden', marginRight: 8, backgroundColor: 'rgba(0,0,0,0.05)' },
   memoryImage: { width: '100%', height: '100%' },
+  sheetBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: { borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingTop: 8, paddingBottom: 28, paddingHorizontal: 8 },
+  sheetTitle: { fontSize: 13, fontWeight: '600', textAlign: 'center', paddingVertical: 10 },
+  sheetItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 15, paddingHorizontal: 16, borderRadius: 12 },
+  sheetItemText: { fontSize: 16, fontWeight: '600' },
+  sheetCancel: { marginTop: 6, backgroundColor: 'rgba(120,120,128,0.10)', justifyContent: 'center' },
   yearBadge: { position: 'absolute', left: 6, top: 6, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.55)' },
   yearText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
   wideCard: { width: 200, height: 124, borderRadius: 12, overflow: 'hidden', marginRight: 10, backgroundColor: 'rgba(0,0,0,0.05)' },

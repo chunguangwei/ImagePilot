@@ -6,7 +6,7 @@
  * 保存 → showcases 表 → 「时刻」Tab 的时刻秀区（按创建时间倒序）。
  * 背景乐为 Phase A2（需音频播放+文件选择原生依赖，另批接入）。
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, Image, ScrollView,
   ActivityIndicator, StyleSheet, Alert,
@@ -33,7 +33,10 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
   const c = useIosColors();
   const isEn = String(i18n?.language || '').startsWith('en');
   // 编辑模式：route.params.editShowcase 为已有时刻秀记录（含解析后的 images + 各字段）
-  const edit = route?.params?.editShowcase || null;
+  // 用 ref 固定首帧捕获——加图选图器 navigate 回来会改写 route.params，
+  // 若直接读 route.params 会丢 editShowcase 导致保存被当成「新建」而非覆盖原时刻。
+  const editRef = useRef(route?.params?.editShowcase || null);
+  const edit = editRef.current;
   const initialImages = edit?.images || (Array.isArray(route?.params?.images) ? route.params.images : []);
 
   const [imgs, setImgs] = useState(initialImages);
