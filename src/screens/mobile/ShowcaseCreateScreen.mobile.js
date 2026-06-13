@@ -37,6 +37,7 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
   const initialImages = edit?.images || (Array.isArray(route?.params?.images) ? route.params.images : []);
 
   const [imgs, setImgs] = useState(initialImages);
+  const [coverId, setCoverId] = useState(edit?.coverId || '');
   const [name, setName] = useState(edit?.name || '');
   const [description, setDescription] = useState(edit?.description || '');
   const [mode, setMode] = useState(edit?.mode || 'fade');
@@ -121,6 +122,8 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
     }
     setSaving(true);
     try {
+      // 封面：所选封面仍在列表里则用之，否则默认首图
+      const effectiveCover = (coverId && imgs.some((i) => i.id === coverId)) ? coverId : (imgs[0]?.id || '');
       const ok = await UnifiedDataService.imageStorageService.saveShowcase({
         id: edit?.id || `sc_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
         name: n,
@@ -130,6 +133,7 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
         interval,
         musicPath,
         createdAt: edit?.createdAt || new Date().toISOString(),
+        coverId: effectiveCover,
       });
       if (!ok) throw new Error(t('showcase.saveFailed', { defaultValue: '保存失败' }));
       // 回到时刻 Tab 看成品
@@ -150,6 +154,9 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
     </TouchableOpacity>
   );
 
+  // 当前生效封面：所选仍在列表里则用之，否则默认首图
+  const effectiveCoverId = (coverId && imgs.some((i) => i.id === coverId)) ? coverId : (imgs[0]?.id || '');
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.groupedBg || '#F2F2F7' }]}>
       <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
@@ -161,22 +168,32 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40 }}>
-        {/* 预览条（可删图 ✕ + 末尾「+」加图） */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
-          {imgs.map((img) => (
-            <View key={img.id} style={styles.thumbWrap}>
-              <Image source={{ uri: getUri(img) || img.uri }} style={styles.thumb} />
-              <TouchableOpacity onPress={() => removeImg(img.id)} style={styles.removeBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                <Icon name="close" size={14} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-          ))}
+        {/* 预览条（点图设封面 · 角 ✕ 删图 · 末尾「+」加图） */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+          {imgs.map((img) => {
+            const isCover = effectiveCoverId === img.id;
+            return (
+              <View key={img.id} style={styles.thumbWrap}>
+                <TouchableOpacity activeOpacity={0.85} onPress={() => setCoverId(img.id)}>
+                  <Image source={{ uri: getUri(img) || img.uri }} style={[styles.thumb, isCover && styles.thumbCover]} />
+                  {isCover ? (
+                    <View style={styles.coverBadge}>
+                      <Text style={styles.coverBadgeText}>{t('showcase.cover', { defaultValue: '封面' })}</Text>
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => removeImg(img.id)} style={styles.removeBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                  <Icon name="close" size={14} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            );
+          })}
           <TouchableOpacity onPress={openPicker} style={[styles.thumb, styles.addTile, { borderColor: c.accent || '#007AFF' }]}>
             <Icon name="add" size={28} color={c.accent || '#007AFF'} />
           </TouchableOpacity>
         </ScrollView>
         <Text style={[styles.countText, { color: c.tertiaryLabel }]}>
-          {t('showcase.photoCount', { count: imgs.length, defaultValue: `共 ${imgs.length} 项（视频将自动播放）` })}
+          {t('showcase.photoCountCover', { count: imgs.length, defaultValue: `共 ${imgs.length} 项 · 点图可设为封面` })}
         </Text>
 
         {/* 名称 + 润色 */}
@@ -263,6 +280,13 @@ const styles = StyleSheet.create({
   thumb: { width: 64, height: 64, borderRadius: 8, marginRight: 6, backgroundColor: 'rgba(0,0,0,0.05)' },
   thumbMore: { alignItems: 'center', justifyContent: 'center' },
   thumbWrap: { position: 'relative' },
+  thumbCover: { borderWidth: 2, borderColor: '#FFB300' },
+  coverBadge: {
+    position: 'absolute', left: 0, bottom: 0, right: 6,
+    backgroundColor: 'rgba(255,179,0,0.92)', borderBottomLeftRadius: 8,
+    alignItems: 'center', paddingVertical: 1,
+  },
+  coverBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
   removeBtn: {
     position: 'absolute', top: -4, right: 2, width: 20, height: 20, borderRadius: 10,
     backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center',

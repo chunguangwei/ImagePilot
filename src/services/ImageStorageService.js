@@ -372,7 +372,8 @@ class SQLiteAdapter {
         mode TEXT,
         interval REAL,
         musicPath TEXT,
-        createdAt TEXT
+        createdAt TEXT,
+        coverId TEXT
       );
 
       -- 暂存箱表
@@ -505,6 +506,26 @@ class SQLiteAdapter {
         logger.debug('✅ 拍摄参数字段已存在，跳过迁移');
       } else {
         logger.warn('⚠️ 迁移拍摄参数字段时出错（可能字段已存在）:', error.message);
+      }
+    }
+
+    // 迁移：showcases 表加 coverId（封面图 id；空则默认首图）
+    try {
+      const pr = await this.db.executeSql('PRAGMA table_info(showcases)');
+      const ti = pr && pr.length > 0 ? pr[0] : null;
+      let hasCover = false;
+      if (ti && ti.rows) {
+        for (let i = 0; i < ti.rows.length; i++) {
+          if (ti.rows.item(i).name === 'coverId') { hasCover = true; break; }
+        }
+      }
+      if (!hasCover) {
+        await this.db.executeSql('ALTER TABLE showcases ADD COLUMN coverId TEXT');
+        logger.debug('✅ 迁移完成：showcases.coverId 已添加');
+      }
+    } catch (e) {
+      if (!(e.message && e.message.includes('duplicate column'))) {
+        logger.warn('⚠️ 迁移 showcases.coverId 出错（可能已存在）:', e?.message);
       }
     }
   }
@@ -4996,8 +5017,8 @@ class ImageStorageService {
       if (Platform.OS === 'web') return false;
       await this.ensureInitialized();
       await this.storage.db.executeSql(
-        'INSERT OR REPLACE INTO showcases (id, name, description, imageIds, mode, interval, musicPath, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [sc.id, sc.name || '', sc.description || '', JSON.stringify(sc.imageIds || []), sc.mode || 'fade', sc.interval || 3, sc.musicPath || '', sc.createdAt || new Date().toISOString()]
+        'INSERT OR REPLACE INTO showcases (id, name, description, imageIds, mode, interval, musicPath, createdAt, coverId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [sc.id, sc.name || '', sc.description || '', JSON.stringify(sc.imageIds || []), sc.mode || 'fade', sc.interval || 3, sc.musicPath || '', sc.createdAt || new Date().toISOString(), sc.coverId || '']
       );
       return true;
     } catch (e) {
