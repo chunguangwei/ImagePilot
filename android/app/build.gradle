@@ -97,7 +97,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode getVersionCode()
-        versionName "1.5.46"
+        versionName "1.5.47"
     }
 
     splits {
@@ -198,6 +198,11 @@ dependencies {
     // 0.13.1（与 iOS Swift 同版本）：相比 0.11.0 增加 ExperimentalFlags.visualTokenBudget（视觉 token 预算），
     // 用于把视觉分辨率减半提速；字节码仍 Java21(major 65)、反射签名全兼容，工具链不变。
     implementation 'com.google.ai.edge.litertlm:litertlm-android:0.13.1'
+
+    // ML Kit 人脸检测（人像美颜「仅人脸」用）：bundled 版——模型打包进 APK、
+    // 运行时不依赖 Google Play Services，华为/无 GMS 机型也能用。
+    // 相比系统老 android.media.FaceDetector，侧脸/歪头/暗光/小脸检出率显著更高。
+    implementation 'com.google.mlkit:face-detection:16.1.7'
 
 }
 

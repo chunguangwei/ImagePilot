@@ -159,12 +159,18 @@ async function runBeauty(imageUri, onProgress, intensity) {
   } finally {
     try { await RNFS.unlink(tmp); } catch (_) {}
   }
-  if (!faces || faces.length === 0) {
-    throw new Error('未识别到人脸，美颜仅对人物照片生效');
-  }
-  logger.debug(`🟦 检测到 ${faces.length} 张人脸，仅对人脸区域美颜`);
   const mod = await import('./jimpFilters.js');
-  const out = await mod.applyBeautyToFacesBase64(base64, intensity ?? DEPTH_PRESETS.portrait, faces);
+  let useIntensity = intensity ?? DEPTH_PRESETS.portrait;
+  if (!faces || faces.length === 0) {
+    // 兜底：检测彻底失败时不再报错，对「中心偏上」区域温和磨皮（人像脸通常在上中部）。
+    // 框给小一点（套用时还会外扩），强度降一档，尽量不磨到边缘背景。
+    faces = [{ x: 0.30, y: 0.15, width: 0.40, height: 0.45 }];
+    useIntensity = useIntensity * 0.7;
+    logger.debug('🟦 未检测到人脸 → 兜底对中心区域温和磨皮');
+  } else {
+    logger.debug(`🟦 检测到 ${faces.length} 张人脸，仅对人脸区域美颜`);
+  }
+  const out = await mod.applyBeautyToFacesBase64(base64, useIntensity, faces);
   if (onProgress) onProgress({ done: 1, total: 1 });
   logger.debug('🟦 本地美颜完成（仅人脸）', { imageUri });
   return out;

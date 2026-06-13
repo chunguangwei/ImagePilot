@@ -35,7 +35,13 @@ import java.io.FileOutputStream;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.media.MediaMetadataRetriever;
+
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.face.Face;
+import com.google.mlkit.vision.face.FaceDetection;
+import com.google.mlkit.vision.face.FaceDetectorOptions;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -386,46 +392,64 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
     }
 
     /**
-     * 人脸检测（人像美颜「仅人脸区域」用）：android.media.FaceDetector（系统自带零依赖）。
-     * 入参本地文件路径；返回归一化 [{x,y,width,height}]（左上原点）。由眼距推脸框。
+     * 人脸检测（人像美颜「仅人脸区域」用）：ML Kit Face Detection（bundled，自带模型不依赖 GMS）。
+     * 入参本地文件路径；返回归一化 [{x,y,width,height}]（左上原点）。
+     * 相比系统老 android.media.FaceDetector，侧脸/歪头/暗光/小脸检出率显著更高。
      */
     @ReactMethod
     public void detectFaces(String path, Promise promise) {
         try {
             String p = (path != null && path.startsWith("file://")) ? path.substring(7) : path;
-            BitmapFactory.Options opt = new BitmapFactory.Options();
-            opt.inPreferredConfig = Bitmap.Config.RGB_565;   // FaceDetector 要求 565
-            Bitmap bmp = BitmapFactory.decodeFile(p, opt);
+            Bitmap bmp = BitmapFactory.decodeFile(p);   // 默认 ARGB_8888，ML Kit 要求
             if (bmp == null) { promise.reject("E_FACE", "无法读取图片"); return; }
-            int w = bmp.getWidth();
-            int h = bmp.getHeight();
-            if (w % 2 == 1) {   // FaceDetector 要求偶数宽
-                bmp = Bitmap.createBitmap(bmp, 0, 0, w - 1, h);
-                w = w - 1;
-            }
-            int maxFaces = 6;
-            android.media.FaceDetector fd = new android.media.FaceDetector(w, h, maxFaces);
-            android.media.FaceDetector.Face[] faces = new android.media.FaceDetector.Face[maxFaces];
-            int n = fd.findFaces(bmp, faces);
-            WritableArray out = Arguments.createArray();
-            for (int i = 0; i < n; i++) {
-                android.media.FaceDetector.Face f = faces[i];
-                if (f == null) continue;
-                PointF mid = new PointF();
-                f.getMidPoint(mid);
-                float eyes = f.eyesDistance();
-                float fw = eyes * 2.6f;          // 经验比例：脸宽约眼距 2.6 倍
-                float fh = eyes * 3.2f;
-                float x = mid.x - fw / 2f;
-                float y = mid.y - fh * 0.45f;    // 中点略偏上（额头多留些）
-                WritableMap m = Arguments.createMap();
-                m.putDouble("x", Math.max(0, x) / (double) w);
-                m.putDouble("y", Math.max(0, y) / (double) h);
-                m.putDouble("width", Math.min(fw, w) / (double) w);
-                m.putDouble("height", Math.min(fh, h) / (double) h);
-                out.pushMap(m);
-            }
-            promise.resolve(out);
+            final int w = bmp.getWidth();
+            final int h = bmp.getHeight();
+
+            FaceDetectorOptions options = new FaceDetectorOptions.Builder()
+                .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)   // 精度优先（美颜非实时，可接受稍慢）
+                .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_NONE)
+                .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE)
+                .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
+                .setMinFaceSize(0.08f)   // 检出占比更小的脸（默认 0.1）
+                .build();
+            final com.google.mlkit.vision.face.FaceDetector detector = FaceDetection.getClient(options);
+            InputImage image = InputImage.fromBitmap(bmp, 0);
+
+            detector.process(image)
+                .addOnSuccessListener(new com.google.android.gms.tasks.OnSuccessListener<List<Face>>() {
+                    @Override
+                    public void onSuccess(List<Face> faces) {
+                        try {
+                            WritableArray out = Arguments.createArray();
+                            for (Face f : faces) {
+                                Rect bb = f.getBoundingBox();
+                                double x = Math.max(0, bb.left) / (double) w;
+                                double y = Math.max(0, bb.top) / (double) h;
+                                double fw = Math.min(bb.width(), w) / (double) w;
+                                double fh = Math.min(bb.height(), h) / (double) h;
+                                if (fw <= 0 || fh <= 0) continue;
+                                WritableMap m = Arguments.createMap();
+                                m.putDouble("x", x);
+                                m.putDouble("y", y);
+                                m.putDouble("width", fw);
+                                m.putDouble("height", fh);
+                                out.pushMap(m);
+                            }
+                            promise.resolve(out);
+                        } catch (Exception ex) {
+                            promise.reject("E_FACE", ex.getMessage());
+                        } finally {
+                            detector.close();
+                        }
+                    }
+                })
+                .addOnFailureListener(new com.google.android.gms.tasks.OnFailureListener() {
+                    @Override
+                    public void onFailure(Exception e) {
+                        detector.close();
+                        promise.reject("E_FACE", e.getMessage());
+                    }
+                });
         } catch (Exception e) {
             promise.reject("E_FACE", e.getMessage());
         }
