@@ -1,17 +1,23 @@
 /**
- * showcaseExport —— 时刻秀导出为视频（iOS 先行）
+ * showcaseExport —— 时刻秀导出为视频（iOS + 安卓）
  *
- * 流程：选中图压成 1080 长边临时 JPEG（统一格式给原生）→ PhotoKitModule.exportSlideshow
- * （AVAssetWriter 图片序列 + 交叉淡入 + 背景乐循环混音）→ 返回 mp4 路径 → 调用方分享 → 清理临时图。
- * 视频片段第一版不进导出（混排转码复杂度高，二期）。安卓导出待 MediaCodec 版（后续）。
+ * 流程：选中图压成 1080 长边临时 JPEG（统一格式给原生）→ 原生 exportSlideshow
+ * （iOS=PhotoKitModule/AVAssetWriter + 背景乐循环混音；安卓=MediaStoreModule/MediaCodec，
+ * 图片序列 + 交叉淡入，背景乐合成后续）→ 返回 mp4 路径 → 调用方分享 → 清理临时图。
+ * 视频片段第一版不进导出（混排转码复杂度高，二期）。
  */
 import { NativeModules, Platform } from 'react-native';
 import { RNFS, logger } from '../adapters/WebAdapters';
 import ImageProcessor from './ImageProcessor';
 
+/** 取当前平台的导出原生模块（iOS=PhotoKitModule / 安卓=MediaStoreModule），无则 null。 */
+function exportModule() {
+  const m = Platform.OS === 'ios' ? NativeModules.PhotoKitModule : NativeModules.MediaStoreModule;
+  return (m && typeof m.exportSlideshow === 'function') ? m : null;
+}
+
 export function isExportSupported() {
-  return Platform.OS === 'ios'
-    && !!(NativeModules.PhotoKitModule && typeof NativeModules.PhotoKitModule.exportSlideshow === 'function');
+  return !!exportModule();
 }
 
 /**
@@ -47,7 +53,9 @@ export async function exportShowcaseVideo(sc, onPhase) {
     }
     if (imagePaths.length === 0) throw new Error('图片准备失败');
     if (onPhase) onPhase('encode', 0, 1);
-    const out = await NativeModules.PhotoKitModule.exportSlideshow({
+    const mod = exportModule();
+    if (!mod) throw new Error('导出功能即将登陆安卓');
+    const out = await mod.exportSlideshow({
       imagePaths,
       interval: sc.interval || 3,
       musicPath: sc.musicPath || '',
