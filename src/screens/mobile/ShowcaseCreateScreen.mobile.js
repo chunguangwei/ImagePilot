@@ -71,21 +71,14 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
     if (!n || polishing) return;
     setPolishing(true);
     try {
-      const { isRewriteAvailable, rewriteSearchQuery } = require('../../services/llm/queryRewrite');
+      const { isRewriteAvailable, generateText } = require('../../services/llm/queryRewrite');
       if (!(await isRewriteAvailable())) {
         Alert.alert(t('common.tip', { defaultValue: '提示' }), t('showcase.polishNeedCloud', { defaultValue: '润色需要先在设置中配置在线大模型' }));
         return;
       }
-      // 复用改写链路，提示词换成"扩写成相册描述"
-      const { LLMProviderService } = require('../../services/llm/LLMProviderService.js');
-      const cfgSvc = require('../../services/llm/adapters/UnifiedDataConfigService.js').default;
-      const keyStore = require('../../services/llm/keyStoreSingleton.js').default;
-      const svc = new LLMProviderService({ configService: cfgSvc, keyStore });
-      const provider = await svc.getActiveProvider();
-      const TINY = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNgAAIAAAUAAen63NgAAAAASUVORK5CYII=';
+      // 复用纯文本生成链路：模型直接返回描述文本（非 JSON），generateText 内部已兜底解析失败
       const prompt = '忽略附带的占位图片。用户给一组照片的放映集起了名字，请基于名字扩写一句 20~40 字的温暖简体中文描述（适合做相册副标题）。只输出描述本身，不要解释或引号。\n\n名字：' + n;
-      const r = await provider.classify(TINY, prompt);
-      const text = String((r && (r.rawText || r.text)) || '').trim().replace(/^["'「『]+|["'」』]+$/g, '').split('\n')[0].trim();
+      const text = await generateText(prompt);
       if (text) setDescription(text);
     } catch (e) {
       logger.warn('润色失败:', e?.message || e);

@@ -91,7 +91,7 @@ export class GeminiProvider extends BaseProvider {
     }
     const parsed = this._extractJSON(content);
     if (!parsed) {
-      throw new LLMProviderError(`Cannot parse JSON from response: ${content.slice(0, 200)}`, LLMErrorCode.INVALID_RESPONSE, true);
+      throw new LLMProviderError(`Cannot parse JSON from response: ${content.slice(0, 200)}`, LLMErrorCode.INVALID_RESPONSE, true, null, content);
     }
     return {
       contentCategory: parsed.contentCategory || 'other',

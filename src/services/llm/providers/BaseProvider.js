@@ -36,12 +36,14 @@ export function isVisionUnsupportedError(bodyText) {
 }
 
 export class LLMProviderError extends Error {
-  constructor(message, code = LLMErrorCode.UNKNOWN, retryable = false, cause = null) {
+  constructor(message, code = LLMErrorCode.UNKNOWN, retryable = false, cause = null, rawText = '') {
     super(message);
     this.name = 'LLMProviderError';
     this.code = code;
     this.retryable = retryable;
     this.cause = cause;
+    // 模型原始文本：当返回非 JSON（如纯文本润色结果）解析失败时，上层纯文本诉求可回收它
+    this.rawText = rawText;
   }
 }
 

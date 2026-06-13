@@ -146,6 +146,8 @@ export class OpenAIProvider extends BaseProvider {
         `Cannot parse JSON from response: ${content.slice(0, 200)}`,
         LLMErrorCode.INVALID_RESPONSE,
         true,
+        null,
+        content,
       );
     }
     return {
