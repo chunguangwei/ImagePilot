@@ -1162,7 +1162,9 @@
   },
   "moments": {
     "title": "Moments",
-    "empty": "After scanning, your On-This-Day, holiday and trip memories will appear here"
+    "empty": "After scanning, your On-This-Day, holiday and trip memories will appear here",
+    "changeCoverTitle": "Change cover · {{title}}",
+    "changeCoverHint": "Long-press a card to change its cover"
   },
   "showcase": {
     "entry": "Showtime",

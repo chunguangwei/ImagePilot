@@ -6,7 +6,7 @@
  */
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, Image, StyleSheet, Alert, Share, ActivityIndicator, Modal,
+  View, Text, TouchableOpacity, ScrollView, Image, StyleSheet, Alert, Share, ActivityIndicator, Modal, Dimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, useFocusEffect, getUri, logger } from '../../adapters/WebAdapters';
@@ -47,8 +47,15 @@ export default function MomentsScreen({ navigation }) {
         UnifiedDataService.findHolidayMemories(),
         UnifiedDataService.findTrips(),
       ]);
-      setHolidayCards((h && h.cards) || []);
-      setTrips((tr && tr.trips) || []);
+      // 套用用户换的封面（旅行/节日卡每次重算，封面覆盖存 settings 映射）
+      const covOv = await UnifiedDataService.getMomentCoverOverrides();
+      const applyCover = (card, key) => {
+        const ov = covOv[key];
+        const cover = (ov && (card.images || []).find((i) => i.id === ov)) || card.cover;
+        return { ...card, cover, _coverKey: key };
+      };
+      setHolidayCards(((h && h.cards) || []).map((card) => applyCover(card, `holiday_${card.year}_${card.key}`)));
+      setTrips(((tr && tr.trips) || []).map((trip) => applyCover(trip, `trip_${trip.city}_${trip.startDay}`)));
       // 时刻秀：解析 imageIds → 记录（缓存秒查）
       try {
         const list = await UnifiedDataService.imageStorageService.listShowcases();
@@ -119,6 +126,14 @@ export default function MomentsScreen({ navigation }) {
   /** 长按菜单：导出为视频 / 删除 */
   // 时刻秀长按动作面板（自定义底部菜单：安卓系统 Alert 最多 3 按钮会吞掉「删除」，故自绘）
   const [menuSc, setMenuSc] = useState(null);
+  // 旅行/节日回忆换封面：{ key, images, title }
+  const [coverPick, setCoverPick] = useState(null);
+
+  const chooseCover = async (imageId) => {
+    try { if (coverPick?.key) await UnifiedDataService.setMomentCoverOverride(coverPick.key, imageId); } catch (_) {}
+    setCoverPick(null);
+    load();
+  };
 
   const confirmDeleteShowcase = (sc) => {
     setMenuSc(null);
@@ -158,8 +173,8 @@ export default function MomentsScreen({ navigation }) {
     </View>
   );
 
-  const WideCard = ({ keyId, cover, title, meta, onPress }) => (
-    <TouchableOpacity key={keyId} style={styles.wideCard} activeOpacity={0.85} onPress={onPress}>
+  const WideCard = ({ keyId, cover, title, meta, onPress, onLongPress }) => (
+    <TouchableOpacity key={keyId} style={styles.wideCard} activeOpacity={0.85} onPress={onPress} onLongPress={onLongPress}>
       <Image source={{ uri: getUri(cover) || cover?.uri }} style={styles.wideImage} resizeMode="cover" />
       <View style={styles.wideOverlay} pointerEvents="none">
         <Text style={styles.wideTitle} numberOfLines={1}>{title}</Text>
@@ -263,6 +278,7 @@ export default function MomentsScreen({ navigation }) {
                         title={`${card.year} ${name}`}
                         meta={`${card.count}`}
                         onPress={() => navigation.navigate('Collection', { title: `${card.year} ${name}`, subtitle: `${card.count}`, images: card.images })}
+                        onLongPress={() => setCoverPick({ key: card._coverKey, images: card.images, title: `${card.year} ${name}` })}
                       />
                     );
                   })}
@@ -287,6 +303,7 @@ export default function MomentsScreen({ navigation }) {
                         subtitle: `${fmtDate(trip.startDay)} · ${t('home.tripDays', { days: trip.days, defaultValue: `${trip.days}天` })} · ${trip.count}`,
                         images: trip.images,
                       })}
+                      onLongPress={() => setCoverPick({ key: trip._coverKey, images: trip.images, title: trip.cityName || trip.city })}
                     />
                   ))}
                 </ScrollView>
@@ -331,6 +348,27 @@ export default function MomentsScreen({ navigation }) {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* 旅行/节日回忆换封面：从该卡照片里点选一张 */}
+      <Modal visible={!!coverPick} transparent animationType="slide" onRequestClose={() => setCoverPick(null)}>
+        <View style={styles.coverModalRoot}>
+          <View style={[styles.coverModalHeader, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
+            <Text style={[styles.coverModalTitle, { color: c.label }]} numberOfLines={1}>
+              {t('moments.changeCoverTitle', { title: coverPick?.title || '', defaultValue: `换封面 · ${coverPick?.title || ''}` })}
+            </Text>
+            <TouchableOpacity onPress={() => setCoverPick(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={[styles.coverModalClose, { color: c.accent || '#007AFF' }]}>{t('common.cancel', { defaultValue: '取消' })}</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={styles.coverGrid}>
+            {(coverPick?.images || []).map((img) => (
+              <TouchableOpacity key={img.id} activeOpacity={0.8} onPress={() => chooseCover(img.id)} style={styles.coverCell}>
+                <Image source={{ uri: getUri(img) || img.uri }} style={styles.coverCellImg} resizeMode="cover" />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -357,6 +395,16 @@ const styles = StyleSheet.create({
   sheetItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 15, paddingHorizontal: 16, borderRadius: 12 },
   sheetItemText: { fontSize: 16, fontWeight: '600' },
   sheetCancel: { marginTop: 6, backgroundColor: 'rgba(120,120,128,0.10)', justifyContent: 'center' },
+  coverModalRoot: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)' },
+  coverModalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  coverModalTitle: { fontSize: 16, fontWeight: '700', flex: 1, marginRight: 12 },
+  coverModalClose: { fontSize: 16, fontWeight: '600' },
+  coverGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 2 },
+  coverCell: { width: (Dimensions.get('window').width - 8) / 3, height: (Dimensions.get('window').width - 8) / 3, padding: 2 },
+  coverCellImg: { width: '100%', height: '100%', borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.08)' },
   yearBadge: { position: 'absolute', left: 6, top: 6, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.55)' },
   yearText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
   wideCard: { width: 200, height: 124, borderRadius: 12, overflow: 'hidden', marginRight: 10, backgroundColor: 'rgba(0,0,0,0.05)' },

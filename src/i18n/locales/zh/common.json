@@ -1162,7 +1162,9 @@
   },
   "moments": {
     "title": "时刻",
-    "empty": "扫描相册后，这里会浮现你的那年今天、节日与旅行回忆"
+    "empty": "扫描相册后，这里会浮现你的那年今天、节日与旅行回忆",
+    "changeCoverTitle": "换封面 · {{title}}",
+    "changeCoverHint": "长按卡片可换封面"
   },
   "showcase": {
     "entry": "时刻秀",

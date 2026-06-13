@@ -1964,8 +1964,28 @@ class UnifiedDataService {
     }
   }
 
+  // ==================== 自动回忆卡封面覆盖 ====================
+  // 旅行/节日回忆每次进页重算、无持久记录；用户换的封面存 settings.momentCoverOverrides
+  // 映射（cardKey → imageId），进页时套用。cardKey 见 MomentsScreen（trip_/holiday_ 前缀）。
+
+  /** 取换封面映射 { cardKey: imageId } */
+  async getMomentCoverOverrides() {
+    try { const s = await this.readSettings(); return (s && s.momentCoverOverrides) || {}; } catch (_) { return {}; }
+  }
+
+  /** 设某卡封面（imageId 为空则清除该卡覆盖，回退默认） */
+  async setMomentCoverOverride(cardKey, imageId) {
+    if (!cardKey) return false;
+    const s = (await this.readSettings()) || {};
+    const map = { ...(s.momentCoverOverrides || {}) };
+    if (imageId) map[cardKey] = imageId; else delete map[cardKey];
+    s.momentCoverOverrides = map;
+    await this.writeSettings(s);
+    return true;
+  }
+
   // ==================== AI图像增强接口 ====================
-  
+
   /**
    * 添加单张图片（用于AI增强图）
    * @param {Object} imageData - 图片数据
