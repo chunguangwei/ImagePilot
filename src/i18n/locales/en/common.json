@@ -1190,6 +1190,13 @@
     "exportPreparing": "Preparing {{done}}/{{total}}",
     "exportEncoding": "Encoding video…",
     "exportFailed": "Export failed",
-    "exportComingAndroid": "Video export is coming to Android soon"
+    "exportComingAndroid": "Video export is coming to Android soon",
+    "editBtn": "Edit",
+    "editTitle": "Edit Showtime",
+    "addPhotosTitle": "Add Photos",
+    "alreadyAdded": "Added",
+    "addConfirmN": "Done ({{count}})",
+    "needOnePhoto": "Keep at least one photo",
+    "musicSelected": "Music"
   }
 }

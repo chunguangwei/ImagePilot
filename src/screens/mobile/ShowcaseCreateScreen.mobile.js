@@ -6,7 +6,7 @@
  * 保存 → showcases 表 → 「时刻」Tab 的时刻秀区（按创建时间倒序）。
  * 背景乐为 Phase A2（需音频播放+文件选择原生依赖，另批接入）。
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, Image, ScrollView,
   ActivityIndicator, StyleSheet, Alert,
@@ -32,16 +32,37 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
   const { t, i18n } = useTranslation('common');
   const c = useIosColors();
   const isEn = String(i18n?.language || '').startsWith('en');
-  const images = Array.isArray(route?.params?.images) ? route.params.images : [];
+  // 编辑模式：route.params.editShowcase 为已有时刻秀记录（含解析后的 images + 各字段）
+  const edit = route?.params?.editShowcase || null;
+  const initialImages = edit?.images || (Array.isArray(route?.params?.images) ? route.params.images : []);
 
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [mode, setMode] = useState('fade');
-  const [interval, setIntervalSec] = useState(3);
+  const [imgs, setImgs] = useState(initialImages);
+  const [name, setName] = useState(edit?.name || '');
+  const [description, setDescription] = useState(edit?.description || '');
+  const [mode, setMode] = useState(edit?.mode || 'fade');
+  const [interval, setIntervalSec] = useState(edit?.interval || 3);
   const [polishing, setPolishing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [musicPath, setMusicPath] = useState('');
-  const [musicName, setMusicName] = useState('');
+  const [musicPath, setMusicPath] = useState(edit?.musicPath || '');
+  const [musicName, setMusicName] = useState(edit?.musicPath ? (String(edit.musicPath).split('/').pop() || t('showcase.musicSelected', { defaultValue: '背景音乐' })) : '');
+
+  // 从选图器返回：合并新增图片（按 addToken 去重一次，避免重复合并）
+  const addToken = route?.params?.addToken;
+  useEffect(() => {
+    const added = route?.params?.addedImages;
+    if (!addToken || !Array.isArray(added) || added.length === 0) return;
+    setImgs((prev) => {
+      const seen = new Set(prev.map((i) => i.id));
+      const merged = prev.slice();
+      for (const im of added) { if (im && im.id && !seen.has(im.id)) { merged.push(im); seen.add(im.id); } }
+      return merged;
+    });
+    navigation.setParams({ addedImages: undefined, addToken: undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addToken]);
+
+  const removeImg = (id) => setImgs((prev) => prev.filter((i) => i.id !== id));
+  const openPicker = () => navigation.navigate('ShowcasePicker', { excludeIds: imgs.map((i) => i.id) });
 
   /** 选本地音乐：文件选择器 → 拷贝到应用目录（持久可读，原路径授权会过期） */
   const pickMusic = async () => {
@@ -94,18 +115,21 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
       Alert.alert(t('common.tip', { defaultValue: '提示' }), t('showcase.nameRequired', { defaultValue: '给这组时刻起个名字吧' }));
       return;
     }
-    if (images.length === 0) return;
+    if (imgs.length === 0) {
+      Alert.alert(t('common.tip', { defaultValue: '提示' }), t('showcase.needOnePhoto', { defaultValue: '至少保留一张图片' }));
+      return;
+    }
     setSaving(true);
     try {
       const ok = await UnifiedDataService.imageStorageService.saveShowcase({
-        id: `sc_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
+        id: edit?.id || `sc_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
         name: n,
         description: description.trim(),
-        imageIds: images.map((i) => i.id),
+        imageIds: imgs.map((i) => i.id),
         mode,
         interval,
         musicPath,
-        createdAt: new Date().toISOString(),
+        createdAt: edit?.createdAt || new Date().toISOString(),
       });
       if (!ok) throw new Error(t('showcase.saveFailed', { defaultValue: '保存失败' }));
       // 回到时刻 Tab 看成品
@@ -132,24 +156,27 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Icon name="arrow-back-ios" size={20} color={c.accent || '#007AFF'} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: c.label }]}>{t('showcase.createTitle', { defaultValue: '生成时刻秀' })}</Text>
+        <Text style={[styles.title, { color: c.label }]}>{edit ? t('showcase.editTitle', { defaultValue: '编辑时刻秀' }) : t('showcase.createTitle', { defaultValue: '生成时刻秀' })}</Text>
         <View style={styles.backBtn} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40 }}>
-        {/* 预览条 */}
+        {/* 预览条（可删图 ✕ + 末尾「+」加图） */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
-          {images.slice(0, 12).map((img) => (
-            <Image key={img.id} source={{ uri: getUri(img) || img.uri }} style={styles.thumb} />
-          ))}
-          {images.length > 12 ? (
-            <View style={[styles.thumb, styles.thumbMore, { backgroundColor: c.card }]}>
-              <Text style={{ color: c.secondaryLabel, fontWeight: '700' }}>+{images.length - 12}</Text>
+          {imgs.map((img) => (
+            <View key={img.id} style={styles.thumbWrap}>
+              <Image source={{ uri: getUri(img) || img.uri }} style={styles.thumb} />
+              <TouchableOpacity onPress={() => removeImg(img.id)} style={styles.removeBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <Icon name="close" size={14} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
-          ) : null}
+          ))}
+          <TouchableOpacity onPress={openPicker} style={[styles.thumb, styles.addTile, { borderColor: c.accent || '#007AFF' }]}>
+            <Icon name="add" size={28} color={c.accent || '#007AFF'} />
+          </TouchableOpacity>
         </ScrollView>
         <Text style={[styles.countText, { color: c.tertiaryLabel }]}>
-          {t('showcase.photoCount', { count: images.length, defaultValue: `共 ${images.length} 项（视频将自动播放）` })}
+          {t('showcase.photoCount', { count: imgs.length, defaultValue: `共 ${imgs.length} 项（视频将自动播放）` })}
         </Text>
 
         {/* 名称 + 润色 */}
@@ -235,6 +262,12 @@ const styles = StyleSheet.create({
   title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' },
   thumb: { width: 64, height: 64, borderRadius: 8, marginRight: 6, backgroundColor: 'rgba(0,0,0,0.05)' },
   thumbMore: { alignItems: 'center', justifyContent: 'center' },
+  thumbWrap: { position: 'relative' },
+  removeBtn: {
+    position: 'absolute', top: -4, right: 2, width: 20, height: 20, borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center',
+  },
+  addTile: { alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderStyle: 'dashed', backgroundColor: 'transparent' },
   countText: { fontSize: 12, marginBottom: 12 },
   label: { fontSize: 14, fontWeight: '600', marginTop: 12, marginBottom: 8 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

@@ -1190,6 +1190,13 @@
     "exportPreparing": "准备图片 {{done}}/{{total}}",
     "exportEncoding": "正在合成视频…",
     "exportFailed": "导出失败",
-    "exportComingAndroid": "导出视频功能即将登陆安卓，先用播放功能哦"
+    "exportComingAndroid": "导出视频功能即将登陆安卓，先用播放功能哦",
+    "editBtn": "编辑",
+    "editTitle": "编辑时刻秀",
+    "addPhotosTitle": "添加照片",
+    "alreadyAdded": "已添加",
+    "addConfirmN": "确定({{count}})",
+    "needOnePhoto": "至少保留一张图片",
+    "musicSelected": "背景音乐"
   }
 }
