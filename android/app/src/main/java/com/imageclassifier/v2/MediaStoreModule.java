@@ -26,6 +26,7 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableArray;
+import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import java.util.Collections;
@@ -453,6 +454,35 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
         } catch (Exception e) {
             promise.reject("E_FACE", e.getMessage());
         }
+    }
+
+    /**
+     * 时刻秀导出为视频（安卓）：图片序列 → H.264 MP4，对齐 iOS 接口。
+     * 入参 { imagePaths:[本地路径], interval, width, height, musicPath }；返回 file:// mp4 路径。
+     * musicPath 暂忽略（安卓背景音乐合成后续），先导出纯视频。耗时操作放后台线程。
+     */
+    @ReactMethod
+    public void exportSlideshow(ReadableMap options, Promise promise) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    ReadableArray arr = options.hasKey("imagePaths") ? options.getArray("imagePaths") : null;
+                    if (arr == null || arr.size() == 0) { promise.reject("E_EXPORT", "没有可导出的图片"); return; }
+                    String[] paths = new String[arr.size()];
+                    for (int i = 0; i < arr.size(); i++) paths[i] = arr.getString(i);
+                    double interval = options.hasKey("interval") ? options.getDouble("interval") : 3.0;
+                    int w = options.hasKey("width") ? options.getInt("width") : 1080;
+                    int h = options.hasKey("height") ? options.getInt("height") : 1920;
+                    File out = new File(reactContext.getCacheDir(), "showcase_" + System.currentTimeMillis() + ".mp4");
+                    ShowcaseVideoEncoder.encode(paths, interval, w, h, out);
+                    promise.resolve("file://" + out.getAbsolutePath());
+                } catch (Exception e) {
+                    Log.e(TAG, "exportSlideshow failed", e);
+                    promise.reject("E_EXPORT", e.getMessage());
+                }
+            }
+        }).start();
     }
 
     /**
