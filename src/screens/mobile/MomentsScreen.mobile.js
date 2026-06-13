@@ -123,6 +123,10 @@ export default function MomentsScreen({ navigation }) {
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
+          text: t('showcase.editBtn', { defaultValue: '编辑' }),
+          onPress: () => navigation.navigate('ShowcaseCreate', { editShowcase: sc }),
+        },
+        {
           text: t('showcase.exportBtn', { defaultValue: '导出为视频并分享' }),
           onPress: () => exportShowcase(sc),
         },
