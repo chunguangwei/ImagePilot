@@ -1197,6 +1197,9 @@
     "alreadyAdded": "已添加",
     "addConfirmN": "确定({{count}})",
     "needOnePhoto": "至少保留一张图片",
-    "musicSelected": "背景音乐"
+    "musicSelected": "背景音乐",
+    "cover": "封面",
+    "catAll": "全部",
+    "photoCountCover": "共 {{count}} 项 · 点图可设为封面"
   }
 }

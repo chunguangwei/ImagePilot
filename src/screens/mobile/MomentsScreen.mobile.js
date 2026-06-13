@@ -53,10 +53,11 @@ export default function MomentsScreen({ navigation }) {
       try {
         const list = await UnifiedDataService.imageStorageService.listShowcases();
         const byId = new Map((GlobalImageCache.getCache().allImages || []).map((i) => [i.id, i]));
-        setShowcases(list.map((sc) => ({
-          ...sc,
-          images: sc.imageIds.map((id) => byId.get(id)).filter(Boolean),
-        })).filter((sc) => sc.images.length > 0));
+        setShowcases(list.map((sc) => {
+          const images = sc.imageIds.map((id) => byId.get(id)).filter(Boolean);
+          const cover = (sc.coverId && images.find((i) => i.id === sc.coverId)) || images[0];
+          return { ...sc, images, cover };
+        }).filter((sc) => sc.images.length > 0));
       } catch (_) { setShowcases([]); }
     } catch (e) {
       logger.debug('时刻加载失败:', e?.message || e);
@@ -221,7 +222,7 @@ export default function MomentsScreen({ navigation }) {
                       })}
                       onLongPress={() => deleteShowcase(sc)}
                     >
-                      <Image source={{ uri: getUri(sc.images[0]) || sc.images[0]?.uri }} style={styles.wideImage} resizeMode="cover" />
+                      <Image source={{ uri: getUri(sc.cover) || sc.cover?.uri }} style={styles.wideImage} resizeMode="cover" />
                       <View style={styles.wideOverlay} pointerEvents="none">
                         <Text style={styles.wideTitle} numberOfLines={1}>{sc.name}</Text>
                         <Text style={styles.wideMeta} numberOfLines={1}>

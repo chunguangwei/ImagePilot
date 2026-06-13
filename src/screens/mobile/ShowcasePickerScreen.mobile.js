@@ -5,14 +5,17 @@
  * 选完点「确定」→ navigate 回 ShowcaseCreate，带 { addedImages, addToken }（仅新增的图）。
  * 已在时刻里的图灰显「已添加」、不可选（移除在编辑页用 ✕）。
  */
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
-  View, Text, Image, FlatList, TouchableOpacity, StyleSheet, Dimensions,
+  View, Text, Image, FlatList, TouchableOpacity, ScrollView, StyleSheet, Dimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, Icon, getUri } from '../../adapters/WebAdapters';
 import { useIosColors } from '../../ui/ios/theme';
 import GlobalImageCache from '../../services/GlobalImageCache';
+import configService from '../../services/ConfigService';
+
+const ALL_CAT = '__all__';
 
 const SCREEN_W = Dimensions.get('window').width;
 const COLS = 4;
@@ -20,8 +23,9 @@ const GAP = 2;
 const CELL = Math.floor((SCREEN_W - GAP * (COLS + 1)) / COLS);
 
 export default function ShowcasePickerScreen({ navigation, route }) {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const c = useIosColors();
+  const isEn = String(i18n?.language || '').startsWith('en');
   const excludeIds = useMemo(
     () => new Set(Array.isArray(route?.params?.excludeIds) ? route.params.excludeIds : []),
     [route?.params?.excludeIds]
@@ -34,6 +38,45 @@ export default function ShowcasePickerScreen({ navigation, route }) {
   );
 
   const [picked, setPicked] = useState(() => new Set());
+  const [activeCat, setActiveCat] = useState(ALL_CAT);
+  const [customCats, setCustomCats] = useState([]);
+
+  // 自定义分类（解析分类名用）
+  useEffect(() => {
+    (async () => {
+      try {
+        const cfgSvc = (await import('../../services/llm/adapters/UnifiedDataConfigService')).default;
+        const cfg = await cfgSvc.getAIProviderConfig();
+        setCustomCats(Array.isArray(cfg?.customCategories) ? cfg.customCategories : []);
+      } catch (_) { /* 忽略 */ }
+    })();
+  }, []);
+
+  const catName = useCallback((cid) => {
+    try {
+      const m = configService.getCategoryNameMap() || {};
+      const b = m[cid] && (isEn ? (m[cid].english || m[cid].chinese) : (m[cid].chinese || m[cid].english));
+      if (b) return b;
+      const cu = customCats.find((x) => x && x.id === cid);
+      return (cu && cu.name) || cid;
+    } catch (_) { return cid; }
+  }, [isEn, customCats]);
+
+  // 相册里实际出现的分类（按出现次数降序），供筛选条
+  const cats = useMemo(() => {
+    const cnt = new Map();
+    for (const im of all) {
+      const cid = im.category;
+      if (!cid || cid === 'NA' || cid === 'NA_video') continue;
+      cnt.set(cid, (cnt.get(cid) || 0) + 1);
+    }
+    return [...cnt.entries()].sort((a, b) => b[1] - a[1]).map(([cid]) => cid);
+  }, [all]);
+
+  const data = useMemo(
+    () => (activeCat === ALL_CAT ? all : all.filter((i) => i.category === activeCat)),
+    [all, activeCat]
+  );
 
   const toggle = useCallback((id) => {
     if (excludeIds.has(id)) return; // 已添加的不可选
@@ -84,8 +127,29 @@ export default function ShowcasePickerScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
+      {/* 分类筛选条 */}
+      {cats.length > 0 ? (
+        <View style={[styles.filterBar, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8, alignItems: 'center' }}>
+            {[ALL_CAT, ...cats].map((cid) => {
+              const active = activeCat === cid;
+              const label = cid === ALL_CAT ? t('showcase.catAll', { defaultValue: '全部' }) : catName(cid);
+              return (
+                <TouchableOpacity
+                  key={cid}
+                  onPress={() => setActiveCat(cid)}
+                  style={[styles.catChip, { backgroundColor: active ? (c.accent || '#007AFF') : 'rgba(120,120,128,0.12)' }]}
+                >
+                  <Text style={[styles.catChipText, { color: active ? '#FFFFFF' : (c.secondaryLabel || '#6C6C70') }]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : null}
+
       <FlatList
-        data={all}
+        data={data}
         keyExtractor={(it) => String(it.id)}
         renderItem={renderItem}
         numColumns={COLS}
@@ -106,6 +170,9 @@ const styles = StyleSheet.create({
   },
   headerBtn: { minWidth: 64, justifyContent: 'center' },
   title: { fontSize: 17, fontWeight: '700' },
+  filterBar: { height: 44, borderBottomWidth: StyleSheet.hairlineWidth, justifyContent: 'center' },
+  catChip: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 15, marginRight: 8 },
+  catChipText: { fontSize: 13, fontWeight: '600' },
   confirm: { fontSize: 16, fontWeight: '700', textAlign: 'right' },
   cell: { width: CELL, height: CELL, margin: GAP / 2, marginLeft: GAP, marginBottom: GAP },
   thumb: { width: '100%', height: '100%', borderRadius: 4, backgroundColor: 'rgba(120,120,128,0.12)' },
