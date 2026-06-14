@@ -1847,9 +1847,10 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
 
             {/* 目录选择器按钮 */}
             <TouchableOpacity
-              style={styles.directoryPickerButton}
+              style={[styles.directoryPickerButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }]}
               onPress={openDirectoryPicker}
             >
+              {SetIonicons ? <SetIonicons name="folder-open-outline" size={18} color="#FFFFFF" /> : null}
               <Text style={styles.directoryPickerButtonText}>{t('settings.directorySettings.browseSelectDirectory')}</Text>
             </TouchableOpacity>
 
