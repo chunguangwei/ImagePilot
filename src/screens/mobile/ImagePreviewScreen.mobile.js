@@ -729,7 +729,10 @@ const ImagePreviewScreen = ({ route, navigation }) => {
    * 删除图片（所有分类都支持）
    */
   const handleDelete = () => {
-    if (!currentImage || !currentImage.id) {
+    // 物理删除只需 uri/path（id 仅用于 DB 清理）。最新发现/未完全入库的照片可能暂无 id，
+    // 但只要有 uri 就能删——之前一律要求 id 会误报「图片信息不完整」无法删除。
+    const delUri = currentImage && (currentImage.uri || currentImage.path);
+    if (!currentImage || (!currentImage.id && !delUri)) {
       Alert.alert(t('common.error'), t('imagePreview.imageInfoIncomplete'));
       return;
     }
@@ -777,8 +780,8 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         }
         // 用户同意 → resolve(true)；用户拒绝 → reject('E_DENIED')；找不到 → reject('E_NOT_FOUND')
         await MediaStoreModule.requestDeleteByPath(filePath);
-        // 系统已经物理删了文件 → 清 app DB 里的同 id 记录
-        await UnifiedDataService.purgeDeletedImageRecords([currentImage.id]);
+        // 系统已经物理删了文件 → 清 app DB 里的同 id 记录（无 id 则跳过，物理删已完成）
+        if (currentImage.id) await UnifiedDataService.purgeDeletedImageRecords([currentImage.id]);
         if (fromScreen === 'Home') {
           Alert.alert(t('common.success'), t('imagePreview.deleteSuccess') || t('category.deleteSuccess', { count: 1 }), [
             { text: t('common.confirm'), onPress: goBack },
@@ -813,6 +816,11 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           onPress: async () => {
             logger.debug('用户确认删除，开始删除流程...');
             try {
+              // 无 id（最新发现/未完全入库的照片）：直接走 uri 系统删除流程
+              if (!currentImage.id) {
+                await tryRequestDeleteThenFinalize();
+                return;
+              }
               logger.debug('调用writeDeleteImages方法...');
               const result = await UnifiedDataService.writeDeleteImages([currentImage.id]);
               

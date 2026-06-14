@@ -245,8 +245,9 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
             {t('showcase.photoCountCover', { count: imgs.length, defaultValue: `共 ${imgs.length} 项 · 点图可设为封面` })}
           </Text>
           {imgs.length > 0 ? (
-            <TouchableOpacity onPress={() => setCoverBrowse(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={[styles.coverBrowseLink, { color: c.accent || '#007AFF' }]}>{t('showcase.browseCover', { defaultValue: '🖼 选封面' })}</Text>
+            <TouchableOpacity onPress={() => setCoverBrowse(true)} style={styles.coverBrowseBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Icon name="wallpaper" size={16} color={c.accent || '#007AFF'} />
+              <Text style={[styles.coverBrowseLink, { color: c.accent || '#007AFF' }]}>{t('showcase.browseCover', { defaultValue: '选封面' })}</Text>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -314,9 +315,10 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
         {/* 背景乐：本地音频文件（不接系统音乐库——DRM 曲目读不出来） */}
         <Text style={[styles.label, { color: c.label }]}>{t('showcase.musicLabel', { defaultValue: '背景音乐（可选）' })}</Text>
         <View style={styles.nameRow}>
-          <TouchableOpacity style={[styles.input, styles.musicBtn, { backgroundColor: c.card }]} onPress={pickMusic}>
-            <Text style={{ color: musicName ? c.label : c.tertiaryLabel, fontSize: 15 }} numberOfLines={1}>
-              {musicName || t('showcase.musicPick', { defaultValue: '🎵 选择本地音乐文件…' })}
+          <TouchableOpacity style={[styles.input, styles.musicBtn, { backgroundColor: c.card, flexDirection: 'row', alignItems: 'center', gap: 8 }]} onPress={pickMusic}>
+            <Icon name="library-music" size={18} color={musicName ? (c.accent || '#007AFF') : c.tertiaryLabel} />
+            <Text style={{ color: musicName ? c.label : c.tertiaryLabel, fontSize: 15, flex: 1 }} numberOfLines={1}>
+              {musicName || t('showcase.musicPick', { defaultValue: '选择本地音乐文件…' })}
             </Text>
           </TouchableOpacity>
           {musicPath ? (
@@ -386,6 +388,7 @@ const styles = StyleSheet.create({
   thumbMore: { alignItems: 'center', justifyContent: 'center' },
   offscreen: { position: 'absolute', left: -10000, top: 0 },
   countRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  coverBrowseBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   coverBrowseLink: { fontSize: 13, fontWeight: '700' },
   coverModalRoot: { flex: 1, backgroundColor: '#000' },
   coverModalHeader: {
