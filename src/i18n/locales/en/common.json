@@ -7,6 +7,7 @@
   "common": {
     "confirm": "Confirm",
     "cancel": "Cancel",
+    "done": "Done",
     "delete": "Delete",
     "add": "Add",
     "save": "Save",
@@ -1205,6 +1206,8 @@
     "photoCountCover": "{{count}} items · tap a photo to set cover",
     "templateLabel": "Template (optional · auto filter + title cards)",
     "noTemplate": "None",
-    "applyingTemplate": "Applying template {{done}}/{{total}}"
+    "applyingTemplate": "Applying template {{done}}/{{total}}",
+    "browseCover": "🖼 Pick cover",
+    "browseCoverTitle": "Pick cover (tap a photo)"
   }
 }

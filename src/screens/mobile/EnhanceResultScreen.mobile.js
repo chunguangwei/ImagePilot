@@ -27,16 +27,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
  * 仅处理中显示秒计时；失败/加载结果分支不计时。
  */
 function ProcessingOverlay({ processing, failed, loadingEnhanced, currentResult, t, lang, styles }) {
-  const [elapsed, setElapsed] = useState(0);
-  const startRef = useRef(0);
-  useEffect(() => {
-    if (!processing) { setElapsed(0); startRef.current = 0; return; }
-    startRef.current = Date.now();
-    setElapsed(0);
-    const id = setInterval(() => setElapsed(Math.floor((Date.now() - startRef.current) / 1000)), 500);
-    return () => clearInterval(id);
-  }, [processing]);
-
+  // 不再显示读秒：jimp 像素处理会堵塞 JS 线程，计时器无法刷新、显示卡住没意义（用户反馈去掉）。
   const pct = typeof currentResult?.progress === 'number' ? Math.round(currentResult.progress * 100) : 0;
   const phaseLabel = currentResult?.phase === 'download' ? '下载模型' : t('enhanceResult.processing');
   let primary;
@@ -49,10 +40,7 @@ function ProcessingOverlay({ processing, failed, loadingEnhanced, currentResult,
       {!failed && <ActivityIndicator size="large" color="#FFFFFF" style={{ marginBottom: 12 }} />}
       <Text style={styles.processingText}>{primary}</Text>
       {processing && !failed && (
-        <>
-          <Text style={styles.processingSub}>{`${elapsed}s`}</Text>
-          <Text style={styles.processingHint}>{lang === 'en' ? 'Tap ← to cancel' : '← 可随时返回'}</Text>
-        </>
+        <Text style={styles.processingHint}>{lang === 'en' ? 'Tap ← to cancel' : '← 可随时返回'}</Text>
       )}
     </View>
   );
@@ -134,6 +122,7 @@ export default function EnhanceResultScreen({ route, navigation }) {
   const [savingById, setSavingById] = useState({});
   const [taskProcessing, setTaskProcessing] = useState(false);
   const abortControllerRef = useRef(null);
+  const cancelledRef = useRef(false); // 本地处理取消标记（返回/卸载时置 true，超分逐 tile 检查中断）
   const saveSuccessAnim = useRef(new Animated.Value(0)).current;
   // 修图深度（美颜/清晰增强/色彩优化）：拖横杆选强度，松手按新深度重出图
   const depthable = supportsDepth(presetId);
@@ -379,6 +368,7 @@ export default function EnhanceResultScreen({ route, navigation }) {
     if (!taskKey || Object.keys(results).length > 0) {
       return;
     }
+    cancelledRef.current = false; // 新一轮处理，复位取消标记
 
     // 本地（离线）预设：用设备端模型逐张处理，不走云端 submit/poll。
     const runLocal = async () => {
@@ -387,6 +377,7 @@ export default function EnhanceResultScreen({ route, navigation }) {
       setLocalResults(initial);
       setTaskProcessing(true);
       for (const img of selected) {
+        if (cancelledRef.current) break; // 用户已返回，停止后续
         const uri = getUri(img) || img.uri;
         if (!uri) {
           setLocalResults((prev) => ({ ...prev, [img.id]: { ...(prev[img.id] || {}), status: 'failed', error: t('enhanceResult.noValidImages') } }));
@@ -398,7 +389,7 @@ export default function EnhanceResultScreen({ route, navigation }) {
               ...prev,
               [img.id]: { ...(prev[img.id] || {}), status: 'processing', progress: total ? done / total : 0, phase: phase || 'process' },
             }));
-          });
+          }, { shouldCancel: () => cancelledRef.current });
           // 清晰增强首跑即全强度结果，缓存给深度拉杆重混合用（免再推理）
           if (presetId === 'enhance') srCacheRef.current[img.id] = dataUrl;
           setLocalResults((prev) => ({
@@ -406,8 +397,9 @@ export default function EnhanceResultScreen({ route, navigation }) {
             [img.id]: { ...(prev[img.id] || {}), status: 'done', enhancedUri: dataUrl },
           }));
         } catch (e) {
-          logger.error('本地增强失败:', e);
           const raw = e?.message || String(e);
+          if (cancelledRef.current || /E_CANCELLED/.test(raw)) break; // 用户主动返回，静默停止
+          logger.error('本地增强失败:', e);
           // 把内部错误码转成友好提示；其余直接透传原始报错
           const msg = /E_TIMEOUT/.test(raw)
             ? raw.replace('E_TIMEOUT', '').trim()
@@ -580,8 +572,9 @@ export default function EnhanceResultScreen({ route, navigation }) {
 
     submitAndPoll();
 
-    // 组件卸载时取消任务
+    // 组件卸载时取消任务（本地超分逐 tile 检查此标记，及时停掉避免返回后仍占满 CPU 卡顿）
     return () => {
+      cancelledRef.current = true;
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;

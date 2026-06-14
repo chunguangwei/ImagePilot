@@ -79,8 +79,9 @@ const LOCAL_TIMEOUT_MS = 60000;
 export async function enhanceImageLocally(imageUri, presetId, onProgress, opts = {}) {
   const handler = LOCAL_PRESET_HANDLERS[presetId];
   const intensity = typeof opts.intensity === 'number' ? opts.intensity : undefined;
+  const shouldCancel = typeof opts.shouldCancel === 'function' ? opts.shouldCancel : null;
   let p;
-  if (handler === 'superres') p = runSuperRes(imageUri, onProgress);
+  if (handler === 'superres') p = runSuperRes(imageUri, onProgress, shouldCancel);
   else if (handler === 'matting') p = runMatting(imageUri, onProgress);
   else if (handler === 'beauty') p = runBeauty(imageUri, onProgress, intensity);
   else if (handler === 'colorize') p = runColor(imageUri, onProgress, intensity);
@@ -123,7 +124,7 @@ async function readResizedBase64(imageUri, maxEdge) {
 }
 
 /** Real-ESRGAN 超分：选模型(小/大/自定义)→按需下载→读 base64→分块推理→data URL */
-async function runSuperRes(imageUri, onProgress) {
+async function runSuperRes(imageUri, onProgress, shouldCancel) {
   const base64 = await readResizedBase64(imageUri, 1024);
   const { filename, url } = await resolveSuperRes();
   const modelPath = await ensureModel(filename, url, (p) => onProgress && onProgress({ phase: 'download', done: p, total: 1 }));
@@ -132,7 +133,7 @@ async function runSuperRes(imageUri, onProgress) {
   const createSuperResRunner = mod.createSuperResRunner || mod.default;
   const runner = createSuperResRunner({ modelPath });
   logger.debug('🟦 本地超分开始', { imageUri, filename });
-  return runner.enhance(base64, onProgress); // data URL（image/jpeg）
+  return runner.enhance(base64, onProgress, shouldCancel); // data URL（image/jpeg）
 }
 
 /**
