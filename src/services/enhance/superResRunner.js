@@ -92,7 +92,7 @@ export function createSuperResRunner(cfg = {}) {
    * @param {string} base64 - 含/不含 data: 前缀
    * @param {(p:{done:number,total:number})=>void} [onProgress]
    */
-  async function enhance(base64, onProgress) {
+  async function enhance(base64, onProgress, shouldCancel) {
     // 出错时把所处阶段拼进错误消息（该机 logcat 限流，靠屏幕错误定位）。
     let stage = 'init';
     try {
@@ -122,6 +122,7 @@ export function createSuperResRunner(cfg = {}) {
     const tiles = planTiles(W, H, tile, 0); // 无重叠分块（v1；可后续加重叠+混合去缝）
     let done = 0;
     for (const t of tiles) {
+      if (shouldCancel && shouldCancel()) throw new Error('E_CANCELLED'); // 用户已返回，停掉重活
       // 固定输入：补齐到 tile×tile
       const tileRGBA = config.fixedInput
         ? extractTilePadded(rgba, W, H, t.x, t.y, tile)

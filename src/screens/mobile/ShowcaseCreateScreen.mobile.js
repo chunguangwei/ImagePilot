@@ -9,7 +9,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, Image, ScrollView,
-  ActivityIndicator, StyleSheet, Alert,
+  ActivityIndicator, StyleSheet, Alert, Modal,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { captureRef } from 'react-native-view-shot';
@@ -45,6 +45,7 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
 
   const [imgs, setImgs] = useState(initialImages);
   const [coverId, setCoverId] = useState(edit?.coverId || '');
+  const [coverBrowse, setCoverBrowse] = useState(false); // 封面大图浏览选择器
   const [name, setName] = useState(edit?.name || '');
   const [description, setDescription] = useState(edit?.description || '');
   const [mode, setMode] = useState(edit?.mode || 'fade');
@@ -239,9 +240,16 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
             <Icon name="add" size={28} color={c.accent || '#007AFF'} />
           </TouchableOpacity>
         </ScrollView>
-        <Text style={[styles.countText, { color: c.tertiaryLabel }]}>
-          {t('showcase.photoCountCover', { count: imgs.length, defaultValue: `共 ${imgs.length} 项 · 点图可设为封面` })}
-        </Text>
+        <View style={styles.countRow}>
+          <Text style={[styles.countText, { color: c.tertiaryLabel, marginBottom: 0, flex: 1 }]}>
+            {t('showcase.photoCountCover', { count: imgs.length, defaultValue: `共 ${imgs.length} 项 · 点图可设为封面` })}
+          </Text>
+          {imgs.length > 0 ? (
+            <TouchableOpacity onPress={() => setCoverBrowse(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={[styles.coverBrowseLink, { color: c.accent || '#007AFF' }]}>{t('showcase.browseCover', { defaultValue: '🖼 选封面' })}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
         {/* 模板（新建可选；编辑模式不重套模板） */}
         {!edit ? (
@@ -332,6 +340,31 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
         </TouchableOpacity>
       </ScrollView>
 
+      {/* 封面大图浏览选择：按时刻卡宽幅比例展示，所见即封面效果 */}
+      <Modal visible={coverBrowse} transparent animationType="slide" onRequestClose={() => setCoverBrowse(false)}>
+        <View style={styles.coverModalRoot}>
+          <View style={[styles.coverModalHeader, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
+            <Text style={[styles.coverModalTitle, { color: c.label }]}>{t('showcase.browseCoverTitle', { defaultValue: '选封面（点图设为封面）' })}</Text>
+            <TouchableOpacity onPress={() => setCoverBrowse(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={[styles.coverModalClose, { color: c.accent || '#007AFF' }]}>{t('common.done', { defaultValue: '完成' })}</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 12 }}>
+            {imgs.map((img) => {
+              const isCover = effectiveCoverId === img.id;
+              return (
+                <TouchableOpacity key={img.id} activeOpacity={0.9} onPress={() => { setCoverId(img.id); setCoverBrowse(false); }} style={styles.coverBigWrap}>
+                  <Image source={{ uri: getUri(img) || img.uri }} style={styles.coverBig} resizeMode="cover" />
+                  {isCover ? (
+                    <View style={styles.coverBigBadge}><Text style={styles.coverBigBadgeText}>{t('showcase.cover', { defaultValue: '封面' })}</Text></View>
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </Modal>
+
       {/* 离屏标题卡（view-shot 截图源，屏幕外不可见） */}
       <View style={styles.offscreen} pointerEvents="none">
         {cardSpec ? (
@@ -352,6 +385,19 @@ const styles = StyleSheet.create({
   thumb: { width: 64, height: 64, borderRadius: 8, marginRight: 6, backgroundColor: 'rgba(0,0,0,0.05)' },
   thumbMore: { alignItems: 'center', justifyContent: 'center' },
   offscreen: { position: 'absolute', left: -10000, top: 0 },
+  countRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  coverBrowseLink: { fontSize: 13, fontWeight: '700' },
+  coverModalRoot: { flex: 1, backgroundColor: '#000' },
+  coverModalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  coverModalTitle: { fontSize: 16, fontWeight: '700', flex: 1, marginRight: 12 },
+  coverModalClose: { fontSize: 16, fontWeight: '700' },
+  coverBigWrap: { width: '100%', aspectRatio: 200 / 124, borderRadius: 12, overflow: 'hidden', marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.06)' },
+  coverBig: { width: '100%', height: '100%' },
+  coverBigBadge: { position: 'absolute', left: 10, bottom: 10, backgroundColor: 'rgba(255,179,0,0.95)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6 },
+  coverBigBadgeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
   thumbWrap: { position: 'relative' },
   thumbCover: { borderWidth: 2, borderColor: '#FFB300' },
   coverBadge: {
