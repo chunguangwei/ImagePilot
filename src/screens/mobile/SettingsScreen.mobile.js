@@ -181,8 +181,16 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     try {
       const svc = require('../../services/ClipVectorIndexService').default;
       if (rebuild) await svc.clearIndex();
-      await svc.buildIndex((done, total) => setVecStats({ indexed: done, total }));
+      const res = await svc.buildIndex((done, total) => setVecStats({ indexed: done, total }));
       setVecStats(await svc.getIndexStats());
+      // 给完成反馈（之前都已索引时补全无任何提示，看着像「没反应」）
+      const added = res?.indexed || 0;
+      const pruned = res?.pruned || 0;
+      let msg;
+      if (added > 0) msg = t('settings.vectorIndex.doneAdded', { count: added, defaultValue: `补全完成，新增 ${added} 张` });
+      else if (pruned > 0) msg = t('settings.vectorIndex.donePruned', { count: pruned, defaultValue: `已清理 ${pruned} 条失效索引，索引已是最新` });
+      else msg = t('settings.vectorIndex.upToDate', { defaultValue: '索引已是最新，无需补全' });
+      Alert.alert(t('common.tip', { defaultValue: '提示' }), msg);
     } catch (e) {
       Alert.alert(t('common.tip', { defaultValue: '提示' }), e?.message || t('settings.vectorIndex.buildFailed', { defaultValue: '建索引失败' }));
     } finally {

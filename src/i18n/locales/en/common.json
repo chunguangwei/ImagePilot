@@ -919,7 +919,10 @@
       "rebuild": "Rebuild",
       "rebuildTitle": "Rebuild Vector Index",
       "rebuildMessage": "Clears the index and re-encodes the whole library (~0.1–0.3s per photo). Only needed if the index is corrupted or after switching models.",
-      "buildFailed": "Index build failed"
+      "buildFailed": "Index build failed",
+      "doneAdded": "Done — added {{count}}",
+      "donePruned": "Cleaned {{count}} stale entries; index is up to date",
+      "upToDate": "Index is already up to date"
     },
     "huaweiInstallHintTitle": "Huawei Device Note",
     "huaweiInstallHintMessage": "If the system blocks the install (\"malicious install source\", a Huawei false positive):\n\nOption 1: Settings → System & updates → Pure Mode → turn off, then retry;\nOption 2: Open the system Files app → Download → tap imagepilot-update.apk to install."
@@ -1208,6 +1211,7 @@
     "noTemplate": "None",
     "applyingTemplate": "Applying template {{done}}/{{total}}",
     "browseCover": "🖼 Pick cover",
-    "browseCoverTitle": "Pick cover (tap a photo)"
+    "browseCoverTitle": "Pick cover (tap a photo)",
+    "exportUnavailable": "Export is not available on this device"
   }
 }

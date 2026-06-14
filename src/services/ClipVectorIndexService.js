@@ -79,7 +79,9 @@ class ClipVectorIndexService {
       await UnifiedDataService.imageCache.buildCache();
       const all = UnifiedDataService.imageCache.getCache().allImages || [];
       const candidates = all.filter((i) => i && i.id);   // 视频也参与索引（抽帧编码）
-      return { indexed: Object.keys(map).length, total: candidates.length };
+      // 只数「当前存在且有向量」的图——map 里可能残留已删图的向量，按行数会超过总数（>100%）
+      const indexed = candidates.reduce((n, i) => (map[i.id] ? n + 1 : n), 0);
+      return { indexed, total: candidates.length };
     } catch (e) {
       return { indexed: 0, total: 0 };
     }
@@ -114,9 +116,17 @@ class ClipVectorIndexService {
       const existing = await UnifiedDataService.imageStorageService.readAllImageEmbeddings(clipModel.id);
       await UnifiedDataService.imageCache.buildCache();
       const all = UnifiedDataService.imageCache.getCache().allImages || [];
-      const todo = all.filter((i) => i && i.id && !existing[i.id]);   // 视频也入索引（抽帧编码）
-      const total = todo.length + Object.keys(existing).length;
-      let done = Object.keys(existing).length;
+      const candidates = all.filter((i) => i && i.id);
+      const liveIds = new Set(candidates.map((i) => i.id));
+      // 清理残留：向量库里有、但当前相册已没有的图（删图后留下的向量）→ 删掉，避免计数 >100%
+      const stale = Object.keys(existing).filter((id) => !liveIds.has(id));
+      if (stale.length > 0) {
+        try { await UnifiedDataService.imageStorageService.deleteImageEmbeddingsByIds(clipModel.id, stale); } catch (_) {}
+      }
+      const todo = candidates.filter((i) => !existing[i.id]);   // 视频也入索引（抽帧编码）
+      const alreadyLive = candidates.length - todo.length;      // 当前图里已有向量的数量
+      const total = candidates.length;                          // 进度基于当前图总数
+      let done = alreadyLive;
       let indexed = 0; let failed = 0; let stopped = false;
 
       const { RNFS } = require('../adapters/WebAdapters');
@@ -147,8 +157,8 @@ class ClipVectorIndexService {
       if (batch.length > 0) {
         await UnifiedDataService.imageStorageService.saveImageEmbeddingsBatch(batch, clipModel.id);
       }
-      logger.info(`[ClipIndex] 建索引完成: +${indexed} 失败 ${failed} 停止=${stopped}`);
-      return { indexed, skipped: Object.keys(existing).length, failed, stopped };
+      logger.info(`[ClipIndex] 建索引完成: +${indexed} 失败 ${failed} 清理残留 ${stale.length} 停止=${stopped}`);
+      return { indexed, skipped: alreadyLive, failed, stopped, pruned: stale.length, todoCount: todo.length };
     } finally {
       this._building = false;
       this._stopRequested = false;

@@ -2,12 +2,12 @@
 
 [![Repo](https://img.shields.io/badge/GitHub-chunguangwei%2FImagePilot-blue.svg)](https://github.com/chunguangwei/ImagePilot)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Android-lightgrey.svg)](https://github.com/chunguangwei/ImagePilot)
+[![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android%20%7C%20Windows%20%7C%20macOS-lightgrey.svg)](https://github.com/chunguangwei/ImagePilot)
 [![AI](https://img.shields.io/badge/AI-Local%20ONNX%20%7C%20Optional%20LLM-brightgreen.svg)](https://github.com/chunguangwei/ImagePilot)
 
 ## 📖 项目简介
 
-**ImagePilot** 是一款隐私优先的智能照片分类管理工具：默认全程本地离线分类（设备端 ONNX），可选配置你自己的大模型做在线增强；并内置从 GitHub 一键升级的能力。支持 Android（React Native）与 PC 桌面（Electron / react-native-web），已验证平台为 Android 与 PC。
+**ImagePilot** 是一款隐私优先的智能照片分类管理工具：默认全程本地离线分类（设备端 ONNX），可选配置你自己的大模型做在线增强；并内置从 GitHub 一键升级的能力。支持 iOS / Android（React Native）与 PC 桌面（Electron / react-native-web）。iOS 与 Android 功能已对齐（修图、时刻秀及导出含背景乐、本地分类等两端一致）；iOS 已在真机验证，App Store 上架待提交。
 
 > 本项目以 **PolyForm Noncommercial License 1.0.0** 授权：**非商业用途免费，商业用途须事先获作者书面同意**（详见文末「授权 / License」）。早期基于上游 ImageClassifier 起步，现已作为独立产品演进（移除原作者公网后端、统一走用户自配大模型、自建 GitHub 升级通道等）。上游致谢见文末「致谢」。
 
@@ -117,6 +117,11 @@ ImagePilot支持**8大分类维度**，从多个角度智能管理您的照片�
 > 发布方式：在 `chunguangwei/ImagePilot` 打 Release、tag 用语义化版本（如 `v1.2.0`）、并把 APK 作为 Release 资产上传，客户端即可检测并引导下载。
 
 ## 📝 更新日志
+
+### v1.5.56
+- **🎵 安卓时刻秀导出也带背景音乐了**：补齐安卓导出的背景乐合成（MediaCodec 把本地音乐转码 AAC、循环铺满视频时长，混音失败退纯视频）——至此 **iOS / 安卓导出功能完全对齐**（图片序列+交叉淡入+配乐）。
+- **🔢 修复 AI 向量索引覆盖率 >100% 与「补全无反应」**：删图后残留的旧向量导致已索引数超过总数（如 577/572=101%），且「补全」算不出缺失而静默无反应。现在覆盖率只数当前存在的图、补全会清理失效残留并给完成提示（新增 N 张 / 已是最新）。
+- **📚 文档更新**：README 标注 iOS 为已支持平台（与 Android 功能对齐，App Store 上架待提交）。
 
 ### v1.5.55
 - **🖼️ 时刻秀「选封面」大图浏览**：创建/编辑时刻秀时，「共 N 项」行右侧新增「🖼 选封面」——全屏按封面比例逐张看大图，点选即设为封面，不再靠 64px 小缩略图猜效果。
@@ -461,7 +466,7 @@ npx react-native run-android    # 运行Android版本（已验证平台）
 npx react-native run-ios        # RN 通用命令，iOS 未做验证
 ```
 
-> 已验证平台为 Android 与 PC 桌面（Electron / react-native-web）。`run-ios` 为 React Native 通用命令，iOS 平台未做验证。
+> 已验证平台为 iOS、Android 与 PC 桌面（Electron / react-native-web）。iOS 通过 Xcode 真机调试验证（功能与 Android 对齐），App Store 上架待提交。
 
 ### 技术文档
 
