@@ -12,9 +12,13 @@ import {
   ActivityIndicator, StyleSheet, Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { captureRef } from 'react-native-view-shot';
 import { SafeAreaView, Icon, getUri, logger, RNFS } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../../services/UnifiedDataService';
 import { useIosColors } from '../../ui/ios/theme';
+import ShowcaseTitleCard from '../../components/shared/ShowcaseTitleCard';
+import { SHOWCASE_TEMPLATES } from '../../config/showcaseTemplates';
+import { applyTemplate } from '../../services/showcase/templateApply';
 
 const MODES = [
   { key: 'fade', zh: '淡入', en: 'Fade' },
@@ -49,6 +53,27 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
   const [saving, setSaving] = useState(false);
   const [musicPath, setMusicPath] = useState(edit?.musicPath || '');
   const [musicName, setMusicName] = useState(edit?.musicPath ? (String(edit.musicPath).split('/').pop() || t('showcase.musicSelected', { defaultValue: '背景音乐' })) : '');
+  // 模板（编辑模式不重套模板，仅新建可选）
+  const [templateId, setTemplateId] = useState('');
+  const [applying, setApplying] = useState(null); // {done,total} | null
+  const titleCardRef = useRef(null);
+  const [cardSpec, setCardSpec] = useState(null); // 离屏待截标题卡
+
+  // 离屏渲染标题卡 → 等一拍 → view-shot 截图 → 返回 file:// uri
+  const captureTitleCard = (spec) => new Promise((resolve) => {
+    setCardSpec(spec);
+    setTimeout(async () => {
+      try {
+        const uri = await captureRef(titleCardRef, { format: 'jpg', quality: 0.92, result: 'tmpfile' });
+        resolve(uri ? (uri.startsWith('file://') ? uri : `file://${uri}`) : null);
+      } catch (e) {
+        logger.warn('标题卡截图失败:', e?.message || e);
+        resolve(null);
+      } finally {
+        setCardSpec(null);
+      }
+    }, 400);
+  });
 
   // 从选图器返回：合并新增图片（按 addToken 去重一次，避免重复合并）
   const addToken = route?.params?.addToken;
@@ -125,18 +150,36 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
     }
     setSaving(true);
     try {
-      // 封面：所选封面仍在列表里则用之，否则默认首图
-      const effectiveCover = (coverId && imgs.some((i) => i.id === coverId)) ? coverId : (imgs[0]?.id || '');
+      // 选了模板：预生成滤镜图 + 标题卡，组装 items；其转场/时长覆盖手选值
+      let templateItems = null; let saveMode = mode; let saveInterval = interval;
+      if (templateId) {
+        const slots = {
+          name: n,
+          date: (() => {
+            const im = imgs.find((i) => i.takenAt || i.timestamp);
+            const ts = im && (im.takenAt || im.timestamp);
+            const d = ts ? new Date(ts) : new Date();
+            return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`;
+          })(),
+        };
+        setApplying({ done: 0, total: imgs.length + 2 });
+        const res = await applyTemplate(templateId, imgs, slots, captureTitleCard, (done, total) => setApplying({ done, total }));
+        setApplying(null);
+        if (res && res.items && res.items.length) { templateItems = res.items; saveMode = res.mode; saveInterval = res.interval; }
+      }
+      // 封面：所选封面仍在列表里则用之，否则默认首图（模板下用首个 item）
+      const effectiveCover = templateItems ? '' : ((coverId && imgs.some((i) => i.id === coverId)) ? coverId : (imgs[0]?.id || ''));
       const ok = await UnifiedDataService.imageStorageService.saveShowcase({
         id: edit?.id || `sc_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
         name: n,
         description: description.trim(),
         imageIds: imgs.map((i) => i.id),
-        mode,
-        interval,
+        mode: saveMode,
+        interval: saveInterval,
         musicPath,
         createdAt: edit?.createdAt || new Date().toISOString(),
         coverId: effectiveCover,
+        items: templateItems,
       });
       if (!ok) throw new Error(t('showcase.saveFailed', { defaultValue: '保存失败' }));
       // 回到时刻 Tab 看成品
@@ -144,6 +187,7 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
     } catch (e) {
       Alert.alert(t('settings.operationFailed', { defaultValue: '操作失败' }), e?.message || '');
     } finally {
+      setApplying(null);
       setSaving(false);
     }
   };
@@ -198,6 +242,20 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
         <Text style={[styles.countText, { color: c.tertiaryLabel }]}>
           {t('showcase.photoCountCover', { count: imgs.length, defaultValue: `共 ${imgs.length} 项 · 点图可设为封面` })}
         </Text>
+
+        {/* 模板（新建可选；编辑模式不重套模板） */}
+        {!edit ? (
+          <>
+            <Text style={[styles.label, { color: c.label }]}>{t('showcase.templateLabel', { defaultValue: '模板（可选，自动套滤镜+片头片尾）' })}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              <Chip active={!templateId} label={t('showcase.noTemplate', { defaultValue: '无模板' })} onPress={() => setTemplateId('')} />
+              {SHOWCASE_TEMPLATES.map((tpl) => (
+                <Chip key={tpl.id} active={templateId === tpl.id} label={tpl.name}
+                  onPress={() => { setTemplateId(tpl.id); setIntervalSec(tpl.interval || 3); }} />
+              ))}
+            </ScrollView>
+          </>
+        ) : null}
 
         {/* 名称 + 润色 */}
         <Text style={[styles.label, { color: c.label }]}>{t('showcase.nameLabel', { defaultValue: '名称' })}</Text>
@@ -267,10 +325,21 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
           disabled={saving}
         >
           <Text style={styles.saveText}>
-            {saving ? t('common.processing', { defaultValue: '处理中…' }) : t('showcase.saveBtn', { defaultValue: '保存到「时刻」' })}
+            {applying
+              ? t('showcase.applyingTemplate', { done: applying.done, total: applying.total, defaultValue: `正在套用模板 ${applying.done}/${applying.total}` })
+              : (saving ? t('common.processing', { defaultValue: '处理中…' }) : t('showcase.saveBtn', { defaultValue: '保存到「时刻」' }))}
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* 离屏标题卡（view-shot 截图源，屏幕外不可见） */}
+      <View style={styles.offscreen} pointerEvents="none">
+        {cardSpec ? (
+          <View ref={titleCardRef} collapsable={false}>
+            <ShowcaseTitleCard title={cardSpec.title} subtitle={cardSpec.subtitle} bgImage={cardSpec.bgImage} />
+          </View>
+        ) : null}
+      </View>
     </SafeAreaView>
   );
 }
@@ -282,6 +351,7 @@ const styles = StyleSheet.create({
   title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' },
   thumb: { width: 64, height: 64, borderRadius: 8, marginRight: 6, backgroundColor: 'rgba(0,0,0,0.05)' },
   thumbMore: { alignItems: 'center', justifyContent: 'center' },
+  offscreen: { position: 'absolute', left: -10000, top: 0 },
   thumbWrap: { position: 'relative' },
   thumbCover: { borderWidth: 2, borderColor: '#FFB300' },
   coverBadge: {

@@ -373,7 +373,8 @@ class SQLiteAdapter {
         interval REAL,
         musicPath TEXT,
         createdAt TEXT,
-        coverId TEXT
+        coverId TEXT,
+        items TEXT
       );
 
       -- 暂存箱表
@@ -526,6 +527,26 @@ class SQLiteAdapter {
     } catch (e) {
       if (!(e.message && e.message.includes('duplicate column'))) {
         logger.warn('⚠️ 迁移 showcases.coverId 出错（可能已存在）:', e?.message);
+      }
+    }
+
+    // 迁移：showcases 表加 items（模板生成资源序列；空则走 imageIds）
+    try {
+      const pr = await this.db.executeSql('PRAGMA table_info(showcases)');
+      const ti = pr && pr.length > 0 ? pr[0] : null;
+      let hasItems = false;
+      if (ti && ti.rows) {
+        for (let i = 0; i < ti.rows.length; i++) {
+          if (ti.rows.item(i).name === 'items') { hasItems = true; break; }
+        }
+      }
+      if (!hasItems) {
+        await this.db.executeSql('ALTER TABLE showcases ADD COLUMN items TEXT');
+        logger.debug('✅ 迁移完成：showcases.items 已添加');
+      }
+    } catch (e) {
+      if (!(e.message && e.message.includes('duplicate column'))) {
+        logger.warn('⚠️ 迁移 showcases.items 出错（可能已存在）:', e?.message);
       }
     }
   }
@@ -5017,8 +5038,8 @@ class ImageStorageService {
       if (Platform.OS === 'web') return false;
       await this.ensureInitialized();
       await this.storage.db.executeSql(
-        'INSERT OR REPLACE INTO showcases (id, name, description, imageIds, mode, interval, musicPath, createdAt, coverId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [sc.id, sc.name || '', sc.description || '', JSON.stringify(sc.imageIds || []), sc.mode || 'fade', sc.interval || 3, sc.musicPath || '', sc.createdAt || new Date().toISOString(), sc.coverId || '']
+        'INSERT OR REPLACE INTO showcases (id, name, description, imageIds, mode, interval, musicPath, createdAt, coverId, items) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [sc.id, sc.name || '', sc.description || '', JSON.stringify(sc.imageIds || []), sc.mode || 'fade', sc.interval || 3, sc.musicPath || '', sc.createdAt || new Date().toISOString(), sc.coverId || '', sc.items ? JSON.stringify(sc.items) : '']
       );
       return true;
     } catch (e) {
@@ -5040,7 +5061,9 @@ class ImageStorageService {
           const row = result.rows.item(i);
           let ids = [];
           try { ids = JSON.parse(row.imageIds || '[]'); } catch (_) {}
-          out.push({ ...row, imageIds: ids });
+          let items = null;
+          try { if (row.items) items = JSON.parse(row.items); } catch (_) {}
+          out.push({ ...row, imageIds: ids, items });
         }
       }
       return out;
@@ -5050,11 +5073,27 @@ class ImageStorageService {
     }
   }
 
-  /** 删除时刻秀 */
+  /** 删除时刻秀（并清理模板生成的 items 缓存资源） */
   async deleteShowcase(id) {
     try {
       if (Platform.OS === 'web') return false;
       await this.ensureInitialized();
+      // 删库前：取 items → unlink asset 资源文件（模板生成的滤镜图/标题卡）
+      try {
+        const [r] = await this.storage.db.executeSql('SELECT items FROM showcases WHERE id = ?', [id]);
+        const row = r && r.rows && r.rows.length ? r.rows.item(0) : null;
+        if (row && row.items) {
+          const items = JSON.parse(row.items);
+          if (Array.isArray(items)) {
+            const RNFS = require('react-native-fs');
+            for (const it of items) {
+              if (it && it.kind === 'asset' && it.uri) {
+                try { await RNFS.unlink(String(it.uri).replace(/^file:\/\//, '')); } catch (_) {}
+              }
+            }
+          }
+        }
+      } catch (_) { /* 清理失败不阻断删除 */ }
       await this.storage.db.executeSql('DELETE FROM showcases WHERE id = ?', [id]);
       return true;
     } catch (e) {

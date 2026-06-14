@@ -1202,6 +1202,9 @@
     "musicSelected": "Music",
     "cover": "Cover",
     "catAll": "All",
-    "photoCountCover": "{{count}} items · tap a photo to set cover"
+    "photoCountCover": "{{count}} items · tap a photo to set cover",
+    "templateLabel": "Template (optional · auto filter + title cards)",
+    "noTemplate": "None",
+    "applyingTemplate": "Applying template {{done}}/{{total}}"
   }
 }

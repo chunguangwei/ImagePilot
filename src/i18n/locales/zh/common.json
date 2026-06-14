@@ -1202,6 +1202,9 @@
     "musicSelected": "背景音乐",
     "cover": "封面",
     "catAll": "全部",
-    "photoCountCover": "共 {{count}} 项 · 点图可设为封面"
+    "photoCountCover": "共 {{count}} 项 · 点图可设为封面",
+    "templateLabel": "模板（可选，自动套滤镜+片头片尾）",
+    "noTemplate": "无模板",
+    "applyingTemplate": "正在套用模板 {{done}}/{{total}}"
   }
 }

@@ -61,7 +61,16 @@ export default function MomentsScreen({ navigation }) {
         const list = await UnifiedDataService.imageStorageService.listShowcases();
         const byId = new Map((GlobalImageCache.getCache().allImages || []).map((i) => [i.id, i]));
         setShowcases(list.map((sc) => {
-          const images = sc.imageIds.map((id) => byId.get(id)).filter(Boolean);
+          let images;
+          if (Array.isArray(sc.items) && sc.items.length) {
+            // 模板生成的 items：asset 项=生成图文件，album 项=相册图引用
+            images = sc.items.map((it) => {
+              if (it && it.kind === 'asset') return { id: `asset_${it.uri}`, uri: it.uri };
+              return it && byId.get(it.imageId);
+            }).filter(Boolean);
+          } else {
+            images = sc.imageIds.map((id) => byId.get(id)).filter(Boolean);
+          }
           const cover = (sc.coverId && images.find((i) => i.id === sc.coverId)) || images[0];
           return { ...sc, images, cover };
         }).filter((sc) => sc.images.length > 0));
