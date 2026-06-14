@@ -7,8 +7,8 @@
  */
 import { RNFS, getUri, logger } from '../../adapters/WebAdapters';
 import ImageProcessor from '../ImageProcessor';
-import { applyJimpFilterToBase64 } from '../enhance/jimpFilters';
-import { mapFilter, mapTransition, fillSlots } from './filterMap';
+import { applyColorGradeToBase64, hasLook } from '../enhance/colorGrade';
+import { mapTransition, fillSlots } from './filterMap';
 import { getTemplate } from '../../config/showcaseTemplates';
 
 const ASSET_ROOT = () => `${RNFS.CachesDirectoryPath}/showcase_assets`;
@@ -34,7 +34,7 @@ export async function applyTemplate(templateId, albumImages, slots, captureTitle
   if (!tpl) return null;
   const dir = `${ASSET_ROOT()}/sc_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
   await RNFS.mkdir(dir);
-  const fm = mapFilter(tpl.globalFilter);
+  const graded = hasLook(tpl.globalFilter); // look id 与 globalFilter 同名
   const items = [];
   const photos = (albumImages || []).filter((i) => i && !String(i.mimeType || '').startsWith('video/'));
   const total = photos.length + 2;
@@ -56,9 +56,9 @@ export async function applyTemplate(templateId, albumImages, slots, captureTitle
     const src = getUri(img) || img.uri;
     const outUri = `${dir}/f_${idx}.jpg`;
     try {
-      if (fm) {
+      if (graded) {
         const b64 = await readResizedBase64(src, 1080);
-        const dataUrl = await applyJimpFilterToBase64(b64, fm.jimpId, fm.intensity);
+        const dataUrl = await applyColorGradeToBase64(b64, tpl.globalFilter, 1);
         await RNFS.writeFile(outUri, dataUrl.split(',')[1], 'base64');
       } else {
         const r = await ImageProcessor.resizeImage(src, 1080, 1920, { maintainAspectRatio: true, outputFormat: 'jpeg', quality: 90 });
