@@ -919,7 +919,10 @@
       "rebuild": "重建",
       "rebuildTitle": "重建向量索引",
       "rebuildMessage": "清空现有索引并对全库重新编码（每张约 0.1~0.3 秒）。一般只在索引异常或更换模型后需要。",
-      "buildFailed": "建索引失败"
+      "buildFailed": "建索引失败",
+      "doneAdded": "补全完成，新增 {{count}} 张",
+      "donePruned": "已清理 {{count}} 条失效索引，索引已是最新",
+      "upToDate": "索引已是最新，无需补全"
     },
     "huaweiInstallHintTitle": "华为设备安装提示",
     "huaweiInstallHintMessage": "若系统提示\"恶意安装来源，禁止安装\"（华为误报）：\n\n方法一：设置 → 系统和更新 → 纯净模式 → 关闭后重试；\n方法二：打开系统\"文件管理\" → 内部存储 → Download → 点按 imagepilot-update.apk 安装。"
@@ -1208,6 +1211,7 @@
     "noTemplate": "无模板",
     "applyingTemplate": "正在套用模板 {{done}}/{{total}}",
     "browseCover": "🖼 选封面",
-    "browseCoverTitle": "选封面（点图设为封面）"
+    "browseCoverTitle": "选封面（点图设为封面）",
+    "exportUnavailable": "导出功能在此设备不可用"
   }
 }

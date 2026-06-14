@@ -5161,6 +5161,30 @@ class ImageStorageService {
     }
   }
 
+  /** 按 imageId 批量删除向量（清理已删图的残留向量） */
+  async deleteImageEmbeddingsByIds(model, ids) {
+    try {
+      if (Platform.OS === 'web') return true;
+      if (!Array.isArray(ids) || ids.length === 0) return true;
+      await this.ensureInitialized();
+      // 分批 IN 删除（避免 SQL 变量过多）
+      const CHUNK = 200;
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const part = ids.slice(i, i + CHUNK);
+        const placeholders = part.map(() => '?').join(',');
+        // eslint-disable-next-line no-await-in-loop
+        await this.storage.db.executeSql(
+          `DELETE FROM image_embeddings WHERE model = ? AND imageId IN (${placeholders})`,
+          [model || '', ...part]
+        );
+      }
+      return true;
+    } catch (error) {
+      logger.warn('删除残留向量失败:', error?.message || error);
+      return false;
+    }
+  }
+
   /** 读取全部 CLIP 向量 → { imageId: number[] }（仅指定模型的） */
   async readAllImageEmbeddings(model) {
     try {

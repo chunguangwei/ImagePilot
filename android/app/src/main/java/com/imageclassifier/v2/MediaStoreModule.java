@@ -459,7 +459,7 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
     /**
      * 时刻秀导出为视频（安卓）：图片序列 → H.264 MP4，对齐 iOS 接口。
      * 入参 { imagePaths:[本地路径], interval, width, height, musicPath }；返回 file:// mp4 路径。
-     * musicPath 暂忽略（安卓背景音乐合成后续），先导出纯视频。耗时操作放后台线程。
+     * 有 musicPath 则混入背景乐（循环铺满，混音失败退纯视频，与 iOS 一致）。耗时操作放后台线程。
      */
     @ReactMethod
     public void exportSlideshow(ReadableMap options, Promise promise) {
@@ -474,9 +474,27 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
                     double interval = options.hasKey("interval") ? options.getDouble("interval") : 3.0;
                     int w = options.hasKey("width") ? options.getInt("width") : 1080;
                     int h = options.hasKey("height") ? options.getInt("height") : 1920;
-                    File out = new File(reactContext.getCacheDir(), "showcase_" + System.currentTimeMillis() + ".mp4");
-                    ShowcaseVideoEncoder.encode(paths, interval, w, h, out);
-                    promise.resolve("file://" + out.getAbsolutePath());
+                    String musicPath = options.hasKey("musicPath") ? options.getString("musicPath") : null;
+                    if (musicPath != null && musicPath.startsWith("file://")) musicPath = musicPath.substring(7);
+
+                    File silent = new File(reactContext.getCacheDir(), "showcase_v_" + System.currentTimeMillis() + ".mp4");
+                    ShowcaseVideoEncoder.encode(paths, interval, w, h, silent);
+
+                    if (musicPath == null || musicPath.isEmpty() || !new File(musicPath).exists()) {
+                        promise.resolve("file://" + silent.getAbsolutePath());
+                        return;
+                    }
+                    // 混入背景乐；失败退纯视频（不让导出整体失败）
+                    File withMusic = new File(reactContext.getCacheDir(), "showcase_" + System.currentTimeMillis() + ".mp4");
+                    try {
+                        ShowcaseAudioMuxer.mux(silent.getAbsolutePath(), musicPath, withMusic.getAbsolutePath());
+                        try { silent.delete(); } catch (Exception ignored) {}
+                        promise.resolve("file://" + withMusic.getAbsolutePath());
+                    } catch (Exception me) {
+                        Log.w(TAG, "背景乐混音失败，退纯视频: " + me.getMessage());
+                        try { if (withMusic.exists()) withMusic.delete(); } catch (Exception ignored) {}
+                        promise.resolve("file://" + silent.getAbsolutePath());
+                    }
                 } catch (Exception e) {
                     Log.e(TAG, "exportSlideshow failed", e);
                     promise.reject("E_EXPORT", e.getMessage());

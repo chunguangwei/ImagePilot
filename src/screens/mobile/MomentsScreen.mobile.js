@@ -112,11 +112,11 @@ export default function MomentsScreen({ navigation }) {
 
   const [exporting, setExporting] = useState(null);   // { name, phase, done, total } | null
 
-  /** 导出为视频并分享（iOS 先行；安卓提示即将到来） */
+  /** 导出为视频并分享（iOS / 安卓均支持，含背景乐） */
   const exportShowcase = async (sc) => {
     const { isExportSupported, exportShowcaseVideo } = require('../../services/showcaseExport');
     if (!isExportSupported()) {
-      Alert.alert(t('common.tip', { defaultValue: '提示' }), t('showcase.exportComingAndroid', { defaultValue: '导出视频功能即将登陆安卓，先用播放功能哦' }));
+      Alert.alert(t('common.tip', { defaultValue: '提示' }), t('showcase.exportUnavailable', { defaultValue: '导出功能在此设备不可用' }));
       return;
     }
     setExporting({ name: sc.name, phase: 'prepare', done: 0, total: sc.images.length });

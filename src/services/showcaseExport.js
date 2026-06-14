@@ -2,8 +2,8 @@
  * showcaseExport —— 时刻秀导出为视频（iOS + 安卓）
  *
  * 流程：选中图压成 1080 长边临时 JPEG（统一格式给原生）→ 原生 exportSlideshow
- * （iOS=PhotoKitModule/AVAssetWriter + 背景乐循环混音；安卓=MediaStoreModule/MediaCodec，
- * 图片序列 + 交叉淡入，背景乐合成后续）→ 返回 mp4 路径 → 调用方分享 → 清理临时图。
+ * （iOS=PhotoKitModule/AVAssetWriter；安卓=MediaStoreModule/MediaCodec；两端均：图片序列 +
+ * 交叉淡入 + 背景乐循环铺满，混音失败退纯视频）→ 返回 mp4 路径 → 调用方分享 → 清理临时图。
  * 视频片段第一版不进导出（混排转码复杂度高，二期）。
  */
 import { NativeModules, Platform } from 'react-native';
@@ -27,7 +27,7 @@ export function isExportSupported() {
  * @returns {Promise<string>} file:// mp4 路径（临时目录，分享后系统自清）
  */
 export async function exportShowcaseVideo(sc, onPhase) {
-  if (!isExportSupported()) throw new Error('导出功能即将登陆安卓');
+  if (!isExportSupported()) throw new Error('导出功能在此设备不可用');
   const photos = (sc.images || []).filter((i) => i && !String(i.mimeType || '').startsWith('video/'));
   if (photos.length === 0) throw new Error('没有可导出的图片（视频片段暂不参与导出）');
 
@@ -54,7 +54,7 @@ export async function exportShowcaseVideo(sc, onPhase) {
     if (imagePaths.length === 0) throw new Error('图片准备失败');
     if (onPhase) onPhase('encode', 0, 1);
     const mod = exportModule();
-    if (!mod) throw new Error('导出功能即将登陆安卓');
+    if (!mod) throw new Error('导出功能在此设备不可用');
     const out = await mod.exportSlideshow({
       imagePaths,
       interval: sc.interval || 3,
