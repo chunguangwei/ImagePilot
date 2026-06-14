@@ -53,13 +53,17 @@ export const JIMP_FILTERS = Object.freeze({
   warm: { name: '暖色', apply: (img, i) => temperature(img, Math.round(22 * i)) },
   cool: { name: '冷色', apply: (img, i) => temperature(img, -Math.round(22 * i)) },
   film: { name: '胶片', apply: (img, i) => { img.contrast(0.12 * i); img.color([{ apply: 'desaturate', params: [10 * i] }]); liftBlacks(img, Math.round(14 * i)); temperature(img, Math.round(8 * i)); } },
+  // ── 时刻秀模板用：清新 / 糖果 / 冷灰 ──
+  fresh: { name: '清新', apply: (img, i) => { img.brightness(0.06 * i); img.color([{ apply: 'desaturate', params: [8 * i] }]); } },
+  candy: { name: '糖果', apply: (img, i) => { img.brightness(0.08 * i); img.color([{ apply: 'saturate', params: [28 * i] }]); } },
+  coldgrey: { name: '冷灰', apply: (img, i) => { img.color([{ apply: 'desaturate', params: [30 * i] }]); temperature(img, Math.round(-12 * i)); } },
   soften: { name: '柔化', apply: (img, i) => img.blur(Math.max(1, Math.round(1 + i * 5))) },
   invert: { name: '反色', apply: (img) => img.invert() },
 });
 
 export const JIMP_FILTER_IDS = Object.freeze(Object.keys(JIMP_FILTERS));
 
-export const hasIntensity = (id) => ['bright', 'contrast', 'soften', 'vivid', 'fade', 'warm', 'cool', 'film'].includes(id);
+export const hasIntensity = (id) => ['bright', 'contrast', 'soften', 'vivid', 'fade', 'warm', 'cool', 'film', 'fresh', 'candy', 'coldgrey'].includes(id);
 
 /**
  * #4 美颜（一期·全局磨皮）：保边平滑 + 提亮 + 暖肤气色。
