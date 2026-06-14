@@ -5073,11 +5073,27 @@ class ImageStorageService {
     }
   }
 
-  /** 删除时刻秀 */
+  /** 删除时刻秀（并清理模板生成的 items 缓存资源） */
   async deleteShowcase(id) {
     try {
       if (Platform.OS === 'web') return false;
       await this.ensureInitialized();
+      // 删库前：取 items → unlink asset 资源文件（模板生成的滤镜图/标题卡）
+      try {
+        const [r] = await this.storage.db.executeSql('SELECT items FROM showcases WHERE id = ?', [id]);
+        const row = r && r.rows && r.rows.length ? r.rows.item(0) : null;
+        if (row && row.items) {
+          const items = JSON.parse(row.items);
+          if (Array.isArray(items)) {
+            const RNFS = require('react-native-fs');
+            for (const it of items) {
+              if (it && it.kind === 'asset' && it.uri) {
+                try { await RNFS.unlink(String(it.uri).replace(/^file:\/\//, '')); } catch (_) {}
+              }
+            }
+          }
+        }
+      } catch (_) { /* 清理失败不阻断删除 */ }
       await this.storage.db.executeSql('DELETE FROM showcases WHERE id = ?', [id]);
       return true;
     } catch (e) {
