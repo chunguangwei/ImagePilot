@@ -42,8 +42,14 @@
 【自定义你的分类】
 可删除用不到的默认分类，也可新增自定义类别；删除的照片会回到"待分类"，绝不丢失，随时可恢复。
 
+【时刻与回忆】
+自动浮现"那年今天""节日回忆""旅行回忆"，把美好时刻送到眼前；还能把照片视频做成专属"时刻秀"——多种风格模板一键套滤镜调色与片头片尾，配上本地音乐，导出短视频分享给家人朋友。
+
+【相册报告】
+一键生成相册年报：照片视频总量、年度分布、最常拍的内容、城市足迹、拍照最多的一天等趣味统计，全部本地计算，可生成长图分享。
+
 【本地修图工具】
-内置滤镜、AI 清晰增强（超分）、智能抠图、物体消除，全部在设备端完成，不联网。
+人像美颜、AI 清晰增强（超分）、色彩优化（均可调修图深度）、智能抠图、物体消除、证件矫正、可调滤镜，全部在设备端完成，不联网。
 
 【隐私，由你掌控】
 · 本地分类与修图全程不联网、不上传、不登录
@@ -101,8 +107,14 @@ Scan & classify → browse and select by category → move to the staging box �
 MAKE IT YOURS
 Delete built-in categories you don't use or add your own. Deleted photos simply return to "Unclassified" — never lost, and restorable anytime.
 
+MOMENTS & MEMORIES
+"On This Day", holiday and trip memories surface automatically. Turn your photos and videos into a personal "Showtime" reel — one-tap style templates apply cinematic color grading and title cards, add local music, and export a short video to share with family and friends.
+
+ALBUM REPORT
+Generate a fun yearly album report in one tap: totals, year-by-year distribution, your most-photographed subjects, city footprints, your busiest shooting day — all computed locally, shareable as a long image.
+
 LOCAL PHOTO EDITING
-Built-in filters, AI upscaling, smart cutout, and object removal — all on-device, no network.
+Portrait retouch, AI upscaling, color enhancement (all with adjustable strength), smart cutout, object removal, document correction, and adjustable filters — all on-device, no network.
 
 PRIVACY, IN YOUR HANDS
 - Local classification and editing never connect to the network, upload, or require a login.
@@ -119,20 +131,26 @@ photo organizer,gallery cleaner,photo sort,on-device AI,duplicate photos,screens
 
 ---
 
-## 三、版本更新说明 / What's New（v1.5.17）
+## 三、版本更新说明 / What's New（v1.5.59）
 
 **中文**
 ```
-· 「AI 智能识别」内容分类质量提升，识别更准更稳
-· 可在「自定义分类」中删除用不到的默认分类（照片回到"待分类"不丢失，可随时恢复）
-· 优化模型下载入口与若干界面细节
+· 全新「时刻秀」：把照片视频做成专属放映集——多种风格模板一键套电影级调色与片头片尾，配本地音乐，导出短视频分享（支持竖屏/横屏/方形画幅）
+· 「时刻」回忆模块：那年今天、节日回忆、旅行回忆自动浮现，可幻灯片放映
+· 修图工具全面升级：人像美颜（保边磨皮）、清晰增强、色彩优化均可调修图深度，新增智能抠图、物体消除、证件矫正
+· 相册报告：一键生成相册年报并分享长图
+· 多种 AI 搜图（语义搜图、以图搜图）与"找相似"
+· 大量界面细节打磨与稳定性修复
 ```
 
 **English**
 ```
-- Improved accuracy and stability of on-device content recognition
-- You can now delete built-in categories you don't use (photos return to "Unclassified", never lost, restorable anytime)
-- Clearer model-download entry and various UI refinements
+- New "Showtime": turn photos and videos into a personal reel — one-tap style templates apply cinematic color grading and title cards, add local music, and export a short video (portrait/landscape/square)
+- "Moments" memories: On This Day, holiday and trip memories surface automatically, with slideshow playback
+- Major editing upgrade: portrait retouch (edge-preserving), AI upscaling, color enhancement with adjustable strength; plus smart cutout, object removal, and document correction
+- Album Report: generate and share a yearly album report
+- AI photo search (semantic & image-to-image) and "find similar"
+- Many UI refinements and stability fixes
 ```
 
 ---
@@ -185,4 +203,27 @@ A fully local-only flow is available without configuring any online model.
 - **价格**：免费（无内购）
 - **出口合规**：`ITSAppUsesNonExemptEncryption=false` 已配置 → Connect 不会追问加密
 - **设备**：建议首次仅 iPhone 提交（支持 iPad 需补 iPad 截图与测试）
-- **Build 号**：每次上传 `CURRENT_PROJECT_VERSION` 需 +1（当前 1）
+- **版本号 / Build 号**：本次提交 **版本 1.5.59 / Build 3**（`MARKETING_VERSION=1.5.59`、`CURRENT_PROJECT_VERSION=3` 已配好）；下次上传 Build 号继续 +1
+- **Bundle ID**：`com.chunguangwei.imagepilot`
+
+## 六、截图要求（App Store Connect 上传）
+- **必传尺寸**：iPhone 6.7"（1290×2796，iPhone 14/15 Pro Max 等）一组即可覆盖大部分机型；若 Connect 仍要求 6.5"，再补一组 1242×2688。每组 3~10 张。
+- **建议截图内容（按这个顺序最有说服力）**：
+  1. 分类首页（多维度分类一目了然）
+  2. 某个内容分类的照片网格（如"美食/旅行"）
+  3. 时刻秀模板出片页（展示风格模板）
+  4. 时刻 / 回忆页（那年今天、旅行回忆）
+  5. 本地修图（美颜/超分前后对比"按住看原图"）
+  6. 相册报告（年度统计长图）
+- **怎么截**：用已装到你 iPhone 的这版（v1.5.59），系统截图后在 Connect 直接上传；不需要加边框/文案（纯净截图即可，省事且过审稳）。
+- **App 预览视频**（可选）：时刻秀导出的短视频很适合做预览，15~30 秒。
+
+## 七、提交前自检清单
+- [ ] Xcode Archive 成功（Release 配置、Any iOS Device）
+- [ ] Organizer → Distribute → App Store Connect → Upload 成功
+- [ ] Connect 里新建版本 1.5.59，选构建 Build 3
+- [ ] 填：副标题 / 宣传文本 / 描述 / 关键词 / What's New（本文一~三节）
+- [ ] 上传 6.7" 截图 ≥3 张
+- [ ] App 隐私：选「Data Not Collected」（见第四节），审核备注粘贴第四节文案
+- [ ] 年龄分级 4+，分类 Photo & Video
+- [ ] 提交审核
