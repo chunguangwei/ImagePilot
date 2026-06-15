@@ -470,8 +470,8 @@ npm run electron:build-mac-zip  # 打包macOS ZIP
 
 # 移动版本开发
 npx react-native start          # 启动Metro服务器
-npx react-native run-android    # 运行Android版本（已验证平台）
-npx react-native run-ios        # RN 通用命令，iOS 未做验证
+npx react-native run-android    # 运行 Android 版本（已验证平台）
+npx react-native run-ios        # 运行 iOS 版本（已 Xcode 真机验证，与 Android 功能对齐）
 ```
 
 > 已验证平台为 iOS、Android 与 PC 桌面（Electron / react-native-web）。iOS 通过 Xcode 真机调试验证（功能与 Android 对齐），App Store 上架待提交。
