@@ -16,7 +16,7 @@ import { Platform } from 'react-native';
 // eslint-disable-next-line global-require
 const RNFS = require('react-native-fs');
 
-const BASE = 'https://github.com/chunguangwei/ImagePilot/releases/download/models-v1';
+const BASE = 'https://modelscope.cn/models/chunguangwee/ImagePilot-models/resolve/master'; // ModelScope 主源（端侧国内更稳）；GitHub Release 留作兜底（见下载器）
 
 // 超分模型变体（设置页可选）
 export const SUPERRES_VARIANTS = {

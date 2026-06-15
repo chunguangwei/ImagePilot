@@ -15,7 +15,7 @@
  * api.github.com 被某些设备 403）。
  */
 
-const BASE = 'https://github.com/chunguangwei/ImagePilot/releases/download/models-v1';
+const BASE = 'https://modelscope.cn/models/chunguangwee/ImagePilot-models/resolve/master'; // ModelScope 主源（端侧国内更稳）；GitHub Release 留作兜底（见下载器）
 
 /** 三档配置。 readyForUse=false 表示推理引擎暂未接入，UI 应当 disable 选项。 */
 export const CLASSIFIER_TIERS = {
