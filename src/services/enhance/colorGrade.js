@@ -34,22 +34,23 @@ function sCurve(v, amount) {
   return clamp01(v + (s - v) * amount);
 }
 
-// look 参数表：lift/gain 为 [r,g,b] 0~1 中心 0；shadow/highlight tint 为 [r,g,b] 染色量（-/+）
+// look 参数表：lift/gain 为 [r,g,b] 0~1 中心 0；shadow/highlight tint 为 [r,g,b] 染色量（-/+）。
+// 强度刻意拉满，让不同模板一眼能区分（之前太克制、照片几乎看不出变化）。
 const LOOKS = Object.freeze({
-  // 暖奶油（婚礼/家庭/情侣）：高光暖、阴影微抬、低对比、柔饱和
-  warm_cream: { contrast: 0.18, lift: [0.03, 0.02, 0.0], gain: [0.04, 0.02, -0.02], shadowTint: [0.01, 0.0, 0.02], highlightTint: [0.05, 0.03, -0.03], vibrance: 0.12, temp: 0.05 },
-  // 高饱和（旅游/活动/户外）：通透高对比、鲜艳但护肤
-  high_saturation: { contrast: 0.3, lift: [0, 0, 0], gain: [0.03, 0.03, 0.04], shadowTint: [0, 0, 0.02], highlightTint: [0.02, 0.02, 0], vibrance: 0.4, temp: 0.0 },
-  // 胶片（在路上）：褪色（阴影抬高）、青橙分离、低饱和
-  film_vintage: { contrast: 0.22, lift: [0.06, 0.05, 0.04], gain: [-0.02, -0.01, 0.0], shadowTint: [-0.02, 0.0, 0.04], highlightTint: [0.06, 0.03, -0.04], vibrance: -0.08, temp: 0.03 },
-  // 日系（生活/咖啡）：清淡、高光提亮、淡青、低对比
-  japanese_soft: { contrast: 0.1, lift: [0.05, 0.05, 0.05], gain: [0.02, 0.03, 0.03], shadowTint: [-0.01, 0.0, 0.02], highlightTint: [0.02, 0.03, 0.03], vibrance: -0.05, temp: -0.02 },
-  // 清新（学习/菜谱）：明亮通透、轻微加对比、绿色护眼
-  fresh_clean: { contrast: 0.16, lift: [0.02, 0.03, 0.02], gain: [0.04, 0.05, 0.04], shadowTint: [0, 0.02, 0.01], highlightTint: [0.02, 0.03, 0.0], vibrance: 0.18, temp: 0.0 },
-  // 糖果（生日/萌宝/宠物/童年）：高亮高饱和、暖粉高光
-  candy_bright: { contrast: 0.14, lift: [0.04, 0.03, 0.03], gain: [0.05, 0.03, 0.02], shadowTint: [0.01, 0.0, 0.02], highlightTint: [0.05, 0.0, 0.02], vibrance: 0.35, temp: 0.03 },
-  // 冷灰（运动/职场/品牌/圣诞/中秋）：青橙电影感、阴影偏青、高光偏暖、降饱和
-  cold_grey: { contrast: 0.28, lift: [0.0, 0.01, 0.03], gain: [0.02, 0.0, -0.02], shadowTint: [-0.03, 0.0, 0.05], highlightTint: [0.05, 0.02, -0.04], vibrance: -0.05, temp: -0.04 },
+  // 暖奶油（婚礼/家庭/情侣）：明显暖调、奶油高光、柔光低对比（收一档防肤色过橙）
+  warm_cream: { contrast: 0.18, lift: [0.05, 0.035, 0.0], gain: [0.07, 0.035, -0.04], shadowTint: [0.025, 0.0, 0.025], highlightTint: [0.09, 0.05, -0.05], vibrance: 0.18, temp: 0.08 },
+  // 高饱和（旅游/活动/户外）：通透高对比、鲜艳浓郁
+  high_saturation: { contrast: 0.42, lift: [-0.02, -0.02, -0.02], gain: [0.05, 0.05, 0.06], shadowTint: [0.0, 0.0, 0.03], highlightTint: [0.03, 0.03, 0.0], vibrance: 0.7, temp: 0.02 },
+  // 胶片（在路上）：褪色 + 强青橙分离、低饱和
+  film_vintage: { contrast: 0.18, lift: [0.12, 0.09, 0.07], gain: [-0.05, -0.03, 0.0], shadowTint: [-0.06, 0.0, 0.1], highlightTint: [0.13, 0.06, -0.1], vibrance: -0.18, temp: 0.06 },
+  // 日系（生活/咖啡）：空气感、淡青粉、低饱和低对比
+  japanese_soft: { contrast: 0.06, lift: [0.1, 0.1, 0.11], gain: [0.03, 0.05, 0.05], shadowTint: [-0.02, 0.0, 0.04], highlightTint: [0.05, 0.06, 0.07], vibrance: -0.12, temp: -0.03 },
+  // 清新（学习/菜谱）：明亮通透、微冷、绿意
+  fresh_clean: { contrast: 0.2, lift: [0.04, 0.05, 0.04], gain: [0.08, 0.1, 0.08], shadowTint: [0.0, 0.04, 0.02], highlightTint: [0.02, 0.06, 0.02], vibrance: 0.32, temp: -0.03 },
+  // 糖果（生日/萌宝/宠物/童年）：高亮、高饱和、暖粉高光（收一档防肤色过粉）
+  candy_bright: { contrast: 0.16, lift: [0.06, 0.05, 0.05], gain: [0.09, 0.06, 0.05], shadowTint: [0.02, 0.0, 0.03], highlightTint: [0.06, 0.0, 0.04], vibrance: 0.5, temp: 0.04 },
+  // 冷灰（运动/职场/品牌/圣诞/中秋）：强青橙电影感、阴影深青、高光暖、降饱和
+  cold_grey: { contrast: 0.4, lift: [-0.02, 0.0, 0.04], gain: [0.04, 0.0, -0.05], shadowTint: [-0.07, 0.0, 0.12], highlightTint: [0.11, 0.05, -0.09], vibrance: -0.08, temp: -0.07 },
 });
 
 export function hasLook(id) { return !!LOOKS[id]; }
