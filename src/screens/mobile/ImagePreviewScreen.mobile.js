@@ -1479,7 +1479,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                 {/* ISO */}
                 {hasISO && (
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>📷 ISO:</Text>
+                    <Text style={styles.infoLabel}><VIcon name="camera-outline" size={12} color={cTheme.tertiaryLabel} /> ISO:</Text>
                     <Text style={styles.infoValue}>
                       {('iso' in cameraSettingsData && cameraSettingsData.iso != null) ? cameraSettingsData.iso : ''}
                       {currentImage.isoCategory && (
@@ -1494,7 +1494,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                 {/* 光圈 */}
                 {hasAperture && (
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>📷 {t('imagePreview.aperture')}:</Text>
+                    <Text style={styles.infoLabel}><VIcon name="camera-outline" size={12} color={cTheme.tertiaryLabel} /> {t('imagePreview.aperture')}:</Text>
                     <Text style={styles.infoValue}>
                       {('aperture' in cameraSettingsData && cameraSettingsData.aperture != null) ? `f/${cameraSettingsData.aperture}` : ''}
                       {currentImage.apertureCategory && (
@@ -1509,7 +1509,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                 {/* 快门 */}
                 {hasShutterSpeed && (
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>📷 {t('imagePreview.shutterSpeed')}:</Text>
+                    <Text style={styles.infoLabel}><VIcon name="camera-outline" size={12} color={cTheme.tertiaryLabel} /> {t('imagePreview.shutterSpeed')}:</Text>
                     <Text style={styles.infoValue}>
                       {('shutterSpeed' in cameraSettingsData && cameraSettingsData.shutterSpeed != null) ? (
                         cameraSettingsData.shutterSpeed >= 1
@@ -1528,7 +1528,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                 {/* 焦距 */}
                 {hasFocalLength && (
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>📷 {t('imagePreview.focalLength')}:</Text>
+                    <Text style={styles.infoLabel}><VIcon name="camera-outline" size={12} color={cTheme.tertiaryLabel} /> {t('imagePreview.focalLength')}:</Text>
                     <Text style={styles.infoValue}>
                       {('focalLength' in cameraSettingsData && cameraSettingsData.focalLength != null) ? `${cameraSettingsData.focalLength}mm` : ''}
                       {currentImage.focalLengthCategory && (
@@ -1553,10 +1553,10 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                 activeOpacity={0.6}
                 onPress={() => { setDescDraft(realMsg); setDescEditorVisible(true); }}
               >
-                <Text style={styles.infoLabel}>🤖 {t('imagePreview.aiDescription') || 'AI 描述'}:</Text>
+                <Text style={styles.infoLabel}><VIcon name="sparkles-outline" size={12} color={cTheme.tertiaryLabel} /> {t('imagePreview.aiDescription') || 'AI 描述'}:</Text>
                 <Text style={[styles.infoValue, !realMsg && { color: cTheme.tertiaryLabel }]}>
                   {realMsg || (t('imagePreview.addDescription') || '点此添加描述（可被搜索）')}
-                  <Text style={{ color: cTheme.tertiaryLabel }}>  ✏️</Text>
+                  <Text style={{ color: cTheme.tertiaryLabel }}>  <VIcon name="create-outline" size={13} color={cTheme.tertiaryLabel} /></Text>
                 </Text>
               </TouchableOpacity>
             );
@@ -1568,7 +1568,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
            (currentImage.mobileNetV3Detections && currentImage.mobileNetV3Detections.predictions && currentImage.mobileNetV3Detections.predictions.length > 0) ? (
               <>
                 <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>🔍 {t('imagePreview.detectionResult')}:</Text>
+                <Text style={styles.infoLabel}><VIcon name="search-outline" size={12} color={cTheme.tertiaryLabel} /> {t('imagePreview.detectionResult')}:</Text>
                 <Text style={styles.infoValue}>
                   {`${((currentImage.idCardDetections?.length || 0) + (currentImage.generalDetections?.length || 0) + (currentImage.mobileNetV3Detections?.predictions?.length || 0))}${t('imagePreview.objects')}`}
                   </Text>
@@ -2044,7 +2044,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           >
             <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{ marginHorizontal: 24, borderRadius: 14, backgroundColor: cTheme.card, padding: 16 }}>
               <Text style={{ fontSize: 16, fontWeight: '600', color: cTheme.label, marginBottom: 10 }}>
-                🤖 {t('imagePreview.editDescription') || '编辑 AI 描述'}
+                <VIcon name="sparkles-outline" size={15} color={cTheme.label} /> {t('imagePreview.editDescription') || '编辑 AI 描述'}
               </Text>
               <TextInput
                 style={{ minHeight: 88, maxHeight: 180, borderWidth: StyleSheet.hairlineWidth, borderColor: cTheme.separator, borderRadius: 10, padding: 10, fontSize: 15, color: cTheme.label, textAlignVertical: 'top', backgroundColor: cTheme.groupedBg || 'rgba(120,120,128,0.08)' }}
