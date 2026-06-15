@@ -59,6 +59,13 @@ export async function ensureModel(filename, url, onProgress, opts = {}) {
   if (await isModelDownloaded(filename)) return asUri(dest);
   if (!url) throw new Error('E_NO_MODEL 未配置模型下载地址，请在设置里填写');
 
+  // 按地区选源：本产品模型库的链接换成地区首选源（国内 ModelScope / 海外 GitHub）。
+  // 自定义/外部 url 保持原样。
+  try {
+    const mr = require('../classify/modelRegion');
+    if (mr.modelFilenameFromUrl(url)) url = mr.modelPrimaryUrl(filename);
+  } catch (_) { /* 取不到地区模块 → 用原 url */ }
+
   const { signal } = opts;
   if (signal && signal.aborted) throw new Error('E_ABORTED 下载已取消');
 
