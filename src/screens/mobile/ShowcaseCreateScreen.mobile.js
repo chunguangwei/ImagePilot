@@ -19,6 +19,7 @@ import { useIosColors } from '../../ui/ios/theme';
 import ShowcaseTitleCard from '../../components/shared/ShowcaseTitleCard';
 import { SHOWCASE_TEMPLATES } from '../../config/showcaseTemplates';
 import { applyTemplate } from '../../services/showcase/templateApply';
+import ImageProcessor from '../../services/ImageProcessor';
 
 const MODES = [
   { key: 'fade', zh: '淡入', en: 'Fade' },
@@ -60,21 +61,40 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
   const titleCardRef = useRef(null);
   const [cardSpec, setCardSpec] = useState(null); // 离屏待截标题卡
 
-  // 离屏渲染标题卡 → 等一拍 → view-shot 截图 → 返回 file:// uri
-  const captureTitleCard = (spec) => new Promise((resolve) => {
-    setCardSpec(spec);
-    setTimeout(async () => {
-      try {
-        const uri = await captureRef(titleCardRef, { format: 'jpg', quality: 0.92, result: 'tmpfile' });
-        resolve(uri ? (uri.startsWith('file://') ? uri : `file://${uri}`) : null);
-      } catch (e) {
-        logger.warn('标题卡截图失败:', e?.message || e);
-        resolve(null);
-      } finally {
-        setCardSpec(null);
+  // 离屏渲染标题卡 → 等背景图 onLoad（不再固定延时硬截，避免 iOS 上图未加载完就截导致
+  // view-shot 原生崩溃）→ view-shot 截图 → 返回 file:// uri。带 1.5s 兜底超时与 ref 守卫。
+  // 背景图先压成本地小 jpg（iOS ph:// 异步加载 + view-shot 易崩，本地小图最稳）。
+  const captureTitleCard = async (spec) => {
+    let bg = spec.bgImage;
+    try {
+      if (bg) {
+        const src = getUri(bg) || bg.uri;
+        const r = await ImageProcessor.resizeImage(src, 540, 960, { maintainAspectRatio: true, outputFormat: 'jpeg', quality: 85 });
+        if (r && r.uri) bg = { uri: r.uri };
       }
-    }, 400);
-  });
+    } catch (_) { /* 压缩失败就用原图 */ }
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        setTimeout(async () => {
+          try {
+            if (!titleCardRef.current) { resolve(null); return; }
+            const uri = await captureRef(titleCardRef, { format: 'jpg', quality: 0.92, result: 'tmpfile' });
+            resolve(uri ? (uri.startsWith('file://') ? uri : `file://${uri}`) : null);
+          } catch (e) {
+            logger.warn('标题卡截图失败:', e?.message || e);
+            resolve(null);
+          } finally {
+            setCardSpec(null);
+          }
+        }, 150);
+      };
+      setCardSpec({ ...spec, bgImage: bg, onBgReady: finish });
+      setTimeout(finish, 1500); // 兜底：图片不触发 onLoad 也要截
+    });
+  };
 
   // 从选图器返回：合并新增图片（按 addToken 去重一次，避免重复合并）
   const addToken = route?.params?.addToken;
@@ -371,7 +391,7 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
       <View style={styles.offscreen} pointerEvents="none">
         {cardSpec ? (
           <View ref={titleCardRef} collapsable={false}>
-            <ShowcaseTitleCard title={cardSpec.title} subtitle={cardSpec.subtitle} bgImage={cardSpec.bgImage} />
+            <ShowcaseTitleCard title={cardSpec.title} subtitle={cardSpec.subtitle} bgImage={cardSpec.bgImage} onBgReady={cardSpec.onBgReady} />
           </View>
         ) : null}
       </View>
