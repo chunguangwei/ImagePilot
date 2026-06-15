@@ -374,7 +374,8 @@ class SQLiteAdapter {
         musicPath TEXT,
         createdAt TEXT,
         coverId TEXT,
-        items TEXT
+        items TEXT,
+        aspect TEXT
       );
 
       -- 暂存箱表
@@ -547,6 +548,26 @@ class SQLiteAdapter {
     } catch (e) {
       if (!(e.message && e.message.includes('duplicate column'))) {
         logger.warn('⚠️ 迁移 showcases.items 出错（可能已存在）:', e?.message);
+      }
+    }
+
+    // 迁移：showcases 表加 aspect（画幅 9:16/16:9/1:1；空则默认 9:16）
+    try {
+      const pr = await this.db.executeSql('PRAGMA table_info(showcases)');
+      const ti = pr && pr.length > 0 ? pr[0] : null;
+      let hasAspect = false;
+      if (ti && ti.rows) {
+        for (let i = 0; i < ti.rows.length; i++) {
+          if (ti.rows.item(i).name === 'aspect') { hasAspect = true; break; }
+        }
+      }
+      if (!hasAspect) {
+        await this.db.executeSql('ALTER TABLE showcases ADD COLUMN aspect TEXT');
+        logger.debug('✅ 迁移完成：showcases.aspect 已添加');
+      }
+    } catch (e) {
+      if (!(e.message && e.message.includes('duplicate column'))) {
+        logger.warn('⚠️ 迁移 showcases.aspect 出错（可能已存在）:', e?.message);
       }
     }
   }
@@ -5038,8 +5059,8 @@ class ImageStorageService {
       if (Platform.OS === 'web') return false;
       await this.ensureInitialized();
       await this.storage.db.executeSql(
-        'INSERT OR REPLACE INTO showcases (id, name, description, imageIds, mode, interval, musicPath, createdAt, coverId, items) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [sc.id, sc.name || '', sc.description || '', JSON.stringify(sc.imageIds || []), sc.mode || 'fade', sc.interval || 3, sc.musicPath || '', sc.createdAt || new Date().toISOString(), sc.coverId || '', sc.items ? JSON.stringify(sc.items) : '']
+        'INSERT OR REPLACE INTO showcases (id, name, description, imageIds, mode, interval, musicPath, createdAt, coverId, items, aspect) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [sc.id, sc.name || '', sc.description || '', JSON.stringify(sc.imageIds || []), sc.mode || 'fade', sc.interval || 3, sc.musicPath || '', sc.createdAt || new Date().toISOString(), sc.coverId || '', sc.items ? JSON.stringify(sc.items) : '', sc.aspect || '']
       );
       return true;
     } catch (e) {
@@ -5063,7 +5084,7 @@ class ImageStorageService {
           try { ids = JSON.parse(row.imageIds || '[]'); } catch (_) {}
           let items = null;
           try { if (row.items) items = JSON.parse(row.items); } catch (_) {}
-          out.push({ ...row, imageIds: ids, items });
+          out.push({ ...row, imageIds: ids, items, aspect: row.aspect || '9:16' });
         }
       }
       return out;

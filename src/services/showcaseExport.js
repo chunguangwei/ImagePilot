@@ -32,6 +32,9 @@ export async function exportShowcaseVideo(sc, onPhase) {
   if (photos.length === 0) throw new Error('没有可导出的图片（视频片段暂不参与导出）');
 
   const { getUri } = require('../adapters/WebAdapters');
+  const { aspectDims } = require('./showcase/filterMap');
+  const { w: outW, h: outH } = aspectDims(sc.aspect); // 画幅 → 导出尺寸（9:16/16:9/1:1）
+  const resizeLong = Math.max(outW, outH);
   const tmpDir = `${RNFS.CachesDirectoryPath}/showcase-export-${Date.now()}`;
   await RNFS.mkdir(tmpDir);
   const imagePaths = [];
@@ -39,9 +42,9 @@ export async function exportShowcaseVideo(sc, onPhase) {
     for (let i = 0; i < photos.length; i++) {
       if (onPhase) onPhase('prepare', i + 1, photos.length);
       const uri = getUri(photos[i]) || photos[i].uri;
-      // 统一转成本地 JPEG（ph:// 等由 resizer 解；1080 长边足够 1080x1920 画布）
+      // 统一转成本地 JPEG（ph:// 等由 resizer 解；长边足够画布即可，原生按 w/h 等比黑底适配）
       // eslint-disable-next-line no-await-in-loop
-      const resized = await ImageProcessor.resizeImage(uri, 1080, 1920, {
+      const resized = await ImageProcessor.resizeImage(uri, resizeLong, resizeLong, {
         maintainAspectRatio: true, outputFormat: 'jpeg', quality: 90,
       });
       if (resized && resized.uri) {
@@ -59,8 +62,8 @@ export async function exportShowcaseVideo(sc, onPhase) {
       imagePaths,
       interval: sc.interval || 3,
       musicPath: sc.musicPath || '',
-      width: 1080,
-      height: 1920,
+      width: outW,
+      height: outH,
     });
     if (onPhase) onPhase('done', 1, 1);
     return out;

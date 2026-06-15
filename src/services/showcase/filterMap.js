@@ -47,4 +47,29 @@ export function fillSlots(text, slots = {}) {
   return out;
 }
 
-export default { mapFilter, mapTransition, fillSlots };
+// 画幅 → 导出/画布尺寸（长边 1080）
+const ASPECT_DIMS = Object.freeze({
+  '9:16': { w: 1080, h: 1920 },
+  '16:9': { w: 1920, h: 1080 },
+  '1:1': { w: 1080, h: 1080 },
+});
+export function aspectDims(aspect) {
+  return ASPECT_DIMS[aspect] || ASPECT_DIMS['9:16'];
+}
+
+// 字体排版预设（不打包中文字体——太大；用系统字体 + 字重/字号/字距/描边做出风格差异）。
+// 按模板 globalFilter（风格基调）选一套排版，让不同模板的标题卡观感不同。
+const TYPO = Object.freeze({
+  warm_cream: { weight: '700', sizeScale: 1.0, letterSpacing: 3, shadow: true, italic: false },
+  high_saturation: { weight: '900', sizeScale: 1.05, letterSpacing: 1, shadow: true, italic: false },
+  film_vintage: { weight: '600', sizeScale: 0.95, letterSpacing: 6, shadow: false, italic: true },
+  japanese_soft: { weight: '300', sizeScale: 0.92, letterSpacing: 4, shadow: false, italic: false },
+  fresh_clean: { weight: '500', sizeScale: 1.0, letterSpacing: 2, shadow: false, italic: false },
+  candy_bright: { weight: '900', sizeScale: 1.08, letterSpacing: 0, shadow: true, italic: false },
+  cold_grey: { weight: '800', sizeScale: 1.0, letterSpacing: 8, shadow: true, italic: false },
+});
+export function typoFor(globalFilter) {
+  return TYPO[globalFilter] || TYPO.warm_cream;
+}
+
+export default { mapFilter, mapTransition, fillSlots, aspectDims, typoFor };

@@ -171,8 +171,8 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
     }
     setSaving(true);
     try {
-      // 选了模板：预生成滤镜图 + 标题卡，组装 items；其转场/时长覆盖手选值
-      let templateItems = null; let saveMode = mode; let saveInterval = interval;
+      // 选了模板：预生成滤镜图 + 标题卡，组装 items；其转场/时长/画幅覆盖手选值
+      let templateItems = null; let saveMode = mode; let saveInterval = interval; let saveAspect = edit?.aspect || '9:16';
       if (templateId) {
         const slots = {
           name: n,
@@ -186,10 +186,11 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
         setApplying({ done: 0, total: imgs.length + 2 });
         const res = await applyTemplate(templateId, imgs, slots, captureTitleCard, (done, total) => setApplying({ done, total }));
         setApplying(null);
-        if (res && res.items && res.items.length) { templateItems = res.items; saveMode = res.mode; saveInterval = res.interval; }
+        if (res && res.items && res.items.length) { templateItems = res.items; saveMode = res.mode; saveInterval = res.interval; saveAspect = res.aspect || saveAspect; }
       }
-      // 封面：所选封面仍在列表里则用之，否则默认首图（模板下用首个 item）
-      const effectiveCover = templateItems ? '' : ((coverId && imgs.some((i) => i.id === coverId)) ? coverId : (imgs[0]?.id || ''));
+      // 封面：模板时刻秀（有 items）用首帧，普通时刻秀按所选/首图
+      const isTemplateShowcase = !!templateItems || (edit && Array.isArray(edit.items) && edit.items.length);
+      const effectiveCover = isTemplateShowcase ? '' : ((coverId && imgs.some((i) => i.id === coverId)) ? coverId : (imgs[0]?.id || ''));
       const ok = await UnifiedDataService.imageStorageService.saveShowcase({
         id: edit?.id || `sc_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
         name: n,
@@ -200,7 +201,9 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
         musicPath,
         createdAt: edit?.createdAt || new Date().toISOString(),
         coverId: effectiveCover,
-        items: templateItems,
+        // 编辑模式不重套模板：保留原有模板帧，别让改名字/描述把模板效果清掉
+        items: templateItems || (edit && Array.isArray(edit.items) && edit.items.length ? edit.items : null),
+        aspect: saveAspect,
       });
       if (!ok) throw new Error(t('showcase.saveFailed', { defaultValue: '保存失败' }));
       // 回到时刻 Tab 看成品
@@ -391,7 +394,15 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
       <View style={styles.offscreen} pointerEvents="none">
         {cardSpec ? (
           <View ref={titleCardRef} collapsable={false}>
-            <ShowcaseTitleCard title={cardSpec.title} subtitle={cardSpec.subtitle} bgImage={cardSpec.bgImage} onBgReady={cardSpec.onBgReady} />
+            <ShowcaseTitleCard
+              title={cardSpec.title}
+              subtitle={cardSpec.subtitle}
+              bgImage={cardSpec.bgImage}
+              width={cardSpec.width}
+              height={cardSpec.height}
+              typo={cardSpec.typo}
+              onBgReady={cardSpec.onBgReady}
+            />
           </View>
         ) : null}
       </View>

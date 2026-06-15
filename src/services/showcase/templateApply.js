@@ -8,7 +8,7 @@
 import { RNFS, getUri, logger } from '../../adapters/WebAdapters';
 import ImageProcessor from '../ImageProcessor';
 import { applyColorGradeToBase64, hasLook } from '../enhance/colorGrade';
-import { mapTransition, fillSlots } from './filterMap';
+import { mapTransition, fillSlots, aspectDims, typoFor } from './filterMap';
 import { getTemplate } from '../../config/showcaseTemplates';
 
 const ASSET_ROOT = () => `${RNFS.CachesDirectoryPath}/showcase_assets`;
@@ -35,6 +35,13 @@ export async function applyTemplate(templateId, albumImages, slots, captureTitle
   const dir = `${ASSET_ROOT()}/sc_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
   await RNFS.mkdir(dir);
   const graded = hasLook(tpl.globalFilter); // look id 与 globalFilter 同名
+  const dims = aspectDims(tpl.aspectRatio); // { w, h } 按画幅
+  const typo = typoFor(tpl.globalFilter);   // 标题卡排版预设
+  // 标题卡按画幅比例渲染（容器最长边 ~300，保比例）
+  const cardLong = 300;
+  const cardW = dims.w >= dims.h ? cardLong : Math.round(cardLong * dims.w / dims.h);
+  const cardH = dims.h >= dims.w ? cardLong : Math.round(cardLong * dims.h / dims.w);
+  const cardMeta = { width: cardW, height: cardH, typo };
   const items = [];
   const photos = (albumImages || []).filter((i) => i && !String(i.mimeType || '').startsWith('video/'));
   const total = photos.length + 2;
@@ -44,7 +51,7 @@ export async function applyTemplate(templateId, albumImages, slots, captureTitle
   const introText = fillSlots(tpl.intro, slots);
   if (introText && captureTitleCard) {
     try {
-      const uri = await captureTitleCard({ title: introText, subtitle: '', bgImage: photos[0] });
+      const uri = await captureTitleCard({ title: introText, subtitle: '', bgImage: photos[0], ...cardMeta });
       if (uri) items.push({ kind: 'asset', uri });
     } catch (e) { logger.warn('片头标题卡失败:', e?.message || e); }
   }
@@ -76,13 +83,13 @@ export async function applyTemplate(templateId, albumImages, slots, captureTitle
   const outroText = fillSlots(tpl.outro, slots);
   if (outroText && captureTitleCard) {
     try {
-      const uri = await captureTitleCard({ title: outroText, subtitle: '', bgImage: photos[photos.length - 1] });
+      const uri = await captureTitleCard({ title: outroText, subtitle: '', bgImage: photos[photos.length - 1], ...cardMeta });
       if (uri) items.push({ kind: 'asset', uri });
     } catch (e) { logger.warn('片尾标题卡失败:', e?.message || e); }
   }
   onProgress && onProgress(++done, total);
 
-  return { items, interval: tpl.interval || 3, mode: mapTransition(tpl.transition) };
+  return { items, interval: tpl.interval || 3, mode: mapTransition(tpl.transition), aspect: tpl.aspectRatio || '9:16' };
 }
 
 export default { applyTemplate };
