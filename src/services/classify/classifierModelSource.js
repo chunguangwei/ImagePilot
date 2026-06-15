@@ -58,10 +58,13 @@ async function copyBundledModelIfPresent(filename, dest) {
   }
 }
 
-// 国内访问 github.com 常超时/被拦 → GitHub 加速代理作主源、直连兜底。
-// （日后若把模型传到 ModelScope，把其直链设为首选源即可：return [modelscopeUrl, GH_MIRROR+url, url]）
+// 模型现托管 ModelScope（国内直连 CDN，端侧更稳）作主源；GitHub Release（代理+直连）留作兜底。
 const GH_MIRROR = 'https://gh-proxy.com/';
+const GH_MODELS_BASE = 'https://github.com/chunguangwei/ImagePilot/releases/download/models-v1';
 function buildUrlCandidates(url) {
+  // ModelScope 直链（.../resolve/master/<文件名>）：主源失败 → 回退 GitHub（代理 + 直连）
+  const ms = url.match(/modelscope\.cn\/.*\/resolve\/master\/([^?]+)$/i);
+  if (ms) { const gh = `${GH_MODELS_BASE}/${ms[1]}`; return [url, GH_MIRROR + gh, gh]; }
   if (/^https?:\/\/github\.com\//i.test(url)) return [GH_MIRROR + url, url];
   return [url];
 }

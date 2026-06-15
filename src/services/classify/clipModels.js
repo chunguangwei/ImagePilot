@@ -17,7 +17,7 @@
  */
 import S2_EMB from './clipTextEmbeddings.mobileclip2_s2.json';
 
-const BASE = 'https://github.com/chunguangwei/ImagePilot/releases/download/models-v1';
+const BASE = 'https://modelscope.cn/models/chunguangwee/ImagePilot-models/resolve/master'; // ModelScope 主源（端侧国内更稳）；GitHub Release 留作兜底（见下载器）
 
 export const CLIP_MODELS = {
   mobileclip2_s2: {
