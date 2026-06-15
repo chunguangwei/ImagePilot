@@ -7,12 +7,25 @@ import { getUri } from '../../adapters/WebAdapters';
  * onBgReady：背景图加载完（或加载失败 / 无背景图）后回调——调用方据此再截图，
  * 避免在图片未加载完时截导致 iOS view-shot 原生崩溃。
  */
-export default function ShowcaseTitleCard({ bgImage, title, subtitle, color = '#FFFFFF', width = 270, height = 480, onBgReady }) {
+export default function ShowcaseTitleCard({ bgImage, title, subtitle, color = '#FFFFFF', width = 270, height = 480, typo, onBgReady }) {
   // 无背景图：下一帧即就绪（无需等图片加载）
   useEffect(() => {
     if (!bgImage && onBgReady) onBgReady();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // 排版预设：按模板风格变字重/字号/字距/描边/斜体，让不同模板标题卡观感不同
+  const t = typo || {};
+  const baseSize = Math.round(Math.min(width, height) * 0.1); // 随卡片尺寸缩放
+  const titleStyle = {
+    color,
+    fontSize: Math.round(baseSize * (t.sizeScale || 1)),
+    fontWeight: t.weight || '800',
+    letterSpacing: typeof t.letterSpacing === 'number' ? t.letterSpacing : 1,
+    fontStyle: t.italic ? 'italic' : 'normal',
+    textShadowColor: t.shadow ? 'rgba(0,0,0,0.55)' : 'transparent',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: t.shadow ? 4 : 0,
+  };
   return (
     <View style={[styles.card, { width, height }]}>
       {bgImage ? (
@@ -26,7 +39,7 @@ export default function ShowcaseTitleCard({ bgImage, title, subtitle, color = '#
       ) : null}
       <View style={[StyleSheet.absoluteFill, styles.scrim]} />
       <View style={styles.center}>
-        {title ? <Text style={[styles.title, { color }]} numberOfLines={3}>{title}</Text> : null}
+        {title ? <Text style={[styles.title, titleStyle]} numberOfLines={3}>{title}</Text> : null}
         {subtitle ? <Text style={[styles.subtitle, { color }]} numberOfLines={2}>{subtitle}</Text> : null}
       </View>
     </View>
