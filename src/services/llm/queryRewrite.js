@@ -22,8 +22,13 @@ function svc() {
   return _svc;
 }
 
-/** 是否可用（已配置在线大模型） */
+/** 是否可用：端侧 VLM 已下载 或 已配置在线大模型（任一即可润色）。 */
 export async function isRewriteAvailable() {
+  try {
+    // eslint-disable-next-line global-require
+    const { isLocalTextAvailable } = require('./localTextGen');
+    if (await isLocalTextAvailable()) return true; // 端侧 Gemma 可用
+  } catch (_) { /* 端侧不可用 → 看云端 */ }
   try {
     const cfg = await unifiedDataConfigService.getAIProviderConfig();
     return !!(cfg && cfg.active && cfg.active !== 'local-onnx');
@@ -49,8 +54,22 @@ function cleanText(s) {
  * 返回清洗后的字符串；拿不到内容抛错。
  */
 export async function generateText(prompt) {
+  // 优先端侧 Gemma（免费/隐私/离线）；端侧不可用或失败/空 → 无缝回退云端。
+  try {
+    // eslint-disable-next-line global-require
+    const { isLocalTextAvailable, generateTextLocal } = require('./localTextGen');
+    if (await isLocalTextAvailable()) {
+      const localText = cleanText(await generateTextLocal(prompt));
+      if (localText) return localText;
+      logger.warn('[queryRewrite] 端侧润色返回空，回退云端');
+    }
+  } catch (e) {
+    logger.warn('[queryRewrite] 端侧润色失败，回退云端:', e?.message || e);
+  }
+
+  // 云端
   const provider = await svc().getActiveProvider();
-  if (!provider) throw new Error('未配置在线大模型');
+  if (!provider) throw new Error('未配置在线大模型，也未下载端侧多模态模型');
   let raw = '';
   try {
     const r = await provider.classify(TINY_PNG, prompt);

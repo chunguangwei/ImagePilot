@@ -1197,7 +1197,7 @@
     "saveBtn": "保存到「时刻」",
     "nameRequired": "给这组时刻起个名字吧",
     "saveFailed": "保存失败",
-    "polishNeedCloud": "润色需要先在设置中配置在线大模型",
+    "polishNeedCloud": "润色需要：下载端侧多模态模型，或在设置中配置在线大模型",
     "deleteTitle": "删除时刻秀",
     "deleteMessage": "删除「{{name}}」？（不会删除照片本身）",
     "musicLabel": "背景音乐（可选）",
