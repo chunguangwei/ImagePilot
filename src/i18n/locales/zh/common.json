@@ -291,6 +291,12 @@
   "home": {
     "title": "首页",
     "ready": "图片分类应用已就绪",
+    "clipUpsell": {
+      "title": "想要更精准的照片识别？",
+      "body": "当前是基础物体识别。升级到「AI 智能识别」（约 {{size}}MB）——更懂场景、氛围与抽象内容，分类明显更准。建议在 Wi-Fi 下下载。",
+      "later": "暂不",
+      "upgrade": "立即升级"
+    },
     "scanning": "扫描中...",
     "scanComplete": "扫描完成",
     "smartScan": "智能扫描",

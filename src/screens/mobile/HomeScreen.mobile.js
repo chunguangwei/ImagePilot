@@ -26,6 +26,7 @@ import {
   ActivityIndicator,
   Share,
   FlatList,
+  Modal,
 } from 'react-native';
 import { SafeAreaView, Platform, PermissionsAndroid, Alert, RNFS, NativeModules } from '../../adapters/WebAdapters';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -46,6 +47,11 @@ import ClassifyProgressPill from '../../components/shared/ClassifyProgressPill';
 import VIcon from '../../components/shared/VIcon';
 import { logger, getUri, getLocalPath } from '../../adapters/WebAdapters';
 import { getColorNameTranslation, getOrientationNameTranslation, getCameraSettingsCategoryTranslation } from '../../i18n';
+import { getClipModel, DEFAULT_CLIP_MODEL } from '../../services/classify/clipModels';
+import { isClassifierModelDownloaded } from '../../services/classify/classifierModelSource';
+
+// 整库分类「升级到 clip」引导用的模型信息（端侧速度/精度最佳平衡；VLM 太慢耗电不适合整库）。
+const CLIP_UPSELL = getClipModel(DEFAULT_CLIP_MODEL) || { filename: 'mobileclip2_s2_fp32_image_encoder.onnx', sizeMB: 147 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -220,6 +226,28 @@ const HomeScreen = ({ navigation }) => {
   // 折叠屏：窗口宽度变化（折叠↔展开）时把宽度传进 createStyles → 网格样式实时重算，图标/卡片自适应。
   const { width: winW } = useWindowDimensions();
   const styles = React.useMemo(() => createStyles(c, winW), [c, winW]);
+
+  // 整库扫描完成后，引导仍用基础档(basic)的用户升级到 clip（端侧最佳平衡）。
+  // 条件：从没提示过 + 当前 basic + clip 未下载。一次性、可忽略、永不重复打扰。
+  const [showClipUpsell, setShowClipUpsell] = useState(false);
+  const maybeShowClipUpsell = useCallback(async () => {
+    try {
+      const s = await UnifiedDataService.readSettings();
+      if (s?.clipUpsellShown) return;                                   // 提示过 → 不再提
+      if ((s?.classifierModelTier || 'basic') !== 'basic') return;      // 已升级 → 不提
+      if (await isClassifierModelDownloaded(CLIP_UPSELL.filename)) return; // clip 已下载 → 不提
+      setShowClipUpsell(true);
+    } catch (_) { /* 读设置失败 → 不打扰 */ }
+  }, []);
+  const closeClipUpsell = useCallback(async (goUpgrade) => {
+    setShowClipUpsell(false);
+    try {
+      const s = await UnifiedDataService.readSettings();
+      await UnifiedDataService.writeSettings({ ...(s || {}), clipUpsellShown: true }); // 标记已提示，永不再弹
+    } catch (_) {}
+    if (goUpgrade && navigation) navigation.navigate('Settings', { focusClassifier: true });
+  }, [navigation]);
+
   // 主题动态色叠加到 StyleSheet 上（部分组件保留 inline 覆盖以便简化合并）
   const dynSection = { backgroundColor: c.card };
   const dynSectionTitle = { color: c.label };
@@ -1537,9 +1565,12 @@ const HomeScreen = ({ navigation }) => {
       
       // 扫描完成后刷新数据
       await onRefresh();
-      
+
       // 加载最近扫描信息
       await loadLastScanTime();
+
+      // 整库扫描完成 → 视情况一次性引导升级 clip（端侧最佳平衡，分类更准）
+      await maybeShowClipUpsell();
     } catch (error) {
       // 🔥 如果是"扫描已在进行中"的错误，静默处理，不显示错误提示
       if (error.message && error.message.includes(t('home.scanAlreadyInProgress'))) {
@@ -2761,6 +2792,25 @@ const HomeScreen = ({ navigation }) => {
 
       {/* 多选 AI 分类全局进度胶囊（跨页面存活；放 FAB 上方避开） */}
       <ClassifyProgressPill bottom={150 + insets.bottom} />
+
+      {/* 整库扫描后「升级 clip」一次性引导卡（底部滑出、可忽略、永不重复） */}
+      <Modal visible={showClipUpsell} transparent animationType="slide" onRequestClose={() => closeClipUpsell(false)}>
+        <Pressable style={styles.clipUpsellOverlay} onPress={() => closeClipUpsell(false)}>
+          <Pressable style={styles.clipUpsellCard} onPress={() => {}}>
+            <Text style={styles.clipUpsellEmoji}>✨</Text>
+            <Text style={styles.clipUpsellTitle}>{t('home.clipUpsell.title')}</Text>
+            <Text style={styles.clipUpsellBody}>{t('home.clipUpsell.body', { size: CLIP_UPSELL.sizeMB })}</Text>
+            <View style={styles.clipUpsellBtns}>
+              <TouchableOpacity style={styles.clipUpsellLater} onPress={() => closeClipUpsell(false)} activeOpacity={0.7}>
+                <Text style={styles.clipUpsellLaterText}>{t('home.clipUpsell.later')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.clipUpsellUpgrade} onPress={() => closeClipUpsell(true)} activeOpacity={0.85}>
+                <Text style={styles.clipUpsellUpgradeText}>{t('home.clipUpsell.upgrade')}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -2772,6 +2822,17 @@ const HomeScreen = ({ navigation }) => {
 // 只把硬编码颜色替换成 c.xxx；纯白覆盖文字 / rgba 半透明 / 阴影色保留不变。
 // 死样式已删除（similarityCard 系列 / citiesList 系列 / scanProgress* / sectionTitleRow / sectionMore / badge / moreButton / moreButtonText / moreGroupsHint 等）。
 const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
+  // 「升级 clip」引导卡
+  clipUpsellOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  clipUpsellCard: { backgroundColor: c.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 22, paddingTop: 18, paddingBottom: 30 },
+  clipUpsellEmoji: { fontSize: 30, marginBottom: 6 },
+  clipUpsellTitle: { fontSize: 19, fontWeight: '700', color: c.label, marginBottom: 8 },
+  clipUpsellBody: { fontSize: 14.5, lineHeight: 21, color: c.secondaryLabel, marginBottom: 20 },
+  clipUpsellBtns: { flexDirection: 'row', gap: 12 },
+  clipUpsellLater: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: c.fill, alignItems: 'center' },
+  clipUpsellLaterText: { fontSize: 16, fontWeight: '600', color: c.label },
+  clipUpsellUpgrade: { flex: 1.4, paddingVertical: 13, borderRadius: 12, backgroundColor: c.accent, alignItems: 'center' },
+  clipUpsellUpgradeText: { fontSize: 16, fontWeight: '700', color: '#fff' },
   container: {
     flex: 1,
     backgroundColor: c.groupedBg,
