@@ -922,6 +922,30 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
   };
 
   /**
+   * 意见反馈：调起系统邮件，预填诊断信息（版本/构建号/平台/系统版本）。
+   * 兜底：无邮件客户端时把邮箱复制到剪贴板并提示手动发送。
+   */
+  const handleFeedback = async () => {
+    const email = 'chunguangwee@gmail.com';
+    const platform = Platform.OS === 'ios' ? 'iOS' : 'Android';
+    const osVersion = String(Platform.Version);
+    const subject = t('settings.feedbackSubject', { version: BUILD_VERSION, build: BUILD_VERSION_CODE });
+    const body = t('settings.feedbackBody', { version: BUILD_VERSION, build: BUILD_VERSION_CODE, platform, osVersion });
+    const url = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    try {
+      await Linking.openURL(url);
+    } catch (_) {
+      // 没有邮件应用 / mailto 打不开 → 复制邮箱兜底
+      try {
+        // eslint-disable-next-line global-require
+        const Clipboard = require('@react-native-clipboard/clipboard').default;
+        Clipboard.setString(email);
+      } catch (__) {}
+      Alert.alert(t('settings.feedbackNoMail'), t('settings.feedbackCopied', { email }));
+    }
+  };
+
+  /**
    * 清空相册信息
    */
   const handleClearData = () => {
@@ -2127,6 +2151,15 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
               t('settings.license', { defaultValue: '授权协议' }),
               t('settings.licenseFull', { defaultValue: 'ImagePilot 采用 PolyForm Noncommercial License 1.0.0。\n\n✅ 个人 / 学习 / 研究 / 非营利 / 教育 / 政府 等非商业用途：免费使用、修改、分发。\n\n⛔ 任何商业用途：须事先获得作者书面同意。\n商业授权请联系：chunguangwee@gmail.com\n\n© 2026 Chunguang Wei（魏春光）' })
             )}
+          />
+          {/* 意见反馈：一键发邮件给作者，预填版本/系统诊断信息（双端） */}
+          <ActionButton
+            styles={styles}
+            c={c}
+            icon="mail-outline"
+            title={t('settings.feedback', { defaultValue: '意见反馈' })}
+            description={t('settings.feedbackDesc', { defaultValue: '问题或建议，一键发邮件给作者' })}
+            onPress={handleFeedback}
           />
           <InfoItem styles={styles} label={t('settings.copyright', { defaultValue: '版权' })} value="© 2026 Chunguang Wei" />
         </View>
