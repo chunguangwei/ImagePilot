@@ -73,15 +73,17 @@ https://github.com/chunguangwei/ImagePilot
 
 ## 二、App 信息（English）
 
-**Name** (≤30)
+**Name** (≤30) — 主选；备选见下
 ```
 ImagePilot: On-Device Photo AI
 ```
+> 备选 Name：`ImagePilot - AI Photo Organizer`（29，更直白突出 organizer 搜索词）
 
-**Subtitle** (≤30)
+**Subtitle** (≤30) — 主选；备选见下
 ```
 Sort photos locally, no upload
 ```
+> 备选 Subtitle：`Private AI gallery organizer`（28）／`Organize & free up space`（24）
 
 **Promotional Text** (≤170)
 ```
@@ -90,43 +92,43 @@ Organize your photo library entirely on your device: sort by content, city, colo
 
 **Description** (≤4000)
 ```
-ImagePilot is a privacy-first photo organizer. It uses on-device AI to recognize and sort your photos so you can quickly find, organize, and clean up your library — with no login, no upload, and no ads.
+ImagePilot keeps your entire photo library organized — right on your device. On-device AI recognizes what's in every photo and sorts it for you, so you can find anything in seconds, clear out clutter, and free up storage. No account, no upload, no ads.
 
 ON-DEVICE AI CLASSIFICATION
-Powered by an advanced on-device multimodal model (MobileCLIP2), it recognizes photo content offline across 20 everyday categories: portraits, social events, kids, pets, travel & scenery, night scenes, architecture, plants, food, vehicles, sports, fashion, products, electronics, documents, ID cards, art, cartoon, screenshots, and QR codes. All recognition happens locally — your photos never leave the device.
+An advanced multimodal model (MobileCLIP2) runs entirely offline to recognize photo content across 20 everyday categories: portraits, social events, kids, pets, travel & scenery, night scenes, architecture, plants, food, vehicles, sports, fashion, products, electronics, documents, ID cards, art, cartoons, screenshots, and QR codes. Your photos never leave your device.
 
 8 WAYS TO ORGANIZE
-- By content: AI understands what's in the photo
-- By city: matched offline from the photo's own GPS data — no network
-- By color, storage, format, resolution, orientation: fast metadata-based sorting
-- Similar photos: automatically groups bursts and duplicates for easy review
+- By content — AI understands what's in each photo
+- By city — matched offline from the photo's own GPS data, never sent online
+- By color, storage, format, resolution, and orientation — instant metadata sorting
+- Similar photos — automatically groups bursts and duplicates for quick review
 
 CLEAN UP IN FOUR STEPS
-Scan & classify → browse and select by category → move to the staging box → confirm and delete or archive. Clear out duplicates, old screenshots, and temporary documents in a few taps.
+Scan & classify → browse by category → move to the staging box → confirm, then delete or archive. Clear out duplicates, stale screenshots, and one-off documents in just a few taps.
 
 MAKE IT YOURS
-Delete built-in categories you don't use or add your own. Deleted photos simply return to "Unclassified" — never lost, and restorable anytime.
+Remove built-in categories you don't need, or add your own. Deleted photos return to "Unclassified" — never lost, restorable anytime.
 
 MOMENTS & MEMORIES
-"On This Day", holiday and trip memories surface automatically. Turn your photos and videos into a personal "Showtime" reel — one-tap style templates apply cinematic color grading and title cards, add local music, and export a short video to share with family and friends.
+"On This Day," holiday, and trip memories surface automatically. Turn your photos and videos into a personal Showtime reel — one-tap templates add cinematic color grading, title cards, and local music, then export a short video to share (portrait, landscape, or square).
 
 ALBUM REPORT
-Generate a fun yearly album report in one tap: totals, year-by-year distribution, your most-photographed subjects, city footprints, your busiest shooting day — all computed locally, shareable as a long image.
+Generate a fun yearly report in one tap: totals, year-by-year trends, your most-photographed subjects, city footprints, your busiest day behind the camera — all computed locally and shareable as a single image.
 
 LOCAL PHOTO EDITING
-Portrait retouch, AI upscaling, color enhancement (all with adjustable strength), smart cutout, object removal, document correction, and adjustable filters — all on-device, no network.
+Portrait retouch, AI upscaling, and color enhancement (each with adjustable strength), plus smart cutout, object removal, document correction, and adjustable filters — all on-device, no network.
 
 PRIVACY, IN YOUR HANDS
-- Local classification and editing never connect to the network, upload, or require a login.
-- The only time anything is sent online is if you choose to configure your own online model (e.g. OpenAI / Claude) for cloud classification — in which case photos are sent to the provider you configured. The developer never receives or stores them.
-- No ads, no in-app purchases, completely free.
+- Classification and editing run offline by default — no upload, no login, no account.
+- The only time a photo goes online is if you choose to connect your own AI provider (e.g. OpenAI or Claude) with your own API key for optional cloud classification. Photos go only to the provider you configured; the developer runs no server and never receives or stores your data.
+- No ads, no in-app purchases. Completely free.
 
-Organizing your photos, made effortless and private.
+Photo organizing, made effortless — and private.
 ```
 
-**Keywords** (≤100)
+**Keywords** (≤100) — 已避开 Name/Subtitle 里已索引的词（photo/sort/AI/on-device），不浪费配额；逗号后不留空格
 ```
-photo organizer,gallery cleaner,photo sort,on-device AI,duplicate photos,screenshot,offline,privacy,declutter
+organizer,gallery,cleaner,duplicate,declutter,storage,cleanup,screenshot,offline,private,album,find
 ```
 
 ---
@@ -151,6 +153,22 @@ photo organizer,gallery cleaner,photo sort,on-device AI,duplicate photos,screens
 - Album Report: generate and share a yearly album report
 - AI photo search (semantic & image-to-image) and "find similar"
 - Many UI refinements and stability fixes
+```
+
+### 海外区首发 Release Notes（English · first release）
+
+> 海外区是**全新上架**，不是更新——首发版本的 What's New 用「欢迎 + 亮点」型，比版本日志更合适。提交时填这段。
+
+```
+Welcome to ImagePilot — organize your whole photo library on-device with private AI.
+
+- Smart classification across 20 categories, fully offline
+- Sort by content, city, and color; instantly find similar shots
+- Clean up duplicates and screenshots to free up space
+- Moments & Memories, Showtime video reels, and a yearly Album Report
+- On-device editing: portrait retouch, AI upscaling, smart cutout, object removal
+
+No account. No upload. No ads.
 ```
 
 ---
