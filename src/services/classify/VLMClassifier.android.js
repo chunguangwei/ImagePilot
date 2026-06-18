@@ -55,4 +55,15 @@ export async function classifyImageWithVLM(imageUri, paths, vlmModel, opts = {})
   }
 }
 
-export default { classifyImageWithVLM, disposeVLMContext };
+/**
+ * 端侧纯文本生成（润色/查询改写用）：喂占位图 + 文本 prompt，取模型原始输出。
+ * 不解析分类（与 classifyImageWithVLM 区别）——调用方自行清洗文本。
+ */
+export async function generateTextWithVLM(modelUri, placeholderImgUri, prompt) {
+  if (!GemmaModule || typeof GemmaModule.classify !== 'function') {
+    throw new Error('E_VLM_LOAD GemmaModule 未链接');
+  }
+  return String(await GemmaModule.classify(modelUri, placeholderImgUri, prompt) || '').trim();
+}
+
+export default { classifyImageWithVLM, disposeVLMContext, generateTextWithVLM };

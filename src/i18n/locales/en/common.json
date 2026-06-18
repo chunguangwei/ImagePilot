@@ -1197,7 +1197,7 @@
     "saveBtn": "Save to Moments",
     "nameRequired": "Give these moments a name",
     "saveFailed": "Save failed",
-    "polishNeedCloud": "Polishing requires an online LLM configured in Settings",
+    "polishNeedCloud": "Polishing requires either an on-device multimodal model (download it) or an online LLM configured in Settings",
     "deleteTitle": "Delete Showtime",
     "deleteMessage": "Delete \"{{name}}\"? (Photos are kept)",
     "musicLabel": "Background Music (optional)",
