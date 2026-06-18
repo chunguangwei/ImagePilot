@@ -62,11 +62,16 @@ async function copyBundledModelIfPresent(filename, dest) {
 const GH_MIRROR = 'https://gh-proxy.com/';
 const { modelCandidates, modelFilenameFromUrl } = require('./modelRegion');
 function buildUrlCandidates(url) {
-  // 本产品模型库（ModelScope 直链 或 GitHub models-v1）→ 按地区排好的候选列表
-  const fn = modelFilenameFromUrl(url);
-  if (fn) return modelCandidates(fn);
-  // 其它 github.com 链接：代理 + 直连
-  if (/^https?:\/\/github\.com\//i.test(url)) return [GH_MIRROR + url, url];
+  // 防御纵深：地区选源（modelRegion）任何异常都不能让下载链路崩 —— 退回用原始 url。
+  try {
+    // 本产品模型库（ModelScope 直链 或 GitHub models-v1）→ 按地区排好的候选列表
+    const fn = modelFilenameFromUrl(url);
+    if (fn) return modelCandidates(fn);
+    // 其它 github.com 链接：代理 + 直连
+    if (/^https?:\/\/github\.com\//i.test(url)) return [GH_MIRROR + url, url];
+  } catch (e) {
+    logger.debug(`[classifierModelSource] buildUrlCandidates 选源异常，退回原始 url: ${e?.message || e}`);
+  }
   return [url];
 }
 
