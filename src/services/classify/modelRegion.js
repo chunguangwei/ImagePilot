@@ -10,22 +10,35 @@ const MS_BASE = 'https://modelscope.cn/models/chunguangwee/ImagePilot-models/res
 const GH_BASE = 'https://github.com/chunguangwei/ImagePilot/releases/download/models-v1';
 const GH_PROXY = 'https://gh-proxy.com/'; // 国内访问 github 的加速代理
 
+/**
+ * 取设备系统 locale（零依赖，只用 RN 核心 NativeModules）。
+ * iOS：SettingsManager.settings.AppleLocale / AppleLanguages[0]（如 "zh_CN" / "zh-Hans-CN"）。
+ * Android：I18nManager.localeIdentifier（如 "zh_CN"）。
+ * 历史坑：早期版本曾 require('react-native-localize')，但该库未装进本项目 →
+ *        端侧下载模型时触发缺失模块、iOS 直接 fatal crash。改用核心模块，永不缺失。
+ */
+function deviceLocale() {
+  try {
+    const { NativeModules, Platform } = require('react-native');
+    if (Platform.OS === 'ios') {
+      const s = NativeModules.SettingsManager && NativeModules.SettingsManager.settings;
+      if (!s) return '';
+      return s.AppleLocale || (Array.isArray(s.AppleLanguages) ? s.AppleLanguages[0] : '') || '';
+    }
+    return (NativeModules.I18nManager && NativeModules.I18nManager.localeIdentifier) || '';
+  } catch (_) { return ''; }
+}
+
 let _cnPref = null;
-/** 是否偏好国内源（中国大陆地区 / 中文且未知地区）。结果缓存。 */
+/** 是否偏好国内源（中国大陆 zh_CN / 简体）。港台 zh_TW/zh_HK 视为海外（GitHub 更稳）。结果缓存。 */
 export function prefersChinaSource() {
   if (_cnPref !== null) return _cnPref;
   _cnPref = false;
   try {
-    // 用 require 而非 import：本函数仅在运行时下载模型时调用，非模块加载期，release 下安全
-    const RL = require('react-native-localize');
-    const locales = (RL && RL.getLocales) ? RL.getLocales() : [];
-    if (locales && locales.length) {
-      const cc = String(locales[0].countryCode || '').toUpperCase();
-      const lc = String(locales[0].languageCode || '').toLowerCase();
-      // 明确中国大陆 → 国内源；地区取不到但语言中文 → 也按国内
-      _cnPref = cc === 'CN' || (!cc && lc === 'zh');
-    }
-  } catch (_) { /* 取不到地区 → 海外源（GitHub 全球可达，作安全默认） */ }
+    const lc = String(deviceLocale()).toLowerCase().replace(/-/g, '_');
+    // 中国大陆：zh_CN / zh_hans / zh_hans_cn / 纯 zh → 国内源；其它（含繁体、非中文）→ 海外
+    _cnPref = lc === 'zh' || lc.startsWith('zh_cn') || lc.startsWith('zh_hans');
+  } catch (_) { /* 取不到 → 海外源（GitHub 全球可达，作安全默认） */ }
   return _cnPref;
 }
 

@@ -27,12 +27,12 @@
 		8C14265B54351BA48464ADC7 /* ExperimentalFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5815AF101E1B623AC8B5889D /* ExperimentalFlags.swift */; };
 		9876E2B33E34EE3A8FB9E5A6 /* ToolManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 033E130F6EC715875622AAD0 /* ToolManager.swift */; };
 		9D1AA0F1223F6F7BF2BD1E59 /* Tool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FD7178E89C046514482B76D /* Tool.swift */; };
-		A82C43BF5DA72167AABCB3F8 /* HapticsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1AD126DC3B93B4FCDF6317 /* HapticsModule.swift */; };
+		A82C43BF5DA72167AABCB3F8 /* ImagePilot/HapticsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1AD126DC3B93B4FCDF6317 /* ImagePilot/HapticsModule.swift */; };
 		A85C6EC974C80DD46E0C646A /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3672EE85654670936EC65E7 /* Message.swift */; };
-		B7908FA00F04119B7EF84D0C /* HapticsModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 0B45F464BEB95DC426F8DE84 /* HapticsModule.m */; };
+		B7908FA00F04119B7EF84D0C /* ImagePilot/HapticsModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 0B45F464BEB95DC426F8DE84 /* ImagePilot/HapticsModule.m */; };
 		B897A3885E3FAD2A17D2F937 /* CLiteRTLM.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = B8013F97C0699C16B0B0F64E /* CLiteRTLM.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		D1282F25DC05446EE8BF4420 /* Engine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94F4697D0D0A003E50B6DE7 /* Engine.swift */; };
-		D6654B6EFE0A9494E3E6610C /* PhotoKitImageLoader.m in Sources */ = {isa = PBXBuildFile; fileRef = 889EBAA3471FD175F07FEFC9 /* PhotoKitImageLoader.m */; };
+		D6654B6EFE0A9494E3E6610C /* ImagePilot/PhotoKitImageLoader.m in Sources */ = {isa = PBXBuildFile; fileRef = 889EBAA3471FD175F07FEFC9 /* ImagePilot/PhotoKitImageLoader.m */; };
 		F37996C443ACD05106A96928 /* LiteRTLMModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B738912783C2215E767DD79 /* LiteRTLMModule.swift */; };
 		F9FD8C70617AE018495A7572 /* mobilenetv3_rw_Opset17.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 83483154FFF5FDCE96B3E987 /* mobilenetv3_rw_Opset17.onnx */; };
 /* End PBXBuildFile section */
@@ -67,7 +67,7 @@
 		00E356F21AD99517003FC87E /* ImagePilotTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ImagePilotTests.m; sourceTree = "<group>"; };
 		033E130F6EC715875622AAD0 /* ToolManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ToolManager.swift; path = LiteRTLM/swift/ToolManager.swift; sourceTree = SOURCE_ROOT; };
 		05E5EEA0BFBBD9DAA5EA0AFA /* Config.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Config.swift; path = LiteRTLM/swift/Config.swift; sourceTree = SOURCE_ROOT; };
-		0B45F464BEB95DC426F8DE84 /* HapticsModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = ImagePilot/HapticsModule.m; sourceTree = "<group>"; };
+		0B45F464BEB95DC426F8DE84 /* ImagePilot/HapticsModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = ImagePilot/HapticsModule.m; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* ImagePilot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ImagePilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = ImagePilot/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = ImagePilot/AppDelegate.mm; sourceTree = "<group>"; };
@@ -86,13 +86,13 @@
 		5B7EB9410499542E8C5724F5 /* Pods-ImagePilot-ImagePilotTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ImagePilot-ImagePilotTests.debug.xcconfig"; path = "Target Support Files/Pods-ImagePilot-ImagePilotTests/Pods-ImagePilot-ImagePilotTests.debug.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-ImagePilot.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ImagePilot.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6132EF172BDFF13200BBE14D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = ImagePilot/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		7C1AD126DC3B93B4FCDF6317 /* HapticsModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ImagePilot/HapticsModule.swift; sourceTree = "<group>"; };
+		7C1AD126DC3B93B4FCDF6317 /* ImagePilot/HapticsModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ImagePilot/HapticsModule.swift; sourceTree = "<group>"; };
 		7FD7178E89C046514482B76D /* Tool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Tool.swift; path = LiteRTLM/swift/Tool.swift; sourceTree = SOURCE_ROOT; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = ImagePilot/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		83483154FFF5FDCE96B3E987 /* mobilenetv3_rw_Opset17.onnx */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file; name = mobilenetv3_rw_Opset17.onnx; path = ../public/models/mobilenetv3_rw_Opset17.onnx; sourceTree = SOURCE_ROOT; };
 		8483E80CAFA3CEF3E72C8A91 /* ImagePilot-Bridging-Header.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "ImagePilot-Bridging-Header.h"; path = "ImagePilot/ImagePilot-Bridging-Header.h"; sourceTree = "<group>"; };
 		8852C51D8BE60FB078555EA3 /* Conversation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Conversation.swift; path = LiteRTLM/swift/Conversation.swift; sourceTree = SOURCE_ROOT; };
-		889EBAA3471FD175F07FEFC9 /* PhotoKitImageLoader.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = ImagePilot/PhotoKitImageLoader.m; sourceTree = "<group>"; };
+		889EBAA3471FD175F07FEFC9 /* ImagePilot/PhotoKitImageLoader.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = ImagePilot/PhotoKitImageLoader.m; sourceTree = "<group>"; };
 		89C6BE57DB24E9ADA2F236DE /* Pods-ImagePilot-ImagePilotTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ImagePilot-ImagePilotTests.release.xcconfig"; path = "Target Support Files/Pods-ImagePilot-ImagePilotTests/Pods-ImagePilot-ImagePilotTests.release.xcconfig"; sourceTree = "<group>"; };
 		A3672EE85654670936EC65E7 /* Message.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Message.swift; path = LiteRTLM/swift/Message.swift; sourceTree = SOURCE_ROOT; };
 		B8013F97C0699C16B0B0F64E /* CLiteRTLM.xcframework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.xcframework; name = CLiteRTLM.xcframework; path = LiteRTLM/CLiteRTLM.xcframework; sourceTree = SOURCE_ROOT; };
@@ -152,9 +152,9 @@
 				13EA23389B560BC7DD39E6DF /* PhotoKitModule.swift */,
 				590FFD0830FF0B79B3B0A8E0 /* PhotoKitModule.m */,
 				8483E80CAFA3CEF3E72C8A91 /* ImagePilot-Bridging-Header.h */,
-				889EBAA3471FD175F07FEFC9 /* PhotoKitImageLoader.m */,
-				7C1AD126DC3B93B4FCDF6317 /* HapticsModule.swift */,
-				0B45F464BEB95DC426F8DE84 /* HapticsModule.m */,
+				889EBAA3471FD175F07FEFC9 /* ImagePilot/PhotoKitImageLoader.m */,
+				7C1AD126DC3B93B4FCDF6317 /* ImagePilot/HapticsModule.swift */,
+				0B45F464BEB95DC426F8DE84 /* ImagePilot/HapticsModule.m */,
 				1B738912783C2215E767DD79 /* LiteRTLMModule.swift */,
 				D4A212CD2BD5B81A3CB82B10 /* LiteRTLMModule.m */,
 			);
@@ -364,9 +364,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-ImagePilot/Pods-ImagePilot-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-ImagePilot/Pods-ImagePilot-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -425,9 +429,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-ImagePilot-ImagePilotTests/Pods-ImagePilot-ImagePilotTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-ImagePilot-ImagePilotTests/Pods-ImagePilot-ImagePilotTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -442,9 +450,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-ImagePilot/Pods-ImagePilot-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-ImagePilot/Pods-ImagePilot-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -459,9 +471,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-ImagePilot-ImagePilotTests/Pods-ImagePilot-ImagePilotTests-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-ImagePilot-ImagePilotTests/Pods-ImagePilot-ImagePilotTests-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -506,9 +522,9 @@
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				089A744E8262575171D2864D /* PhotoKitModule.swift in Sources */,
 				2F4FFD8DF7EF7BE51B873CC2 /* PhotoKitModule.m in Sources */,
-				D6654B6EFE0A9494E3E6610C /* PhotoKitImageLoader.m in Sources */,
-				A82C43BF5DA72167AABCB3F8 /* HapticsModule.swift in Sources */,
-				B7908FA00F04119B7EF84D0C /* HapticsModule.m in Sources */,
+				D6654B6EFE0A9494E3E6610C /* ImagePilot/PhotoKitImageLoader.m in Sources */,
+				A82C43BF5DA72167AABCB3F8 /* ImagePilot/HapticsModule.swift in Sources */,
+				B7908FA00F04119B7EF84D0C /* ImagePilot/HapticsModule.m in Sources */,
 				F37996C443ACD05106A96928 /* LiteRTLMModule.swift in Sources */,
 				7D03621ACEDDFF968D08330B /* LiteRTLMModule.m in Sources */,
 				4D44FE864C41DE7D4EE69779 /* Capabilities.swift in Sources */,
@@ -593,7 +609,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 3;
-				DEVELOPMENT_TEAM = L35RLT89XN;
+				DEVELOPMENT_TEAM = 4GYWPYVLJ7;
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -606,7 +622,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5.62;
+				MARKETING_VERSION = 1.5.63;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -628,7 +644,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 3;
-				DEVELOPMENT_TEAM = L35RLT89XN;
+				DEVELOPMENT_TEAM = 4GYWPYVLJ7;
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -640,7 +656,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5.62;
+				MARKETING_VERSION = 1.5.63;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -724,10 +740,7 @@
 					"-DFOLLY_MOBILE=1",
 					"-DFOLLY_USE_LIBCPP=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -799,10 +812,7 @@
 					"-DFOLLY_MOBILE=1",
 					"-DFOLLY_USE_LIBCPP=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
