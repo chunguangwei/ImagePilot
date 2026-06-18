@@ -291,6 +291,12 @@
   "home": {
     "title": "Home",
     "ready": "Ready",
+    "clipUpsell": {
+      "title": "Want more accurate recognition?",
+      "body": "You're on basic object recognition. Upgrade to \"AI Smart Recognition\" (~{{size}}MB) — it understands scenes, mood, and abstract content far better. Wi-Fi recommended for the download.",
+      "later": "Not now",
+      "upgrade": "Upgrade"
+    },
     "scanning": "Scanning...",
     "scanComplete": "Scan Complete",
     "smartScan": "Smart Scan",
