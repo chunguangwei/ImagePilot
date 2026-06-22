@@ -161,11 +161,22 @@ public class ScanForegroundService extends Service {
                 handler.postDelayed(heartbeatRunnable, 10000); // 10秒后开始第一次心跳
             }
         } else if ("STOP_SCAN".equals(action)) {
+            // 🔥 防御 ANR：服务可能由（仍 pending 的）startForegroundService 拉起，若 STOP 抢先到达，
+            // 系统仍要求「5 秒内 startForeground」否则 ANR。先挂一个瞬时通知满足要求，再彻底停。
+            try {
+                startForeground(NOTIFICATION_ID, new NotificationCompat.Builder(this, CHANNEL_ID)
+                    .setContentTitle("Stopping")
+                    .setSmallIcon(R.drawable.ic_notification)
+                    .setOngoing(false)
+                    .setPriority(NotificationCompat.PRIORITY_MIN)
+                    .build());
+            } catch (Exception ignore) {}
+
             // 停止心跳任务
             if (handler != null && heartbeatRunnable != null) {
                 handler.removeCallbacks(heartbeatRunnable);
             }
-            
+
             // 释放 WakeLock
             if (wakeLock != null && wakeLock.isHeld()) {
                 wakeLock.release();
