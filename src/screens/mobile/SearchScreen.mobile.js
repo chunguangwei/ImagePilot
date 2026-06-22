@@ -95,11 +95,11 @@ export default function SearchScreen({ navigation, route }) {
     setRewriting(true);
     try {
       const { rewriteSearchQuery } = require('../../services/llm/queryRewrite');
-      const better = await rewriteSearchQuery(q);
-      setQuery(better);
-      runSearch(better, 'semantic');
+      const better = await rewriteSearchQuery(q, t); // 传 t：端侧+云端都可用时弹框文案用
+      if (better && better !== q) { setQuery(better); runSearch(better, 'semantic'); }
     } catch (e) {
-      Alert.alert(t('common.tip', { defaultValue: '提示' }), e?.message || t('search.rewriteFailed', { defaultValue: '改写失败' }));
+      if (String(e?.message || '').includes('E_CANCEL')) { /* 用户取消选择，静默 */ }
+      else { Alert.alert(t('common.tip', { defaultValue: '提示' }), e?.message || t('search.rewriteFailed', { defaultValue: '改写失败' })); }
     } finally {
       setRewriting(false);
     }

@@ -284,6 +284,10 @@
     "semanticEx3": "小狗在草地",
     "semanticDimsTip": "按 AI 描述的语义匹配（多模态档分类过的内容效果最佳）",
     "rewriteFailed": "改写失败",
+    "polishChooseTitle": "选择润色模型",
+    "polishChooseMsg": "本地大模型：免费 · 隐私 · 离线，略慢\n在线大模型：更快，需联网",
+    "polishLocal": "本地大模型",
+    "polishCloud": "在线大模型",
     "selectedCount": "已选 {{count}}",
     "selectAll": "全选",
     "batchCategorized": "已将 {{count}} 项移入所选分类"

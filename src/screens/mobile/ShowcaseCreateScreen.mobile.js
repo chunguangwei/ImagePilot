@@ -142,18 +142,19 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
     if (!n || polishing) return;
     setPolishing(true);
     try {
-      const { isRewriteAvailable, generateText } = require('../../services/llm/queryRewrite');
-      if (!(await isRewriteAvailable())) {
-        Alert.alert(t('common.tip', { defaultValue: '提示' }), t('showcase.polishNeedCloud', { defaultValue: '润色需要先在设置中配置在线大模型' }));
-        return;
-      }
-      // 复用纯文本生成链路：模型直接返回描述文本（非 JSON），generateText 内部已兜底解析失败
+      const { generateTextWithChoice } = require('../../services/llm/queryRewrite');
+      // 端侧+云端都可用时内部会弹框让用户选；只一个可用则直接用；都没有抛 E_NO_MODEL；取消抛 E_CANCEL
       const prompt = '忽略附带的占位图片。用户给一组照片的放映集起了名字，请基于名字扩写一句 20~40 字的温暖简体中文描述（适合做相册副标题）。只输出描述本身，不要解释或引号。\n\n名字：' + n;
-      const text = await generateText(prompt);
+      const text = await generateTextWithChoice(prompt, { t });
       if (text) setDescription(text);
     } catch (e) {
-      logger.warn('润色失败:', e?.message || e);
-      Alert.alert(t('common.tip', { defaultValue: '提示' }), e?.message || t('search.rewriteFailed', { defaultValue: '改写失败' }));
+      if (String(e?.message || '').includes('E_CANCEL')) { /* 用户取消，静默 */ }
+      else if (String(e?.message || '').includes('E_NO_MODEL')) {
+        Alert.alert(t('common.tip', { defaultValue: '提示' }), t('showcase.polishNeedCloud', { defaultValue: '润色需要先在设置中配置在线大模型' }));
+      } else {
+        logger.warn('润色失败:', e?.message || e);
+        Alert.alert(t('common.tip', { defaultValue: '提示' }), e?.message || t('search.rewriteFailed', { defaultValue: '改写失败' }));
+      }
     } finally {
       setPolishing(false);
     }

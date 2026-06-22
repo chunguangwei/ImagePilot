@@ -284,6 +284,10 @@
     "semanticEx3": "dog on the grass",
     "semanticDimsTip": "Matches AI descriptions semantically (works best on content classified with the multimodal tier)",
     "rewriteFailed": "Rewrite failed",
+    "polishChooseTitle": "Choose a model",
+    "polishChooseMsg": "On-device: free · private · offline, a bit slower\nOnline: faster, needs internet",
+    "polishLocal": "On-device",
+    "polishCloud": "Online",
     "selectedCount": "{{count}} selected",
     "selectAll": "All",
     "batchCategorized": "{{count}} item(s) moved to the selected category"
