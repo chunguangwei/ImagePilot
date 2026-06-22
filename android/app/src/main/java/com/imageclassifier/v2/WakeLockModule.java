@@ -113,6 +113,36 @@ public class WakeLockModule extends ReactContextBaseJavaModule {
     }
     
     /**
+     * 防自动锁屏：任务（模型下载 / 图片分类）运行时给当前 Activity 窗口加
+     * FLAG_KEEP_SCREEN_ON，屏幕到点不自动锁屏、任务持续跑。结束传 false 清除，省电。
+     * 注意 WakeLock(PARTIAL) 只保 CPU、屏幕仍会关；本方法专管"屏幕常亮"，两者互补。
+     */
+    @ReactMethod
+    public void keepScreenOn(final boolean enable, final Promise promise) {
+        final android.app.Activity activity = getCurrentActivity();
+        if (activity == null) {
+            promise.reject("ERROR", "无当前 Activity");
+            return;
+        }
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (enable) {
+                        activity.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    } else {
+                        activity.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    }
+                    promise.resolve(true);
+                } catch (Exception e) {
+                    Log.e(TAG, "设置屏幕常亮失败: " + e.getMessage(), e);
+                    promise.reject("ERROR", e.getMessage());
+                }
+            }
+        });
+    }
+
+    /**
      * 模块销毁时自动释放锁
      */
     @Override
