@@ -85,15 +85,18 @@ public class ScanServiceModule extends ReactContextBaseJavaModule {
             if (context != null) {
                 Intent intent = new Intent(context, ScanForegroundService.class);
                 intent.setAction("STOP_SCAN");
-                context.stopService(intent);
-                Log.d(TAG, "前台服务已停止");
+                // 🔥 用 startService(STOP_SCAN) 而非 stopService：让停止走 onStartCommand 队列、
+                // 串行排在 START_SCAN 之后。stopService 取消不了「秒完成」时仍 pending 的
+                // startForegroundService，会导致服务在 stop 之后才 startForeground、卡在 "Starting scan..."。
+                context.startService(intent);
+                Log.d(TAG, "前台服务停止命令已发送");
             } else {
                 Activity activity = getCurrentActivity();
                 if (activity != null) {
                     Intent intent = new Intent(activity, ScanForegroundService.class);
                     intent.setAction("STOP_SCAN");
-                    activity.stopService(intent);
-                    Log.d(TAG, "前台服务已停止（使用Activity）");
+                    activity.startService(intent);
+                    Log.d(TAG, "前台服务停止命令已发送（使用Activity）");
                 }
             }
         } catch (Exception e) {
@@ -150,10 +153,11 @@ public class ScanServiceModule extends ReactContextBaseJavaModule {
             if (context != null) {
                 Intent intent = new Intent(context, ScanForegroundService.class);
                 intent.setAction("STOP_SCAN");
-                context.stopService(intent);
+                // 同 stopScanService：走 onStartCommand 队列，避免与 pending 的 startForegroundService 竞态。
+                context.startService(intent);
                 Log.d(TAG, "✅ 已发送停止命令");
             }
-            
+
             // 等待一小段时间确保服务停止
             try {
                 Thread.sleep(500);

@@ -118,6 +118,9 @@ ImagePilot支持**8大分类维度**，从多个角度智能管理您的照片�
 
 ## 📝 更新日志
 
+### v1.5.67
+- **🐛 修复安卓扫描秒完成后通知栏卡「Starting scan...」不消失**：增量扫描无新图秒完成时，停止前台服务用的 `stopService` 取消不了仍 pending 的 `startForegroundService`，导致服务在停止后才启动、通知卡死。改为停止命令也走 onStartCommand 队列（串行排在启动之后），并加 startForeground 防御。仅安卓（iOS 无此前台服务，不受影响）。
+
 ### v1.5.66
 - **🔆 模型下载 / 图片分类运行时防自动锁屏**：长任务进行中保持屏幕常亮，屏幕到了系统自动锁屏时间也不熄屏、任务不中断（尤其解决 iOS 锁屏即挂起导致分类/下载停掉的问题）；任务结束自动恢复正常锁屏、省电。iOS（isIdleTimerDisabled）/ 安卓（FLAG_KEEP_SCREEN_ON）双端，零第三方依赖。
 
