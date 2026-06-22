@@ -24,6 +24,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, Alert, RNFS, AsyncStorage } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../../services/UnifiedDataService';
+import KeepAwakeService from '../../services/KeepAwakeService';
 import GalleryScannerService from '../../services/GalleryScannerService';
 import ImageStorageService from '../../services/ImageStorageService';
 import * as UpdateService from '../../services/UpdateService';
@@ -1057,6 +1058,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     srAbortRef.current = controller;
     setSrDownloading(true); setSrProgress(0);
     try {
+      await KeepAwakeService.activate(); // 下载期间防自动锁屏
       const r = await resolveSuperRes();
       if (!r.url) { Alert.alert(t('common.tip'), t('settings.superRes.customUrlMissing')); return; }
       await deleteModel(r.filename).catch(() => {}); // 重新下载：先删旧
@@ -1070,6 +1072,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         Alert.alert(t('settings.superRes.downloadFailed'), (e?.message || String(e)).replace(/^E_\w+\s*/, ''));
       }
     } finally {
+      await KeepAwakeService.deactivate(); // 恢复自动锁屏
       setSrDownloading(false);
       if (srAbortRef.current === controller) srAbortRef.current = null;
     }
@@ -1145,6 +1148,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     setClassifierDownloadingKey(tierKey);
     setClassifierDownloadProgress(0);
     try {
+      await KeepAwakeService.activate(); // 下载期间防自动锁屏（屏幕常亮，锁屏会中断下载）
       if (isVlm) {
         // VLM 双文件（model + mmproj）：续传下载，按字节合并进度。
         const totalBytes = (asset.model.bytes || 0) + (asset.mmproj.bytes || 0);
@@ -1197,6 +1201,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
       }
       throw e;
     } finally {
+      await KeepAwakeService.deactivate(); // 下载结束/取消 → 恢复自动锁屏，省电
       setClassifierDownloadingKey(null);
       setClassifierDownloadProgress(0);
       if (classifierAbortRef.current === controller) classifierAbortRef.current = null;
@@ -1319,6 +1324,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
     setVlmDownloadingId(id);
     setVlmDownloadProgress(0);
     try {
+      await KeepAwakeService.activate(); // 大模型下载耗时长，期间防自动锁屏
       // Gemma 单文件 / Qwen 双文件，统一按 files 顺序下载，按字节合并进度。
       const files = [vm.model, vm.mmproj].filter(Boolean);
       const totalBytes = files.reduce((s, f) => s + (f.bytes || 0), 0);
@@ -1344,6 +1350,7 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
         Alert.alert(t('settings.classifierModel.downloadFailed'), msg);
       }
     } finally {
+      await KeepAwakeService.deactivate(); // 恢复自动锁屏
       setVlmDownloadingId(null);
       setVlmDownloadProgress(0);
       if (vlmAbortRef.current === controller) vlmAbortRef.current = null;

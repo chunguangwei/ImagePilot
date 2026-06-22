@@ -81,4 +81,16 @@ class HapticsModule: NSObject {
     let bytes = ProcessInfo.processInfo.physicalMemory
     resolve(NSNumber(value: bytes / (1024 * 1024)))
   }
+
+  /// 防自动锁屏：任务（模型下载 / 图片分类）运行时保持屏幕常亮（禁用系统空闲计时器），
+  /// 屏幕不会到点自动锁屏 → app 一直前台、任务持续跑。任务结束传 false 恢复，省电。
+  @objc(setKeepAwake:resolver:rejecter:)
+  func setKeepAwake(_ enable: Bool,
+                    resolver resolve: @escaping RCTPromiseResolveBlock,
+                    rejecter reject: @escaping RCTPromiseRejectBlock) {
+    DispatchQueue.main.async {
+      UIApplication.shared.isIdleTimerDisabled = enable
+      resolve(nil)
+    }
+  }
 }

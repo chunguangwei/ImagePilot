@@ -5,6 +5,7 @@
 
 import { NativeModules, Platform } from 'react-native';
 import { logger } from '../adapters/WebAdapters';
+import KeepAwakeService from './KeepAwakeService';
 
 const { WakeLockModule } = NativeModules;
 
@@ -27,8 +28,12 @@ class WakeLockService {
    * @returns {Promise<boolean>}
    */
   async acquire(timeout = 0) {
+    // 屏幕常亮（跨端，含 iOS）：长任务期间防自动锁屏 → 屏幕不熄、app 前台、任务持续跑。
+    // 与下面的 CPU WakeLock(仅 Android)互补：iOS 靠这个保活，Android 两者都上。
+    try { await KeepAwakeService.activate(); } catch (_) {}
+
     if (!this.isAvailable()) {
-      logger.debug('⚠️ WakeLock不可用（仅支持Android）');
+      logger.debug('⚠️ WakeLock(CPU)不可用（仅 Android）；屏幕常亮已启用');
       return false;
     }
 
@@ -55,6 +60,9 @@ class WakeLockService {
    * @returns {Promise<boolean>}
    */
   async release() {
+    // 关屏幕常亮（跨端，与 acquire 配对）
+    try { await KeepAwakeService.deactivate(); } catch (_) {}
+
     if (!this.isAvailable()) {
       return false;
     }
