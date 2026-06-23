@@ -451,6 +451,51 @@ function createWindow() {
     }
   });
 
+  // 分类文件物理迁移：逐项移动/复制到 targetDir，解决同名冲突，回结果+进度。
+  // 跨盘 move：fs.renameSync 抛 EXDEV → fallback copyFileSync + unlinkSync。
+  ipcMain.on('migrate-files', (event, payload) => {
+    const fsm = require('fs');
+    const pathm = require('path');
+    const { items = [], mode = 'copy' } = payload || {};
+    const results = [];
+    const total = items.length;
+    let done = 0;
+
+    const resolveConflict = (target) => {
+      if (!fsm.existsSync(target)) return target;
+      const ext = pathm.extname(target);
+      const base = target.slice(0, target.length - ext.length);
+      for (let i = 1; i < 100000; i++) {
+        const c = `${base}(${i})${ext}`;
+        if (!fsm.existsSync(c)) return c;
+      }
+      return target;
+    };
+
+    for (const it of items) {
+      try {
+        if (!fsm.existsSync(it.oldPath)) { results.push({ id: it.id, ok: false, error: '源文件不存在' }); done++; continue; }
+        fsm.mkdirSync(it.targetDir, { recursive: true });
+        const dest = resolveConflict(pathm.join(it.targetDir, it.fileName).replace(/\\/g, '/'));
+        if (mode === 'move') {
+          try { fsm.renameSync(it.oldPath, dest); }
+          catch (e) {
+            if (e && e.code === 'EXDEV') { fsm.copyFileSync(it.oldPath, dest); fsm.unlinkSync(it.oldPath); }
+            else throw e;
+          }
+        } else {
+          fsm.copyFileSync(it.oldPath, dest);
+        }
+        results.push({ id: it.id, ok: true, newPath: dest });
+      } catch (error) {
+        results.push({ id: it.id, ok: false, error: error.message });
+      }
+      done++;
+      event.reply('migrate-files-progress', { done, total });
+    }
+    event.reply('migrate-files-result', { results });
+  });
+
   // 监听更新标题栏统计信息
   ipcMain.on('update-titlebar-stats', (event, stats) => {
     logger.debug(L.titlebarStats, stats);
