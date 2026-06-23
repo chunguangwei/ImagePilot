@@ -256,6 +256,9 @@ const HomeScreen = () => {
         case 'Duplicates':
           ScreenComponent = (await import('./DuplicatesScreen.desktop')).default;
           break;
+        case 'Backup':
+          ScreenComponent = (await import('./BackupRestoreScreen.desktop')).default;
+          break;
         default:
           return null;
       }
@@ -954,6 +957,19 @@ const HomeScreen = () => {
             <Text style={styles.statsEntryText}>{t('duplicates.title', { defaultValue: '重复清理' })}</Text>
             <Text style={styles.statsEntryArrow}>›</Text>
           </TouchableOpacity>
+          {/* 备份还原入口 */}
+          <TouchableOpacity
+            style={[styles.statsEntryButton, { marginTop: 10 }]}
+            onPress={() => {
+              setCurrentScreen('Backup');
+              setScreenProps({});
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.statsEntryIcon}>📦</Text>
+            <Text style={styles.statsEntryText}>{t('backupRestore.title', { defaultValue: '备份与还原' })}</Text>
+            <Text style={styles.statsEntryArrow}>›</Text>
+          </TouchableOpacity>
         </View>
 
         {/* 按时间（图片卡片，在按内容之前） */}
@@ -1408,6 +1424,7 @@ const HomeScreen = () => {
     const StatsScreen = loadedScreens.Stats;
     const MomentsScreen = loadedScreens.Moments;
     const DuplicatesScreen = loadedScreens.Duplicates;
+    const BackupScreen = loadedScreens.Backup;
 
     return (
       <SafeAreaView style={styles.container}>
@@ -1650,6 +1667,19 @@ const HomeScreen = () => {
           <View style={styles.screenContainer}>
             {DuplicatesScreen ? (
               <DuplicatesScreen
+                onBack={async () => {
+                  setCurrentScreen('Home');
+                  await loadData();
+                }}
+              />
+            ) : <View style={styles.loadingContainer}><Text>{t('home.loading') || '加载中…'}</Text></View>}
+          </View>
+        )}
+
+        {currentScreen === 'Backup' && (
+          <View style={styles.screenContainer}>
+            {BackupScreen ? (
+              <BackupScreen
                 onBack={async () => {
                   setCurrentScreen('Home');
                   await loadData();
