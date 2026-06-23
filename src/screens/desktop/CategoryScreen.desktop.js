@@ -425,6 +425,11 @@ const CategoryScreen = ({
   // 删除进度状态
   const [showDeleteProgress, setShowDeleteProgress] = useState(false);
   const [deleteProgress, setDeleteProgress] = useState({ filesDeleted: 0, filesFailed: 0, total: 0 });
+
+  // 整理到文件夹（物理迁移）状态
+  const [showMigrateDialog, setShowMigrateDialog] = useState(false);
+  const [migrateMode, setMigrateMode] = useState('copy'); // 'copy' | 'move'
+  const [migrateProgress, setMigrateProgress] = useState(null); // {done,total} | null
   
   // 操作菜单状态
   const [showActionMenu, setShowActionMenu] = useState(false);
@@ -964,6 +969,39 @@ const CategoryScreen = ({
       Alert.alert(t('common.error'), t('category.copyError', { error: error.message }));
     }
   }, [getCurrentSelectedImages, copyFilePathsToClipboard]);
+
+  // 整理到文件夹：选目标根目录 → 移动/复制选中分类照片 → DB 同步 + 刷新。
+  const handleMigrateToFolder = async (mode) => {
+    try {
+      const { ipcRenderer } = window.require('electron');
+      const picked = await ipcRenderer.invoke('select-folder');
+      if (!picked || !picked.success || !picked.path) return; // 用户取消
+      const selected = await getCurrentSelectedImages();
+      if (!selected || selected.length === 0) {
+        Alert.alert(t('common.tip', { defaultValue: '提示' }), t('category.migrateNoSelection', { defaultValue: '请先选择要整理的照片' }));
+        return;
+      }
+      setShowMigrateDialog(false);
+      setMigrateProgress({ done: 0, total: selected.length });
+      // eslint-disable-next-line global-require
+      const { migrateCategories } = require('../../services/desktop/fileMigration');
+      const res = await migrateCategories({
+        images: selected,
+        rootDir: picked.path.replace(/\\/g, '/'),
+        mode,
+        onProgress: (done, total) => setMigrateProgress({ done, total }),
+      });
+      setMigrateProgress(null);
+      Alert.alert(
+        t('category.migrateDone', { defaultValue: '整理完成' }),
+        t('category.migrateSummary', { defaultValue: '成功 {{ok}} 张，失败 {{fail}} 张，跳过 {{skipped}} 张', ok: res.ok, fail: res.fail, skipped: res.skipped }),
+      );
+      await loadImages(); // 刷新当前页（uri 已变）
+    } catch (e) {
+      setMigrateProgress(null);
+      Alert.alert(t('common.tip', { defaultValue: '提示' }), e?.message || String(e));
+    }
+  };
 
   // 复制选中的图片到文件管理器（无限制）
   const handleCopyToFileManager = useCallback(async () => {
@@ -1613,7 +1651,14 @@ const CategoryScreen = ({
                   }}>
                   <Text style={styles.actionMenuItemText}>{t('category.copyFile')}</Text>
                 </TouchableOpacity>
-                
+
+                {/* 整理到文件夹：物理迁移到分类目录 */}
+                <TouchableOpacity
+                  style={styles.actionMenuItem}
+                  onPress={() => { setShowActionMenu(false); setShowMigrateDialog(true); }}>
+                  <Text style={styles.actionMenuItemText}>{tHeader('category.migrateToFolder', { defaultValue: '整理到文件夹' })}</Text>
+                </TouchableOpacity>
+
                 {/* 暂存 - 只有非暂存箱显示 */}
                 {!isStagingBox && (
                   <TouchableOpacity
@@ -2185,6 +2230,45 @@ const CategoryScreen = ({
               失败: {deleteProgress.filesFailed} 个文件
               总计: {deleteProgress.total} 个文件
             </Text>
+            <ActivityIndicator size="small" color="#2196F3" style={styles.modalIndicator} />
+          </View>
+        </View>
+      </Modal>
+
+      {/* 整理到文件夹：选移动/复制 */}
+      <Modal visible={showMigrateDialog} transparent animationType="fade" onRequestClose={() => setShowMigrateDialog(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t('category.migrateToFolder', { defaultValue: '整理到文件夹' })}</Text>
+            <Text style={styles.modalMessage}>{t('category.migrateModeHint', { defaultValue: '把选中的已分类照片按分类整理到一个目标文件夹。未分类的会跳过。' })}</Text>
+            <TouchableOpacity style={styles.actionMenuItem} onPress={() => handleMigrateToFolder('copy')}>
+              <Text style={styles.actionMenuItemText}>{t('category.migrateCopy', { defaultValue: '复制（保留原文件，安全）' })}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionMenuItem} onPress={() => {
+              Alert.alert(
+                t('category.migrateMoveConfirmTitle', { defaultValue: '确认移动？' }),
+                t('category.migrateMoveConfirmMsg', { defaultValue: '移动会把原文件移走，原位置不再保留。建议先用复制。' }),
+                [
+                  { text: t('common.cancel', { defaultValue: '取消' }), style: 'cancel' },
+                  { text: t('category.migrateMove', { defaultValue: '移动' }), style: 'destructive', onPress: () => handleMigrateToFolder('move') },
+                ],
+              );
+            }}>
+              <Text style={[styles.actionMenuItemText, { color: '#FF3B30' }]}>{t('category.migrateMove', { defaultValue: '移动（原文件移走）' })}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionMenuItem} onPress={() => setShowMigrateDialog(false)}>
+              <Text style={styles.actionMenuItemText}>{t('common.cancel', { defaultValue: '取消' })}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 迁移进度 */}
+      <Modal visible={!!migrateProgress} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t('category.migrating', { defaultValue: '整理中...' })}</Text>
+            <Text style={styles.modalMessage}>{migrateProgress ? `${migrateProgress.done}/${migrateProgress.total}` : ''}</Text>
             <ActivityIndicator size="small" color="#2196F3" style={styles.modalIndicator} />
           </View>
         </View>

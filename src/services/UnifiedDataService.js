@@ -2956,6 +2956,21 @@ class UnifiedDataService {
     }
   }
 
+  /** 批量更新照片 uri（分类文件迁移后同步路径）。pathDataArray=[{id, uri}]。 */
+  async updateImagesPath(pathDataArray, updateCache = false) {
+    try {
+      const result = await this.imageStorageService.batchUpdateImagePath(pathDataArray);
+      if (updateCache && result.success) {
+        await this.imageCache.refreshCache();
+        this.cacheListeners.forEach(listener => listener(this.imageCache.cache));
+      }
+      return result;
+    } catch (error) {
+      logger.error('❌ 批量更新 uri 失败:', error);
+      throw error;
+    }
+  }
+
   /**
    * 批量更新分类信息（只更新分类相关字段，不更新其他字段）
    * @param {Array} classificationDataArray - 分类数据数组，每个元素包含：
