@@ -2325,6 +2325,111 @@ class ImageStorageService {
     return { success: true, updatedCount, failedCount };
   }
 
+  /** 批量更新照片 uri（分类文件迁移后同步物理路径）。pathDataArray=[{id, uri}]，必须传 id。 */
+  async batchUpdateImagePath(pathDataArray) {
+    try {
+      await this.ensureInitialized();
+      if (!pathDataArray || pathDataArray.length === 0) {
+        return { success: true, updatedCount: 0, failedCount: 0 };
+      }
+      if (Platform.OS === 'web') {
+        return await this._batchUpdateImagePathIndexedDB(pathDataArray);
+      } else {
+        return await this._batchUpdateImagePathSQLite(pathDataArray);
+      }
+    } catch (error) {
+      logger.error('❌ 批量更新 uri 失败:', error);
+      return { success: false, updatedCount: 0, failedCount: pathDataArray.length, error: error.message };
+    }
+  }
+
+  /** PC端：IndexedDB 批量更新 uri（照 _batchUpdateCityIndexedDB 模式）。 */
+  async _batchUpdateImagePathIndexedDB(pathDataArray) {
+    await this.storage.init();
+    let updatedCount = 0;
+    let failedCount = 0;
+    for (const d of pathDataArray) {
+      try {
+        const imageId = d.id;
+        if (!imageId) { failedCount++; continue; }
+        const existingImage = await this.storage.getItem('images').then(images =>
+          images ? images.find(img => img.id === imageId) : null
+        );
+        if (existingImage) {
+          existingImage.uri = d.uri;
+          existingImage.updatedAt = new Date().toISOString();
+          await this.storage.setItem('images',
+            await this.storage.getItem('images').then(images =>
+              images.map(img => img.id === imageId ? existingImage : img)
+            )
+          );
+          updatedCount++;
+        } else {
+          failedCount++;
+          logger.warn(`⚠️ IndexedDB 未找到图片: ${imageId}`);
+        }
+      } catch (error) {
+        logger.error(`❌ IndexedDB 更新 uri 失败: ${d.id}`, error);
+        failedCount++;
+      }
+    }
+    return { success: true, updatedCount, failedCount };
+  }
+
+  /** 移动端：SQLite 批量更新 uri（照 _batchUpdateCitySQLite 模式）。 */
+  async _batchUpdateImagePathSQLite(pathDataArray) {
+    await this.ensureInitialized();
+    let updatedCount = 0;
+    let failedCount = 0;
+    const batchSize = 100;
+    for (let i = 0; i < pathDataArray.length; i += batchSize) {
+      const batch = pathDataArray.slice(i, i + batchSize);
+      await new Promise((resolve, reject) => {
+        this.storage.db.transaction((tx) => {
+          let completed = 0;
+          let hasError = false;
+          const totalUpdates = batch.length;
+          const updatedAt = new Date().toISOString();
+          const checkComplete = () => {
+            if (completed === totalUpdates && !hasError) resolve();
+            else if (hasError && completed === totalUpdates) reject(new Error('批量更新 uri 失败'));
+          };
+          for (const d of batch) {
+            try {
+              const imageId = d.id;
+              if (!imageId) { completed++; failedCount++; checkComplete(); continue; }
+              tx.executeSql(
+                `UPDATE images SET uri = ?, updatedAt = ? WHERE id = ?`,
+                [d.uri, updatedAt, imageId],
+                (tx, result) => {
+                  completed++;
+                  if (result.rowsAffected > 0) updatedCount++;
+                  else { failedCount++; logger.warn(`⚠️ SQLite 未找到图片: ${imageId}`); }
+                  checkComplete();
+                },
+                (tx, error) => {
+                  if (!hasError) { hasError = true; logger.error(`❌ SQLite 更新 uri 失败: ${imageId}`, error); }
+                  completed++;
+                  failedCount++;
+                  checkComplete();
+                }
+              );
+            } catch (error) {
+              if (!hasError) { hasError = true; logger.error(`❌ SQLite 更新 uri 失败: ${d.id}`, error); }
+              completed++;
+              failedCount++;
+              checkComplete();
+            }
+          }
+        }, (error) => {
+          logger.error('❌ SQLite 批量更新 uri 事务失败:', error);
+          reject(error);
+        });
+      });
+    }
+    return { success: true, updatedCount, failedCount };
+  }
+
   // 实际执行保存操作的方法
   async _performSaveOptimized(imageDataArray) {
     // 优化的保存方法：使用真正的批量插入
