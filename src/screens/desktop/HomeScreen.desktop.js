@@ -247,6 +247,9 @@ const HomeScreen = () => {
         case 'AIModelConfig':
           ScreenComponent = (await import('./AIModelConfigScreen.desktop')).default;
           break;
+        case 'Stats':
+          ScreenComponent = (await import('./StatsScreen.desktop')).default;
+          break;
         default:
           return null;
       }
@@ -905,6 +908,22 @@ const HomeScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {/* 相册报告入口 */}
+        <View style={styles.statsEntrySection}>
+          <TouchableOpacity
+            style={styles.statsEntryButton}
+            onPress={() => {
+              setCurrentScreen('Stats');
+              setScreenProps({});
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.statsEntryIcon}>📊</Text>
+            <Text style={styles.statsEntryText}>{t('stats.title')}</Text>
+            <Text style={styles.statsEntryArrow}>›</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* 按时间（图片卡片，在按内容之前） */}
         {(() => {
           const nowYear = new Date().getFullYear();
@@ -1354,6 +1373,7 @@ const HomeScreen = () => {
     const ImagePreviewScreen = loadedScreens.ImagePreview;
     const SettingsScreen = loadedScreens.Settings;
     const AIModelConfigScreen = loadedScreens.AIModelConfig;
+    const StatsScreen = loadedScreens.Stats;
     
     return (
       <SafeAreaView style={styles.container}>
@@ -1372,8 +1392,19 @@ const HomeScreen = () => {
             )}
           </View>
           <View style={styles.titleBarRight}>
+            {/* 相册报告按钮 */}
+            <TouchableOpacity
+              style={styles.titleBarStagingButton}
+              onPress={() => {
+                setCurrentScreen('Stats');
+                setScreenProps({});
+              }}
+            >
+              <Text style={styles.titleBarStagingIcon}>📊</Text>
+            </TouchableOpacity>
+
             {/* 暂存箱按钮 */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.titleBarStagingButton}
               onPress={() => {
                 handleFilterPress('stagingBox', null);
@@ -1550,6 +1581,19 @@ const HomeScreen = () => {
             {AIModelConfigScreen ? (
               <AIModelConfigScreen
                 navigation={{ goBack: () => setCurrentScreen('Settings') }}
+              />
+            ) : <View style={styles.loadingContainer}><Text>{t('home.loading') || '加载中…'}</Text></View>}
+          </View>
+        )}
+
+        {currentScreen === 'Stats' && (
+          <View style={styles.screenContainer}>
+            {StatsScreen ? (
+              <StatsScreen
+                onBack={async () => {
+                  setCurrentScreen('Home');
+                  await loadData();
+                }}
               />
             ) : <View style={styles.loadingContainer}><Text>{t('home.loading') || '加载中…'}</Text></View>}
           </View>
@@ -1900,6 +1944,34 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  // 相册报告入口
+  statsEntrySection: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  statsEntryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  statsEntryIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  statsEntryText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+  },
+  statsEntryArrow: {
+    fontSize: 22,
+    color: '#C7C7CC',
+    fontWeight: '600',
   },
   // 混合模式自定义标题栏样式
   customTitleBar: {
