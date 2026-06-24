@@ -17,12 +17,16 @@
 
 import { OpenAIProvider } from '../../services/llm/providers/OpenAIProvider.js';
 import { KimiProvider } from '../../services/llm/providers/KimiProvider.js';
+import { AnthropicProvider } from '../../services/llm/providers/AnthropicProvider.js';
+import { GeminiProvider } from '../../services/llm/providers/GeminiProvider.js';
 import { OllamaProvider } from '../../services/llm/providers/OllamaProvider.js';
 import { CustomProvider } from '../../services/llm/providers/CustomProvider.js';
 
 const PROVIDER_CLASSES = {
   openai: OpenAIProvider,
   kimi: KimiProvider,
+  anthropic: AnthropicProvider,
+  gemini: GeminiProvider,
   ollama: OllamaProvider,
   custom: CustomProvider,
 };
