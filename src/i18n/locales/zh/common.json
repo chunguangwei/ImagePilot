@@ -263,6 +263,8 @@
     "aiClassifyDone": "AI 分类完成（{{total}} 张）"
   },
   "search": {
+    "title": "搜索",
+    "rewriteBtn": "润色",
     "placeholder": "搜索照片和视频…",
     "emptyTip": "输入关键词搜照片和视频，试试：",
     "noResults": "没找到与「{{query}}」匹配的图",
