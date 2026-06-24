@@ -496,6 +496,155 @@ function createWindow() {
     event.reply('migrate-files-result', { results });
   });
 
+  // 桌面端下载 CLIP 模型（带进度，net 自动跟随重定向+走系统代理）
+  ipcMain.on('clip-download-model', (event, payload) => {
+    const fsm = require('fs');
+    const pathm = require('path');
+    const { net } = require('electron');
+    const { url, filename } = payload || {};
+
+    const modelsDir = pathm.join(app.getPath('userData'), 'models');
+    const dest = pathm.join(modelsDir, filename);
+    const part = dest + '.part';
+
+    try {
+      fsm.mkdirSync(modelsDir, { recursive: true });
+    } catch (e) {
+      event.reply('clip-download-result', { success: false, error: String(e) });
+      return;
+    }
+
+    // 已存在且足够大 → 跳过下载
+    try {
+      if (fsm.existsSync(dest) && fsm.statSync(dest).size > 100000) {
+        event.reply('clip-download-result', { success: true, path: dest });
+        return;
+      }
+    } catch (e) { /* 忽略，继续下载 */ }
+
+    const cleanupPart = () => {
+      try { fsm.unlinkSync(part); } catch (e) { /* 忽略 */ }
+    };
+
+    const fail = (err) => {
+      cleanupPart();
+      event.reply('clip-download-result', { success: false, error: String(err) });
+    };
+
+    let redirectCount = 0;
+    const MAX_REDIRECTS = 5;
+
+    const doRequest = (reqUrl) => {
+      let request;
+      try {
+        request = net.request(reqUrl);
+      } catch (e) {
+        fail(e);
+        return;
+      }
+
+      request.on('response', (response) => {
+        const status = response.statusCode;
+
+        // 手动处理 3xx 重定向（最多 5 次）
+        if (status >= 300 && status < 400 && response.headers && response.headers.location) {
+          response.resume(); // 丢弃 body
+          if (redirectCount >= MAX_REDIRECTS) {
+            fail('重定向次数过多');
+            return;
+          }
+          redirectCount++;
+          let location = response.headers.location;
+          if (Array.isArray(location)) location = location[0];
+          doRequest(location);
+          return;
+        }
+
+        if (status >= 400) {
+          response.resume();
+          fail('HTTP ' + status);
+          return;
+        }
+
+        let total = 0;
+        try {
+          let cl = response.headers && response.headers['content-length'];
+          if (Array.isArray(cl)) cl = cl[0];
+          total = parseInt(cl, 10) || 0;
+        } catch (e) { total = 0; }
+
+        let received = 0;
+        let lastReply = 0;
+        let writeStream;
+        try {
+          writeStream = fsm.createWriteStream(part);
+        } catch (e) {
+          fail(e);
+          return;
+        }
+
+        writeStream.on('error', (e) => {
+          try { response.destroy(); } catch (_) {}
+          fail(e);
+        });
+
+        response.on('data', (chunk) => {
+          received += chunk.length;
+          writeStream.write(chunk);
+          const now = Date.now();
+          if (now - lastReply >= 400) {
+            lastReply = now;
+            const ratio = total > 0 ? received / total : 0;
+            event.reply('clip-download-progress', { received, total, ratio });
+          }
+        });
+
+        response.on('end', () => {
+          writeStream.end(() => {
+            try {
+              if (!fsm.existsSync(part) || fsm.statSync(part).size <= 100000) {
+                fail('下载文件不完整');
+                return;
+              }
+              fsm.renameSync(part, dest);
+              event.reply('clip-download-progress', { received, total, ratio: 1 });
+              event.reply('clip-download-result', { success: true, path: dest });
+            } catch (e) {
+              fail(e);
+            }
+          });
+        });
+
+        response.on('error', (e) => {
+          try { writeStream.destroy(); } catch (_) {}
+          fail(e);
+        });
+      });
+
+      request.on('error', (e) => fail(e));
+      request.end();
+    };
+
+    doRequest(url);
+  });
+
+  // 查询 CLIP 模型在桌面端的下载状态
+  ipcMain.handle('clip-model-status', async (event, payload) => {
+    const fsm = require('fs');
+    const pathm = require('path');
+    const { filename } = payload || {};
+    const dest = pathm.join(app.getPath('userData'), 'models', filename);
+    let exists = false;
+    let size = 0;
+    try {
+      if (fsm.existsSync(dest)) {
+        size = fsm.statSync(dest).size;
+        exists = size > 100000;
+      }
+    } catch (e) { /* 忽略 */ }
+    return { exists, path: dest, size };
+  });
+
   // 监听更新标题栏统计信息
   ipcMain.on('update-titlebar-stats', (event, stats) => {
     logger.debug(L.titlebarStats, stats);
