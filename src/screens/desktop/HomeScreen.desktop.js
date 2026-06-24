@@ -247,6 +247,9 @@ const HomeScreen = () => {
         case 'AIModelConfig':
           ScreenComponent = (await import('./AIModelConfigScreen.desktop')).default;
           break;
+        case 'Search':
+          ScreenComponent = (await import('./SearchScreen.desktop')).default;
+          break;
         case 'Stats':
           ScreenComponent = (await import('./StatsScreen.desktop')).default;
           break;
@@ -917,10 +920,23 @@ const HomeScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* 相册报告入口 */}
+        {/* 搜索入口 */}
         <View style={styles.statsEntrySection}>
           <TouchableOpacity
             style={styles.statsEntryButton}
+            onPress={() => {
+              setCurrentScreen('Search');
+              setScreenProps({});
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.statsEntryIcon}>🔍</Text>
+            <Text style={styles.statsEntryText}>{t('search.title', { defaultValue: '搜索' })}</Text>
+            <Text style={styles.statsEntryArrow}>›</Text>
+          </TouchableOpacity>
+          {/* 相册报告入口 */}
+          <TouchableOpacity
+            style={[styles.statsEntryButton, { marginTop: 10 }]}
             onPress={() => {
               setCurrentScreen('Stats');
               setScreenProps({});
@@ -1421,6 +1437,7 @@ const HomeScreen = () => {
     const ImagePreviewScreen = loadedScreens.ImagePreview;
     const SettingsScreen = loadedScreens.Settings;
     const AIModelConfigScreen = loadedScreens.AIModelConfig;
+    const SearchScreen = loadedScreens.Search;
     const StatsScreen = loadedScreens.Stats;
     const MomentsScreen = loadedScreens.Moments;
     const DuplicatesScreen = loadedScreens.Duplicates;
@@ -1632,6 +1649,19 @@ const HomeScreen = () => {
             {AIModelConfigScreen ? (
               <AIModelConfigScreen
                 navigation={{ goBack: () => setCurrentScreen('Settings') }}
+              />
+            ) : <View style={styles.loadingContainer}><Text>{t('home.loading') || '加载中…'}</Text></View>}
+          </View>
+        )}
+
+        {currentScreen === 'Search' && (
+          <View style={styles.screenContainer}>
+            {SearchScreen ? (
+              <SearchScreen
+                onBack={async () => {
+                  setCurrentScreen('Home');
+                  await loadData();
+                }}
               />
             ) : <View style={styles.loadingContainer}><Text>{t('home.loading') || '加载中…'}</Text></View>}
           </View>

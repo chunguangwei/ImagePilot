@@ -263,6 +263,8 @@
     "aiClassifyDone": "Classification done ({{total}})"
   },
   "search": {
+    "title": "Search",
+    "rewriteBtn": "Refine",
     "placeholder": "Search photos & videos…",
     "emptyTip": "Type a keyword, or try:",
     "noResults": "No photos match \"{{query}}\"",
