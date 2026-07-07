@@ -1034,7 +1034,12 @@
     "testFail": "✗ {{error}}",
     "saving": "Saving…",
     "labelLocal": "On-device (offline · free)",
-    "labelCustom": "Custom / Azure (OpenAI compatible)"
+    "labelCustom": "Custom / Azure (OpenAI compatible)",
+    "consentTitle": "Before enabling online classification",
+    "consentMessage": "You are enabling \"online classification\". Once enabled, when you actively start a cloud classification, the photos you select (or frames extracted from videos) will be sent — using the API key you provide — to the third-party AI provider you choose (e.g. OpenAI / Claude / Gemini / Kimi) for recognition.\n\n· What is sent: the photos you choose to classify\n· Who receives it: the third-party provider you configured (governed by their privacy policy)\n· The developer of this app runs no server and never receives or stores your photos or data\n· This feature is off by default; you can switch back to on-device offline classification at any time\n\nDo you agree and want to enable it?",
+    "consentAgree": "Agree & Enable",
+    "consentCancel": "Cancel",
+    "consentLink": "View Privacy Policy"
   },
   "filterEditor": {
     "title": "Filter editor",

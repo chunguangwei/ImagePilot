@@ -150,7 +150,7 @@ try {
     Write-Host "========================================`n" -ForegroundColor Green
     
     Write-Host "下一步检查:" -ForegroundColor Cyan
-    Write-Host "1. 打开开始菜单，搜索 '芯图相册'" -ForegroundColor Gray
+    Write-Host "1. 打开开始菜单，搜索 'ImagePilot'" -ForegroundColor Gray
     Write-Host "2. 右键点击应用，选择 '固定到开始屏幕'" -ForegroundColor Gray
     Write-Host "3. 检查磁贴是否显示正确的图标（不是默认图标）" -ForegroundColor Gray
     Write-Host "4. 尝试调整磁贴大小，检查不同尺寸的图标" -ForegroundColor Gray

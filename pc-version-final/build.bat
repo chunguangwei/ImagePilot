@@ -1,5 +1,5 @@
 @echo off
-echo 开始构建芯图相册PC版本...
+echo 开始构建ImagePilotPC版本...
 
 echo.
 echo 步骤1: 安装依赖

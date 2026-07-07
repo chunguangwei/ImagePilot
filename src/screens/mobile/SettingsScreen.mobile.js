@@ -52,7 +52,7 @@ let SetIonicons = null;
 try { SetIonicons = require('react-native-vector-icons/Ionicons').default; } catch (_) { SetIonicons = null; }
 import { changeLanguage, getCurrentLanguage, getDefaultPresets } from '../../i18n';
 
-const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
+const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) => {
   const { t, i18n } = useTranslation('common');
   const c = useIosColors();
   // 主题选择（'system' | 'light' | 'dark'）：来自 Provider，setScheme 即时全屏生效
@@ -1254,6 +1254,40 @@ const SettingsScreen = ({ navigation, startSmartScan, onScanProgress }) => {
       ]
     );
   };
+
+  // 从首页「立即升级」引导卡跳转过来（route.params.autoUpgradeClip）：
+  // 自动展开「分类模型」区并直接开始下载「AI 智能识别」(clip 档)。
+  // 仅执行一次；若已在下载 / 已下载 / 已是更高档则不重复触发，只展开定位。
+  const autoUpgradeHandledRef = useRef(false);
+  useEffect(() => {
+    if (loading) return;                                  // 等设置/下载状态读完再判断
+    if (!route?.params?.autoUpgradeClip) return;
+    if (autoUpgradeHandledRef.current) return;
+    autoUpgradeHandledRef.current = true;
+    // 展开分类模型区，让用户看到进度条/档位
+    setClassifierExpanded(true);
+    // 清掉参数，避免返回/重渲染时重复触发
+    try { navigation?.setParams?.({ autoUpgradeClip: undefined }); } catch (_) {}
+    (async () => {
+      try {
+        // 已在下载中 → 不重复
+        if (classifierDownloadingKey) return;
+        // clip 已下载 → 直接切到该档即可，无需再下
+        if (classifierDownloaded.clip) {
+          setClassifierTier('clip');
+          try { await updateSetting('classifierModelTier', 'clip'); } catch (_) {}
+          return;
+        }
+        // 未下载 → 触发下载，完成后自动切档（与手动点击 clip 档完全一致）
+        classifierPrevTierRef.current = classifierTier;
+        setClassifierTier('clip');
+        await downloadClassifierModel('clip', { switchAfter: true });
+      } catch (_) {
+        // downloadClassifierModel 内部已处理 Alert / 回滚
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, route?.params?.autoUpgradeClip, classifierDownloaded.clip, classifierDownloadingKey]);
 
   // 切换 CLIP 模型变体（S2 推荐 / S1 旧版）：落 setting + 重新判断该变体是否已下载
   const selectClipModel = async (id) => {

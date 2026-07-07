@@ -530,7 +530,7 @@ npx react-native run-ios        # 运行 iOS 版本（已 Xcode 真机验证，�
 ### 技术文档
 
 - [分类规则配置](src/services/README_ConfigService.md)
-- [使用指南](docs/User/芯图相册使用指南.md) - 安装、AI 模型设置、自定义分类、修图
+- [使用指南](docs/User/ImagePilot使用指南.md) - 安装、AI 模型设置、自定义分类、修图
 - [多维度分类功能使用指南](docs/User/多维度分类功能使用指南.md)
 - [核心功能文案](docs/应用介绍-核心功能文案.md)
 

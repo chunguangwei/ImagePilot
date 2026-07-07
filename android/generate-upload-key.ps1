@@ -69,13 +69,13 @@ Write-Host ""
 Write-Host "📦 步骤1: 生成上传密钥文件 (upload-keystore.jks)..." -ForegroundColor Yellow
 
 # 生成密钥
-$keytoolCmd = "$keytool -genkeypair -v -storetype PKCS12 -keystore upload-keystore.jks -alias $alias -keyalg RSA -keysize 2048 -validity $validity -storepass `"$keystorePasswordPlain`" -keypass `"$keyPasswordPlain`" -dname `"CN=芯图相册, OU=Dev, O=ImageClassifier, L=Beijing, S=Beijing, C=CN`""
+$keytoolCmd = "$keytool -genkeypair -v -storetype PKCS12 -keystore upload-keystore.jks -alias $alias -keyalg RSA -keysize 2048 -validity $validity -storepass `"$keystorePasswordPlain`" -keypass `"$keyPasswordPlain`" -dname `"CN=ImagePilot, OU=Dev, O=ImageClassifier, L=Beijing, S=Beijing, C=CN`""
 
 try {
     if ($keytool -eq "keytool") {
-        Invoke-Expression "keytool -genkeypair -v -storetype PKCS12 -keystore upload-keystore.jks -alias $alias -keyalg RSA -keysize 2048 -validity $validity -storepass `"$keystorePasswordPlain`" -keypass `"$keyPasswordPlain`" -dname `"CN=芯图相册, OU=Dev, O=ImageClassifier, L=Beijing, S=Beijing, C=CN`""
+        Invoke-Expression "keytool -genkeypair -v -storetype PKCS12 -keystore upload-keystore.jks -alias $alias -keyalg RSA -keysize 2048 -validity $validity -storepass `"$keystorePasswordPlain`" -keypass `"$keyPasswordPlain`" -dname `"CN=ImagePilot, OU=Dev, O=ImageClassifier, L=Beijing, S=Beijing, C=CN`""
     } else {
-        & $keytool -genkeypair -v -storetype PKCS12 -keystore upload-keystore.jks -alias $alias -keyalg RSA -keysize 2048 -validity $validity -storepass $keystorePasswordPlain -keypass $keyPasswordPlain -dname "CN=芯图相册, OU=Dev, O=ImageClassifier, L=Beijing, S=Beijing, C=CN"
+        & $keytool -genkeypair -v -storetype PKCS12 -keystore upload-keystore.jks -alias $alias -keyalg RSA -keysize 2048 -validity $validity -storepass $keystorePasswordPlain -keypass $keyPasswordPlain -dname "CN=ImagePilot, OU=Dev, O=ImageClassifier, L=Beijing, S=Beijing, C=CN"
     }
     
     if ($LASTEXITCODE -ne 0) {

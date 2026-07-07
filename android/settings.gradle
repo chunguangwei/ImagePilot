@@ -1,4 +1,4 @@
-rootProject.name = '芯图相册'
+rootProject.name = 'ImagePilot'
 
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')

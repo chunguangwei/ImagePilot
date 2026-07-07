@@ -13,7 +13,7 @@
 1. **Apple Developer Program 会员**（个人 $99/年）已激活。
 2. **App Store Connect 里已创建 App 记录**：
    - https://appstoreconnect.apple.com → 我的 App → ➕ → 新建 App
-   - 平台 iOS；名称（如"芯图相册"）；主要语言 简体中文；
+   - 平台 iOS；名称（如"ImagePilot"）；主要语言 简体中文；
    - **Bundle ID 选 `com.chunguangwei.imagepilot`**（若下拉里没有，先去
      https://developer.apple.com/account → Identifiers 注册这个 App ID）；
    - SKU 随便填个唯一串（如 `imagepilot`）。

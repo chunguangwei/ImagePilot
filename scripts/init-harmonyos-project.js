@@ -57,7 +57,7 @@ console.log('📝 创建配置文件...');
 const ohPackageJson = {
   name: 'xintualbum-harmonyos',
   version: '1.0.0',
-  description: '芯图相册-鸿蒙版本',
+  description: 'ImagePilot-鸿蒙版本',
   main: 'index.js',
   author: '',
   license: 'Apache-2.0',
@@ -106,7 +106,7 @@ const moduleJson = {
   module: {
     name: 'entry',
     type: 'entry',
-    description: '芯图相册主模块',
+    description: 'ImagePilot主模块',
     mainElement: 'EntryAbility',
     deviceTypes: ['phone', 'tablet'],
     deliveryWithInstall: true,
@@ -161,7 +161,7 @@ console.log('   ✅ entry/src/main/module.json5');
 // 创建 README.md
 const readme = `# 鸿蒙版本
 
-这是芯图相册的鸿蒙版本。
+这是ImagePilot的鸿蒙版本。
 
 ## 目录结构
 

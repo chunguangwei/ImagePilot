@@ -1503,13 +1503,13 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
             // Android 10+ 使用相对路径
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 contentValues.put(MediaStore.Images.Media.RELATIVE_PATH, 
-                    android.os.Environment.DIRECTORY_PICTURES + "/芯图相册");
+                    android.os.Environment.DIRECTORY_PICTURES + "/ImagePilot");
                 contentValues.put(MediaStore.Images.Media.IS_PENDING, 1);
             } else {
                 // Android 9及以下使用DATA字段
                 File picturesDir = android.os.Environment.getExternalStoragePublicDirectory(
                     android.os.Environment.DIRECTORY_PICTURES);
-                File appDir = new File(picturesDir, "芯图相册");
+                File appDir = new File(picturesDir, "ImagePilot");
                 if (!appDir.exists()) {
                     appDir.mkdirs();
                 }

@@ -1034,7 +1034,12 @@
     "testFail": "✗ {{error}}",
     "saving": "保存中…",
     "labelLocal": "本地（离线·免费）",
-    "labelCustom": "自定义 / Azure（OpenAI 兼容）"
+    "labelCustom": "自定义 / Azure（OpenAI 兼容）",
+    "consentTitle": "启用在线分类前，请知晓",
+    "consentMessage": "你正在启用「在线分类」。启用后，当你主动发起云端分类时，你选择的照片（或视频抽帧）会通过你自己填写的 API Key，发送给你指定的第三方 AI 服务商（如 OpenAI / Claude / Gemini / Kimi）进行识别。\n\n· 发送内容：你选择分类的照片\n· 接收方：你配置的第三方服务商（受其隐私政策约束）\n· 本 App 开发者不运营任何服务器，不会接收、存储你的照片或数据\n· 此功能默认关闭，你可随时切回「本地离线分类」\n\n是否同意并启用？",
+    "consentAgree": "同意并启用",
+    "consentCancel": "取消",
+    "consentLink": "查看隐私政策"
   },
   "filterEditor": {
     "title": "滤镜修图",

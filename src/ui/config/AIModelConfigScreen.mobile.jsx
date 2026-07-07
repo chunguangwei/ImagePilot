@@ -11,11 +11,13 @@
  */
 
 import React from 'react';
-import { View, Text, TextInput, Switch, Pressable, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Switch, Pressable, ScrollView, ActivityIndicator, StyleSheet, Alert, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useIosColors } from '../ios/theme';
 import { useAIModelConfig } from './useAIModelConfig.js';
 import { AIModelConfigController } from './AIModelConfigController.js';
+
+const PRIVACY_POLICY_URL = 'https://gist.github.com/chunguangwei/c3eff9e00f2d3c4375968f61d1b160da';
 
 const REMOTE_LABELS = {
   openai: 'OpenAI',
@@ -49,6 +51,25 @@ export function AIModelConfigScreen({ deps, styles: override = {} }) {
   }
 
   const activeIsLocal = state.active === 'local-onnx';
+
+  // 保存：若选中的是在线（第三方）引擎，先弹「数据发送告知并同意」再落盘。
+  // 满足 App Store 5.1.1(i)/5.1.2(i)：发送前明确告知发送内容/接收方，并获得用户许可。
+  const handleSave = () => {
+    if (activeIsLocal) {
+      controller.save();
+      return;
+    }
+    Alert.alert(
+      tr('aiModelConfig.consentTitle'),
+      tr('aiModelConfig.consentMessage'),
+      [
+        { text: tr('aiModelConfig.consentLink'), onPress: () => { try { Linking.openURL(PRIVACY_POLICY_URL); } catch (_) {} } },
+        { text: tr('aiModelConfig.consentCancel'), style: 'cancel' },
+        { text: tr('aiModelConfig.consentAgree'), onPress: () => controller.save() },
+      ],
+      { cancelable: true }
+    );
+  };
 
   // 渲染「当前生效」这一个远程引擎的配置卡片
   const renderActiveRemoteCard = () => {
@@ -159,7 +180,7 @@ export function AIModelConfigScreen({ deps, styles: override = {} }) {
       <Pressable
         style={[s.saveBtn, (!state.dirty || state.saving) && s.saveBtnDisabled]}
         disabled={!state.dirty || state.saving}
-        onPress={() => controller.save()}
+        onPress={handleSave}
       >
         <Text style={s.saveBtnText}>{state.saving ? tr('aiModelConfig.saving') : tr('common.save')}</Text>
       </Pressable>

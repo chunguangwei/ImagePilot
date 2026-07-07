@@ -245,7 +245,7 @@ const HomeScreen = ({ navigation }) => {
       const s = await UnifiedDataService.readSettings();
       await UnifiedDataService.writeSettings({ ...(s || {}), clipUpsellShown: true }); // 标记已提示，永不再弹
     } catch (_) {}
-    if (goUpgrade && navigation) navigation.navigate('Settings', { focusClassifier: true });
+    if (goUpgrade && navigation) navigation.navigate('Settings', { autoUpgradeClip: true });
   }, [navigation]);
 
   // 主题动态色叠加到 StyleSheet 上（部分组件保留 inline 覆盖以便简化合并）

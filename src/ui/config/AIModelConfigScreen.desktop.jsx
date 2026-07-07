@@ -21,12 +21,33 @@ const REMOTE_LABELS = {
   custom: '自定义 / Azure（OpenAI 兼容）',
 };
 
+const CONSENT_MESSAGE =
+  '你正在启用「在线分类」。启用后，当你主动发起云端分类时，你选择的照片（或视频抽帧）会通过你自己填写的 API Key，' +
+  '发送给你指定的第三方 AI 服务商（如 OpenAI / Claude / Gemini / Kimi）进行识别。\n\n' +
+  '· 发送内容：你选择分类的照片\n' +
+  '· 接收方：你配置的第三方服务商（受其隐私政策约束）\n' +
+  '· 本 App 开发者不运营任何服务器，不会接收、存储你的照片或数据\n' +
+  '· 此功能默认关闭，你可随时切回「本地离线分类」\n\n' +
+  '点击「确定」表示同意并启用。';
+
 export function AIModelConfigScreen({ deps }) {
   const { state, controller } = useAIModelConfig(() => new AIModelConfigController(deps));
 
   if (state.loading) return <div className="ai-config loading">加载中…</div>;
 
   const choices = ['local-onnx', ...state.available];
+
+  // 保存：若选中在线（第三方）引擎，先弹「数据发送告知并同意」再落盘。
+  const handleSave = () => {
+    if (state.active === 'local-onnx') {
+      controller.save();
+      return;
+    }
+    const ok = typeof window !== 'undefined' && window.confirm
+      ? window.confirm(CONSENT_MESSAGE)
+      : true;
+    if (ok) controller.save();
+  };
 
   return (
     <div className="ai-config">
@@ -112,7 +133,7 @@ export function AIModelConfigScreen({ deps }) {
       })}
 
       <div className="ai-config-actions">
-        <button type="button" disabled={!state.dirty || state.saving} onClick={() => controller.save()}>
+        <button type="button" disabled={!state.dirty || state.saving} onClick={handleSave}>
           {state.saving ? '保存中…' : '保存'}
         </button>
         <button type="button" disabled={state.saving} onClick={() => controller.load()}>重置</button>

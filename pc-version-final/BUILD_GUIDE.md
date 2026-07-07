@@ -135,7 +135,7 @@ npm run electron:build-all
 **下载页面示例**：
 ```
 ┌────────────────────────────────────────┐
-│  芯图相册 v1.0.0 - Windows版           │
+│  ImagePilot v1.0.0 - Windows版           │
 ├────────────────────────────────────────┤
 │                                        │
 │  📦 安装版（推荐）                      │
@@ -175,7 +175,7 @@ npm run electron:build-all
     "perMachine": false,                           // 为当前用户安装
     "createDesktopShortcut": true,                 // 创建桌面快捷方式
     "createStartMenuShortcut": true,               // 创建开始菜单
-    "shortcutName": "芯图相册",                     // 快捷方式名称
+    "shortcutName": "ImagePilot",                     // 快捷方式名称
     "runAfterFinish": true,                        // 安装完成后运行
     "language": "2052"                             // 简体中文
   }

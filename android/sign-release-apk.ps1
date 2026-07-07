@@ -109,7 +109,7 @@ Write-Host "   - keytool: $keytool" -ForegroundColor Cyan
 # 检查或创建keystore
 if (-not (Test-Path $KeystorePath)) {
     Write-Host "🔑 创建新的keystore..." -ForegroundColor Yellow
-    & $keytool -genkey -v -keystore $KeystorePath -alias $Alias -storepass $StorePass -keypass $KeyPass -dname "CN=芯图相册, OU=Dev, O=ImageClassifier, L=Beijing, S=Beijing, C=CN" -keyalg RSA -keysize 2048 -validity 10000
+    & $keytool -genkey -v -keystore $KeystorePath -alias $Alias -storepass $StorePass -keypass $KeyPass -dname "CN=ImagePilot, OU=Dev, O=ImageClassifier, L=Beijing, S=Beijing, C=CN" -keyalg RSA -keysize 2048 -validity 10000
     
     if ($LASTEXITCODE -ne 0) {
         Write-Host "❌ 创建keystore失败" -ForegroundColor Red

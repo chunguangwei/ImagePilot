@@ -199,7 +199,7 @@ Write-Host "✓ 安装完成！" -ForegroundColor Green
 Write-Host "========================================`n" -ForegroundColor Green
 
 Write-Host "下一步验证步骤:" -ForegroundColor Cyan
-Write-Host "1. 打开开始菜单，搜索 '芯图相册'" -ForegroundColor Gray
+Write-Host "1. 打开开始菜单，搜索 'ImagePilot'" -ForegroundColor Gray
 Write-Host "2. 右键点击应用磁贴，选择 '固定到开始屏幕'" -ForegroundColor Gray
 Write-Host "3. 检查磁贴是否显示正确的应用图标（不是默认图标）" -ForegroundColor Gray
 Write-Host "4. 如果磁贴显示默认图标，说明磁贴图标配置有问题" -ForegroundColor Yellow

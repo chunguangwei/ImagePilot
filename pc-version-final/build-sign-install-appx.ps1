@@ -227,7 +227,7 @@ Write-Host "========================================`n" -ForegroundColor Green
 
 if (-not $SkipInstall) {
     Write-Host "下一步:" -ForegroundColor Cyan
-    Write-Host "1. 打开开始菜单，搜索 '芯图相册'" -ForegroundColor Gray
+    Write-Host "1. 打开开始菜单，搜索 'ImagePilot'" -ForegroundColor Gray
     Write-Host "2. 右键点击应用，选择 '固定到开始屏幕'" -ForegroundColor Gray
     Write-Host "3. 检查磁贴图标是否正确显示" -ForegroundColor Gray
     Write-Host "4. 运行应用测试功能" -ForegroundColor Gray
