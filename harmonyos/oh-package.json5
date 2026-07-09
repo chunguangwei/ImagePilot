@@ -1,7 +1,7 @@
 {
   name: xintualbum-harmonyos,
   version: 1.0.0,
-  description: 芯图相册-鸿蒙版本,
+  description: ImagePilot-鸿蒙版本,
   main: index.js,
   author: ,
   license: Apache-2.0,

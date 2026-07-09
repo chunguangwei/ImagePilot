@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(/harmonyos/**)",
+      "Edit(/harmonyos/entry/src/main/**)"
+    ]
+  }
+}

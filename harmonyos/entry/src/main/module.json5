@@ -2,7 +2,7 @@
   module: {
     name: entry,
     type: entry,
-    description: 芯图相册主模块,
+    description: ImagePilot主模块,
     mainElement: EntryAbility,
     deviceTypes: [
       phone,

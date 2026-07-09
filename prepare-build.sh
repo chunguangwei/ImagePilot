@@ -66,7 +66,7 @@ cat > temp-package.json << 'EOF'
 {
   "name": "imageclassifier-app",
   "version": "1.1.2",
-  "description": "芯图相册-智能分类，便捷管理，仅你可见",
+  "description": "ImagePilot-智能分类，便捷管理，仅你可见",
   "author": "ImageClassifier Team",
   "main": "public/electron.js",
   "homepage": "./",
@@ -165,7 +165,7 @@ cat > temp-package.json << 'EOF'
       "requestedExecutionLevel": "asInvoker"
     },
     "appx": {
-      "displayName": "芯图相册",
+      "displayName": "ImagePilot",
       "publisher": "CN=03F46D22-3B0F-4788-A8BF-351A4DF78D3D",
       "publisherDisplayName": "智语未来软件",
       "identityName": "E8546D00.75903E98454E",
@@ -204,7 +204,7 @@ cat > temp-package.json << 'EOF'
       "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "dmg": {
-      "title": "芯图相册",
+      "title": "ImagePilot",
       "icon": "public/icon.icns",
       "contents": [
         {
@@ -234,7 +234,7 @@ cat > temp-package.json << 'EOF'
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "芯图相册",
+      "shortcutName": "ImagePilot",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true,
       "include": "installer/installer.nsh",
