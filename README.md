@@ -7,7 +7,7 @@
 
 ## 📖 项目简介
 
-**ImagePilot** 是一款隐私优先的智能照片分类管理工具：默认全程本地离线分类（设备端 ONNX），可选配置你自己的大模型做在线增强；并内置从 GitHub 一键升级的能力。支持 iOS / Android（React Native）与 PC 桌面（Electron / react-native-web）。iOS 与 Android 功能已对齐（修图、时刻秀及导出含背景乐、本地分类等两端一致）；iOS 已在真机验证，App Store 上架待提交。
+**ImagePilot** 是一款隐私优先的智能照片分类管理工具：默认全程本地离线分类（设备端 ONNX），可选配置你自己的大模型做在线增强；并内置从 GitHub 一键升级的能力。支持 iOS / Android（React Native）与 PC 桌面（Electron / react-native-web）。iOS 与 Android 功能已对齐（修图、时刻秀及导出含背景乐、本地分类等两端一致）；**iOS 版已正式上架 Apple App Store**，Android / Windows / macOS 通过 GitHub Releases 分发。
 
 > 本项目以 **PolyForm Noncommercial License 1.0.0** 授权：**非商业用途免费，商业用途须事先获作者书面同意**（详见文末「授权 / License」）。早期基于上游 ImageClassifier 起步，现已作为独立产品演进（移除原作者公网后端、统一走用户自配大模型、自建 GitHub 升级通道等）。上游致谢见文末「致谢」。
 
@@ -388,14 +388,19 @@ ImagePilot支持**8大分类维度**，从多个角度智能管理您的照片�
 
 ### 下载安装
 
-**Android：从 GitHub Releases 下载（推荐）**
+**iOS：App Store 下载（推荐）**
+- 在 App Store 搜索 **ImagePilot**，或直接打开 [App Store 页面](https://apps.apple.com/app/id6784507654) 获取。
+
+**Android：从 GitHub Releases 下载**
 1. 打开 [chunguangwei/ImagePilot Releases](https://github.com/chunguangwei/ImagePilot/releases/latest)
-2. 下载最新版 `app-release.apk`
+2. 下载最新版 `ImagePilot-android-arm-<版本>.apk`
 3. 在手机上点击安装（首次需允许「安装未知来源应用」）
 4. 装好后，应用会在启动时自动检查更新，后续升级一键完成
 
-**PC（桌面版）**
-- 从源码构建（见下方「开发指南」）；Electron 打包产物用于 Windows / macOS。
+**PC（Windows / macOS）：从 GitHub Releases 下载**
+1. 打开 [chunguangwei/ImagePilot Releases](https://github.com/chunguangwei/ImagePilot/releases/latest)
+2. Windows 选 `...-setup-<版本>.exe`（安装版）或 `...-portable-<版本>.exe`（免安装）；macOS 选 `...-mac-arm-<版本>.dmg`
+3. 也可从源码构建（见下方「开发指南」）
 
 ### 使用步骤
 
@@ -525,7 +530,7 @@ npx react-native run-android    # 运行 Android 版本（已验证平台）
 npx react-native run-ios        # 运行 iOS 版本（已 Xcode 真机验证，与 Android 功能对齐）
 ```
 
-> 已验证平台为 iOS、Android 与 PC 桌面（Electron / react-native-web）。iOS 通过 Xcode 真机调试验证（功能与 Android 对齐），App Store 上架待提交。
+> 已验证平台为 iOS、Android 与 PC 桌面（Electron / react-native-web）。iOS 版已正式上架 Apple App Store（功能与 Android 对齐）。
 
 ### 技术文档
 
