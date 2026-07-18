@@ -8,9 +8,9 @@
 
 | 端 | 版本名 (version name) | 构建号 (build) | 修改位置 |
 | --- | --- | --- | --- |
-| iOS | `1.5.74` (`MARKETING_VERSION`) | `6` (`CURRENT_PROJECT_VERSION`) | `ios/ImagePilot.xcodeproj/project.pbxproj` |
-| Android | `1.5.74` (`versionName`) | 构建时间戳 `MMddHHmm`（自动，`versionCode`） | `android/app/build.gradle` |
-| PC / 通用 | `1.5.74` | — | `package.json` 的 `version` |
+| iOS | `1.5.75` (`MARKETING_VERSION`) | `7` (`CURRENT_PROJECT_VERSION`) | `ios/ImagePilot.xcodeproj/project.pbxproj` |
+| Android | `1.5.75` (`versionName`) | 构建时间戳 `MMddHHmm`（自动，`versionCode`） | `android/app/build.gradle` |
+| PC / 通用 | `1.5.75` | — | `package.json` 的 `version` |
 
 > 说明：GitHub Releases 的发布逻辑（`.github/workflows/main-build.yml`）读取 **`package.json` 的 `version`** 作为 tag（`v{version}`）。
 
@@ -20,9 +20,9 @@
 
 ### 1. iOS —— 两个号都要涨
 下次提交 App Store 时：
-- `MARKETING_VERSION` **必须 > `1.5.74`**（如 `1.5.75`）——用户可见版本名。
-- `CURRENT_PROJECT_VERSION` **必须 > `6`**（如 `7`）——同一版本名下 build 号必须严格递增，否则 App Store Connect 拒收。
-  > 历史教训：1.5.74 曾上传过 build 4、5（被拒），所以本次过审用的是 **build 6**。下次至少从 **7** 起。
+- `MARKETING_VERSION` **必须 > `1.5.75`**（如 `1.5.76`）——用户可见版本名。
+- `CURRENT_PROJECT_VERSION` **必须 > `7`**（如 `8`）——同一版本名下 build 号必须严格递增，否则 App Store Connect 拒收。
+  > 历史教训：1.5.74 曾上传过 build 4、5（被拒），过审用 build 6；1.5.75 用 build 7。下次至少从 **8** 起。
 
 ### 2. Android / PC —— 版本名必须变，否则不推送更新
 安卓端更新检测（`src/services/UpdateService.js`）逻辑：
@@ -65,4 +65,4 @@
 
 ---
 
-_最后更新：2026-07-08，对应线上基线 1.5.74 (iOS build 6)。_
+_最后更新：2026-07-19，对应线上基线 1.5.75 (iOS build 7)。_

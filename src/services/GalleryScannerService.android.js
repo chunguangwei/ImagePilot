@@ -1512,7 +1512,8 @@ class GalleryScannerService {
       // 发送完成消息（会触发 processProgressData 自动重建缓存）
       // 🔥 修复：位置信息补全完成后发送 location_enrichment 阶段消息（与相似度检测保持一致），而不是 completed
       // 这样 sendProgressMessage 中的判断 stage !== 'location_enrichment' 会排除它，不会调用前台服务
-      await this.sendProgressMessage('location_enrichment', processedThisPhase, totalFoundThisPhase, this.imagesClassified, this.totalImagesToBeClassified);
+      // phaseComplete=true：显式标记阶段完成，确保末批新城市一定刷入缓存并通知 UI 重载
+      await this.sendProgressMessage('location_enrichment', processedThisPhase, totalFoundThisPhase, this.imagesClassified, this.totalImagesToBeClassified, true);
 
     } catch (error) {
       const errorMessage = error?.message || error?.toString() || '未知错误';
@@ -1573,20 +1574,21 @@ class GalleryScannerService {
    * @param {number} imagesClassified - 已分类数量（可选，不更新时传当前值）
    * @param {number} totalImagesToBeClassified - 总分类目标（可选，不更新时传当前值）
    */
-  async sendProgressMessage(stage, processedThisPhase, totalFoundThisPhase, imagesClassified = this.imagesClassified, totalImagesToBeClassified = this.totalImagesToBeClassified) {
+  async sendProgressMessage(stage, processedThisPhase, totalFoundThisPhase, imagesClassified = this.imagesClassified, totalImagesToBeClassified = this.totalImagesToBeClassified, phaseComplete = false) {
     if (!this.onProgress) {
       logger.warn(`⚠️ onProgress 回调未设置，跳过进度消息: ${stage}`);
       return;
     }
-    
+
     // 🔥 已移除去重逻辑，允许所有进度更新通过（包括更频繁的更新）
     logger.info(`📊 扫描进度: ${stage}, 已处理: ${processedThisPhase}/${totalFoundThisPhase}, 总分类: ${imagesClassified}/${totalImagesToBeClassified}`);
-    
+
     // 生成进度数据并直接调用 onProgress
     const progressData = await this.processProgressData({
       stage,
       filesFound: totalFoundThisPhase,
       filesProcessed: processedThisPhase,
+      phaseComplete,
       imagesClassified,
       totalImagesToBeClassified,
     });
@@ -1634,7 +1636,7 @@ class GalleryScannerService {
    * 包括消息生成、缓存刷新频率控制、统计信息
    */
   async processProgressData(rawProgress) {
-    const { stage, filesProcessed, filesFound, imagesClassified, totalImagesToBeClassified } = rawProgress;
+    const { stage, filesProcessed, filesFound, phaseComplete = false, imagesClassified, totalImagesToBeClassified } = rawProgress;
     
     let simpleMessage = '';
     let shouldRefresh = false;
@@ -1798,6 +1800,10 @@ class GalleryScannerService {
     
     if (stage === 'completed') {
       // 扫描完成时刷新
+      shouldRefresh = true;
+    } else if (phaseComplete) {
+      // 阶段显式完成：不依赖 filesProcessed === filesFound 的脆弱推断
+      // （位置补全中部分图片 GPS 查不到城市时 processed < found，末批新城市会漏刷）
       shouldRefresh = true;
     } else if (filesProcessed && filesFound && filesProcessed === filesFound) {
       // 每个阶段完成时刷新：已处理总数等于待处理总数

@@ -752,12 +752,17 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
                 MediaStore.Images.Media.RELATIVE_PATH  // 相对路径（如果DATA为空，使用此路径）
             };
             
-            // 查询条件：DATE_TAKEN >= sinceTime
-            String selection = MediaStore.Images.Media.DATE_TAKEN + " >= ?";
+            // 有效时间：优先拍摄时间(datetaken, 毫秒)，截图/下载/社交图片其值为0或NULL，
+            // 回退到入库时间(date_added, 秒→毫秒)，保证所有来源的照片都能被"最近发现"覆盖
+            String effectiveTime = "COALESCE(NULLIF(" + MediaStore.Images.Media.DATE_TAKEN + ", 0), "
+                + MediaStore.Images.Media.DATE_ADDED + " * 1000)";
+
+            // 查询条件：有效时间 >= sinceTime
+            String selection = effectiveTime + " >= ?";
             String[] selectionArgs = new String[]{String.valueOf(sinceTimeLong)};
-            
-            // 排序：按拍摄时间降序
-            String sortOrder = MediaStore.Images.Media.DATE_TAKEN + " DESC";
+
+            // 排序：按有效时间降序
+            String sortOrder = effectiveTime + " DESC";
             
             Cursor cursor = contentResolver.query(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,

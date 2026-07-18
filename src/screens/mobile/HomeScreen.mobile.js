@@ -594,6 +594,7 @@ const HomeScreen = ({ navigation }) => {
             return {
               locationId,
               count: cityCounts[locationId],
+              latestTs: latestImage ? (latestImage.timestamp || 0) : 0,
               latestImageUri: latestImage ? getUri(latestImage) : null,
             };
           });
@@ -2393,7 +2394,14 @@ const HomeScreen = ({ navigation }) => {
     const sortedCities = hasCities
       ? [...cities].sort((a, b) => (b.count || 0) - (a.count || 0))
       : [];
-    const displayCities = showAllCities ? sortedCities : sortedCities.slice(0, 8);
+    let displayCities = showAllCities ? sortedCities : sortedCities.slice(0, 8);
+    // 折叠时保证「最近去过的城市」一定可见：新城市照片少会被数量排序挤出前 8
+    if (!showAllCities && sortedCities.length > displayCities.length) {
+      const newest = sortedCities.reduce((a, b) => ((b.latestTs || 0) > (a.latestTs || 0) ? b : a), sortedCities[0]);
+      if (newest && !displayCities.some((ci) => ci.locationId === newest.locationId)) {
+        displayCities = [...displayCities.slice(0, displayCities.length - 1), newest];
+      }
+    }
 
     return (
       <View style={[styles.section, dynSection]}>

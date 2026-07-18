@@ -4,6 +4,30 @@
 
 ---
 
+## [1.5.75] - 2026-07-19
+
+三项体验缺陷修复，覆盖 iOS / Android / 桌面全端。
+
+### 修复 / Fixed
+- **时刻秀封面无法修改**：模板类时刻秀在保存时被强制清空 `coverId`，导致用户手动选择的封面永远回退到首帧。现改为无论普通秀还是模板秀都保存用户所选封面（`ShowcaseCreateScreen.mobile.js`，iOS + Android）。
+  Fixed showcase cover not updating: template showcases had their `coverId` force-cleared on save, so a manually picked cover always fell back to the first frame. Now the chosen cover is persisted for both normal and template showcases.
+- **「按城市」看不到最新去过的城市**：城市列表仅按照片数量降序后截取前 8 个，照片较少的新城市被挤出可见范围。现折叠状态下保证「最近拍摄的城市」一定出现在列表中（`HomeScreen.mobile.js`，iOS + Android；桌面端本就全量展示）。
+  Fixed newest city missing from the "By City" section: the list was sorted by photo count and truncated to 8, hiding recently visited cities with few photos. The most-recent city is now always shown in the collapsed view.
+- **位置补全后新城市需重启才显示**：位置补全阶段结束时的缓存刷新依赖 `filesProcessed === filesFound` 的脆弱推断，部分图片 GPS 查不到城市时末批新城市会漏刷。改为显式 `phaseComplete` 标记，确保阶段完成时必定重建缓存并通知首页重载（`GalleryScannerService.js` / `.android.js`；iOS 变体本就显式刷新）。
+  Fixed new cities requiring an app restart to appear: end-of-phase cache refresh relied on a fragile equality check. Now an explicit `phaseComplete` flag guarantees a cache rebuild and UI reload.
+- **「最近照片」只显示相机拍摄的照片**：Android 原生查询用 `DATE_TAKEN >= sinceTime` 过滤与排序，而截图、下载、社交软件保存的图片 `DATE_TAKEN` 为 0/NULL，被系统性排除。改用有效时间 `COALESCE(NULLIF(datetaken,0), date_added*1000)`，所有来源的照片均可进入「最近发现」（`MediaStoreModule.java`，Android；iOS/桌面按 `takenAt`/文件时间，本就不受影响）。
+  Fixed "recent photos" only showing camera shots on Android: the native query filtered/sorted by `DATE_TAKEN`, which is 0/NULL for screenshots, downloads and social-app images. Now it uses an effective time via `COALESCE`, so photos from all sources are included.
+
+### 平台发布状态 / Platform Release
+| 平台 | 版本 | 发布渠道 | 说明 |
+| --- | --- | --- | --- |
+| iOS | 1.5.75 (7) | Apple App Store | 需提交 App Store 更新（时刻秀封面、按城市两项为 JS 逻辑，影响 iOS）|
+| Android | 1.5.75 | GitHub Releases | 含原生改动（最近照片），需重新编译 APK |
+| macOS | 1.5.75 | GitHub Releases | dmg |
+| Windows | 1.5.75 | GitHub Releases | appx / setup / portable |
+
+---
+
 ## [1.5.74] - 2026-07-08
 
 首个以 **ImagePilot** 品牌正式上架 Apple App Store 的版本（iOS build 6）。

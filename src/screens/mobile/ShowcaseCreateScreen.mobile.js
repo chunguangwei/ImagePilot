@@ -189,9 +189,8 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
         setApplying(null);
         if (res && res.items && res.items.length) { templateItems = res.items; saveMode = res.mode; saveInterval = res.interval; saveAspect = res.aspect || saveAspect; }
       }
-      // 封面：模板时刻秀（有 items）用首帧，普通时刻秀按所选/首图
-      const isTemplateShowcase = !!templateItems || (edit && Array.isArray(edit.items) && edit.items.length);
-      const effectiveCover = isTemplateShowcase ? '' : ((coverId && imgs.some((i) => i.id === coverId)) ? coverId : (imgs[0]?.id || ''));
+      // 封面：优先用用户手动选择的封面（无论普通秀还是模板秀），未选则回退首图
+      const effectiveCover = (coverId && imgs.some((i) => i.id === coverId)) ? coverId : (imgs[0]?.id || '');
       const ok = await UnifiedDataService.imageStorageService.saveShowcase({
         id: edit?.id || `sc_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
         name: n,
