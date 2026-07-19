@@ -45,7 +45,8 @@
    - `ios/ImagePilot.xcodeproj/project.pbxproj` → `MARKETING_VERSION` + `CURRENT_PROJECT_VERSION`（build 号递增）
    - `android/app/build.gradle` → `versionName`（`versionCode` 自动按时间戳）
    - `src/config/BuildInfo.js` → `BUILD_VERSION`（可由 `scripts/generate-build-info.js` 生成）
-2. **在 `CHANGELOG.md` 顶部追加本版更新内容**。
+2. **在 `CHANGELOG.md` 顶部追加本版更新内容**（完整技术记录）。
+   - 同时更新根目录 **`RELEASE_NOTES.md`**（面向用户的简明更新要点）——CI 发布时用它作为 GitHub Release 正文，App 内「检查更新」弹窗会读取该正文（`UpdateService` 的 `data.body`）展示给用户。
 3. **提交并 push 到 `main`** → GitHub Actions 自动构建四端并创建 `v{version}` Release（tag 不存在时才发布）。
 4. **iOS**：Xcode Organizer 上传 build → App Store Connect 关联 build → 提交审核（附审核回复说明）。
 5. 过审后打 tag 留档，如 `ios-appstore-{version}-b{build}`。
