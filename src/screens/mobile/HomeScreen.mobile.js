@@ -2417,7 +2417,7 @@ const HomeScreen = ({ navigation }) => {
                   styles.toggleButton,
                   isScanning && styles.toggleButtonDisabled
                 ]}
-                onPress={handleStartLocationEnrichment}
+                onPress={handleScan}
                 disabled={isScanning}
               >
                 <Text style={[
@@ -2461,7 +2461,7 @@ const HomeScreen = ({ navigation }) => {
                 styles.startSimilarityButton,
                 isScanning && styles.startSimilarityButtonDisabled
               ]}
-              onPress={handleStartLocationEnrichment}
+              onPress={handleScan}
               disabled={isScanning}
             >
               <Text style={[
