@@ -4,6 +4,24 @@
 
 ---
 
+## [1.5.76] - 2026-07-19
+
+体验优化，全端同步更新。
+
+### 新增 / Added
+- **「最新发现照片」支持展开查看更多**：原固定显示 12 张，现默认显示 12 张、超过时出现「显示更多 (N)」按钮，展开最多显示 100 张，可「收起」恢复折叠（`HomeScreen.mobile.js`，iOS + Android）。
+  Added \"Show More\" to Recently Discovered Photos: defaults to 12, expands up to 100 when available, collapsible.
+
+### 平台发布状态 / Platform Release
+| 平台 | 版本 | 发布渠道 | 说明 |
+| --- | --- | --- | --- |
+| iOS | 1.5.76 (8) | Apple App Store | 需提交 App Store 更新 |
+| Android | 1.5.76 | GitHub Releases | APK 已发布 |
+| macOS | 1.5.76 | GitHub Releases | dmg |
+| Windows | 1.5.76 | GitHub Releases | exe / appx |
+
+---
+
 ## [1.5.75] - 2026-07-19
 
 体验缺陷修复，覆盖 iOS / Android / 桌面全端。
