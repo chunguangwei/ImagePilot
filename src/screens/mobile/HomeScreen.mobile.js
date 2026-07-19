@@ -2425,16 +2425,16 @@ const HomeScreen = ({ navigation }) => {
                   isScanning && styles.toggleButtonTextDisabled
                 ]}>{t('home.recheck')}</Text>
               </TouchableOpacity>
-              {sortedCities.length > 8 && !showAllCities && (
+              {sortedCities.length > COLLAPSED_LIMIT && !showAllCities && (
                 <TouchableOpacity
                   style={styles.toggleButton}
                   onPress={() => setShowAllCities(true)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.toggleButtonText}>{t('home.showMore')}</Text>
+                  <Text style={styles.toggleButtonText}>{`${t('home.showMore')} (${sortedCities.length - COLLAPSED_LIMIT})`}</Text>
                 </TouchableOpacity>
               )}
-              {showAllCities && sortedCities.length > 8 && (
+              {showAllCities && sortedCities.length > COLLAPSED_LIMIT && (
                 <TouchableOpacity
                   style={styles.toggleButton}
                   onPress={() => setShowAllCities(false)}

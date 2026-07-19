@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | iOS | `1.5.75` (`MARKETING_VERSION`) | `7` (`CURRENT_PROJECT_VERSION`) | `ios/ImagePilot.xcodeproj/project.pbxproj` |
 | Android | `1.5.75` (`versionName`) | 构建时间戳 `MMddHHmm`（自动，`versionCode`） | `android/app/build.gradle` |
-| PC / 通用 | `1.5.75` | — | `package.json` 的 `version` |
+| PC / 通用 | `1.5.75` | — | `package.json` 的 `version`（**桌面打包产物命名读取 `pc-version-final/package.json` 的 `version`，务必同步 bump**）|
 
 > 说明：GitHub Releases 的发布逻辑（`.github/workflows/main-build.yml`）读取 **`package.json` 的 `version`** 作为 tag（`v{version}`）。
 
@@ -42,6 +42,7 @@
 
 1. **统一 bump 版本号**（保持四端一致，除非 iOS 单独热修）：
    - `package.json` → `version`
+   - **`pc-version-final/package.json` → `version`**（桌面 dmg/exe/appx 文件名由它决定，漏改会导致产物仍是旧版本号）
    - `ios/ImagePilot.xcodeproj/project.pbxproj` → `MARKETING_VERSION` + `CURRENT_PROJECT_VERSION`（build 号递增）
    - `android/app/build.gradle` → `versionName`（`versionCode` 自动按时间戳）
    - `src/config/BuildInfo.js` → `BUILD_VERSION`（可由 `scripts/generate-build-info.js` 生成）
