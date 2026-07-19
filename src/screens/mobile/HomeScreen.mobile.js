@@ -2517,15 +2517,28 @@ const HomeScreen = ({ navigation }) => {
               </View>
             )}
           </View>
-          <TouchableOpacity
-            style={[styles.toggleButton, isRefreshingRecent && styles.toggleButtonDisabled]}
-            onPress={refreshNewDiscoveredImages}
-            disabled={isRefreshingRecent}
-          >
-            {isRefreshingRecent
-              ? <ActivityIndicator size="small" color={c.accent} />
-              : <Text style={styles.toggleButtonText}>{t('home.recheck')}</Text>}
-          </TouchableOpacity>
+          <View style={styles.headerButtonsContainer}>
+            {recentImages.length > 12 && (
+              <TouchableOpacity
+                style={styles.toggleButton}
+                onPress={() => setShowAllRecent(!showAllRecent)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.toggleButtonText}>
+                  {showAllRecent ? t('home.showLess') : `${t('home.showMore')} (${recentImages.length - 12})`}
+                </Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.toggleButton, isRefreshingRecent && styles.toggleButtonDisabled]}
+              onPress={refreshNewDiscoveredImages}
+              disabled={isRefreshingRecent}
+            >
+              {isRefreshingRecent
+                ? <ActivityIndicator size="small" color={c.accent} />
+                : <Text style={styles.toggleButtonText}>{t('home.recheck')}</Text>}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {recentImages.length === 0 ? (
@@ -2575,17 +2588,6 @@ const HomeScreen = ({ navigation }) => {
                 );
               })}
             </View>
-            {recentImages.length > 12 && (
-              <TouchableOpacity
-                style={styles.showMoreButton}
-                onPress={() => setShowAllRecent(!showAllRecent)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.showMoreButtonText}>
-                  {showAllRecent ? t('home.showLess') : `${t('home.showMore')} (${recentImages.length - 12})`}
-                </Text>
-              </TouchableOpacity>
-            )}
           </>
         )}
       </View>
