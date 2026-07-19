@@ -11,8 +11,8 @@
 ### 修复 / Fixed
 - **时刻秀封面无法修改**：模板类时刻秀在保存时被强制清空 `coverId`，导致用户手动选择的封面永远回退到首帧。现改为无论普通秀还是模板秀都保存用户所选封面（`ShowcaseCreateScreen.mobile.js`，iOS + Android）。
   Fixed showcase cover not updating: template showcases had their `coverId` force-cleared on save, so a manually picked cover always fell back to the first frame. Now the chosen cover is persisted for both normal and template showcases.
-- **「按城市」看不到最新去过的城市**：折叠首屏原按照片数量降序截取前 8 个，照片较少的新城市被挤出。现折叠首屏改为**按「最近去过」（最新照片时间）降序**，最新城市必在首屏；城市多于 8 个时点「显示更多」进入完整列表（按数量排序）。（`HomeScreen.mobile.js`，iOS + Android；桌面端本就全量展示）
-  Fixed newest city missing from the "By City" section: the collapsed view now sorts by most-recently-visited (latest photo time) so new cities always appear first; "Show more" reveals the full list (by photo count).
+- **「按城市」看不到最新去过的城市**：折叠首屏原按照片数量降序截取前 8 个，照片较少的新城市被挤出。现折叠首屏改为**按「最近去过」（最新照片时间）降序**，最新城市必在首屏；城市多于 8 个时点「显示更多」进入完整列表（按数量排序）。此外，「重新检测」原先只做位置补全（仅处理已入库但缺 city 的照片），无法纳入尚未扫描的新照片，导致新城市始终不出现且点击「没反应」；现改为触发**增量扫描**（只处理未扫过的新照片 → 提取 GPS → 补全城市 → 刷新缓存并重载），既能发现新城市又保持增量速度。（`HomeScreen.mobile.js`，iOS + Android；桌面端本就全量展示）
+  Fixed newest city missing from the "By City" section: the collapsed view now sorts by most-recently-visited so new cities always appear first, and "Re-check" now runs an incremental scan (ingesting new photos, extracting GPS, resolving cities) instead of location-enrichment only — so newly added cities actually show up.
 - **「最新发现照片」长期为空**：该区基于「上次扫描之后新增」的时间窗，窗口随多次扫描不断前滑后会永久为空。新增**空窗兜底**：当该窗口无结果时，自动回退展示「最近入库的照片」，保证不再长期空白且总能看到最新照片（`UnifiedDataService.js` / `HomeScreen.mobile.js`，全端生效）。
   Fixed the "Recently Discovered" section staying empty: the since-last-scan time window slides forward and eventually yields nothing. Added a fallback to show the most recently added photos when the window is empty, so it is never perpetually blank.
 - **位置补全后新城市需重启才显示**：位置补全阶段结束时的缓存刷新依赖 `filesProcessed === filesFound` 的脆弱推断，部分图片 GPS 查不到城市时末批新城市会漏刷。改为显式 `phaseComplete` 标记，确保阶段完成时必定重建缓存并通知首页重载（`GalleryScannerService.js` / `.android.js`；iOS 变体本就显式刷新）。
