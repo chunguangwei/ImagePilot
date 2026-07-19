@@ -19,6 +19,8 @@
   Fixed new cities requiring an app restart to appear: end-of-phase cache refresh relied on a fragile equality check. Now an explicit `phaseComplete` flag guarantees a cache rebuild and UI reload.
 - **「最近照片」在 Android 只显示相机拍摄的照片**：原生查询用 `DATE_TAKEN` 过滤与排序，而截图、下载、社交软件保存的图片 `DATE_TAKEN` 为 0/NULL，被系统性排除。改用**入库时间 `DATE_ADDED`**（列安全、不使用 `COALESCE`/`NULLIF` 等 SQL 函数，规避部分 Android 版本对 selection 表达式的限制）过滤与排序，覆盖所有来源的照片（`MediaStoreModule.java`，Android；iOS/桌面按 `takenAt`/文件时间，本就不受影响）。
   Fixed "recent photos" only showing camera shots on Android: switched the native query from `DATE_TAKEN` to `DATE_ADDED` (column-only, no SQL functions) so screenshots, downloads and social-app images are included.
+- **部分城市（如云南大理/丽江/香格里拉）照片识别不出城市**：离线反向地理编码的内置城市库过于精简（云南仅「昆明」），且「最近城市」匹配上限 250km，导致大理（距昆明约 290km）等地坐标解析为空、不进「按城市」。现将内置城市库从 ~55 扩充到 ~213（补齐云南全部州市及全国主要地级市），并新增**省份兜底**：城市 250km 内无命中时按最近省份（≤800km）归类并标记 `isProvince`，不再落「未知」（`cityData.js` / `bundledGeocoder.js`，全端）。
+  Fixed photos in cities like Dali/Lijiang/Shangri-La (Yunnan) not resolving: the bundled offline city set was too sparse (only Kunming in Yunnan) with a 250km cap. Expanded the set from ~55 to ~213 cities and added province-level fallback when no city matches within range.
 
 ### 平台发布状态 / Platform Release
 | 平台 | 版本 | 发布渠道 | 说明 |
