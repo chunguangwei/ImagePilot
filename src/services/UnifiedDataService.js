@@ -964,10 +964,50 @@ class UnifiedDataService {
 
   /**
    * 读取新发现的照片（从上次扫描时间之后，相册中新发现的照片）
+   * 空窗兜底：当「自上次扫描后新增」为空时，回退展示「最近入库的照片」，
+   * 避免时间窗随多次扫描不断前滑后该区长期空白，且保证总能看到最新的照片。
    * @param {number} limit - 限制返回数量，默认12（用于显示）
    * @returns {Promise<{total: number, images: Array}>} 返回总数和图片列表（最多limit张）
    */
   async readNewDiscoveredImages(limit = 12) {
+    try {
+      const since = await this._readNewDiscoveredImagesSince(limit);
+      if (since && since.total > 0 && Array.isArray(since.images) && since.images.length > 0) {
+        return since;
+      }
+      // 兜底：展示最近的照片（按时间倒序），isFallback 供 UI 区分文案
+      const fallback = await this._readMostRecentImages(limit);
+      return { ...fallback, isFallback: true };
+    } catch (error) {
+      logger.error('读取新发现的照片失败(外层):', error);
+      try {
+        const fallback = await this._readMostRecentImages(limit);
+        return { ...fallback, isFallback: true };
+      } catch (_) {
+        return { total: 0, images: [] };
+      }
+    }
+  }
+
+  /**
+   * 兜底：读取最近的照片（按拍摄/入库时间倒序），与平台无关，只要库里有图就不为空
+   * @param {number} limit
+   * @returns {Promise<{total: number, images: Array}>}
+   */
+  async _readMostRecentImages(limit = 12) {
+    const all = await this.readAllImages();
+    const list = (Array.isArray(all) ? all : [])
+      .slice()
+      .sort((a, b) => (this._getImageTime(b) - this._getImageTime(a)));
+    return { total: list.length, images: list.slice(0, limit) };
+  }
+
+  /**
+   * 读取新发现的照片（从上次扫描时间之后，相册中新发现的照片）
+   * @param {number} limit - 限制返回数量，默认12（用于显示）
+   * @returns {Promise<{total: number, images: Array}>} 返回总数和图片列表（最多limit张）
+   */
+  async _readNewDiscoveredImagesSince(limit = 12) {
     try {
       // 获取扫描时间。「新发现」基准用 prevScanTime（上上次扫描）：
       // 若用 lastScanTime，刚扫完该区就清空，两次扫描之间拍的内容扫完后也永远进不来（死循环）。

@@ -752,17 +752,18 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
                 MediaStore.Images.Media.RELATIVE_PATH  // 相对路径（如果DATA为空，使用此路径）
             };
             
-            // 有效时间：优先拍摄时间(datetaken, 毫秒)，截图/下载/社交图片其值为0或NULL，
-            // 回退到入库时间(date_added, 秒→毫秒)，保证所有来源的照片都能被"最近发现"覆盖
-            String effectiveTime = "COALESCE(NULLIF(" + MediaStore.Images.Media.DATE_TAKEN + ", 0), "
-                + MediaStore.Images.Media.DATE_ADDED + " * 1000)";
+            // 「新发现」按入库时间(DATE_ADDED)筛选与排序：
+            //  - DATE_ADDED 所有来源（相机/截图/下载/社交软件保存）都可靠有值，不像 DATE_TAKEN 仅相机照片才填充；
+            //  - 只用列名 + 比较，不用 COALESCE/NULLIF 等 SQL 函数，避免部分 Android 版本对 selection 表达式的限制导致查询失败返回空；
+            //  - DATE_ADDED 单位是「秒」，sinceTime 传入为「毫秒」，需除以 1000 对齐。
+            long sinceSeconds = sinceTimeLong / 1000L;
 
-            // 查询条件：有效时间 >= sinceTime
-            String selection = effectiveTime + " >= ?";
-            String[] selectionArgs = new String[]{String.valueOf(sinceTimeLong)};
+            // 查询条件：DATE_ADDED >= sinceSeconds
+            String selection = MediaStore.Images.Media.DATE_ADDED + " >= ?";
+            String[] selectionArgs = new String[]{String.valueOf(sinceSeconds)};
 
-            // 排序：按有效时间降序
-            String sortOrder = effectiveTime + " DESC";
+            // 排序：按入库时间降序
+            String sortOrder = MediaStore.Images.Media.DATE_ADDED + " DESC";
             
             Cursor cursor = contentResolver.query(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,

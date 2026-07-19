@@ -753,7 +753,8 @@ const HomeScreen = ({ navigation }) => {
       // 改为调用 readNewDiscoveredImages 获取从上次扫描之后新发现的照片
       const result = await UnifiedDataService.readNewDiscoveredImages(12);
       setRecentImages(result.images || []);
-      setRecentImagesTotal(result.total || 0);
+      // 兜底模式(isFallback)下 total 为全库数量，徽标只展示实际呈现的最近照片数，避免显示巨大数字
+      setRecentImagesTotal(result.isFallback ? (result.images?.length || 0) : (result.total || 0));
     } catch (error) {
       logger.error('❌ 加载新发现照片失败:', error);
       setRecentImages([]);
@@ -801,7 +802,7 @@ const HomeScreen = ({ navigation }) => {
     try {
       const result = await UnifiedDataService.readNewDiscoveredImages(12);
       setRecentImages(result.images || []);
-      setRecentImagesTotal(result.total || 0);
+      setRecentImagesTotal(result.isFallback ? (result.images?.length || 0) : (result.total || 0));
     } catch (error) {
       logger.error('刷新新发现照片失败:', error);
     } finally {
@@ -2390,18 +2391,17 @@ const HomeScreen = ({ navigation }) => {
   const renderCitiesSection = () => {
     const hasCities = cities && cities.length > 0;
     if (!hasScanned && !hasCities) return null;
-    // 按照片数量降序排列，显示最多的城市在前
-    const sortedCities = hasCities
+    // 展开：按照片数量降序（看整体分布）；折叠：按「最近去过」降序（尽量让最新城市出现在首屏）
+    const byCount = hasCities
       ? [...cities].sort((a, b) => (b.count || 0) - (a.count || 0))
       : [];
-    let displayCities = showAllCities ? sortedCities : sortedCities.slice(0, 8);
-    // 折叠时保证「最近去过的城市」一定可见：新城市照片少会被数量排序挤出前 8
-    if (!showAllCities && sortedCities.length > displayCities.length) {
-      const newest = sortedCities.reduce((a, b) => ((b.latestTs || 0) > (a.latestTs || 0) ? b : a), sortedCities[0]);
-      if (newest && !displayCities.some((ci) => ci.locationId === newest.locationId)) {
-        displayCities = [...displayCities.slice(0, displayCities.length - 1), newest];
-      }
-    }
+    const byRecency = hasCities
+      ? [...cities].sort((a, b) => ((b.latestTs || 0) - (a.latestTs || 0)) || ((b.count || 0) - (a.count || 0)))
+      : [];
+    // 折叠区容量：满一屏（8 个）时用「查看更多」进入完整列表
+    const COLLAPSED_LIMIT = 8;
+    const sortedCities = byCount;
+    const displayCities = showAllCities ? byCount : byRecency.slice(0, COLLAPSED_LIMIT);
 
     return (
       <View style={[styles.section, dynSection]}>
