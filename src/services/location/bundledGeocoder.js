@@ -14,13 +14,14 @@
  */
 
 import { haversineMeters, isValidCoords } from './SemanticLocationService.js';
-import { CITIES } from './cityData.js';
+import { CITIES, PROVINCES } from './cityData.js';
 
 /**
- * 返回离 (lat,lon) 最近的城市（受 maxDistanceKm 限制）。
- * @returns {{name:string, lat:number, lon:number, distanceKm:number}|null}
+ * 返回离 (lat,lon) 最近的城市；城市在 maxDistanceKm 内无命中时，
+ * 退而返回最近省份（provinceMaxKm 内），标记 isProvince=true；再无则 null。
+ * @returns {{name:string, lat:number, lon:number, distanceKm:number, isProvince?:boolean}|null}
  */
-export function nearestCity(lat, lon, { cities = CITIES, maxDistanceKm = 250 } = {}) {
+export function nearestCity(lat, lon, { cities = CITIES, maxDistanceKm = 250, provinces = PROVINCES, provinceMaxKm = 800 } = {}) {
   if (!isValidCoords({ lat, lon })) return null;
   let best = null;
   let bestMeters = Infinity;
@@ -31,8 +32,25 @@ export function nearestCity(lat, lon, { cities = CITIES, maxDistanceKm = 250 } =
       best = c;
     }
   }
-  if (!best || bestMeters > maxDistanceKm * 1000) return null;
-  return { ...best, distanceKm: Math.round(bestMeters / 100) / 10 };
+  if (best && bestMeters <= maxDistanceKm * 1000) {
+    return { ...best, distanceKm: Math.round(bestMeters / 100) / 10 };
+  }
+  // 城市未命中 → 省份兜底（宁可标到省，也别丢成「未知」）
+  if (provinces && provinces.length) {
+    let bestProv = null;
+    let bestProvMeters = Infinity;
+    for (const p of provinces) {
+      const d = haversineMeters({ lat, lon }, { lat: p.lat, lon: p.lon });
+      if (d < bestProvMeters) {
+        bestProvMeters = d;
+        bestProv = p;
+      }
+    }
+    if (bestProv && bestProvMeters <= provinceMaxKm * 1000) {
+      return { ...bestProv, distanceKm: Math.round(bestProvMeters / 100) / 10, isProvince: true };
+    }
+  }
+  return null;
 }
 
 /**
