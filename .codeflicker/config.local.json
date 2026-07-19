@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Edit(/harmonyos/**)",
-      "Edit(/harmonyos/entry/src/main/**)"
+      "Edit(/harmonyos/entry/src/main/**)",
+      "Edit(/src/screens/mobile/**)",
+      "Edit(/android/app/src/main/java/com/imageclassifier/v2/**)",
+      "Edit(/src/services/**)",
+      "Edit(/CHANGELOG.md)",
+      "Edit(/docs/**)",
+      "Write(/RELEASE_NOTES.md)",
+      "Edit(/.github/workflows/**)",
+      "Edit(/RELEASE_NOTES.md)",
+      "Edit(/README.md)"
     ]
   }
 }

@@ -293,6 +293,7 @@ const HomeScreen = ({ navigation }) => {
   const [recentImagesTotal, setRecentImagesTotal] = useState(0); // 新发现照片的总数
   const [memories, setMemories] = useState([]); // 回忆/那年今天（历年同月同日；节日/旅行已迁「时刻」Tab）
   const [isRefreshingRecent, setIsRefreshingRecent] = useState(false); // 「重新检测」按钮 loading 态
+  const [showAllRecent, setShowAllRecent] = useState(false); // 最新发现照片：折叠(12)/展开(全部)
   
   // 扫描状态
   const [isScanning, setIsScanning] = useState(false);
@@ -750,8 +751,8 @@ const HomeScreen = ({ navigation }) => {
    */
   const loadRecentImages = async () => {
     try {
-      // 改为调用 readNewDiscoveredImages 获取从上次扫描之后新发现的照片
-      const result = await UnifiedDataService.readNewDiscoveredImages(12);
+      // 改为调用 readNewDiscoveredImages 获取从上次扫描之后新发现的照片（取多一些用于展开）
+      const result = await UnifiedDataService.readNewDiscoveredImages(100);
       setRecentImages(result.images || []);
       // 兜底模式(isFallback)下 total 为全库数量，徽标只展示实际呈现的最近照片数，避免显示巨大数字
       setRecentImagesTotal(result.isFallback ? (result.images?.length || 0) : (result.total || 0));
@@ -800,7 +801,7 @@ const HomeScreen = ({ navigation }) => {
     setIsRefreshingRecent(true);
     const startedAt = Date.now();
     try {
-      const result = await UnifiedDataService.readNewDiscoveredImages(12);
+      const result = await UnifiedDataService.readNewDiscoveredImages(100);
       setRecentImages(result.images || []);
       setRecentImagesTotal(result.isFallback ? (result.images?.length || 0) : (result.total || 0));
     } catch (error) {
@@ -2534,48 +2535,58 @@ const HomeScreen = ({ navigation }) => {
             <Text style={styles.emptyStateSubtext}>{t('home.clickScanButtonToStart')}</Text>
           </View>
         ) : (
-          <View style={styles.recentGrid}>
-            {recentImages.map((image, index) => {
-              const directoryName = getDirectoryName(image);
-              
-              return (
-                <TouchableOpacity
-                  key={image.id || image.uri || index}
-                  style={styles.recentGridItem}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    if (!navigation) return;
-                    // 视频也进预览页（海报帧+居中▶）：可查看信息/改分类/编辑描述，点▶才播放
-                    navigation.navigate('ImagePreview', {
-                      image,
-                      allImages: recentImages,
-                      currentIndex: index,
-                      fromScreen: 'Home',
-                    });
-                  }}
-                >
-                  <Image
-                    source={{ uri: getUri(image) || image?.uri }}
-                    style={styles.recentGridImage}
-                    resizeMode="cover"
-                  />
-                  {/* 视频角标（带时长） */}
-                  {String(image?.mimeType || '').startsWith('video/') && (
-                    <View style={[styles.videoCatBadge, formatDuration(image?.duration) ? styles.videoCatBadgeWide : null]} pointerEvents="none">
-                      <VIcon name="play" size={10} emoji="▶" />
-                      {formatDuration(image?.duration) ? <Text style={styles.videoCatBadgeIcon}> {formatDuration(image?.duration)}</Text> : null}
+          <>
+            <View style={styles.recentGrid}>
+              {(showAllRecent ? recentImages : recentImages.slice(0, 12)).map((image, index) => {
+                const directoryName = getDirectoryName(image);
+
+                return (
+                  <TouchableOpacity
+                    key={image.id || image.uri || index}
+                    style={styles.recentGridItem}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      if (!navigation) return;
+                      navigation.navigate('ImagePreview', {
+                        image,
+                        allImages: recentImages,
+                        currentIndex: showAllRecent ? index : recentImages.findIndex(img => img.id === image.id),
+                        fromScreen: 'Home',
+                      });
+                    }}
+                  >
+                    <Image
+                      source={{ uri: getUri(image) || image?.uri }}
+                      style={styles.recentGridImage}
+                      resizeMode="cover"
+                    />
+                    {String(image?.mimeType || '').startsWith('video/') && (
+                      <View style={[styles.videoCatBadge, formatDuration(image?.duration) ? styles.videoCatBadgeWide : null]} pointerEvents="none">
+                        <VIcon name="play" size={10} emoji="▶" />
+                        {formatDuration(image?.duration) ? <Text style={styles.videoCatBadgeIcon}> {formatDuration(image?.duration)}</Text> : null}
+                      </View>
+                    )}
+                    <View style={styles.categoryOverlay}>
+                      <Text style={styles.categoryName} numberOfLines={1}>
+                        {directoryName}
+                      </Text>
                     </View>
-                  )}
-                  {/* 目录标签覆盖层 */}
-                  <View style={styles.categoryOverlay}>
-                    <Text style={styles.categoryName} numberOfLines={1}>
-                      {directoryName}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {recentImages.length > 12 && (
+              <TouchableOpacity
+                style={styles.showMoreButton}
+                onPress={() => setShowAllRecent(!showAllRecent)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.showMoreButtonText}>
+                  {showAllRecent ? t('home.showLess') : `${t('home.showMore')} (${recentImages.length - 12})`}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </View>
     );
