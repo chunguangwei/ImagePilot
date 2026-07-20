@@ -4,6 +4,28 @@
 
 ---
 
+## [1.5.77] - 2026-07-20
+
+稳定性修复：本地大模型（端侧 Gemma VLM）分类崩溃退出。
+
+### 修复 / Fixed
+- **本地大模型分类时 App 崩溃退出（Android）**：一次性定位并彻底修复三处根因——
+  1. **GPU 驱动原生崩溃**：原 `ensureEngine` GPU 优先，部分机型 GPU 能通过「建会话」探测却在真正跑推理时于 native 层 SIGSEGV（Java try/catch 无法捕获），导致整个 App 退出。现改为 **CPU-only**（对齐 iOS，稍慢但稳定）。
+  2. **加载前无内存校验、门槛过低**：新增**可用内存实时校验**（`availMemoryMB`，低于 2200MB 直接判不可用），并将设备内存门槛 `minDeviceMemMB` 由 2800 提高到 3800（仅 4GB+ 机型放行），避免加载 ~2.5GB 权重途中被系统 OOM-kill / 崩溃。
+  3. **引擎从不释放**：VLM 档扫描跑完 / 出错 / 中途停止后，均调用 `disposeVLMContext` 释放原生 Engine（~2.5GB 常驻内存），避免与下次加载叠加触发 OOM。
+  （`GemmaModule.java` / `vlmModels.android.js` / `GalleryScannerService.android.js`，Android。iOS 使用 Qwen/llama.rn 且本就 CPU-only 稳定，不受影响。）
+  Fixed the app crashing/exiting during on-device VLM classification (Android): switched engine to CPU-only (some GPU drivers SIGSEGV at inference time, uncatchable in Java), added a runtime available-memory check plus a higher device-memory gate, and now release the ~2.5GB native engine after scanning.
+
+### 平台发布状态 / Platform Release
+| 平台 | 版本 | 发布渠道 | 说明 |
+| --- | --- | --- | --- |
+| iOS | 1.5.76 (8) | Apple App Store | 本次为 Android 原生修复，iOS 不受影响，**无需重新提交** |
+| Android | 1.5.77 | GitHub Releases | 含原生改动（VLM CPU-only + 内存校验），需重新编译 APK |
+| macOS | 1.5.77 | GitHub Releases | dmg |
+| Windows | 1.5.77 | GitHub Releases | exe / appx |
+
+---
+
 ## [1.5.76] - 2026-07-19
 
 体验优化，全端同步更新。

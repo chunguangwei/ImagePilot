@@ -575,6 +575,7 @@ class GalleryScannerService {
     try { await UnifiedDataService.migrateUnclassifiedVideos(); } catch (_) {}
     this.scanStartTimestamp = scanStartTime || new Date();
 
+    let preTier = null;
     try {
       // 取待分类图片列表
       let naImages = [];
@@ -619,7 +620,7 @@ class GalleryScannerService {
       let failedCount = 0;
       // VLM（多模态大模型）秒级/张：用 BATCH=1，让进度条与落库都「一张一张」推进，
       // 用户能实时看到百分比走动、结果逐张出现；基础/CLIP 等快引擎保持 20 批量以省 IO。
-      const preTier = await readActiveTier();
+      preTier = await readActiveTier();
       const BATCH = (preTier && preTier.engine === 'vlm') ? 1 : 20;
       let stoppedByUser = false;
       for (let i = 0; i < naImages.length; i += BATCH) {
@@ -723,6 +724,17 @@ class GalleryScannerService {
       logger.error('❌ JS 离线分类失败:', error);
       throw error;
     } finally {
+      // VLM 档跑完/出错/中途停都释放原生 Engine（~2.5GB 常驻）：不释放会持续占内存，
+      // 叠加下次加载易触发 OOM / 崩溃退出。disposeVLMContext 幂等，非 VLM 档无副作用。
+      if (preTier && preTier.engine === 'vlm') {
+        try {
+          const vlm = require('./classify/VLMClassifier');
+          if (vlm && typeof vlm.disposeVLMContext === 'function') await vlm.disposeVLMContext();
+          logger.info('[Android] VLM Engine 已释放');
+        } catch (e) {
+          logger.warn('[Android] 释放 VLM Engine 失败:', e?.message || e);
+        }
+      }
       this.isScanning = false;
       this._cleanupScanState && this._cleanupScanState();
     }

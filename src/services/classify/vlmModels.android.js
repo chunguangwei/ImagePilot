@@ -25,9 +25,10 @@ export const VLM_MODELS = {
     mmproj: null,
     sizeMB: 2468,        // ~2.5GB
     minRamGB: 4,
-    // 下载前内存门槛（物理内存 MB）：Gemma E2B 官方有效内存 ~2GB（PLE/参数跳过），
-    // 安卓不像 iOS 有严格 jetsam，3GB+ 机型即可；拦 <2.8GB（仅极低配机）。
-    minDeviceMemMB: 2800,
+    // 下载前内存门槛（物理内存 MB）：Gemma E2B 权重 ~2.5GB，CPU 推理需留足运行时头寸。
+    // 原 2800 过低，低配机加载途中易被系统 OOM-kill / 崩溃退出；提高到 3800（仅 4GB+ 机型放行）。
+    // 原生侧另有「可用内存」实时校验兜底（availMemoryMB）。
+    minDeviceMemMB: 3800,
     recommended: true,
   },
 };

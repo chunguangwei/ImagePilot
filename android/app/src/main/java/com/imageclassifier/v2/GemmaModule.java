@@ -116,10 +116,40 @@ public class GemmaModule extends ReactContextBaseJavaModule {
     return mOfList.invoke(companionContents, parts);
   }
 
-  /** 确保 Engine 就绪（GPU 优先，失败回退 CPU）。返回 null 表示两种后端都失败。 */
+  /**
+   * 加载 VLM 前的可用内存校验（MB）。Gemma E2B 权重 ~2.5GB，须留足运行时头寸，
+   * 否则加载/推理途中被系统 OOM-kill 或触发原生崩溃、整个 App 退出。
+   * 返回 <0 表示获取失败（不拦截，交由后续逻辑）。
+   */
+  private long availMemoryMB() {
+    try {
+      android.app.ActivityManager am = (android.app.ActivityManager) ctx.getSystemService(android.content.Context.ACTIVITY_SERVICE);
+      android.app.ActivityManager.MemoryInfo mi = new android.app.ActivityManager.MemoryInfo();
+      am.getMemoryInfo(mi);
+      return mi.availMem / (1024L * 1024L);
+    } catch (Throwable t) {
+      return -1L;
+    }
+  }
+
+  // Gemma E2B 运行所需的可用内存下限（MB）。低于此值直接判为不可用，避免加载途中崩溃退出。
+  private static final long MIN_AVAIL_MEM_MB = 2200L;
+
+  /**
+   * 确保 Engine 就绪。默认 CPU-only（对齐 iOS，规避部分 Android GPU 驱动在真正推理时
+   * 触发的原生崩溃 —— 该崩溃发生在 native 层，Java try/catch 无法捕获，会导致整个 App 退出）。
+   * 返回 null 表示初始化失败（含可用内存不足）。
+   */
   private synchronized Object ensureEngine(String modelPath) {
     if (engine != null && modelPath.equals(engineModelPath)) return engine;
     releaseEngineInternal();
+
+    long avail = availMemoryMB();
+    if (avail >= 0 && avail < MIN_AVAIL_MEM_MB) {
+      Log.e(TAG, "avail memory too low: " + avail + "MB < " + MIN_AVAIL_MEM_MB + "MB, refuse VLM load");
+      return null;
+    }
+
     try { ensureReflection(); } catch (Throwable t) { Log.e(TAG, "reflection init failed: " + t.getMessage(), t); return null; }
 
     // 提速：视觉 token 预算设 140（Gemma4 合法档 70/140/280/560/1120；默认约 280）→ 视觉减半、加快推理。
@@ -130,7 +160,9 @@ public class GemmaModule extends ReactContextBaseJavaModule {
       cFlags.getMethod("setVisualTokenBudget", Integer.class).invoke(flagsInst, Integer.valueOf(140));
     } catch (Throwable t) { Log.w(TAG, "setVisualTokenBudget failed(非致命): " + t.getMessage()); }
 
-    boolean[] gpuFirst = { true, false };
+    // CPU-only：不再 GPU 优先。部分安卓 GPU 驱动能通过「建会话」探测，却在真正跑推理时
+    // 于 native 层 SIGSEGV（Java 无法捕获）导致 App 崩溃退出。CPU 稍慢但稳定，对齐 iOS。
+    boolean[] gpuFirst = { false };
     for (boolean gpu : gpuFirst) {
       Object e = null;
       try {
