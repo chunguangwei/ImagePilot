@@ -1195,9 +1195,15 @@ const ImagePreviewScreen = ({ route, navigation }) => {
     // 统一基于 filterType 判断标题显示（日志合并到 useEffect 里只在参数变化时打一次）
     if (currentFilterType) {
       switch (currentFilterType) {
-        case 'city':
-          displayName = currentFilterValue || t('category.city');
+        case 'city': {
+          // 标题显示友好城市名：优先已解析的城市名，否则取 location_id 末段（CN_unknown_大理 → 大理）
+          const resolvedCity = locationDetail && (locationDetail.admin2_zh || locationDetail.admin2_en);
+          const rawCity = typeof currentFilterValue === 'string' && currentFilterValue.includes('_')
+            ? currentFilterValue.split('_').pop()
+            : currentFilterValue;
+          displayName = resolvedCity || rawCity || t('category.city');
           break;
+        }
         case 'color':
           displayName = getColorNameTranslation(currentFilterValue, currentLang) || currentFilterValue || t('category.color');
           break;
@@ -1553,7 +1559,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                 activeOpacity={0.6}
                 onPress={() => { setDescDraft(realMsg); setDescEditorVisible(true); }}
               >
-                <Text style={styles.infoLabel}><VIcon name="sparkles-outline" size={12} color={cTheme.tertiaryLabel} /> {t('imagePreview.aiDescription') || 'AI 描述'}:</Text>
+                <Text style={styles.infoLabel}>✨ {t('imagePreview.aiDescription') || 'AI 描述'}:</Text>
                 <Text style={[styles.infoValue, !realMsg && { color: cTheme.tertiaryLabel }]}>
                   {realMsg || (t('imagePreview.addDescription') || '点此添加描述（可被搜索）')}
                   <Text style={{ color: cTheme.tertiaryLabel }}>  <VIcon name="create-outline" size={13} color={cTheme.tertiaryLabel} /></Text>
@@ -2044,7 +2050,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           >
             <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{ marginHorizontal: 24, borderRadius: 14, backgroundColor: cTheme.card, padding: 16 }}>
               <Text style={{ fontSize: 16, fontWeight: '600', color: cTheme.label, marginBottom: 10 }}>
-                <VIcon name="sparkles-outline" size={15} color={cTheme.label} /> {t('imagePreview.editDescription') || '编辑 AI 描述'}
+                                ✨ {t('imagePreview.editDescription') || '编辑 AI 描述'}
               </Text>
               <TextInput
                 style={{ minHeight: 88, maxHeight: 180, borderWidth: StyleSheet.hairlineWidth, borderColor: cTheme.separator, borderRadius: 10, padding: 10, fontSize: 15, color: cTheme.label, textAlignVertical: 'top', backgroundColor: cTheme.groupedBg || 'rgba(120,120,128,0.08)' }}
