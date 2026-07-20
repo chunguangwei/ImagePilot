@@ -4,6 +4,24 @@
 
 ---
 
+## [1.5.78] - 2026-07-21
+
+稳定性修复（续 1.5.77）：本地大模型分类「刚完成即闪退」。
+
+### 修复 / Fixed
+- **离线分类完成瞬间 App 崩溃退出（Android）**：分类循环跑完后，代码先执行 `refreshCache()`（重建全量图片缓存，内存开销大），而此时 ~2.5GB 的 VLM 原生引擎尚未释放——「引擎常驻 + 重建缓存」在收尾一刻叠加顶爆内存，被系统 OOM-kill，表现为「分类刚完成就闪退」。现将 VLM 引擎释放**提前到 `refreshCache()` 之前**（循环一结束即释放），削掉收尾内存峰值；`finally` 中保留一次幂等释放兜底（`GalleryScannerService.android.js`，Android）。
+  Fixed the app crashing right after offline classification finished (Android): the ~2.5GB VLM engine was released only after the memory-heavy cache rebuild, causing an OOM at the tail. Now the engine is released before the cache rebuild to cut the peak.
+
+### 平台发布状态 / Platform Release
+| 平台 | 版本 | 发布渠道 | 说明 |
+| --- | --- | --- | --- |
+| iOS | 1.5.76 (8) | Apple App Store | Android 收尾内存修复，iOS 不受影响，**无需重新提交** |
+| Android | 1.5.78 | GitHub Releases | APK |
+| macOS | 1.5.78 | GitHub Releases | dmg |
+| Windows | 1.5.78 | GitHub Releases | exe / appx |
+
+---
+
 ## [1.5.77] - 2026-07-20
 
 稳定性修复：本地大模型（端侧 Gemma VLM）分类崩溃退出。

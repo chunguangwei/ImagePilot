@@ -711,6 +711,18 @@ class GalleryScannerService {
       }
 
       logger.info(`${stoppedByUser ? '🛑 JS 离线分类已停止' : '✅ JS 离线分类完成'}：成功 ${processedCount}，失败 ${failedCount}`);
+      // 收尾内存削峰：分类循环结束后、refreshCache（重建全量缓存，内存开销大）之前，
+      // 先释放 ~2.5GB 的 VLM 引擎。否则「引擎常驻 + 重建缓存」叠加在收尾一刻顶爆内存，
+      // 表现为「分类刚完成就闪退」。finally 里还有一次幂等释放兜底。
+      if (preTier && preTier.engine === 'vlm') {
+        try {
+          const vlm = require('./classify/VLMClassifier');
+          if (vlm && typeof vlm.disposeVLMContext === 'function') await vlm.disposeVLMContext();
+          logger.info('[Android] VLM Engine 已释放（refreshCache 前）');
+        } catch (e) {
+          logger.warn('[Android] 释放 VLM Engine 失败:', e?.message || e);
+        }
+      }
       // 不论跑完还是中途停止，都刷 GlobalImageCache → 已分类的（每张已落库）立刻归位、UI 可见；
       // 不然 HomeScreen.loadCategories 读到的 categoryCounts 还是分类前 NA 状态，显示「待分类|N」陈旧数据。
       try {
@@ -724,15 +736,13 @@ class GalleryScannerService {
       logger.error('❌ JS 离线分类失败:', error);
       throw error;
     } finally {
-      // VLM 档跑完/出错/中途停都释放原生 Engine（~2.5GB 常驻）：不释放会持续占内存，
-      // 叠加下次加载易触发 OOM / 崩溃退出。disposeVLMContext 幂等，非 VLM 档无副作用。
+      // 兜底：VLM 档跑完/出错/中途停都确保原生 Engine 已释放（幂等，非 VLM 档无副作用）。
       if (preTier && preTier.engine === 'vlm') {
         try {
           const vlm = require('./classify/VLMClassifier');
           if (vlm && typeof vlm.disposeVLMContext === 'function') await vlm.disposeVLMContext();
-          logger.info('[Android] VLM Engine 已释放');
         } catch (e) {
-          logger.warn('[Android] 释放 VLM Engine 失败:', e?.message || e);
+          logger.warn('[Android] 释放 VLM Engine 失败(兜底):', e?.message || e);
         }
       }
       this.isScanning = false;
