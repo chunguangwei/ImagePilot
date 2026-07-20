@@ -2511,11 +2511,6 @@ const HomeScreen = ({ navigation }) => {
           <View style={styles.sectionTitleContainer}>
             <SectionIcon name="images-outline" emoji="📸" tint={SECTION_TINTS.recent} />
             <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>{t('home.recentDiscoveredPhotos')}</Text>
-            {recentImagesTotal > 0 && (
-              <View style={styles.countBadge}>
-                <Text style={styles.countBadgeText}>{recentImagesTotal}</Text>
-              </View>
-            )}
           </View>
           <View style={styles.headerButtonsContainer}>
             {recentImages.length > 12 && (
@@ -2525,7 +2520,7 @@ const HomeScreen = ({ navigation }) => {
                 activeOpacity={0.7}
               >
                 <Text style={styles.toggleButtonText}>
-                  {showAllRecent ? t('home.showLess') : `${t('home.showMore')} (${recentImages.length - 12})`}
+                  {showAllRecent ? t('home.showLess') : t('home.showMore')}
                 </Text>
               </TouchableOpacity>
             )}
