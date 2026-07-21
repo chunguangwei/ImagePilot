@@ -117,6 +117,7 @@ class ImageSimilarityService {
       images = null,
       clearExisting = images == null,
       useSimplifiedAlgorithm = undefined, // 是否使用简化算法（undefined时使用默认值）
+      incrementalNewIds = null, // 增量模式：仅含这些新增图 id 的时间窗口会被处理（Set）
     } = options;
 
     logger.debug(`开始相似图片检测: 时间窗口=${timeWindow}秒, 阈值=${similarityThreshold}, 输入图片=${images ? images.length : '全量'}`);
@@ -150,7 +151,7 @@ class ImageSimilarityService {
         // 每次检测都清空现有相似度数据，完全重新检测
         logger.debug('🧹 清空所有相似度数据，开始完全重新检测');
         await unifiedService.clearSimilarityData();
-      } else if (images && images.length > 0) {
+      } else if (!incrementalNewIds && images && images.length > 0) {
         const idsToClear = images
           .map(img => img?.id)
           .filter(id => typeof id === 'string' || typeof id === 'number');
@@ -170,6 +171,7 @@ class ImageSimilarityService {
           similarityThreshold,
           groupType: 'similar',
           onProgress, // 传递进度回调
+          ...(incrementalNewIds ? { incrementalNewIds } : {}),
           ...(useSimplifiedAlgorithm !== undefined && { useSimplifiedAlgorithm }), // 如果指定了则传递，否则使用默认值
         }
       );
@@ -313,10 +315,31 @@ class ImageSimilarityService {
       const sortedImages = this._sortImagesByTime(imagesWithTime);
       
       // 3. 创建时间窗口
-      const timeWindows = this._createTimeWindows(sortedImages, opts.timeWindow);
-      
+      let timeWindows = this._createTimeWindows(sortedImages, opts.timeWindow);
+
       logger.debug(`📊 创建了${timeWindows.length}个时间窗口`);
-      
+
+      // 增量模式：只处理「包含新增图片」的时间窗口，其余窗口的既有相似组保留不动。
+      // 新增判定由上层传入 incrementalNewIds（尚无颜色直方图特征缓存的图 id 集合）。
+      if (opts.incrementalNewIds && opts.incrementalNewIds.size > 0) {
+        const beforeCount = timeWindows.length;
+        timeWindows = timeWindows.filter(w =>
+          w.some(img => img && img.id != null && opts.incrementalNewIds.has(String(img.id))));
+        logger.info(`🔎 增量相似检测：${beforeCount} 个时间窗口中 ${timeWindows.length} 个含新增图片，仅处理这些`);
+        // 清掉受影响窗口内成员的旧相似数据，避免残留过期分组（未受影响窗口不动）
+        const affectedIds = [];
+        for (const w of timeWindows) for (const img of w) if (img && img.id != null) affectedIds.push(img.id);
+        if (affectedIds.length > 0) {
+          try { await this.getUnifiedDataService().clearSimilarityData(affectedIds); }
+          catch (e) { logger.warn('⚠️ 增量清理旧相似数据失败:', e?.message || e); }
+        }
+        if (timeWindows.length === 0) {
+          logger.info('✅ 增量相似检测：没有受影响的时间窗口，无需处理');
+          if (opts.onProgress) opts.onProgress(0, 0, 0);
+          return { groups: [], processed: 0, windows: 0, options: opts };
+        }
+      }
+
       // 4. 根据全局图片总数决定算法策略
       const totalImageCount = imagesWithTime.length;
       const useSimplified = opts.useSimplifiedAlgorithm && totalImageCount >= opts.globalImageCountThreshold;

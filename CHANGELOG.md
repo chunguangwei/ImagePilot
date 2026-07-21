@@ -4,6 +4,31 @@
 
 ---
 
+## [1.5.79] - 2026-07-21
+
+功能优化，全端同步更新：相似照片检测支持「增量检测」。
+
+### 新增 / Added
+- **相似照片检测支持「增量检测 / 全部检测」二选一**：点击「相似照片」的「重新检测」时，弹窗让用户选择——
+  - **增量检测（仅新增）**：只对「尚未建立特征索引的新增照片」所在的时间窗口做比对，其余照片的既有相似组保留不动，并复用历史颜色直方图缓存，**照片多时显著更快**；
+  - **全部检测**：清空后对全库重新比对（原行为）。
+  首次检测（无任何历史特征）时增量会自动回退全量。移动端为三按钮弹窗，桌面端为「确定=增量 / 取消=全部」确认框。（`similarityDetectionPhase.js` / `ImageSimilarityService.js` / `GalleryScannerService{.js,.android.js,.ios.js}` / `HomeScreen.mobile.js` / `HomeScreen.desktop.js`，iOS + Android + 桌面全端）
+  Added incremental vs full choice for similar-photo detection: incremental only re-compares time windows containing newly added photos (reusing cached color-histogram features), which is much faster on large libraries; falls back to full on first run.
+
+### 修复 / Fixed
+- 「最新发现照片」头部去掉冗余数字（蓝色总数徽章与「更多 (N)」的数字），避免与按钮挤在一排（`HomeScreen.mobile.js`）。
+  Removed redundant numbers in the "Recently Discovered" header to fix cramped layout.
+
+### 平台发布状态 / Platform Release
+| 平台 | 版本 | 发布渠道 | 说明 |
+| --- | --- | --- | --- |
+| iOS | 1.5.79 (8) | Apple App Store | 纯 JS 逻辑，影响 iOS，需提交 App Store 更新 |
+| Android | 1.5.79 | GitHub Releases | APK |
+| macOS | 1.5.79 | GitHub Releases | dmg |
+| Windows | 1.5.79 | GitHub Releases | exe / appx |
+
+---
+
 ## [1.5.78] - 2026-07-21
 
 稳定性修复（续 1.5.77）：本地大模型分类「刚完成即闪退」。

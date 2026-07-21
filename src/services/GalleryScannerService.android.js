@@ -1568,11 +1568,11 @@ class GalleryScannerService {
 
   /**
    * 相似度检测阶段（兼容PC端接口）
-   * 供移动端 HomeScreen 直接调用（全量检测）
-   * @param {Date} scanStartTime - 扫描开始时间（可选，已废弃）
-   * @param {Array} candidateImages - 候选图片（可选，已废弃）
+   * 供移动端 HomeScreen 直接调用
+   * @param {Object} [opts] - { mode: 'full' | 'incremental' }；默认 full
    */
-  async similarityDetectionPhase(scanStartTime = null, candidateImages = []) {
+  async similarityDetectionPhase(opts = {}) {
+    const mode = opts && opts.mode === 'incremental' ? 'incremental' : 'full';
     const settings = await UnifiedDataService.readSettings();
     let similarityThreshold = (settings.similarityThreshold != null && settings.similarityThreshold >= 0 && settings.similarityThreshold <= 1)
       ? settings.similarityThreshold
@@ -1582,6 +1582,7 @@ class GalleryScannerService {
       sendProgressMessage: this.sendProgressMessage.bind(this),
       similarityService: this.similarityService,
       similarityThreshold,
+      similarityMode: mode,
       totalImagesToBeClassified: this.totalImagesToBeClassified, // Android 版本需要传递此参数
     });
   }

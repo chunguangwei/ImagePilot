@@ -817,7 +817,7 @@ const HomeScreen = ({ navigation }) => {
   /**
    * 启动相似度检测
    */
-  const handleStartSimilarityDetection = useCallback(async () => {
+  const runSimilarityDetection = useCallback(async (mode = 'full') => {
     // 检查是否正在扫描
     if (isScanning) {
       logger.debug('正在扫描中，跳过相似度检测请求');
@@ -877,7 +877,7 @@ const HomeScreen = ({ navigation }) => {
       galleryScannerService.isScanning = true;
       
       // 直接调用 similarityDetectionPhase，它会使用内部的 sendProgressMessage
-      await galleryScannerService.similarityDetectionPhase();
+      await galleryScannerService.similarityDetectionPhase({ mode });
       
       // 获取相似组统计以显示完成消息
       const similarityGroupsStats = await UnifiedDataService.getSimilarityGroupsStats();
@@ -908,6 +908,25 @@ const HomeScreen = ({ navigation }) => {
       }
     }
   }, [isScanning, loadAllData, t]);
+
+  /**
+   * 「重新检测」按钮：弹窗让用户选择「增量检测（仅新增照片，快）」或「全部检测」。
+   */
+  const handleStartSimilarityDetection = useCallback(() => {
+    if (isScanning) {
+      Alert.alert(t('common.tip'), t('home.scanAlreadyInProgress'));
+      return;
+    }
+    Alert.alert(
+      t('home.similarityScanModeTitle', { defaultValue: '相似照片检测' }),
+      t('home.similarityScanModeMessage', { defaultValue: '照片较多时，增量检测只比对新增照片，速度更快；全部检测会重新比对全部照片。' }),
+      [
+        { text: t('home.similarityScanIncremental', { defaultValue: '增量检测（仅新增）' }), onPress: () => runSimilarityDetection('incremental') },
+        { text: t('home.similarityScanFull', { defaultValue: '全部检测' }), onPress: () => runSimilarityDetection('full') },
+        { text: t('common.cancel', { defaultValue: '取消' }), style: 'cancel' },
+      ],
+    );
+  }, [isScanning, runSimilarityDetection, t]);
 
   /**
    * 启动位置信息补全

@@ -2435,7 +2435,8 @@ class GalleryScannerService {
    * 阶段6: 相似度检测（增量检测：只处理本次扫描更新的图片）
    * 对所有已分类的图片进行相似度检测
    */
-  async similarityDetectionPhase(scanStartTime, candidateImages = []) {
+  async similarityDetectionPhase(opts = {}) {
+    const mode = opts && opts.mode === 'incremental' ? 'incremental' : 'full';
     const settings = await UnifiedDataService.readSettings();
     let similarityThreshold = (settings.similarityThreshold != null && settings.similarityThreshold >= 0 && settings.similarityThreshold <= 1)
       ? settings.similarityThreshold
@@ -2445,6 +2446,7 @@ class GalleryScannerService {
       sendProgressMessage: this.sendProgressMessage.bind(this),
       similarityService: this.similarityService,
       similarityThreshold,
+      similarityMode: mode,
       // PC 版本不传递 totalImagesToBeClassified
     });
   }

@@ -11,7 +11,10 @@
       "Write(/RELEASE_NOTES.md)",
       "Edit(/.github/workflows/**)",
       "Edit(/RELEASE_NOTES.md)",
-      "Edit(/README.md)"
+      "Edit(/README.md)",
+      "Edit(/src/screens/desktop/**)",
+      "Edit(/src/i18n/locales/zh/**)",
+      "Edit(/src/i18n/locales/en/**)"
     ]
   }
 }

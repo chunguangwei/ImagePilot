@@ -454,9 +454,22 @@ const HomeScreen = () => {
       return;
     }
 
+    // 让用户选择检测模式：确定=增量（仅新增，较快），取消=全部重新检测
+    let mode = 'full';
+    try {
+      if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+        const incremental = window.confirm(
+          t('home.similarityScanModeConfirm', {
+            defaultValue: '相似照片检测\n\n「确定」= 增量检测（仅比对新增照片，速度更快）\n「取消」= 全部重新检测',
+          })
+        );
+        mode = incremental ? 'incremental' : 'full';
+      }
+    } catch (_) {}
+
     try {
       logger.debug('开始相似度检测');
-      
+
       // 设置扫描状态
       setIsScanning(true);
       // 🔥 设置全局变量，供设置页面检查扫描状态
@@ -480,7 +493,7 @@ const HomeScreen = () => {
       galleryScannerService.scanStartTimestamp = new Date();
       
       // 直接调用 similarityDetectionPhase，它会使用内部的 sendProgressMessage
-      await galleryScannerService.similarityDetectionPhase();
+      await galleryScannerService.similarityDetectionPhase({ mode });
       
       // 获取相似组统计以显示完成消息
       const similarityGroupsStats = await UnifiedDataService.getSimilarityGroupsStats();

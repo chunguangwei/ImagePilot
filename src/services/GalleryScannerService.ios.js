@@ -714,7 +714,8 @@ class GalleryScannerService {
    * 相似度检测——和 Android 共享 similarityDetectionPhase 模块（颜色直方图 + 滑窗比对）。
    * GPS/相似都是 iOS 端首版没接的，现在补齐保持双端一致。
    */
-  async similarityDetectionPhase(_scanStartTime = null, _candidateImages = []) {
+  async similarityDetectionPhase(opts = {}) {
+    const mode = opts && opts.mode === 'incremental' ? 'incremental' : 'full';
     const settings = await UnifiedDataService.readSettings();
     let similarityThreshold = (settings.similarityThreshold != null
         && settings.similarityThreshold >= 0
@@ -735,6 +736,7 @@ class GalleryScannerService {
       sendProgressMessage: this.sendProgressMessage.bind(this),
       similarityService: this.similarityService,
       similarityThreshold,
+      similarityMode: mode,
       totalImagesToBeClassified: this.totalImagesToBeClassified,
     });
     return { success: true };

@@ -53,8 +53,9 @@ function getExcludedCategoryStats(images) {
  */
 export async function similarityDetectionPhase(context) {
   const { sendProgressMessage, similarityService, totalImagesToBeClassified } = context;
-  
-  logger.info('🔍 阶段6: 开始相似度检测（全量重新检测）');
+  const mode = context.similarityMode === 'incremental' ? 'incremental' : 'full';
+
+  logger.info(`🔍 阶段6: 开始相似度检测（${mode === 'incremental' ? '增量：仅新增照片' : '全量重新检测'}）`);
   
   try {
     // 全量：读取所有图片
@@ -99,13 +100,45 @@ export async function similarityDetectionPhase(context) {
       ? context.similarityThreshold
       : 0.8;
     if (similarityThreshold < 0.8) similarityThreshold = 0.8;
-    logger.info(`🔍 开始调用相似度检测服务，参数: timeWindow=300, similarityThreshold=${similarityThreshold}, useSimplifiedAlgorithm=false`);
+    logger.info(`🔍 开始调用相似度检测服务，参数: timeWindow=300, similarityThreshold=${similarityThreshold}, useSimplifiedAlgorithm=false, mode=${mode}`);
+
+    // 增量模式：新增照片 = 尚无颜色直方图特征缓存的图（image_features 表里没有的）。
+    // 该表在历史相似检测/以图搜图时顺手落库，是天然的「已处理」标记。首次无任何特征则回退全量。
+    let incrementalNewIds = null;
+    if (mode === 'incremental') {
+      try {
+        const feats = await UnifiedDataService.imageStorageService.readAllImageFeatures();
+        const featKeys = feats ? new Set(Object.keys(feats).map(String)) : new Set();
+        if (featKeys.size === 0) {
+          logger.info('📊 阶段6: 增量模式但无历史特征索引，自动回退全量检测');
+        } else {
+          incrementalNewIds = new Set(
+            imagesForSimilarity
+              .filter(im => im && im.id != null && !featKeys.has(String(im.id)))
+              .map(im => String(im.id))
+          );
+          logger.info(`📊 阶段6: 增量模式，新增待检测 ${incrementalNewIds.size} 张（已处理 ${featKeys.size} 张跳过）`);
+          if (incrementalNewIds.size === 0) {
+            logger.info('✅ 阶段6: 无新增照片，相似检测跳过');
+            const stats = await UnifiedDataService.getSimilarityGroupsStats().catch(() => null);
+            const groupsCount = stats ? stats.length : 0;
+            await sendProgressMessage('similarity_detection', 1, 1, groupsCount, totalImagesToBeClassified);
+            return;
+          }
+        }
+      } catch (e) {
+        logger.warn(`⚠️ 阶段6: 计算增量新增图失败，回退全量: ${e?.message || e}`);
+        incrementalNewIds = null;
+      }
+    }
+
     const result = await similarityService.detectSimilarImages({
       timeWindow: 300, // 5分钟时间窗口
       similarityThreshold,
       groupType: 'similar',
       images: imagesForSimilarity,
-      clearExisting: true, // 全量重新检测：先清除现有相似组，再对所有图片重新检测
+      clearExisting: !incrementalNewIds, // 全量重检测才清空；增量只动受影响窗口
+      incrementalNewIds, // 增量：仅处理含这些新增图的时间窗口
       useSimplifiedAlgorithm: false, // 🔥 强制使用直方图模式，因为AI分类不一定执行了
       onProgress: async (processed, total, groups) => {
         // 更新相似组数量（使用传递的groups参数）
