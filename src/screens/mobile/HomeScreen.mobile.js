@@ -1962,32 +1962,6 @@ const HomeScreen = ({ navigation }) => {
   };
 
   /**
-   * 渲染相似组芯片（展开更多时使用，无缩略图，格式：相似组 · 12）
-   */
-  const renderSimilarityGroupChip = (group) => (
-    <TouchableOpacity
-      key={group.groupId}
-      style={styles.attributeChip}
-      onPress={() => {
-        try {
-          if (!group?.groupId || !navigation) return;
-          navigation.navigate('Category', {
-            filterType: 'similarityGroup',
-            filterValue: group.groupId,
-            fromScreen: 'SimilarityGroup',
-          });
-        } catch (error) {
-          logger.error('❌ 相似组芯片点击失败:', error);
-        }
-      }}
-    >
-      <Text style={styles.attributeChipName} numberOfLines={1}>
-        {t('home.similarityGroupChip', { count: group.imageCount || 0 })}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  /**
    * 渲染相似组卡片（与 PC 端保持一致：显示 1 张代表图片）
    */
   const renderSimilarityGroupCard = (group) => (
@@ -2111,18 +2085,11 @@ const HomeScreen = ({ navigation }) => {
         </View>
         
         {similarityGroups && similarityGroups.length > 0 ? (
-          showAllSimilarityGroups ? (
-            // 展开更多时使用芯片流式布局，无缩略图，可显示全部相似组
-            <View style={[styles.attributesContainer, { paddingTop: 0 }]}>
-              <View style={styles.attributeRow}>
-                {similarityGroups.map(renderSimilarityGroupChip)}
-              </View>
-            </View>
-          ) : (
-            <View style={styles.categoriesGrid}>
-              {similarityGroups.slice(0, 8).map(renderSimilarityGroupCard)}
-            </View>
-          )
+          // 统一用缩略图网格：每组取组内最新一张作代表图，比纯文字「相似组·N」更易辨认。
+          // 折叠显示前 8 组，展开显示全部。
+          <View style={styles.categoriesGrid}>
+            {(showAllSimilarityGroups ? similarityGroups : similarityGroups.slice(0, 8)).map(renderSimilarityGroupCard)}
+          </View>
         ) : (
           <View style={styles.emptyState}>
             {HomeIonicons ? <HomeIonicons name="copy-outline" size={48} color="#C7C7CC" style={{ marginBottom: 12 }} /> : <Text style={styles.emptyStateIcon}>🔗</Text>}

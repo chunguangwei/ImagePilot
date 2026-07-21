@@ -14,6 +14,8 @@
   - **全部检测**：清空后对全库重新比对（原行为）。
   首次检测（无任何历史特征）时增量会自动回退全量。移动端为三按钮弹窗，桌面端为「确定=增量 / 取消=全部」确认框。（`similarityDetectionPhase.js` / `ImageSimilarityService.js` / `GalleryScannerService{.js,.android.js,.ios.js}` / `HomeScreen.mobile.js` / `HomeScreen.desktop.js`，iOS + Android + 桌面全端）
   Added incremental vs full choice for similar-photo detection: incremental only re-compares time windows containing newly added photos (reusing cached color-histogram features), which is much faster on large libraries; falls back to full on first run.
+- **相似照片列表改为缩略图卡片 + 最新优先**：展开查看全部相似组时，原来是纯文字「相似组·N」难以辨认，现统一改为**缩略图卡片**（取组内最新一张照片作代表图，右下角显示数量）；相似组默认按**组内最新照片时间降序**排列，最新/增量新增的组排最前（`HomeScreen.mobile.js` 缩略图网格、`UnifiedDataService.getSimilarityGroupsStats` 排序，全端受益）。
+  Similar-photo groups now render as thumbnail cards (representative photo + count) instead of text-only chips, and are sorted newest-first so newly added groups appear on top.
 
 ### 修复 / Fixed
 - 「最新发现照片」头部去掉冗余数字（蓝色总数徽章与「更多 (N)」的数字），避免与按钮挤在一排（`HomeScreen.mobile.js`）。

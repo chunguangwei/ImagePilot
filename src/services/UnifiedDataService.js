@@ -3269,8 +3269,13 @@ class UnifiedDataService {
       // 过滤掉图片数量为 0 的组（所有图片都被移到暂存箱的情况）
       const validGroups = groups.filter(group => group.imageCount > 0);
       
-      // 按组大小排序（从大到小）
-      validGroups.sort((a, b) => b.imageCount - a.imageCount);
+      // 按「最新照片时间」降序（最新/增量新增的组排最前）；同一时间再按组大小降序
+      validGroups.sort((a, b) => {
+        const ta = a.latestTime ? a.latestTime.getTime() : 0;
+        const tb = b.latestTime ? b.latestTime.getTime() : 0;
+        if (tb !== ta) return tb - ta;
+        return b.imageCount - a.imageCount;
+      });
       
       // logger.debug(`📊 相似度组统计: ${validGroups.length}个组（已过滤空组）`);
       return validGroups;
