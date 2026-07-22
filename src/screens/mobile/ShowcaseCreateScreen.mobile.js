@@ -42,9 +42,11 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
   // 若直接读 route.params 会丢 editShowcase 导致保存被当成「新建」而非覆盖原时刻。
   const editRef = useRef(route?.params?.editShowcase || null);
   const edit = editRef.current;
-  const initialImages = edit?.images || (Array.isArray(route?.params?.images) ? route.params.images : []);
+  // 编辑模式：不直接用 edit.images（可能因缓存未完整查到部分图丢失），而是从 imageIds/items 实时查库。
+  const initialImages = (Array.isArray(route?.params?.images) ? route.params.images : []);
 
   const [imgs, setImgs] = useState(initialImages);
+  const [loading, setLoading] = useState(!!edit); // 编辑模式进入时需异步查库重建 images
   const [coverId, setCoverId] = useState(edit?.coverId || '');
   const [coverBrowse, setCoverBrowse] = useState(false); // 封面大图浏览选择器
   const [name, setName] = useState(edit?.name || '');
@@ -95,6 +97,31 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
       setTimeout(finish, 1500); // 兜底：图片不触发 onLoad 也要截
     });
   };
+
+  // 编辑模式：进入时异步从 imageIds/items 实时查库重建完整 images，避免缓存不全丢图
+  useEffect(() => {
+    if (!edit) return;
+    (async () => {
+      try {
+        const all = await UnifiedDataService.readAllImages();
+        const byId = new Map(all.map((i) => [i.id, i]));
+        let rebuilt;
+        if (Array.isArray(edit.items) && edit.items.length) {
+          rebuilt = edit.items.map((it) => {
+            if (it && it.kind === 'asset') return { id: `asset_${it.uri}`, uri: it.uri };
+            return it && byId.get(it.imageId);
+          }).filter(Boolean);
+        } else {
+          rebuilt = (edit.imageIds || []).map((id) => byId.get(id)).filter(Boolean);
+        }
+        setImgs(rebuilt);
+      } catch (e) {
+        logger.warn('[ShowcaseCreate] 编辑模式重建图片失败:', e?.message || e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [edit]);
 
   // 从选图器返回：合并新增图片（按 addToken 去重一次，避免重复合并）
   const addToken = route?.params?.addToken;
@@ -238,6 +265,12 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
         <View style={styles.backBtn} />
       </View>
 
+      {loading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={c.accent || '#007AFF'} />
+          <Text style={[{ marginTop: 12, color: c.secondaryLabel }]}>{t('showcase.loadingImages', { defaultValue: '正在加载图片…' })}</Text>
+        </View>
+      ) : (
       <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40 }}>
         {/* 预览条（点图设封面 · 角 ✕ 删图 · 末尾「+」加图） */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
@@ -364,6 +397,7 @@ export default function ShowcaseCreateScreen({ navigation, route }) {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+      )}
 
       {/* 封面大图浏览选择：按时刻卡宽幅比例展示，所见即封面效果 */}
       <Modal visible={coverBrowse} transparent animationType="slide" onRequestClose={() => setCoverBrowse(false)}>

@@ -1212,6 +1212,8 @@
     "entry": "时刻秀",
     "sectionTitle": "时刻秀",
     "createTitle": "生成时刻秀",
+    "editTitle": "编辑时刻秀",
+    "loadingImages": "正在加载图片…",
     "photoCount": "共 {{count}} 项（视频将自动播放）",
     "nameLabel": "名称",
     "namePlaceholder": "如：宝宝的夏天、毕业旅行…",

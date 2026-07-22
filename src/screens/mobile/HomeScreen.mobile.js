@@ -96,7 +96,9 @@ const CityCard = React.memo(function CityCard({ locationId, count, latestImageUr
       )}
       <View style={styles.categoryOverlay}>
         <Text style={styles.categoryName}>{cityName}</Text>
-        <Text style={styles.categoryCount}>{count}</Text>
+      </View>
+      <View style={styles.categoryCountBadge}>
+        <Text style={styles.categoryCountText}>{count}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -116,7 +118,9 @@ const TimeCard = React.memo(function TimeCard({ timeKey, label, count, recentIma
       )}
       <View style={styles.categoryOverlay}>
         <Text style={styles.categoryName} numberOfLines={1}>{label}</Text>
-        <Text style={styles.categoryCount}>{count}</Text>
+      </View>
+      <View style={styles.categoryCountBadge}>
+        <Text style={styles.categoryCountText}>{count}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -164,7 +168,9 @@ const CategoryCard = React.memo(function CategoryCard({
       )}
       <View style={styles.categoryOverlay}>
         <Text style={styles.categoryName} numberOfLines={1}>{displayName}</Text>
-        <Text style={styles.categoryCount}>{count}</Text>
+      </View>
+      <View style={styles.categoryCountBadge}>
+        <Text style={styles.categoryCountText}>{count}</Text>
       </View>
       {isVideoCategory && (
         <View style={styles.videoCatBadge} pointerEvents="none">
@@ -3121,17 +3127,35 @@ const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.42)',
     paddingHorizontal: 7,
     paddingVertical: 4,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   categoryName: {
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: -0.1,
     color: 'rgba(255, 255, 255, 0.96)',
-    flex: 1,
-    marginRight: 4,
+  },
+  categoryCountBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  categoryCountText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#000',
+    fontVariant: ['tabular-nums'],
   },
   categoryCount: {
     fontSize: 11,
