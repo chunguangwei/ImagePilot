@@ -3136,7 +3136,7 @@ const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
   },
   categoryCountBadge: {
     position: 'absolute',
-    bottom: 4,
+    top: 4,
     right: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 8,
