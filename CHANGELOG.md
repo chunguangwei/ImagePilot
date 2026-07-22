@@ -4,6 +4,26 @@
 
 ---
 
+## [1.5.80] - 2026-07-21
+
+Bug 修复版，全端同步更新。
+
+### 修复 / Fixed
+- **编辑时刻秀时图片丢失**：原因是从缓存查图可能不全（缓存异步加载中），现改为编辑模式进入时从 `imageIds` 实时查库重建完整图片列表，显示 loading 提示（`ShowcaseCreateScreen.mobile.js`）。
+  Fixed missing images when editing Showtime: now rebuilds the full image list from `imageIds` on entry instead of relying on potentially incomplete cache.
+- **首页类目卡片数量与名称重叠**：城市/时间/分类卡片的数量文字改为**右下角白底半透明徽章**（绝对定位，不占名称布局空间），数量再大也不会与名称挤在一起（`HomeScreen.mobile.js` 样式 `categoryCountBadge`）。
+  Fixed count text overlapping category names: counts now render as bottom-right badges (absolute positioned, white translucent background) that never interfere with the name.
+
+### 平台发布状态 / Platform Release
+| 平台 | 版本 | 发布渠道 | 说明 |
+| --- | --- | --- | --- |
+| iOS | 1.5.80 (10) | Apple App Store | 纯 JS 逻辑，影响 iOS，需提交 App Store 更新 |
+| Android | 1.5.80 | GitHub Releases | APK |
+| macOS | 1.5.80 | GitHub Releases | dmg |
+| Windows | 1.5.80 | GitHub Releases | exe / appx |
+
+---
+
 ## [1.5.79] - 2026-07-21
 
 功能优化，全端同步更新：相似照片检测支持「增量检测」。
