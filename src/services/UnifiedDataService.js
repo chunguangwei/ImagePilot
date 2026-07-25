@@ -361,14 +361,33 @@ class UnifiedDataService {
       });
       if (all.length === 0) return { trips: [] };
       const { formatCityName } = require('../components/shared/categoryUI');
-      // 常驻城市集合：占比 >=15% 的城市都算常驻（双城生活——工作地+老家——不再被误判成"旅行"）
+      const dayOf0 = (img) => Math.floor((img.takenAt || img.timestamp) / 86400000);
+      // 常驻城市集合：占比 >=15% 且「时间跨度较长（>=45 天）」才算常驻。
+      // 单纯按占比会把「长途旅行拍了大量照片」的目的地（如大理/丽江，一次就几百张）
+      // 误判成常驻而整城剔除、进不了旅行回忆；叠加时间跨度判据可区分「常驻(跨越数月)」与「旅行(集中数天)」。
       const cityCount = new Map();
-      for (const img of all) cityCount.set(img.city, (cityCount.get(img.city) || 0) + 1);
+      const citySpan = new Map(); // city -> {min,max}(天)
+      for (const img of all) {
+        cityCount.set(img.city, (cityCount.get(img.city) || 0) + 1);
+        const d = dayOf0(img);
+        const sp = citySpan.get(img.city);
+        if (!sp) citySpan.set(img.city, { min: d, max: d });
+        else { if (d < sp.min) sp.min = d; if (d > sp.max) sp.max = d; }
+      }
       const homeCities = new Set(
-        [...cityCount.entries()].filter(([, n]) => n / all.length >= 0.15).map(([c]) => c)
+        [...cityCount.entries()]
+          .filter(([c, n]) => {
+            if (n / all.length < 0.15) return false;
+            const sp = citySpan.get(c);
+            const spanDays = sp ? (sp.max - sp.min + 1) : 0;
+            return spanDays >= 45; // 跨度足够长才算常驻，否则视为旅行目的地
+          })
+          .map(([c]) => c)
       );
       if (homeCities.size === 0) {
-        homeCities.add([...cityCount.entries()].sort((a, b) => b[1] - a[1])[0][0]);
+        // 兜底：取「跨度最长」的城市为常驻（而非单纯照片最多，避免旅行大城被选中）
+        const byspan = [...citySpan.entries()].sort((a, b) => (b[1].max - b[1].min) - (a[1].max - a[1].min));
+        if (byspan.length > 0) homeCities.add(byspan[0][0]);
       }
 
       const dayOf = (img) => Math.floor((img.takenAt || img.timestamp) / 86400000);
