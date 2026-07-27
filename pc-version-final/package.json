@@ -1,6 +1,6 @@
 {
   "name": "imageclassifier-app",
-  "version": "1.5.80",
+  "version": "1.5.81",
   "description": "ImagePilot-智能分类，便捷管理，仅你可见",
   "author": "ImageClassifier Team",
   "main": "public/electron.js",

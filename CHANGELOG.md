@@ -4,6 +4,26 @@
 
 ---
 
+## [1.5.81] - 2026-07-27
+
+Bug 修复版，全端同步更新。（1.5.80 之后补充的两处修复，随本次 iOS 上架一并发布）
+
+### 修复 / Fixed
+- **旅行回忆漏掉大理/丽江等目的地**：旅行回忆此前把「去过较久的城市」误判为常驻城市而过滤掉，导致大理、丽江等长途旅行目的地不出现在旅行回忆中。现在常驻城市判定加入**时间跨度判据（照片时间跨度 ≥ 45 天才算常驻）**，短期集中拍摄的旅行城市不再被误判为常驻，正常纳入旅行回忆（`MomentsScreen.mobile.js` 常驻城市判定逻辑）。
+  Fixed travel memories missing destinations like Dali/Lijiang: resident-city detection now also requires a photo time span ≥ 45 days, so short trips are no longer misclassified as resident cities and are included in travel memories.
+- **首页类目卡片数量徽章位置调整**：数量徽章从卡片右下角移到**右上角**，避开左下角的主题名，避免主题名较长时与数量徽章重叠（`HomeScreen.mobile.js` 样式 `categoryCountBadge`）。
+  Moved the category count badge from bottom-right to top-right to avoid overlapping the theme name in the bottom-left corner.
+
+### 平台发布状态 / Platform Release
+| 平台 | 版本 | 发布渠道 | 说明 |
+| --- | --- | --- | --- |
+| iOS | 1.5.81 (11) | Apple App Store | 纯 JS 逻辑，影响 iOS，需提交 App Store 更新 |
+| Android | 1.5.81 | GitHub Releases | APK |
+| macOS | 1.5.81 | GitHub Releases | dmg |
+| Windows | 1.5.81 | GitHub Releases | exe / appx |
+
+---
+
 ## [1.5.80] - 2026-07-21
 
 Bug 修复版，全端同步更新。
