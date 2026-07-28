@@ -241,6 +241,17 @@ class GalleryScannerService {
       } catch (e) {
         logger.warn('[iOS] 保存扫描完成时间失败（不阻断扫描收尾）:', e?.message || e);
       }
+
+      // 🔥 位置信息补全（对齐 Android：基础扫描完成时把 GPS 反查成 city 再发 completed）。
+      //  v1.5.75 把首页「重新检测」改走 handleScan 后，iOS 扫描链里不再有任何入口调用
+      //  enrichLocationInfo（Android 在 basic_scan_completed 里调），导致新照片永远只有
+      //  lat/lng 没有 city，「按城市」整段为空且点「重新检测」无反应。
+      try {
+        await this.enrichLocationInfo();
+      } catch (e) {
+        logger.warn('[iOS] 位置信息补全失败（不影响扫描收尾）:', e?.message || e);
+      }
+
       emit({ stage: 'completed', message: `完成（${duration}ms）`, processed: records.length, total: records.length, shouldRefresh: true });
       logger.debug(`[iOS] 扫描 + 落库完成，共 ${records.length} 张，耗时 ${duration}ms`);
 

@@ -4,6 +4,24 @@
 
 ---
 
+## [1.5.82] - 2026-07-28
+
+Bug 修复版（iOS 关键修复），全端同步更新。
+
+### 修复 / Fixed
+- **iOS「按城市」分类为空**：自 v1.5.75 起，首页「重新检测」与空态引导改走增量扫描（`handleScan`）后，iOS 扫描链路中不再有任何入口触发位置补全（`enrichLocationInfo` 零调用）——Android 扫描内部会自动补全，iOS 不会。导致 iOS 上照片只有 GPS 经纬度、永远不会有城市，「按城市」整段为空且点「重新检测」无反应（新安装用户尤甚）。现对齐 Android：iOS 扫描收尾时自动执行位置补全（GPS → 离线城市反查 → 落库 → 刷缓存），存量缺城市的照片下次扫描自动补齐。同步清理 `HomeScreen.mobile.js` 中已无调用的 `handleStartLocationEnrichment` 死代码（`GalleryScannerService.ios.js`）。
+  Fixed iOS "By City" section being empty: since v1.5.75 no code path triggered location enrichment on iOS (Android scans enrich automatically, iOS did not), so photos had GPS coordinates but never got a city. iOS scans now run location enrichment at completion (parity with Android); previously-missed photos are backfilled on the next scan. Also removed the dead `handleStartLocationEnrichment` handler.
+
+### 平台发布状态 / Platform Release
+| 平台 | 版本 | 发布渠道 | 说明 |
+| --- | --- | --- | --- |
+| iOS | 1.5.82 (12) | Apple App Store | 纯 JS 逻辑，影响 iOS，需提交 App Store 更新 |
+| Android | 1.5.82 | GitHub Releases | APK（版本号同步，无安卓侧代码变化） |
+| macOS | 1.5.82 | GitHub Releases | dmg（版本号同步，无桌面侧代码变化） |
+| Windows | 1.5.82 | GitHub Releases | exe / appx（版本号同步，无桌面侧代码变化） |
+
+---
+
 ## [1.5.81] - 2026-07-27
 
 Bug 修复版，全端同步更新。（1.5.80 之后补充的两处修复，随本次 iOS 上架一并发布）
