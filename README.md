@@ -10,6 +10,8 @@
 **ImagePilot** 是一款隐私优先的智能照片分类管理工具：默认全程本地离线分类（设备端 ONNX），可选配置你自己的大模型做在线增强；并内置从 GitHub 一键升级的能力。支持 iOS / Android（React Native）与 PC 桌面（Electron / react-native-web）。iOS 与 Android 功能已对齐（修图、时刻秀及导出含背景乐、本地分类等两端一致）；**iOS 版已正式上架 Apple App Store**，Android / Windows / macOS 通过 GitHub Releases 分发。
 
 > 本项目以 **PolyForm Noncommercial License 1.0.0** 授权：**非商业用途免费，商业用途须事先获作者书面同意**（详见文末「授权 / License」）。早期基于上游 ImageClassifier 起步，现已作为独立产品演进（移除原作者公网后端、统一走用户自配大模型、自建 GitHub 升级通道等）。上游致谢见文末「致谢」。
+>
+> **名称说明**：「芯图相册」为沿自上游项目的早期名称，**已正式停用，今后统一使用「ImagePilot」**。当前产品相对早期版本已完成全面重构与大规模改版（架构、UI、功能、分发渠道均不相同），与旧名称所指的早期项目不再等同。
 
 ### 核心优势
 
