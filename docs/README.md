@@ -117,7 +117,6 @@ docs/
 - **查看Release版本日志指南.md** - Android Release版本日志查看完整指南
 - **后台扫描实现方案.md** - Android后台扫描前台服务实现方案
 - **获取pepk.jar说明.md** - 如何获取华为应用签名工具pepk.jar
-- **阿里云备案信息提取指南.md** - 阿里云App备案信息提取指南
 
 ---
 
