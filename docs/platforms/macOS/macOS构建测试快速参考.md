@@ -138,10 +138,10 @@ docs/
 ### 输出文件
 ```
 pc-version-final/dist/
-  ├── XinTuAlbum-1.0.0-x64.dmg      # Intel版本
-  ├── XinTuAlbum-1.0.0-arm64.dmg    # Apple Silicon版本
-  ├── XinTuAlbum-1.0.0-x64.zip      # 便携版（可选）
-  └── XinTuAlbum-1.0.0-arm64.zip    # 便携版（可选）
+  ├── ImagePilot-1.0.0-x64.dmg      # Intel版本
+  ├── ImagePilot-1.0.0-arm64.dmg    # Apple Silicon版本
+  ├── ImagePilot-1.0.0-x64.zip      # 便携版（可选）
+  └── ImagePilot-1.0.0-arm64.zip    # 便携版（可选）
 ```
 
 ---

@@ -46,8 +46,8 @@ npm run electron:build-mac
 ```
 
 **产物位置**：`pc-version-final/dist/`  
-- `XinTuAlbum-1.1.2-x64.dmg`（Intel）  
-- `XinTuAlbum-1.1.2-arm64.dmg`（Apple Silicon）
+- `ImagePilot-1.1.2-x64.dmg`（Intel）  
+- `ImagePilot-1.1.2-arm64.dmg`（Apple Silicon）
 
 需要 DMG + ZIP 时：
 
@@ -68,7 +68,7 @@ npm run electron:build
 ```
 
 **产物位置**：`pc-version-final/dist/`  
-- `XinTuAlbum-Setup-1.1.2.exe`（NSIS 安装版，推荐）
+- `ImagePilot-Setup-1.1.2.exe`（NSIS 安装版，推荐）
 
 仅便携版：
 
@@ -116,8 +116,8 @@ npm run electron:build-all
 打包后主进程日志写入应用标准目录，不再放在桌面：
 
 - **主日志**：`app.getPath('logs')/main.log`  
-  - macOS：`~/Library/Logs/XinTuAlbum/main.log`  
-  - Windows：`%USERPROFILE%\AppData\Roaming\XinTuAlbum\logs\main.log`  
+  - macOS：`~/Library/Logs/ImagePilot/main.log`  
+  - Windows：`%USERPROFILE%\AppData\Roaming\ImagePilot\logs\main.log`  
 - **若上述不可写**：回退到 `/tmp/xintualbum-main.log`（macOS）或系统临时目录下同名文件。
 - **启动确认**：脚本一加载即写 `/tmp/xintualbum-bootstrap.log`，可确认主进程是否启动。
 
@@ -139,16 +139,16 @@ npm run electron:build-all
 ## 八、macOS DMG 安装与测试
 
 **1. 找到 DMG**  
-构建完成后：`pc-version-final/dist/XinTuAlbum-1.1.2-arm64.dmg`（Apple Silicon）或同目录下 x64 版本。
+构建完成后：`pc-version-final/dist/ImagePilot-1.1.2-arm64.dmg`（Apple Silicon）或同目录下 x64 版本。
 
 **2. 安装**  
-- 双击 DMG 打开，将 **XinTuAlbum** 拖到 **应用程序（Applications）** 文件夹。  
+- 双击 DMG 打开，将 **ImagePilot** 拖到 **应用程序（Applications）** 文件夹。  
 - 若提示“无法打开，因为无法验证开发者”：**右键** 应用 → 选 **“打开”** → 再点“打开”确认（未签名包首次需这样）。
 
 **3. 运行与测试**  
-- 在启动台或应用程序里打开 **ImagePilot（XinTuAlbum）**。  
+- 在启动台或应用程序里打开 **ImagePilot（ImagePilot）**。  
 - 建议验证：选择照片目录、扫描、分类/截图识别、设置、暂存箱等主要流程。  
-- 若异常：查看 **六、日志位置** 中的 `~/Library/Logs/XinTuAlbum/main.log` 或 `/tmp/xintualbum-bootstrap.log`。
+- 若异常：查看 **六、日志位置** 中的 `~/Library/Logs/ImagePilot/main.log` 或 `/tmp/xintualbum-bootstrap.log`。
 
 **4. 卸载**  
-删除 `/Applications/XinTuAlbum.app`；用户数据在 `~/Library/Application Support/imageclassifier-app`，按需删除。
+删除 `/Applications/ImagePilot.app`；用户数据在 `~/Library/Application Support/imageclassifier-app`，按需删除。

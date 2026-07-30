@@ -649,7 +649,7 @@ Animated.loop(
 class ImageEnhanceService {
   constructor() {
     this.apiConfig = {
-      baseURL: 'https://www.xintuxiangce.top',
+      baseURL: 'https://your-server.example.com',
       endpoints: {
         submit: '/api/v1/image-edit/submit',
         taskStatus: '/api/v1/image-edit/task',

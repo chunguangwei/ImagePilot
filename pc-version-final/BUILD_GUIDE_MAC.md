@@ -103,8 +103,8 @@ npm run electron:build-mac-zip
 ```powershell
 ls dist\
 # 你会看到:
-# - XinTuAlbum-1.0.0-x64.dmg
-# - XinTuAlbum-1.0.0-arm64.dmg
+# - ImagePilot-1.0.0-x64.dmg
+# - ImagePilot-1.0.0-arm64.dmg
 ```
 
 ### 📦 分发方式
@@ -162,7 +162,7 @@ npm run electron:build-mac
 #### 5. 公证应用（可选）
 ```bash
 # 需要Apple开发者账号
-npx electron-notarize dist/mac/XinTuAlbum.app \
+npx electron-notarize dist/mac/ImagePilot.app \
   --apple-id "your@email.com" \
   --apple-id-password "app-specific-password" \
   --team-id "YOUR_TEAM_ID"
@@ -180,8 +180,8 @@ npx electron-notarize dist/mac/XinTuAlbum.app \
 
 ### Q2: 如何支持Intel和Apple Silicon两种架构？
 **A:** 已配置！`electron-builder`会自动生成两个版本：
-- `XinTuAlbum-1.0.0-x64.dmg` (Intel)
-- `XinTuAlbum-1.0.0-arm64.dmg` (Apple Silicon)
+- `ImagePilot-1.0.0-x64.dmg` (Intel)
+- `ImagePilot-1.0.0-arm64.dmg` (Apple Silicon)
 
 ### Q3: 图标文件(.icns)怎么生成？
 **A:** 三种方式：

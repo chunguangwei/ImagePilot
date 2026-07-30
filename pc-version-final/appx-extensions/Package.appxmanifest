@@ -8,7 +8,7 @@
             Publisher="CN=03F46D22-3B0F-4788-A8BF-351A4DF78D3D"/>
   <Properties>
     <DisplayName>ImagePilot</DisplayName>
-    <PublisherDisplayName>智语未来软件</PublisherDisplayName>
+    <PublisherDisplayName>ImagePilot</PublisherDisplayName>
     <Description>ImagePilot-智能分类，便捷管理，仅你可见</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>

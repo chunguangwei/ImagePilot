@@ -39,7 +39,7 @@ System.IO.PathTooLongException: 指定的路径或文件名太长或者两者都
 New-Item -ItemType Directory -Path "C:\WACK" -Force
 
 # 复制文件
-Copy-Item ".\dist\XinTuAlbum-1.0.0.appx" -Destination "C:\WACK\XinTuAlbum-1.0.0.appx"
+Copy-Item ".\dist\ImagePilot-1.0.0.appx" -Destination "C:\WACK\ImagePilot-1.0.0.appx"
 ```
 
 ### 方法3：使用短路径名（8.3格式）
@@ -48,7 +48,7 @@ Copy-Item ".\dist\XinTuAlbum-1.0.0.appx" -Destination "C:\WACK\XinTuAlbum-1.0.0.
 
 ```powershell
 $fso = New-Object -ComObject Scripting.FileSystemObject
-$shortPath = $fso.GetFile(".\dist\XinTuAlbum-1.0.0.appx").ShortPath
+$shortPath = $fso.GetFile(".\dist\ImagePilot-1.0.0.appx").ShortPath
 Write-Host $shortPath
 ```
 
@@ -86,7 +86,7 @@ Write-Host $shortPath
    - 选择 "Validate Windows App"
 
 3. **选择 APPX 文件**
-   - 浏览并选择 `C:\WACK\XinTuAlbum-1.0.0.appx`
+   - 浏览并选择 `C:\WACK\ImagePilot-1.0.0.appx`
    - 或使用准备脚本输出的路径
 
 4. **开始测试**

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-const PRIVACY_POLICY_URL = 'https://www.xintuxiangce.top/privacy-policy.html';
+const PRIVACY_POLICY_URL = 'https://github.com/chunguangwei/ImagePilot/blob/main/pc-version-final/privacy-policy.html';
 const PRIVACY_AGREED_KEY = '@privacy_policy_agreed';
 
 const PrivacyPolicyModal = ({ visible, onAgree, onDisagree }) => {

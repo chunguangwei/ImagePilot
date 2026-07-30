@@ -63,8 +63,8 @@ git push origin main
 ### 📊 测试报告示例
 ```
 📦 检查构建产物...
-✅ DMG文件已生成: XinTuAlbum-1.0.0-x64.dmg (125 MB)
-✅ DMG文件已生成: XinTuAlbum-1.0.0-arm64.dmg (118 MB)
+✅ DMG文件已生成: ImagePilot-1.0.0-x64.dmg (125 MB)
+✅ DMG文件已生成: ImagePilot-1.0.0-arm64.dmg (118 MB)
 
 🚀 测试应用启动...
 ✅ 应用可以正常启动

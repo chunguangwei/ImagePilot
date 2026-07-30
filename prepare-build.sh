@@ -128,7 +128,7 @@ cat > temp-package.json << 'EOF'
   },
   "build": {
     "appId": "com.imageclassifier.app",
-    "productName": "XinTuAlbum",
+    "productName": "ImagePilot",
     "directories": {
       "output": "dist"
     },
@@ -167,9 +167,9 @@ cat > temp-package.json << 'EOF'
     "appx": {
       "displayName": "ImagePilot",
       "publisher": "CN=03F46D22-3B0F-4788-A8BF-351A4DF78D3D",
-      "publisherDisplayName": "智语未来软件",
+      "publisherDisplayName": "ImagePilot",
       "identityName": "E8546D00.75903E98454E",
-      "applicationId": "XinTuAlbum",
+      "applicationId": "ImagePilot",
       "backgroundColor": "transparent",
       "showNameOnTiles": true,
       "artifactName": "${productName}-${version}.${ext}",

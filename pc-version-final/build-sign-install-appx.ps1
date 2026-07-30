@@ -167,7 +167,7 @@ if (-not $SkipInstall) {
     
     # 卸载旧版本（如果存在）
     Write-Host "检查已安装的版本..." -ForegroundColor Gray
-    $installedApp = Get-AppxPackage | Where-Object { $_.Name -like "*XinTuAlbum*" -or $_.Name -like "*ImageClassifier*" }
+    $installedApp = Get-AppxPackage | Where-Object { $_.Name -like "*ImagePilot*" -or $_.Name -like "*ImageClassifier*" }
     
     if ($installedApp) {
         Write-Host "找到已安装的应用: $($installedApp.Name)" -ForegroundColor Yellow
@@ -194,7 +194,7 @@ if (-not $SkipInstall) {
         
         # 验证安装
         Write-Host "`n验证安装..." -ForegroundColor Gray
-        $newApp = Get-AppxPackage | Where-Object { $_.Name -like "*XinTuAlbum*" -or $_.Name -like "*ImageClassifier*" }
+        $newApp = Get-AppxPackage | Where-Object { $_.Name -like "*ImagePilot*" -or $_.Name -like "*ImageClassifier*" }
         
         if ($newApp) {
             Write-Host "✓ 应用已成功安装" -ForegroundColor Green

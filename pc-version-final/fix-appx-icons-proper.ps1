@@ -194,7 +194,7 @@ try {
     }
 
     Write-Host "`n[4/5] Repacking with MakeAppx.exe..." -ForegroundColor Yellow
-    $newAppxPath = Join-Path $repackDir "XinTuAlbum-1.0.0.appx"
+    $newAppxPath = Join-Path $repackDir "ImagePilot-1.0.0.appx"
     $output = & $makeAppx pack /l /d $unpackDir /p $newAppxPath /o 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  [X] Repack failed, exit code: $LASTEXITCODE" -ForegroundColor Red

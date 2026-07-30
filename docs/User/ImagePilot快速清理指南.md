@@ -375,7 +375,7 @@ ImagePilot通过AI大模型的深度理解，将照片自动分类到7个类别�
 
 ---
 
-**如有任何问题，请访问官方网站：www.xintuxiangce.top**
+**如有任何问题，请访问 GitHub 项目主页：https://github.com/chunguangwei/ImagePilot**
 
 **祝您使用愉快！** 🎉
 

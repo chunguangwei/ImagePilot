@@ -43,7 +43,7 @@ npm run electron-pack-appx
 脚本会自动查找最新的 APPX 文件并签名。也可以指定文件路径：
 
 ```powershell
-.\sign-appx-with-test-cert.ps1 -AppxPath ".\dist\XinTuAlbum-1.0.0.appx"
+.\sign-appx-with-test-cert.ps1 -AppxPath ".\dist\ImagePilot-1.0.0.appx"
 ```
 
 ### 5. 安装并测试

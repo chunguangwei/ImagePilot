@@ -8,8 +8,8 @@
 
 ### 1. 下载应用
 根据你的Mac型号选择对应版本：
-- **Intel Mac**（2020年之前）：下载 `XinTuAlbum-x64.dmg`
-- **Apple Silicon Mac**（M1/M2/M3）：下载 `XinTuAlbum-arm64.dmg`
+- **Intel Mac**（2020年之前）：下载 `ImagePilot-x64.dmg`
+- **Apple Silicon Mac**（M1/M2/M3）：下载 `ImagePilot-arm64.dmg`
 
 ### 2. 安装应用
 1. 双击下载的 `.dmg` 文件
@@ -152,7 +152,7 @@
 
 #### 4. 日志（如果应用崩溃）
 1. 打开 `Console.app`（在`应用程序` → `实用工具`）
-2. 搜索 "ImagePilot" 或 "XinTuAlbum"
+2. 搜索 "ImagePilot" 或 "ImagePilot"
 3. 复制相关错误日志
 
 ---

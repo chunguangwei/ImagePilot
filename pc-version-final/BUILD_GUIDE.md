@@ -5,7 +5,7 @@
 现在支持两种Windows构建方式：
 
 ### 1. 安装版（NSIS）- 推荐 ⭐⭐⭐⭐⭐
-- **文件名**：`XinTuAlbum-Setup-1.0.0.exe`
+- **文件名**：`ImagePilot-Setup-1.0.0.exe`
 - **大小**：~80-100MB
 - **特点**：
   - ✅ 传统Windows安装程序
@@ -16,7 +16,7 @@
   - ✅ **不需要Microsoft Store账号**
 
 ### 2. 便携版（Portable）
-- **文件名**：`XinTuAlbum-1.0.0-win-x64-portable.exe`
+- **文件名**：`ImagePilot-1.0.0-win-x64-portable.exe`
 - **大小**：~120-150MB
 - **特点**：
   - ✅ 免安装，绿色版
@@ -37,7 +37,7 @@ npm run electron:build
 **生成文件**：
 ```
 dist/
-└─ XinTuAlbum-Setup-1.0.0.exe  (~90MB)
+└─ ImagePilot-Setup-1.0.0.exe  (~90MB)
    - 双击即可安装
    - 用户可选择安装路径
    - 自动创建快捷方式
@@ -54,7 +54,7 @@ npm run electron:build-portable
 **生成文件**：
 ```
 dist/
-└─ XinTuAlbum-1.0.0-win-x64-portable.exe  (~140MB)
+└─ ImagePilot-1.0.0-win-x64-portable.exe  (~140MB)
    - 免安装，直接运行
    - 适合U盘携带
 ```
@@ -70,8 +70,8 @@ npm run electron:build-all
 **生成文件**：
 ```
 dist/
-├─ XinTuAlbum-Setup-1.0.0.exe
-└─ XinTuAlbum-1.0.0-win-x64-portable.exe
+├─ ImagePilot-Setup-1.0.0.exe
+└─ ImagePilot-1.0.0-win-x64-portable.exe
 ```
 
 ---
@@ -107,10 +107,10 @@ npm run electron:build-all
 ### 第四步：测试安装包
 ```powershell
 # 安装版：双击安装测试
-.\dist\XinTuAlbum-Setup-1.0.0.exe
+.\dist\ImagePilot-Setup-1.0.0.exe
 
 # 便携版：直接运行测试
-.\dist\XinTuAlbum-1.0.0-win-x64-portable.exe
+.\dist\ImagePilot-1.0.0-win-x64-portable.exe
 ```
 
 ---
@@ -139,7 +139,7 @@ npm run electron:build-all
 ├────────────────────────────────────────┤
 │                                        │
 │  📦 安装版（推荐）                      │
-│  XinTuAlbum-Setup-1.0.0.exe (90MB)    │
+│  ImagePilot-Setup-1.0.0.exe (90MB)    │
 │  [下载]                                │
 │                                        │
 │  ✨ 特点：                             │
@@ -150,7 +150,7 @@ npm run electron:build-all
 ├────────────────────────────────────────┤
 │                                        │
 │  💼 便携版                             │
-│  XinTuAlbum-Portable-1.0.0.exe (140MB)│
+│  ImagePilot-Portable-1.0.0.exe (140MB)│
 │  [下载]                                │
 │                                        │
 │  ✨ 特点：                             │
@@ -198,7 +198,7 @@ npm run electron:build-all
 {
   "version": "1.0.1",
   "build": {
-    "productName": "XinTuAlbum"
+    "productName": "ImagePilot"
   }
 }
 ```
@@ -217,9 +217,9 @@ npm run electron:build-all
 
 ```
 dist/
-├─ XinTuAlbum-Setup-1.0.0.exe           # 安装程序（推荐分发）
-├─ XinTuAlbum-Setup-1.0.0.exe.blockmap  # 更新检查文件
-├─ XinTuAlbum-1.0.0-win-x64-portable.exe # 便携版
+├─ ImagePilot-Setup-1.0.0.exe           # 安装程序（推荐分发）
+├─ ImagePilot-Setup-1.0.0.exe.blockmap  # 更新检查文件
+├─ ImagePilot-1.0.0-win-x64-portable.exe # 便携版
 ├─ builder-debug.yml                     # 构建调试信息
 ├─ builder-effective-config.yaml         # 实际使用的配置
 └─ win-unpacked/                         # 未打包的文件（测试用）
@@ -227,8 +227,8 @@ dist/
 ```
 
 **实际分发**：
-- ✅ 安装版：`XinTuAlbum-Setup-1.0.0.exe`
-- ✅ 便携版：`XinTuAlbum-1.0.0-win-x64-portable.exe`
+- ✅ 安装版：`ImagePilot-Setup-1.0.0.exe`
+- ✅ 便携版：`ImagePilot-1.0.0-win-x64-portable.exe`
 - ❌ 其他文件：仅供开发调试
 
 ---

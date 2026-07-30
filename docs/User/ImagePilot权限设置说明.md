@@ -330,7 +330,7 @@ ImagePilot需要获取必要的系统权限才能正常使用各项功能。大�
 
 ---
 
-**如有任何问题，请访问官方网站：www.xintuxiangce.top**
+**如有任何问题，请访问 GitHub 项目主页：https://github.com/chunguangwei/ImagePilot**
 
 **祝您使用愉快！** 🎉
 

@@ -6,7 +6,8 @@
 
 ### 下载地址
 
-请访问官方网站 **www.xintuxiangce.top** 下载最新版本。
+- iOS：App Store 搜索「ImagePilot」（需使用非大陆 Apple 账号）
+- Android / PC：请访问 GitHub Releases 下载最新版本：**https://github.com/chunguangwei/ImagePilot/releases**
 
 ### 安装说明
 
@@ -19,7 +20,7 @@ PC端提供两种版本供您选择：
 - 安装后会在开始菜单和桌面创建快捷方式
 - 适合长期使用，方便快速启动
 - 安装步骤：
-  1. 下载安装包文件(www.xintuxiangce.top)
+  1. 从 GitHub Releases 下载安装包文件(https://github.com/chunguangwei/ImagePilot/releases)
   2. 双击安装包进行安装
   3. 按照安装向导完成安装
   4. 安装完成后，在开始菜单或桌面找到"ImagePilot"图标启动应用
@@ -31,7 +32,7 @@ PC端提供两种版本供您选择：
 - 使用步骤：
   1. 下载便携包压缩文件
   2. 解压到任意目录（建议解压到非系统盘）
-  3. 进入解压后的文件夹，双击运行"XinTuAlbum 1.0.0.exe"即可使用
+  3. 进入解压后的文件夹，双击运行"ImagePilot 1.0.0.exe"即可使用
   4. 删除文件夹即可完全卸载，不留任何痕迹
 
 > **选择建议**：
@@ -212,7 +213,7 @@ A: 不需要。本地滤镜与 AI 超分都在设备端本地完成，不联网�
 
 如果您在使用过程中遇到问题，可以通过以下方式获取帮助：
 
-- 访问官方网站：www.xintuxiangce.top
+- 访问 GitHub 项目主页：https://github.com/chunguangwei/ImagePilot
 - 关注微信公众号：ImagePilot
 - 查看应用内的帮助文档
 

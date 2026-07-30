@@ -70,8 +70,8 @@ npm run electron:build-mac
 #### 输出文件
 ```
 dist/
-  ├── XinTuAlbum-1.0.0-x64.dmg      # Intel版本
-  └── XinTuAlbum-1.0.0-arm64.dmg    # Apple Silicon版本
+  ├── ImagePilot-1.0.0-x64.dmg      # Intel版本
+  └── ImagePilot-1.0.0-arm64.dmg    # Apple Silicon版本
 ```
 
 ---
@@ -207,8 +207,8 @@ env:
 
 | 架构 | 适用设备 | 文件名 |
 |------|----------|--------|
-| **x64 (Intel)** | 2020年之前的Mac | `XinTuAlbum-1.0.0-x64.dmg` |
-| **arm64 (Apple Silicon)** | M1/M2/M3 Mac | `XinTuAlbum-1.0.0-arm64.dmg` |
+| **x64 (Intel)** | 2020年之前的Mac | `ImagePilot-1.0.0-x64.dmg` |
+| **arm64 (Apple Silicon)** | M1/M2/M3 Mac | `ImagePilot-1.0.0-arm64.dmg` |
 
 ---
 

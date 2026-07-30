@@ -181,7 +181,7 @@ $distPath = Join-Path $scriptDir "pc-version-final\dist"
 # 按修改时间取最新，避免选中旧构建产物
 $portableExe = Get-ChildItem -Path $distPath -Filter "*portable*.exe" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 $setupExe = Get-ChildItem -Path $distPath -Filter "*Setup*.exe" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if (-not $portableExe) { $portableExe = Get-ChildItem -Path $distPath -Filter "XinTuAlbum*.exe" -ErrorAction SilentlyContinue | Where-Object { $_.Name -notlike "*Setup*" } | Sort-Object LastWriteTime -Descending | Select-Object -First 1 }
+if (-not $portableExe) { $portableExe = Get-ChildItem -Path $distPath -Filter "ImagePilot*.exe" -ErrorAction SilentlyContinue | Where-Object { $_.Name -notlike "*Setup*" } | Sort-Object LastWriteTime -Descending | Select-Object -First 1 }
 if (-not $setupExe) { $setupExe = Get-ChildItem -Path $distPath -Filter "*Setup*.exe" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1 }
 
 $apkPath = Join-Path $scriptDir "android\app\build\outputs\apk\release\app-release-signed.apk"
@@ -224,7 +224,7 @@ $portableZipRemote = "xtxc$timestamp.zip"
 if ($portableSource -and (Test-Path $portableSource)) {
     Compress-File -FilePath $portableSource -OutputPath $portableZipLocal
 } else {
-    throw "便携版文件不存在，请在 pc-version-final\dist 中查找 *portable*.exe 或 XinTuAlbum*.exe"
+    throw "便携版文件不存在，请在 pc-version-final\dist 中查找 *portable*.exe 或 ImagePilot*.exe"
 }
 
 # 压缩安装版

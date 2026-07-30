@@ -36,9 +36,9 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo 构建完成！输出文件位于 dist 目录中
-echo   - EXE版本: XinTuAlbum-win-amd-portable-*.exe, XinTuAlbum-win-amd-setup-*.exe
-echo   - APPX无签名版本（已修复图标，用于提交微软）: XinTuAlbum-*.appx
-echo   - APPX测试签名版本: XinTuAlbum-*-signed.appx
+echo   - EXE版本: ImagePilot-win-amd-portable-*.exe, ImagePilot-win-amd-setup-*.exe
+echo   - APPX无签名版本（已修复图标，用于提交微软）: ImagePilot-*.appx
+echo   - APPX测试签名版本: ImagePilot-*-signed.appx
 if defined CI goto no_pause
 pause
 :no_pause
