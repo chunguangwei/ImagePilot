@@ -1549,7 +1549,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                     <Text style={styles.clipModelSelectorLabel}>{t('settings.classifierModel.vlmModelLabel')}</Text>
                     {VLM_MODEL_ORDER.map((mid) => {
                       const m = VLM_MODELS[mid];
-                      const sel = vlmModelId === mid;
+                      const sel = classifierTier === 'vlm' && vlmModelId === mid && !!vlmDownloaded[mid] && !vlmUnsupported?.[mid];
                       const disabled = !!(vlmUnsupported && vlmUnsupported[mid]);
                       const dl = !!vlmDownloaded[mid];
                       const dling = vlmDownloadingId === mid;

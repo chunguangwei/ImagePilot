@@ -6,6 +6,10 @@
 
 ## [1.5.85] - 2026-11-05
 
+- 修复设置页 Gemma4 默认变体即使未下载、当前使用 EmbeddingGemma 仍显示对勾的误导；选中标记以实际档位、模型下载和可用状态为准。
+
+用户截图确认旧版写入公共 `Download/imagepilot-update.apk.part` 报 `EACCES (Permission denied)`；本次改用私有缓存，消除该公共目录写入依赖。
+
 - 修正下载完成后安装报错自动跳 GitHub 的行为；保留本地 APK 和真实错误，支持重试安装。
 - 使用应用缓存目录与原始下载 URL 隔离文件，避免公共 Download 写入限制和跨版本缓存混用。
 - API 不可达时解析实际 GitHub 附件列表补齐 APK 地址；设置页错误后提供应用内重试。
