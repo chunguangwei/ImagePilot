@@ -1,14 +1,14 @@
 # 项目文档索引
 
-## 当前发行：1.5.86（Android）
+## 当前发行：1.5.87（Android / iOS 真机测试）
 
 - [EmbeddingGemma 2 接入与真机测试说明](features/EmbeddingGemma2.md)
 - [分类测试指南](testing/CLASSIFICATION_TEST_GUIDE.md)
 - [发布构建指南](platforms/BUILD_RELEASE.md) · [版本规范](RELEASE_VERSIONING.md)
-- [Android 1.5.86 构建与签名校验](releases/1.5.86.md)
+- [1.5.87 构建与测试记录](releases/v1.5.87.md)
 - [更新日志](../CHANGELOG.md) · [本次发布说明](../RELEASE_NOTES.md)
 
-本次仅发布 Android APK；iOS 代码已接入，桌面版本未更新。旧版设计和工作记录保留其历史上下文，当前模型行为以上述说明为准。
+本次发布 Android APK；iOS 1.5.87 build 13 已安装到连接的 iPhone 13 供真机测试，暂不上 App Store；桌面版本未更新。旧版设计和工作记录保留其历史上下文，当前模型行为以上述说明为准。
 
 
 ## 📁 文档目录结构
@@ -267,7 +267,7 @@ docs/
 **最后更新**: 2025-11-02  
 **文档版本**: v2.0
 
-## 1.5.87：描述生成修复与配置简化（2026-11-05）
+## 1.5.87：描述生成修复与配置简化（2026-11-06）
 
 - 修复 Android 旧架构缺少 `clearCache` 原生桥接，导致 LFM 每张图片生成前失败、描述为空的问题；补丁由安装依赖时自动应用。
 - EmbeddingGemma 类别编码改用官方 `task: classification | query:` 前缀；保留完整类别含义和自定义规则。相似度仍不是概率，单人照片准确率需更多原图回归。

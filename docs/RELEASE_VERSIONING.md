@@ -4,18 +4,18 @@
 
 ---
 
-## 一、当前版本与本次测试发行（2026-11-05）
+## 一、当前版本与本次测试发行（2026-11-06）
 
 | 范围 | 版本 | 状态 |
 | --- | --- | --- |
 | 历史正式版 | `v1.5.82` | 保留现有 Android / 桌面资产 |
-| 本次 Android | `1.5.85` | 应用内下载及重试安装修正 |
-| iOS | 工程 `1.5.82` / build `12` | 新模型代码已接入，本次不提交 App Store；上架状态以 App Store Connect 为准 |
+| 本次 Android | `1.5.87` | 描述桥接修复、分类改进和下载页兜底 |
+| iOS | 工程 `1.5.87` / build `13` | 已安装 iPhone 13 供真机测试，暂不上 App Store |
 | PC | `1.5.82` | 本次不构建，不升级桌面版本 |
 
-本次仅同步根目录 `package.json`、`package-lock.json`、Android `versionName` 与生成的 `BuildInfo.js`。测试分支为 `codex/embeddinggemma2-android-preview`，手动工作流选择 `platform=android`，使用现有正式签名。本次 GitHub Release 使用非 prerelease 并设为 latest。现有比较器忽略 beta 后缀，因此从 1.5.83-beta.1 升级采用 1.5.84，不能仅增加 beta 序号。旧版应用读取 `releases/latest` 即可发现更新。
+本次同步 iOS 工程版本、根目录 `package.json`、`package-lock.json`、Android `versionName` 与生成的 `BuildInfo.js`。测试分支为 `codex/embeddinggemma2-android-preview`，手动工作流选择 `platform=android`，使用现有正式签名。本次 GitHub Release 使用非 prerelease 并设为 latest。现有比较器忽略 beta 后缀，因此从 1.5.83-beta.1 升级采用 1.5.84，不能仅增加 beta 序号。旧版应用读取 `releases/latest` 即可发现更新。
 
-正式全端发布仍按下文同步各端版本；不得因 Android 测试包而声称 iOS/PC 已发布新版。
+本次 iOS 是开发签名真机测试版，未上架 App Store；PC 未发布新版。
 
 ---
 
@@ -23,9 +23,9 @@
 
 ### 1. iOS —— 两个号都要涨
 下次提交 App Store 时：
-- `MARKETING_VERSION` **必须 > `1.5.82`**（如 `1.5.83`）——用户可见版本名。
-- `CURRENT_PROJECT_VERSION` **必须 > `12`**（如 `13`）——同一版本名下 build 号必须严格递增，否则 App Store Connect 拒收。
-  > 历史教训：1.5.74 曾上传过 build 4、5（被拒），过审用 build 6；1.5.75 用 build 7。当前工程 build 12，下次至少从 **13** 起。
+- 本轮 App Store 可继续使用 `MARKETING_VERSION = 1.5.87`；上架成功后的下一正式版再递增。
+- 当前真机测试 build 为 `13`；后续重新打包递增至 `14` 或以上，同一版本上传 build 号不得重复。
+  > 历史教训：1.5.74 曾上传过 build 4、5（被拒），过审用 build 6；1.5.75 用 build 7。当前工程 build 13，后续重新打包至少从 **14** 起。
 
 ### 2. Android / PC —— 版本名必须变，否则不推送更新
 安卓端更新检测（`src/services/UpdateService.js`）逻辑：
