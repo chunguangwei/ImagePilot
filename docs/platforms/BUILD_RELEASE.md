@@ -1,14 +1,14 @@
 # ImagePilot - 发布版本构建指南
 
-## Android 单端预发布（1.5.83-beta.1）
+## Android 单端测试发布（1.5.83-beta.1）
 
-本次从 `codex/embeddinggemma2-android-preview` 分支运行 `manual-build.yml`，传入 `platform=android`，使用仓库已有的四个 Android 签名 Secrets。流程产出签名 APK 后，再发布 GitHub prerelease；不覆盖正式版资产，不构建桌面或提交 iOS。
+本次从 `codex/embeddinggemma2-android-preview` 分支运行 `manual-build.yml`，传入 `platform=android`，使用仓库已有的四个 Android 签名 Secrets。流程产出签名 APK 后，再发布 GitHub Release（非 prerelease，设为 latest，兼容应用内检查更新）；不覆盖正式版资产，不构建桌面或提交 iOS。
 
 ```bash
 gh workflow run manual-build.yml --ref codex/embeddinggemma2-android-preview -f platform=android
 ```
 
-发布前验证构建成功、APK 的包名/版本/签名，与旧版签名一致才能覆盖安装。模型约 388 MB 单独按需下载，不打包进 APK。预发布包通过发布页直接下载安装，不承诺应用内更新检测能发现预发布。
+发布前验证构建成功、APK 的包名/版本/签名，与旧版签名一致才能覆盖安装。模型约 388 MB 单独按需下载，不打包进 APK。本版可通过 Android「检查更新」或发布页直接下载安装；若将 Release 设为 prerelease，现有应用的 latest 接口将无法发现它。
 
 
 ## 一、构建目录说明

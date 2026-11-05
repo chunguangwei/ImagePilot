@@ -8,6 +8,8 @@
 
 Android 测试发行；iOS 同步接入代码，本次不提交 App Store，不构建桌面端。
 
+发布渠道修正：最初标记 prerelease，导致旧版 Android 的 `releases/latest` 检查不到更新；现取消该标记并设为 latest，版本名保留 beta，APK 内容及签名不变。
+
 ### 新增 / Added
 - 新增可独立下载的 **EmbeddingGemma 2 440M 图文分类**入口，约 388 MB，ModelScope 下载源；无需同时下载 E2B。
 - iOS / Android 均使用 LiteRT-LM 0.18.0 EmbeddingEngine，CPU 推理；图片与类别向量匹配，支持自定义类别及规则文本，类别向量缓存随配置变化失效。

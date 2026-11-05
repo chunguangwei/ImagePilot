@@ -7,10 +7,10 @@
 
 ## 安装与测试
 
-从本页下载 APK，覆盖安装现有 Android 版。此为预发布测试包，请使用本页链接手动下载安装；不要依赖应用内「检查更新」发现它。建议先用同一批 20–50 张照片，在分类页多选 →「AI 分类」重跑，对比 E2B 的结果、耗时和温升。仅增量扫描不会重分已分类照片。切换到本地分类后再测试，避免仍在使用已选择的外部 API。
+从本页下载 APK，覆盖安装现有 Android 版。本版保留 beta 测试标识，但已设为 GitHub 最新非预发布版本，旧版 Android 可通过「设置 → 检查更新」获取，也可通过本页链接下载安装。建议先用同一批 20–50 张照片，在分类页多选 →「AI 分类」重跑，对比 E2B 的结果、耗时和温升。仅增量扫描不会重分已分类照片。切换到本地分类后再测试，避免仍在使用已选择的外部 API。
 
 本次只发布 Android APK；iOS 代码已接入，但尚未发布新安装包。模型为单独下载，不包含在 APK 中。已通过的编译和单元测试不等于真机推理验证。
 
 ## English
 
-Android preview with an optional EmbeddingGemma 2 440M text/vision classifier (~388 MB separate download). Select it under Settings → Classification model. CPU inference, custom-category semantic matching, no generated captions, and no automatic API fallback. Download this prerelease APK manually to update; real-device quality, latency, heat and battery use still need testing. iOS integration is in source only for this release.
+Android preview with an optional EmbeddingGemma 2 440M text/vision classifier (~388 MB separate download). Select it under Settings → Classification model. CPU inference, custom-category semantic matching, no generated captions, and no automatic API fallback. This beta is published as the latest non-prerelease so Android in-app update checks can find it; real-device quality, latency, heat and battery use still need testing. iOS integration is in source only for this release.
