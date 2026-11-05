@@ -36,12 +36,12 @@ Files: src/components/LfmCaptionSettings.js, src/screens/mobile/SettingsScreen.m
 - [x] Add default-off switch, zh/en/app language choices, download/progress/cancel/delete controls.
 - [x] Collect successfully classified embedding images, release embedding runtime, then caption with shared service.
 - [x] Preserve video-frame extraction and existing image-description storage/search.
-- [ ] Check both platform bundles and native builds.
+- [x] Check both platform bundles and native builds.
 
 ### Task 3: Documentation and verification
-- [ ] Update feature/user/testing/runtime documentation and release notes with actual verified results.
-- [ ] Run classification/update regression tests and native checks; review diff.
-- [ ] Publish only after build verification; record limitations honestly.
+- [x] Update feature/user/testing/runtime documentation and release notes with actual verified results.
+- [x] Run classification/update regression tests and native checks; review diff.
+- [x] Publish only after build verification; record limitations honestly.
 
 ## Verified runtime compatibility
 
