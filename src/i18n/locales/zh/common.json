@@ -900,12 +900,14 @@
       "speedMedium": "中等",
       "speedSlowest": "最慢",
       "tierLabel": {
+        "embeddinggemma2": "EmbeddingGemma 2 · 测试版",
         "basic": "物体识别",
         "scene": "场景识别",
         "clip": "AI 智能识别",
         "vlm": "多模态大模型"
       },
       "tierDesc": {
+        "embeddinggemma2": "离线图片分类，支持自定义类别。不生成图片描述；复杂规则按语义匹配。",
         "basic": "识别照片里的物品、动物、食物、设备等具体对象",
         "scene": "识别拍摄场景：厨房 / 海滩 / 办公室 / 教室 等 365 类",
         "clip": "AI 语义识别，更懂抽象场景与氛围",
@@ -913,6 +915,7 @@
       },
       "clipSublabel": "推荐 · 最佳质量",
       "vlmModelLabel": "大模型（可切换）",
+      "semanticCategories": "支持自定义类别",
       "openLabeling": "开放打标",
       "vlmHint": "不限固定类别：模型自动识别并打多个标签，优先归入已有分类，识别到的新内容会标在图片信息里（日后可建对应分类自动并入）。首次联网下载（中国源，支持断点续传）。秒级/张，整库批量慢、发热，建议插电。",
       "vlmDisabled": "本机内存不足，不可用",

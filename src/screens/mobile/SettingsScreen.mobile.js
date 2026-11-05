@@ -287,6 +287,8 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
             const a = await isLargeModelCompleteFile(vm.model.filename, vm.model.bytes);
             const b = await isLargeModelCompleteFile(vm.mmproj.filename, vm.mmproj.bytes);
             dlMap[k] = a && b;
+          } else if (k === 'embeddinggemma2') {
+            dlMap[k] = await isLargeModelCompleteFile(tier.filename, tier.bytes);
           } else {
             const fname = k === 'clip' ? getClipModel(clipMid).filename : tier.filename;
             dlMap[k] = await isClassifierModelDownloadedFile(fname);
@@ -1158,6 +1160,10 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
         };
         await ensureLargeModelFile(asset.model.filename, asset.model.url, mkProg(0), { signal: controller.signal, expectedBytes: asset.model.bytes });
         await ensureLargeModelFile(asset.mmproj.filename, asset.mmproj.url, mkProg(asset.model.bytes || 0), { signal: controller.signal, expectedBytes: asset.mmproj.bytes });
+      } else if (tierKey === 'embeddinggemma2') {
+        await ensureLargeModelFile(asset.filename, asset.url, setClassifierDownloadProgress, {
+          signal: controller.signal, expectedBytes: asset.bytes,
+        });
       } else {
         await ensureClassifierModelFile(
           asset.filename,
@@ -1166,6 +1172,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
           { signal: controller.signal },
         );
       }
+      if (controller.signal.aborted) throw new Error('E_ABORTED 下载已取消');
       setClassifierDownloaded((prev) => ({ ...prev, [tierKey]: true }));
       if (switchAfter) {
         // 承诺即切：下载完成后落 setting；UI 上 classifierTier 已经乐观高亮
@@ -1240,6 +1247,9 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                 await deleteClassifierModelFile(vm.model.filename);
                 await deleteClassifierModelFile(vm.mmproj.filename);
               } else {
+                if (tierKey === 'embeddinggemma2') {
+                  await require('../../services/classify/EmbeddingGemmaClassifier').disposeEmbeddingGemma();
+                }
                 await deleteClassifierModelFile(clipAssetOf(tierKey).filename);
               }
               setClassifierDownloaded((prev) => ({ ...prev, [tierKey]: false }));
@@ -1461,7 +1471,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
               `${asset.sizeMB}MB`,
               speedI18n,
               // vlm 是开放式打标，不限类别数 → 不显示"N 类"
-              tierKey === 'vlm'
+              tierKey === 'embeddinggemma2' ? t('settings.classifierModel.semanticCategories') : tierKey === 'vlm'
                 ? t('settings.classifierModel.openLabeling')
                 : t('settings.classifierModel.classesUnit', { n: tier.classes }),
             ];

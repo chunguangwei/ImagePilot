@@ -69,6 +69,23 @@ export const CLASSIFIER_TIERS = {
     weak: '比基础档稍慢；自定义类请用云端 AI 分类',
     classes: 20,
   },
+  embeddinggemma2: {
+    key: 'embeddinggemma2',
+    label: 'EmbeddingGemma 2',
+    sublabel: '图文分类 · 测试版',
+    sizeMB: 388,
+    speed: '中等',
+    bundled: false,
+    filename: 'embeddinggemma-2-text-vision-440m.litertlm',
+    // Verified byte count/header; server-reported SHA-256 matches the official HF file.
+    url: 'https://modelscope.cn/models/litert-community/embeddinggemma-2-text-vision-440m-litert-lm/resolve/master/embeddinggemma-2-text-vision-440m.litertlm',
+    bytes: 387710976,
+    engine: 'embeddinggemma2',
+    readyForUse: true,
+    desc: '离线图片分类，支持自定义类别，按需下载图文版',
+    weak: '不生成图片描述；复杂分类规则按语义匹配，准确性待测试',
+    classes: 0,
+  },
   vlm: {
     key: 'vlm',
     label: '多模态大模型',
@@ -89,7 +106,7 @@ export const CLASSIFIER_TIERS = {
   },
 };
 
-export const CLASSIFIER_TIER_ORDER = ['basic', 'scene', 'clip', 'vlm'];
+export const CLASSIFIER_TIER_ORDER = ['basic', 'scene', 'clip', 'embeddinggemma2', 'vlm'];
 
 /** 默认档：basic（已打包，0 下载） */
 export const DEFAULT_CLASSIFIER_TIER = 'basic';

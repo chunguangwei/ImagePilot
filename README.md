@@ -1,5 +1,14 @@
 # ImagePilot - AI 智能照片分类管理工具
 
+## EmbeddingGemma 2 图文分类测试版（2026-11-05）
+
+Android 测试版本为 **1.5.83-beta.1**，iOS 已接入同一能力，但本次仅提供 Android APK。进入「设置 → 分类模型 → EmbeddingGemma 2 · 测试版」，下载约 **388 MB** 的 440M 图文模型后选择使用。模型不内置 APK，无需同时下载 Gemma4-E2B。
+
+图像与类别名称/规则分别编码为向量，按语义相似度归类，支持自定义类别；不生成图片描述，也不支持文本润色。复杂规则的效果须实测。两端均用 CPU，不依赖 GPU。项目没有语音输入/语音识别，幻灯片背景音乐只是播放，因此无需 740M 音频版。
+
+本地分类与外部 API 是用户主动选择的两种方式。该模型下载或推理失败不会自动调用外部 API。切换模型后，可在分类页选中同一批照片执行「AI 分类」重新测试；仅增量扫描不会重跑所有已分类照片。模型准确率、持续运行温升和耗电尚待真机测试，不能视为已改善。
+
+
 [![Repo](https://img.shields.io/badge/GitHub-chunguangwei%2FImagePilot-blue.svg)](https://github.com/chunguangwei/ImagePilot)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android%20%7C%20Windows%20%7C%20macOS-lightgrey.svg)](https://github.com/chunguangwei/ImagePilot)

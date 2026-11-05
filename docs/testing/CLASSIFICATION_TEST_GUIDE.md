@@ -1,5 +1,17 @@
 # 图片智能分类测试指南
 
+## 当前移动端测试：EmbeddingGemma 2（2026-11-05）
+
+旧文中的 YOLO / Windows 脚本为历史测试流程，不适用于本次移动端模型。当前步骤与限制见 [EmbeddingGemma 2](../features/EmbeddingGemma2.md)。
+
+1. 安装 Android 1.5.83-beta.1，选择本地分类，下载并选择新图文模型。
+2. 用同一批 20–50 张照片，分别通过多选「AI 分类」重跑 E2B 和新模型，记录正确率、首张耗时、总耗时与温升。
+3. 覆盖自定义类别/规则修改、取消后续传、删除模型、扫描取消、断网分类及错误提示；失败不应自动调用外部 API。
+4. 本次无语音输入测试；幻灯片音乐播放与模型无关。iOS 真机需要重新编译安装。
+
+自动化命令：`npm test -- --runInBand --watchman=false src/services/classify/__tests__`。现有全量套件有独立的 UpdateService URL 回退断言失败，需与模型测试分开记录。
+
+
 ## 📋 概述
 
 本指南提供了对 `D:\Pictures` 目录下的图片进行智能分类的测试方法，包括模拟版本和真实版本。

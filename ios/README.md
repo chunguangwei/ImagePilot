@@ -1,5 +1,12 @@
 # ImagePilot iOS 开发指南
 
+## 本次原生运行时升级（2026-11-05）
+
+EmbeddingGemma 2 440M 图文分类已接入 iOS，LiteRT-LM 升至 **0.18.0**。需重新安装对应 XCFramework 并重新编译，不能仅刷新 JavaScript。下载地址、校验值与安装步骤见 [LiteRT-LM 说明](LiteRTLM/README.md)。两端均使用 CPU；没有语音输入，不需要 740M 音频版。本次 Android 测试发行不代表 iOS 已上架新版本。
+
+已完成模拟器构建验证（本机 Xcode 27.2 使用 `IPHONEOS_DEPLOYMENT_TARGET=15.0` 命令行覆盖）；iPhone 13 等真机推理、温升和准确率尚待验证。现有项目最低系统配置未随本次调整。
+
+
 iOS 端工程从零搭起的全套上手 + 真机 + 打包指引。所有命令在仓库根目录 `ImagePilot/` 下执行（除非另注）。
 
 ## 工具链版本

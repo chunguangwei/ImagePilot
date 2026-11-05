@@ -43,6 +43,8 @@ public class GemmaModule extends ReactContextBaseJavaModule {
   private final ExecutorService exec = Executors.newSingleThreadExecutor();
 
   private Object engine;          // litertlm Engine
+  private Object embeddingEngine;
+  private String embeddingModelPath;
   private String engineModelPath;
   private String engineBackend;   // "gpu" | "cpu"
 
@@ -199,6 +201,11 @@ public class GemmaModule extends ReactContextBaseJavaModule {
   }
 
   private synchronized void releaseEngineInternal() {
+    if (embeddingEngine != null) {
+      try { embeddingEngine.getClass().getMethod("close").invoke(embeddingEngine); } catch (Throwable ignore) {}
+      embeddingEngine = null;
+      embeddingModelPath = null;
+    }
     if (engine != null) { try { mClose.invoke(engine); } catch (Throwable ignore) {} }
     engine = null;
     engineModelPath = null;
@@ -231,6 +238,48 @@ public class GemmaModule extends ReactContextBaseJavaModule {
       if (!s.isEmpty()) return s;
     } catch (Throwable ignore) {}
     return String.valueOf(msg);
+  }
+
+  @ReactMethod
+  public void embed(String modelPath, String text, String imagePath, final Promise promise) {
+    final String mp = modelPath.startsWith("file://") ? modelPath.substring(7) : modelPath;
+    exec.execute(() -> {
+      try {
+        if (embeddingEngine == null || !mp.equals(embeddingModelPath)) {
+          // Sharing this serial executor with E2B prevents simultaneous native inference.
+          releaseEngineInternal();
+          Class<?> backendClass = Class.forName(P + "Backend");
+          Object cpu = Class.forName(P + "Backend$CPU")
+              .getConstructor(Integer.class, Integer.class).newInstance(Integer.valueOf(2), null);
+          Class<?> configClass = Class.forName(P + "EmbeddingEngineConfig");
+          Object config = configClass.getConstructor(String.class, backendClass, backendClass,
+              backendClass, String.class, Integer.class, Integer.class, Integer.class)
+              .newInstance(mp, cpu, cpu, null, null, null, null, Integer.valueOf(70));
+          Object candidate = Class.forName(P + "EmbeddingEngine").getConstructor(configClass).newInstance(config);
+          candidate.getClass().getMethod("initialize").invoke(candidate);
+          embeddingEngine = candidate;
+          embeddingModelPath = mp;
+        }
+        List<Object> inputs = new ArrayList<>();
+        if (text != null && !text.isEmpty()) {
+          inputs.add(Class.forName(P + "InputData$Text").getConstructor(String.class).newInstance(text));
+        }
+        if (imagePath != null && !imagePath.isEmpty()) {
+          inputs.add(Class.forName(P + "InputData$Image").getConstructor(byte[].class)
+              .newInstance((Object) imageFileToPng(imagePath)));
+        }
+        if (inputs.isEmpty()) throw new IllegalArgumentException("Embedding input is empty");
+        Object response = embeddingEngine.getClass().getMethod("computeEmbedding", List.class)
+            .invoke(embeddingEngine, inputs);
+        float[] values = (float[]) response.getClass().getMethod("getEmbedding").invoke(response);
+        com.facebook.react.bridge.WritableArray result = com.facebook.react.bridge.Arguments.createArray();
+        for (float value : values) result.pushDouble(value);
+        promise.resolve(result);
+      } catch (Throwable error) {
+        Throwable cause = error.getCause() != null ? error.getCause() : error;
+        promise.reject("E_EMBEDDING", "EmbeddingGemma 2: " + cause.getMessage(), cause);
+      }
+    });
   }
 
   @ReactMethod

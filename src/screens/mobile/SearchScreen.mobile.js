@@ -117,8 +117,8 @@ export default function SearchScreen({ navigation, route }) {
         const { classifyImageByTier, readActiveTier } = require('../../services/classify/classifyByTier');
         const ImageClassifierService = require('../../services/ImageClassifierService').default;
         const classifier = new ImageClassifierService();
-        await classifier.initialize();
         const tier = await readActiveTier();
+        if (tier !== 'embeddinggemma2') await classifier.initialize();
         const r = await classifyImageByTier(pickedUri, tier, { imageClassifier: classifier });
         cat = r?.topPrediction?.appCategory || null;
         desc = r?.vlmLabel || '';

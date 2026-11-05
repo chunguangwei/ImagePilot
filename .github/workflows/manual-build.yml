@@ -3,6 +3,16 @@ name: Manual Build (Run workflow)
 
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        type: choice
+        default: all
+        options:
+          - all
+          - android
+          - macos
+          - windows
 
 jobs:
   build-matrix:
@@ -10,9 +20,16 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - name: Set matrix (all platforms)
+      - name: Set platform matrix
         id: set-matrix
-        run: echo 'matrix={"platform":["macos", "windows", "android"]}' >> $GITHUB_OUTPUT
+        env:
+          BUILD_PLATFORM: ${{ inputs.platform || 'all' }}
+        run: |
+          case "$BUILD_PLATFORM" in
+            all) echo 'matrix={"platform":["macos","windows","android"]}' >> "$GITHUB_OUTPUT" ;;
+            android|macos|windows) echo "matrix={\"platform\":[\"$BUILD_PLATFORM\"]}" >> "$GITHUB_OUTPUT" ;;
+            *) echo "Unsupported platform" >&2; exit 1 ;;
+          esac
 
   build:
     needs: build-matrix

@@ -900,12 +900,14 @@
       "speedMedium": "Medium",
       "speedSlowest": "Slowest",
       "tierLabel": {
+        "embeddinggemma2": "EmbeddingGemma 2 · Preview",
         "basic": "Object recognition",
         "scene": "Scene recognition",
         "clip": "AI smart recognition",
         "vlm": "Multimodal LLM"
       },
       "tierDesc": {
+        "embeddinggemma2": "Offline image classification with custom categories. No generated descriptions; complex rules use semantic matching.",
         "basic": "Recognizes concrete objects in photos: items, animals, food, devices, etc.",
         "scene": "Recognizes the scene: kitchen / beach / office / classroom and 365 more",
         "clip": "AI semantic recognition — better at abstract scenes and mood",
@@ -913,6 +915,7 @@
       },
       "clipSublabel": "Recommended · best quality",
       "vlmModelLabel": "LLM (switchable)",
+      "semanticCategories": "Custom categories",
       "openLabeling": "Open tagging",
       "vlmHint": "No fixed category limit: the model auto-detects and applies multiple tags, prefers existing categories, and records new concepts in the photo's info (auto-merged later if you create a matching category). First use downloads over the network (China mirror, resumable). Seconds per photo — whole-library batches are slow and warm the device; keep it plugged in.",
       "vlmDisabled": "Not enough RAM on this device",

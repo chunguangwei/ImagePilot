@@ -7,6 +7,12 @@
 
 @interface RCT_EXTERN_MODULE(LiteRTLMModule, NSObject)
 
+RCT_EXTERN_METHOD(embed:(NSString *)modelPath
+                  text:(NSString *)text
+                  imagePath:(NSString *)imagePath
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 RCT_EXTERN_METHOD(classify:(NSString *)modelPath
                   imagePath:(NSString *)imagePath
                   prompt:(NSString *)prompt

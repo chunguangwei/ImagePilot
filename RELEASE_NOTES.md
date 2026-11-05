@@ -1,45 +1,16 @@
-ImagePilot 1.5.82 更新要点
+# ImagePilot 1.5.83-beta.1 — Android 图文分类测试版
 
-本次更新修复了一个 iOS 关键问题，并包含自上架版本 1.5.74 以来累积的多项体验优化：
+- 新增 **EmbeddingGemma 2 440M**：设置 → 分类模型 → EmbeddingGemma 2 · 测试版，按需下载约 **388 MB**。无需同时下载 E2B。
+- 支持按内置和自定义类别进行图片语义分类；使用 CPU，不依赖 GPU。
+- 本地与外部 API 仍由用户主动选择；新模型失败不会自动调用外部 API。
+- 此模型不生成图片描述，也不支持润色或语音输入。分类准确率、长时间运行发热和耗电请真机实测。
 
-• 重要修复：修复 iOS 上「按城市」分类为空的问题——此前版本扫描后照片只有地理位置坐标、不会生成城市，且「重新检测」无效；现在每次扫描都会自动补全城市信息，已有照片会在下次扫描时自动补齐。
+## 安装与测试
 
-• 城市识别更全：扩充离线城市库并新增省份兜底，大理、丽江、香格里拉等目的地的照片现在都能正确归入对应城市。
+从本页下载 APK，覆盖安装现有 Android 版。此为预发布测试包，请使用本页链接手动下载安装；不要依赖应用内「检查更新」发现它。建议先用同一批 20–50 张照片，在分类页多选 →「AI 分类」重跑，对比 E2B 的结果、耗时和温升。仅增量扫描不会重分已分类照片。切换到本地分类后再测试，避免仍在使用已选择的外部 API。
 
-• 旅行回忆更准：修复大理/丽江等长途旅行目的地被误判为常驻城市而漏掉的问题，旅行回忆更完整。
+本次只发布 Android APK；iOS 代码已接入，但尚未发布新安装包。模型为单独下载，不包含在 APK 中。已通过的编译和单元测试不等于真机推理验证。
 
-• 相似照片支持「增量检测」：仅比对新增照片，照片多时明显更快；相似组改为缩略图卡片展示，并按最新优先排序。
+## English
 
-• 「最新发现照片」支持展开查看更多（默认 12 张，最多 100 张），且不再长期为空。
-
-• 「按城市」优化：最近去过的城市优先显示，新照片扫描后自动归入对应城市。
-
-• 时刻秀相关修复：可正常修改封面；编辑时刻秀不再丢失图片。
-
-• 首页类目卡片布局优化：数量徽章移至右上角，不再与主题名重叠。
-
-感谢使用 ImagePilot，欢迎在「设置 → 检查更新」获取最新版本。
-
----
-
-ImagePilot 1.5.82 — What's New
-
-This update fixes a key iOS issue and bundles improvements accumulated since App Store version 1.5.74:
-
-• Important fix: "By City" was empty on iOS — scanned photos had GPS coordinates but were never assigned a city, and "Re-check" didn't help. Every scan now automatically fills in city information, and existing photos are backfilled on the next scan.
-
-• Better city recognition: expanded the offline city database with province-level fallback, so photos from destinations like Dali, Lijiang and Shangri-La are now correctly grouped by city.
-
-• More accurate Travel Memories: fixed long trips (e.g. Dali/Lijiang) being misclassified as resident cities and left out of Travel Memories.
-
-• Incremental similar-photo detection: only compares newly added photos for a big speedup on large libraries; similar groups now show as thumbnail cards, sorted newest-first.
-
-• "Recently Discovered" now supports Show More (12 by default, up to 100) and no longer stays empty.
-
-• "By City" improvements: most-recently-visited cities appear first, and new photos are grouped into their city right after scanning.
-
-• Showtime fixes: cover image can be changed properly; editing no longer drops images.
-
-• Home layout polish: category count badges moved to the top-right so they no longer overlap theme names.
-
-Thanks for using ImagePilot. Check Settings → Check for Updates to get the latest version.
+Android preview with an optional EmbeddingGemma 2 440M text/vision classifier (~388 MB separate download). Select it under Settings → Classification model. CPU inference, custom-category semantic matching, no generated captions, and no automatic API fallback. Download this prerelease APK manually to update; real-device quality, latency, heat and battery use still need testing. iOS integration is in source only for this release.

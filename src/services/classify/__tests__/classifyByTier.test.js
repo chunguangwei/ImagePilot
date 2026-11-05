@@ -20,9 +20,18 @@ jest.mock('../../UnifiedDataService', () => ({
 
 const mockIsDownloaded = jest.fn();
 const mockEnsureModel = jest.fn();
+const mockLargeComplete = jest.fn();
+const mockEnsureLarge = jest.fn();
 jest.mock('../classifierModelSource', () => ({
   isClassifierModelDownloaded: (...a) => mockIsDownloaded(...a),
   ensureClassifierModel: (...a) => mockEnsureModel(...a),
+  isLargeModelComplete: (...a) => mockLargeComplete(...a),
+  ensureLargeModel: (...a) => mockEnsureLarge(...a),
+}));
+
+const mockEmbeddingClassify = jest.fn();
+jest.mock('../EmbeddingGemmaClassifier', () => ({
+  classifyWithEmbeddingGemma: (...a) => mockEmbeddingClassify(...a),
 }));
 
 const mockMobileNet = jest.fn();
@@ -47,6 +56,9 @@ jest.mock('../MobileCLIPClassifier', () => ({
 const { classifyImageByTier, readActiveTier } = require('../classifyByTier');
 
 beforeEach(() => {
+  mockLargeComplete.mockReset();
+  mockEnsureLarge.mockReset();
+  mockEmbeddingClassify.mockReset();
   mockReadSettings.mockReset();
   mockIsDownloaded.mockReset();
   mockEnsureModel.mockReset();
@@ -54,6 +66,30 @@ beforeEach(() => {
   mockMapMobileNet.mockReset().mockReturnValue('people');
   mockPlaces365.mockReset();
   mockClip.mockReset();
+});
+
+describe('EmbeddingGemma 2 is an independent opt-in classifier', () => {
+  test('missing download rejects instead of silently running the basic model', async () => {
+    mockLargeComplete.mockResolvedValue(false);
+    await expect(classifyImageByTier('photo', 'embeddinggemma2')).rejects.toThrow(/not downloaded/);
+    expect(mockMobileNet).not.toHaveBeenCalled();
+  });
+  test('native failure rejects instead of substituting another classifier', async () => {
+    mockLargeComplete.mockResolvedValue(true);
+    mockEnsureLarge.mockResolvedValue('file:///model');
+    mockEmbeddingClassify.mockRejectedValue(new Error('native embedding failed'));
+    await expect(classifyImageByTier('photo', 'embeddinggemma2')).rejects.toThrow('native embedding failed');
+    expect(mockMobileNet).not.toHaveBeenCalled();
+  });
+  test('selected model returns its category and similarity without basic inference', async () => {
+    mockLargeComplete.mockResolvedValue(true);
+    mockEnsureLarge.mockResolvedValue('file:///model');
+    mockEmbeddingClassify.mockResolvedValue({ engine: 'embeddinggemma2', topPrediction: { appCategory: 'pets' }, similarity: 0.31, classificationAccepted: true });
+    const result = await classifyImageByTier('photo', 'embeddinggemma2');
+    expect(result.topPrediction.appCategory).toBe('pets');
+    expect(result.similarity).toBe(0.31);
+    expect(mockMobileNet).not.toHaveBeenCalled();
+  });
 });
 
 describe('readActiveTier', () => {

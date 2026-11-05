@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		00E356F31AD99517003FC87E /* ImagePilotTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* ImagePilotTests.m */; };
+		0594ADFBA2F73534C7C0222E /* EmbeddingEngineConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20A1AF3B18DE0EDBDF3F1E7B /* EmbeddingEngineConfig.swift */; };
 		089A744E8262575171D2864D /* PhotoKitModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13EA23389B560BC7DD39E6DF /* PhotoKitModule.swift */; };
 		0C80B921A6F3F58F76C31292 /* libPods-ImagePilot.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-ImagePilot.a */; };
 		130B9F68608F5A1B23B9A516 /* Benchmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E1AED8C55B9F9F2B7A0E48B /* Benchmark.swift */; };
@@ -16,13 +17,14 @@
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		299800450DD61D86AB6FDE33 /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8852C51D8BE60FB078555EA3 /* Conversation.swift */; };
 		2F4FFD8DF7EF7BE51B873CC2 /* PhotoKitModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 590FFD0830FF0B79B3B0A8E0 /* PhotoKitModule.m */; };
-		4D44FE864C41DE7D4EE69779 /* Capabilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E0485DBDF1C33A9933B892 /* Capabilities.swift */; };
+		506D9CD1C73834067F793EEA /* ResponseFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CF1B266EA5C2F145630A7E3 /* ResponseFormat.swift */; };
 		54AC619541FD0D20BD07CC20 /* CLiteRTLM.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8013F97C0699C16B0B0F64E /* CLiteRTLM.xcframework */; };
 		5DABF8340ED582C009535474 /* LiteRTLMError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C452689076A9EA02054F479 /* LiteRTLMError.swift */; };
 		6132EF182BDFF13200BBE14D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6132EF172BDFF13200BBE14D /* PrivacyInfo.xcprivacy */; };
 		7699B88040F8A987B510C191 /* libPods-ImagePilot-ImagePilotTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-ImagePilot-ImagePilotTests.a */; };
 		7D03621ACEDDFF968D08330B /* LiteRTLMModule.m in Sources */ = {isa = PBXBuildFile; fileRef = D4A212CD2BD5B81A3CB82B10 /* LiteRTLMModule.m */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		8448BC425C5177E2EB49747D /* EmbeddingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9C2A8BEFB45FAA0875474F /* EmbeddingEngine.swift */; };
 		898E503C301C8EADA1D69AF0 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E5EEA0BFBBD9DAA5EA0AFA /* Config.swift */; };
 		8C14265B54351BA48464ADC7 /* ExperimentalFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5815AF101E1B623AC8B5889D /* ExperimentalFlags.swift */; };
 		9876E2B33E34EE3A8FB9E5A6 /* ToolManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 033E130F6EC715875622AAD0 /* ToolManager.swift */; };
@@ -31,6 +33,7 @@
 		A85C6EC974C80DD46E0C646A /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3672EE85654670936EC65E7 /* Message.swift */; };
 		B7908FA00F04119B7EF84D0C /* HapticsModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 0B45F464BEB95DC426F8DE84 /* HapticsModule.m */; };
 		B897A3885E3FAD2A17D2F937 /* CLiteRTLM.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = B8013F97C0699C16B0B0F64E /* CLiteRTLM.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		CC9C52E256B3EC0866C60C2E /* ModelInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8DEFB38513FA015C69B586 /* ModelInfo.swift */; };
 		D1282F25DC05446EE8BF4420 /* Engine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94F4697D0D0A003E50B6DE7 /* Engine.swift */; };
 		D6654B6EFE0A9494E3E6610C /* PhotoKitImageLoader.m in Sources */ = {isa = PBXBuildFile; fileRef = 889EBAA3471FD175F07FEFC9 /* PhotoKitImageLoader.m */; };
 		F37996C443ACD05106A96928 /* LiteRTLMModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B738912783C2215E767DD79 /* LiteRTLMModule.swift */; };
@@ -78,6 +81,8 @@
 		19F6CBCC0A4E27FBF8BF4A61 /* libPods-ImagePilot-ImagePilotTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ImagePilot-ImagePilotTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B738912783C2215E767DD79 /* LiteRTLMModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiteRTLMModule.swift; path = ImagePilot/LiteRTLMModule.swift; sourceTree = "<group>"; };
 		1C452689076A9EA02054F479 /* LiteRTLMError.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiteRTLMError.swift; path = LiteRTLM/swift/LiteRTLMError.swift; sourceTree = SOURCE_ROOT; };
+		20A1AF3B18DE0EDBDF3F1E7B /* EmbeddingEngineConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = EmbeddingEngineConfig.swift; path = LiteRTLM/swift/EmbeddingEngineConfig.swift; sourceTree = SOURCE_ROOT; };
+		2D9C2A8BEFB45FAA0875474F /* EmbeddingEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = EmbeddingEngine.swift; path = LiteRTLM/swift/EmbeddingEngine.swift; sourceTree = SOURCE_ROOT; };
 		3B4392A12AC88292D35C810B /* Pods-ImagePilot.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ImagePilot.debug.xcconfig"; path = "Target Support Files/Pods-ImagePilot/Pods-ImagePilot.debug.xcconfig"; sourceTree = "<group>"; };
 		4E1AED8C55B9F9F2B7A0E48B /* Benchmark.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Benchmark.swift; path = LiteRTLM/swift/Benchmark.swift; sourceTree = SOURCE_ROOT; };
 		5709B34CF0A7D63546082F79 /* Pods-ImagePilot.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ImagePilot.release.xcconfig"; path = "Target Support Files/Pods-ImagePilot/Pods-ImagePilot.release.xcconfig"; sourceTree = "<group>"; };
@@ -86,6 +91,7 @@
 		5B7EB9410499542E8C5724F5 /* Pods-ImagePilot-ImagePilotTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ImagePilot-ImagePilotTests.debug.xcconfig"; path = "Target Support Files/Pods-ImagePilot-ImagePilotTests/Pods-ImagePilot-ImagePilotTests.debug.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-ImagePilot.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ImagePilot.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6132EF172BDFF13200BBE14D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = ImagePilot/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		6CF1B266EA5C2F145630A7E3 /* ResponseFormat.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ResponseFormat.swift; path = LiteRTLM/swift/ResponseFormat.swift; sourceTree = SOURCE_ROOT; };
 		7C1AD126DC3B93B4FCDF6317 /* HapticsModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ImagePilot/HapticsModule.swift; sourceTree = "<group>"; };
 		7FD7178E89C046514482B76D /* Tool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Tool.swift; path = LiteRTLM/swift/Tool.swift; sourceTree = SOURCE_ROOT; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = ImagePilot/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -94,11 +100,11 @@
 		8852C51D8BE60FB078555EA3 /* Conversation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Conversation.swift; path = LiteRTLM/swift/Conversation.swift; sourceTree = SOURCE_ROOT; };
 		889EBAA3471FD175F07FEFC9 /* PhotoKitImageLoader.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = ImagePilot/PhotoKitImageLoader.m; sourceTree = "<group>"; };
 		89C6BE57DB24E9ADA2F236DE /* Pods-ImagePilot-ImagePilotTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ImagePilot-ImagePilotTests.release.xcconfig"; path = "Target Support Files/Pods-ImagePilot-ImagePilotTests/Pods-ImagePilot-ImagePilotTests.release.xcconfig"; sourceTree = "<group>"; };
+		9D8DEFB38513FA015C69B586 /* ModelInfo.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelInfo.swift; path = LiteRTLM/swift/ModelInfo.swift; sourceTree = SOURCE_ROOT; };
 		A3672EE85654670936EC65E7 /* Message.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Message.swift; path = LiteRTLM/swift/Message.swift; sourceTree = SOURCE_ROOT; };
 		B8013F97C0699C16B0B0F64E /* CLiteRTLM.xcframework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.xcframework; name = CLiteRTLM.xcframework; path = LiteRTLM/CLiteRTLM.xcframework; sourceTree = SOURCE_ROOT; };
 		D4A212CD2BD5B81A3CB82B10 /* LiteRTLMModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = LiteRTLMModule.m; path = ImagePilot/LiteRTLMModule.m; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		F3E0485DBDF1C33A9933B892 /* Capabilities.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Capabilities.swift; path = LiteRTLM/swift/Capabilities.swift; sourceTree = SOURCE_ROOT; };
 		F94F4697D0D0A003E50B6DE7 /* Engine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Engine.swift; path = LiteRTLM/swift/Engine.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -174,7 +180,6 @@
 		3161862EF39D5A14726793D7 /* LiteRTLMVendor */ = {
 			isa = PBXGroup;
 			children = (
-				F3E0485DBDF1C33A9933B892 /* Capabilities.swift */,
 				05E5EEA0BFBBD9DAA5EA0AFA /* Config.swift */,
 				8852C51D8BE60FB078555EA3 /* Conversation.swift */,
 				F94F4697D0D0A003E50B6DE7 /* Engine.swift */,
@@ -185,6 +190,10 @@
 				033E130F6EC715875622AAD0 /* ToolManager.swift */,
 				B8013F97C0699C16B0B0F64E /* CLiteRTLM.xcframework */,
 				4E1AED8C55B9F9F2B7A0E48B /* Benchmark.swift */,
+				2D9C2A8BEFB45FAA0875474F /* EmbeddingEngine.swift */,
+				20A1AF3B18DE0EDBDF3F1E7B /* EmbeddingEngineConfig.swift */,
+				9D8DEFB38513FA015C69B586 /* ModelInfo.swift */,
+				6CF1B266EA5C2F145630A7E3 /* ResponseFormat.swift */,
 			);
 			name = LiteRTLMVendor;
 			sourceTree = "<group>";
@@ -511,7 +520,6 @@
 				B7908FA00F04119B7EF84D0C /* HapticsModule.m in Sources */,
 				F37996C443ACD05106A96928 /* LiteRTLMModule.swift in Sources */,
 				7D03621ACEDDFF968D08330B /* LiteRTLMModule.m in Sources */,
-				4D44FE864C41DE7D4EE69779 /* Capabilities.swift in Sources */,
 				898E503C301C8EADA1D69AF0 /* Config.swift in Sources */,
 				299800450DD61D86AB6FDE33 /* Conversation.swift in Sources */,
 				D1282F25DC05446EE8BF4420 /* Engine.swift in Sources */,
@@ -521,6 +529,10 @@
 				9D1AA0F1223F6F7BF2BD1E59 /* Tool.swift in Sources */,
 				9876E2B33E34EE3A8FB9E5A6 /* ToolManager.swift in Sources */,
 				130B9F68608F5A1B23B9A516 /* Benchmark.swift in Sources */,
+				8448BC425C5177E2EB49747D /* EmbeddingEngine.swift in Sources */,
+				0594ADFBA2F73534C7C0222E /* EmbeddingEngineConfig.swift in Sources */,
+				CC9C52E256B3EC0866C60C2E /* ModelInfo.swift in Sources */,
+				506D9CD1C73834067F793EEA /* ResponseFormat.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

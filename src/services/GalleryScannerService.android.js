@@ -569,6 +569,7 @@ class GalleryScannerService {
     try { require('./ClipVectorIndexService').default.requestStop(); } catch (_) {}
 
     logger.info('🚀 启动 JS 端离线 AI 分类（MobileNetV3，绕过 native scanner）');
+    let usedEmbeddingModel = false;
     this.isScanning = true;
     this._stopRequested = false;   // 用户停止标志（requestStop 置 true，循环逐张检测后优雅退出）
     // 视频先从 NA 迁到「待分类视频」NA_video（原生扫描把视频按 NA 入库）→ 不进下面的分类集。
@@ -608,7 +609,7 @@ class GalleryScannerService {
 
       // 初始化分类器（首次会从配置加载模型表 + ONNX runtime + 加载 mobilenetv3 模型；幂等）
       try {
-        await this.imageClassifier.initialize();
+        if ((await readActiveTier()) !== 'embeddinggemma2') await this.imageClassifier.initialize();
         logger.info('✅ ImageClassifierService 初始化完成');
       } catch (e) {
         logger.error('❌ ImageClassifierService 初始化失败:', e);
@@ -621,7 +622,7 @@ class GalleryScannerService {
       // VLM（多模态大模型）秒级/张：用 BATCH=1，让进度条与落库都「一张一张」推进，
       // 用户能实时看到百分比走动、结果逐张出现；基础/CLIP 等快引擎保持 20 批量以省 IO。
       preTier = await readActiveTier();
-      const BATCH = (preTier && preTier.engine === 'vlm') ? 1 : 20;
+      const BATCH = (preTier === 'vlm' || preTier === 'embeddinggemma2') ? 1 : 20;
       let stoppedByUser = false;
       for (let i = 0; i < naImages.length; i += BATCH) {
         // 用户停止：逐批检测，已分类的（每张已即时落库）保留，剩余 NA 图下次扫描自动续。
@@ -635,6 +636,7 @@ class GalleryScannerService {
         let perImageDone = i;   // 批内逐张进度计数（进度平滑滚动）
         // 当前批次共用一个 tier（每批读一次 settings，避免单图 IO）
         const activeTier = await readActiveTier();
+        if (activeTier === 'embeddinggemma2') usedEmbeddingModel = true;
         for (const image of batch) {
           // 批内逐张可停（快引擎 BATCH=20 时也能即时停，不必等整批 20 张跑完）。
           // 已分类的（本批已累积的 + 之前批次已落库的）保留；剩余 NA 图下次扫描续。
@@ -661,7 +663,7 @@ class GalleryScannerService {
             const top = r?.topPrediction || null;
             const conf = (typeof r?.confidence === 'number') ? r.confidence : 0;
             let category;
-            if (top && conf >= MOBILENET_MAP_THRESHOLD) {
+            if (top && (r.classificationAccepted === true || conf >= MOBILENET_MAP_THRESHOLD)) {
               category = top.appCategory || 'other';
             } else {
               if (top && conf < MOBILENET_MAP_THRESHOLD) {
@@ -714,7 +716,7 @@ class GalleryScannerService {
       // 收尾内存削峰：分类循环结束后、refreshCache（重建全量缓存，内存开销大）之前，
       // 先释放 ~2.5GB 的 VLM 引擎。否则「引擎常驻 + 重建缓存」叠加在收尾一刻顶爆内存，
       // 表现为「分类刚完成就闪退」。finally 里还有一次幂等释放兜底。
-      if (preTier && preTier.engine === 'vlm') {
+      if (preTier === 'vlm') {
         try {
           const vlm = require('./classify/VLMClassifier');
           if (vlm && typeof vlm.disposeVLMContext === 'function') await vlm.disposeVLMContext();
@@ -725,6 +727,10 @@ class GalleryScannerService {
       }
       // 不论跑完还是中途停止，都刷 GlobalImageCache → 已分类的（每张已落库）立刻归位、UI 可见；
       // 不然 HomeScreen.loadCategories 读到的 categoryCounts 还是分类前 NA 状态，显示「待分类|N」陈旧数据。
+      if (usedEmbeddingModel) {
+        await require('./classify/EmbeddingGemmaClassifier').disposeEmbeddingGemma();
+        usedEmbeddingModel = false;
+      }
       try {
         await UnifiedDataService.imageCache.refreshCache();
       } catch (e) {
@@ -737,13 +743,16 @@ class GalleryScannerService {
       throw error;
     } finally {
       // 兜底：VLM 档跑完/出错/中途停都确保原生 Engine 已释放（幂等，非 VLM 档无副作用）。
-      if (preTier && preTier.engine === 'vlm') {
+      if (preTier === 'vlm') {
         try {
           const vlm = require('./classify/VLMClassifier');
           if (vlm && typeof vlm.disposeVLMContext === 'function') await vlm.disposeVLMContext();
         } catch (e) {
           logger.warn('[Android] 释放 VLM Engine 失败(兜底):', e?.message || e);
         }
+      }
+      if (usedEmbeddingModel) {
+        try { await require('./classify/EmbeddingGemmaClassifier').disposeEmbeddingGemma(); } catch (_) {}
       }
       this.isScanning = false;
       this._cleanupScanState && this._cleanupScanState();

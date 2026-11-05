@@ -5,7 +5,7 @@
 //  与安卓 GemmaModule.java 对称：本模块只做「跑一次推理(模型路径, 图片路径, prompt) → 返回原始文本」，
 //  prompt 构建与解析在 JS（vlmShared.js，与安卓共享）。这样 iOS / Android 统一到同一模型同一逻辑。
 //
-//  后端 GPU→CPU 自动回退；Engine 单例缓存；推理用 actor 串行（Conversation 单租户、避免并发数据竞争）。
+//  E2B 与 EmbeddingGemma 2 均固定 CPU；缓存当前引擎，切换模型时释放前一个。
 //  引擎初始化失败（GPU & CPU 都挂，通常是内存不足 / 机型不支持）→ 抛 E_LOAD，
 //  JS 侧据此 markVlmUnsupported → 设置页禁用该变体、分类回退 basic。
 //
@@ -27,9 +27,11 @@ enum LiteRTLMRunnerError: Error {
 actor LiteRTLMRunner {
   private var engine: Engine?
   private var engineModelPath: String?
+  private var embeddingEngine: EmbeddingEngine?
+  private var embeddingModelPath: String?
   private(set) var backend: String = ""
 
-  /// 确保 Engine 就绪（GPU 优先，失败回退 CPU）。两种后端都失败 → 抛 engineInit。
+  /// 确保 E2B 的 CPU Engine 就绪；初始化失败 → 抛 engineInit。
   func ensureEngine(_ modelPath: String) async throws -> Engine {
     if let e = engine, engineModelPath == modelPath { return e }
     await releaseEngine()
@@ -63,10 +65,32 @@ actor LiteRTLMRunner {
   }
 
   func releaseEngine() async {
+    if let e = embeddingEngine { await e.close() }
+    embeddingEngine = nil
+    embeddingModelPath = nil
     // 置 nil → Engine.deinit 释放底层 native engine。
     engine = nil
     engineModelPath = nil
     backend = ""
+  }
+
+  func embed(modelPath: String, text: String, imagePath: String) async throws -> [Float] {
+    if embeddingEngine == nil || embeddingModelPath != modelPath {
+      await releaseEngine()
+      let e = EmbeddingEngine(config: EmbeddingEngineConfig(
+        modelPath: modelPath, backend: .cpu(threadCount: 2),
+        visionBackend: .cpu(threadCount: 2), visionTokensPerImage: 70
+      ))
+      try await e.initialize()
+      embeddingEngine = e
+      embeddingModelPath = modelPath
+    }
+    guard let e = embeddingEngine else { throw LiteRTLMRunnerError.engineInit("Embedding engine unavailable") }
+    var contents: [Content] = []
+    if !text.isEmpty { contents.append(.text(text)) }
+    if !imagePath.isEmpty { contents.append(.imageFile(imagePath)) }
+    let result = try await e.computeEmbedding(contents: contents, options: EmbeddingOptions(normalize: true))
+    return result.embedding
   }
 
   /// 看图出文本：确保引擎 → 建会话 → [图 + prompt] → sendMessage → 拼接文本。
@@ -85,6 +109,21 @@ class LiteRTLMModule: NSObject {
   private let runner = LiteRTLMRunner()
 
   @objc static func requiresMainQueueSetup() -> Bool { return false }
+
+  @objc(embed:text:imagePath:resolver:rejecter:)
+  func embed(_ modelPath: String, text: String, imagePath: String,
+             resolver resolve: @escaping RCTPromiseResolveBlock,
+             rejecter reject: @escaping RCTPromiseRejectBlock) {
+    Task {
+      do {
+        let vector = try await runner.embed(modelPath: Self.stripScheme(modelPath),
+          text: text, imagePath: Self.stripScheme(imagePath))
+        resolve(vector.map { Double($0) })
+      } catch {
+        reject("E_EMBEDDING", "EmbeddingGemma 2: \(error)", error)
+      }
+    }
+  }
 
   /// classify(modelPath, imagePath, prompt) → 原始文本。多秒级，全程后台。
   @objc(classify:imagePath:prompt:resolver:rejecter:)

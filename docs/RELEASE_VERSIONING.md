@@ -4,15 +4,18 @@
 
 ---
 
-## 一、当前线上版本（基线）
+## 一、当前版本与本次测试发行（2026-11-05）
 
-| 端 | 版本名 (version name) | 构建号 (build) | 修改位置 |
-| --- | --- | --- | --- |
-| iOS | `1.5.75` (`MARKETING_VERSION`) | `7` (`CURRENT_PROJECT_VERSION`) | `ios/ImagePilot.xcodeproj/project.pbxproj` |
-| Android | `1.5.75` (`versionName`) | 构建时间戳 `MMddHHmm`（自动，`versionCode`） | `android/app/build.gradle` |
-| PC / 通用 | `1.5.75` | — | `package.json` 的 `version`（**桌面打包产物命名读取 `pc-version-final/package.json` 的 `version`，务必同步 bump**）|
+| 范围 | 版本 | 状态 |
+| --- | --- | --- |
+| GitHub 正式版 | `v1.5.82` | 保留现有 Android / 桌面资产 |
+| 本次 Android | `1.5.83-beta.1` | 独立预发布测试 APK，手动下载安装 |
+| iOS | 工程 `1.5.82` / build `12` | 新模型代码已接入，本次不提交 App Store；上架状态以 App Store Connect 为准 |
+| PC | `1.5.82` | 本次不构建，不升级桌面版本 |
 
-> 说明：GitHub Releases 的发布逻辑（`.github/workflows/main-build.yml`）读取 **`package.json` 的 `version`** 作为 tag（`v{version}`）。
+本次仅同步根目录 `package.json`、`package-lock.json`、Android `versionName` 与生成的 `BuildInfo.js`。测试分支为 `codex/embeddinggemma2-android-preview`，手动工作流选择 `platform=android`，使用现有正式签名。GitHub Release 标记 prerelease，不设为 latest。预发布使用发布页 APK 链接手动更新，不依赖 `releases/latest`。
+
+正式全端发布仍按下文同步各端版本；不得因 Android 测试包而声称 iOS/PC 已发布新版。
 
 ---
 
@@ -20,9 +23,9 @@
 
 ### 1. iOS —— 两个号都要涨
 下次提交 App Store 时：
-- `MARKETING_VERSION` **必须 > `1.5.75`**（如 `1.5.76`）——用户可见版本名。
-- `CURRENT_PROJECT_VERSION` **必须 > `7`**（如 `8`）——同一版本名下 build 号必须严格递增，否则 App Store Connect 拒收。
-  > 历史教训：1.5.74 曾上传过 build 4、5（被拒），过审用 build 6；1.5.75 用 build 7。下次至少从 **8** 起。
+- `MARKETING_VERSION` **必须 > `1.5.82`**（如 `1.5.83`）——用户可见版本名。
+- `CURRENT_PROJECT_VERSION` **必须 > `12`**（如 `13`）——同一版本名下 build 号必须严格递增，否则 App Store Connect 拒收。
+  > 历史教训：1.5.74 曾上传过 build 4、5（被拒），过审用 build 6；1.5.75 用 build 7。当前工程 build 12，下次至少从 **13** 起。
 
 ### 2. Android / PC —— 版本名必须变，否则不推送更新
 安卓端更新检测（`src/services/UpdateService.js`）逻辑：
@@ -67,4 +70,4 @@
 
 ---
 
-_最后更新：2026-07-19，对应线上基线 1.5.75 (iOS build 7)。_
+_最后更新：2026-11-05，本次为 Android 单端预发布。_

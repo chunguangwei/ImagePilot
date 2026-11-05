@@ -398,6 +398,7 @@ class GalleryScannerService {
     try { require('./ClipVectorIndexService').default.requestStop(); } catch (_) {}
 
     logger.info('🚀 [iOS] 启动 JS 端离线 AI 分类（MobileNetV3）');
+    let usedEmbeddingModel = false;
     this.isScanning = true;
     this._stopRequested = false;   // 用户停止标志（requestStop 置 true，循环逐张检测后优雅退出）
     this.scanStartTimestamp = scanStartTime || new Date();
@@ -427,7 +428,7 @@ class GalleryScannerService {
       }
 
       try {
-        await this.imageClassifier.initialize();
+        if ((await readActiveTier()) !== 'embeddinggemma2') await this.imageClassifier.initialize();
       } catch (e) {
         logger.error('❌ ImageClassifierService 初始化失败:', e);
         await this.sendProgressMessage('error', 0, naImages.length);
@@ -439,7 +440,7 @@ class GalleryScannerService {
       // VLM（多模态大模型）秒级/张，太慢：用 BATCH=1，让进度条与落库都「一张一张」推进，
       // 用户能实时看到百分比走动、结果逐张出现；基础/CLIP 等快引擎保持 20 批量以省 IO。
       const preTier = await readActiveTier();
-      const BATCH = (preTier && preTier.engine === 'vlm') ? 1 : 20;
+      const BATCH = (preTier === 'vlm' || preTier === 'embeddinggemma2') ? 1 : 20;
       let stoppedByUser = false;
       for (let i = 0; i < naImages.length; i += BATCH) {
         // 用户停止：逐批检测，已分类的（每张已即时落库）保留，剩余 NA 图下次扫描自动续。
@@ -453,6 +454,7 @@ class GalleryScannerService {
         let perImageDone = i;   // 批内逐张进度计数（进度平滑滚动）
         // 当前批次共用一个 tier（每批读 settings 一次，避免单图 IO）
         const activeTier = await readActiveTier();
+        if (activeTier === 'embeddinggemma2') usedEmbeddingModel = true;
         for (const image of batch) {
           // 批内逐张可停（快引擎 BATCH=20 时也能即时停，不必等整批跑完）。
           if (this._stopRequested) { stoppedByUser = true; break; }
@@ -483,7 +485,7 @@ class GalleryScannerService {
             // places365 引擎的 appCategory 直接来自 PLACES365_CLASSES 表。
             // 两端都低于阈值时落 other（仅 basic 需要阈值，places365 准度更高，
             // 但保留同阈值兼容）。
-            if (top && conf >= MOBILENET_MAP_THRESHOLD) {
+            if (top && (r.classificationAccepted === true || conf >= MOBILENET_MAP_THRESHOLD)) {
               category = top.appCategory || 'other';
             } else {
               if (top && conf < MOBILENET_MAP_THRESHOLD) {
@@ -536,6 +538,10 @@ class GalleryScannerService {
       logger.info(`✅ [iOS] 离线分类完成：成功 ${processedCount}，失败 ${failedCount}`);
       // 分类完所有 batch 后统一刷一次 GlobalImageCache，否则上层 HomeScreen 读到的
       // 仍是分类前 NA 的 categoryCounts，UI 显示「待分类|12」而 DB 实际已是 other|12。
+      if (usedEmbeddingModel) {
+        await require('./classify/EmbeddingGemmaClassifier').disposeEmbeddingGemma();
+        usedEmbeddingModel = false;
+      }
       try {
         await UnifiedDataService.imageCache.refreshCache();
       } catch (e) {
@@ -547,6 +553,9 @@ class GalleryScannerService {
       logger.error('❌ [iOS] 离线分类失败:', error);
       throw error;
     } finally {
+      if (usedEmbeddingModel) {
+        try { await require('./classify/EmbeddingGemmaClassifier').disposeEmbeddingGemma(); } catch (_) {}
+      }
       this.isScanning = false;
     }
   }
