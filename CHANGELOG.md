@@ -8,6 +8,8 @@
 
 - 修复设置页 Gemma4 默认变体即使未下载、当前使用 EmbeddingGemma 仍显示对勾的误导；选中标记以实际档位、模型下载和可用状态为准。
 
+- 分类模型说明取消两行截断，完整换行显示，不再省略后半句。
+
 用户截图确认旧版写入公共 `Download/imagepilot-update.apk.part` 报 `EACCES (Permission denied)`；本次改用私有缓存，消除该公共目录写入依赖。
 
 - 修正下载完成后安装报错自动跳 GitHub 的行为；保留本地 APK 和真实错误，支持重试安装。

@@ -1480,7 +1480,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                       {tier.readyForUse ? null : <Text style={styles.classifierTierSublabel}>  （{t('settings.classifierModel.adapting')}）</Text>}
                     </Text>
                     <Text style={styles.classifierTierMeta}>{metaParts.join(' · ')}</Text>
-                    <Text style={styles.classifierTierDesc} numberOfLines={2}>{t('settings.classifierModel.tierDesc.' + tierKey, { defaultValue: tier.desc })}</Text>
+                    <Text style={styles.classifierTierDesc}>{t('settings.classifierModel.tierDesc.' + tierKey, { defaultValue: tier.desc })}</Text>
                   </View>
                   <View style={styles.classifierTierRight}>
                     {downloading ? (
