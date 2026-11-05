@@ -27,18 +27,22 @@
 ### Task 1: Model and inference service
 Files: src/services/classify/lfmCaptionModel.js, LfmCaptionService.js, __tests__/LfmCaptionService.test.js.
 Interfaces: captionModelReady(), downloadCaptionModel(onProgress, signal), deleteCaptionModel(); runCaptionPass(images, options) returns generated/failed/stopped counts.
-- [ ] Write failing tests for disabled/missing model, bilingual prompts, cache clearing, failure preservation, cancellation and release.
-- [ ] Implement integrity-checked pair downloads and serialized CPU caption pass.
-- [ ] Run targeted Jest suite.
+- [x] Write failing tests for disabled/missing model, bilingual prompts, cache clearing, failure preservation, cancellation and release.
+- [x] Implement integrity-checked pair downloads and serialized CPU caption pass.
+- [x] Run targeted Jest suite.
 
 ### Task 2: Configuration and scanner integration
 Files: src/components/LfmCaptionSettings.js, src/screens/mobile/SettingsScreen.mobile.js, src/services/GalleryScannerService.android.js, src/services/GalleryScannerService.ios.js.
-- [ ] Add default-off switch, zh/en/app language choices, download/progress/cancel/delete controls.
-- [ ] Collect successfully classified embedding images, release embedding runtime, then caption with shared service.
-- [ ] Preserve video-frame extraction and existing image-description storage/search.
+- [x] Add default-off switch, zh/en/app language choices, download/progress/cancel/delete controls.
+- [x] Collect successfully classified embedding images, release embedding runtime, then caption with shared service.
+- [x] Preserve video-frame extraction and existing image-description storage/search.
 - [ ] Check both platform bundles and native builds.
 
 ### Task 3: Documentation and verification
 - [ ] Update feature/user/testing/runtime documentation and release notes with actual verified results.
 - [ ] Run classification/update regression tests and native checks; review diff.
 - [ ] Publish only after build verification; record limitations honestly.
+
+## Verified runtime compatibility
+
+The initial prebuilt runtime rejected the official 450M projector (missing optional input norm). Backported upstream optional norm handling in a version-checked postinstall script and enabled source builds for both platforms. Android uses explicit package registration. iOS uses single-window Scene lifecycle and CPU-only source runtime. Actual official-weight Chinese and English caption generation succeeded on the simulator, with zero failed images in both runs; this is not a phone thermal or performance benchmark.

@@ -56,3 +56,5 @@ EmbeddingGemma 自身仍不生成文本。设置中新增独立、默认关闭�
 ### 原生兼容修复
 
 官方 450M 视觉编码器没有输入 LayerNorm；llama.rn 0.9.7 预编译库会报缺少 `mm.input_norm.weight`。`scripts/patch-llama-lfm.js` 在 npm install/ci 后自动应用上游 optional-norm 逻辑，两端必须从源码构建，不能换回未修复预编译库。Android 手动注册 RNLlamaPackage，NDK 固定 27.2；所有 CPU 指令集分支保留，禁用 GPU/NPU 后端。iOS 禁用 Metal，并接入单窗口 Scene 生命周期以兼容本次 Xcode SDK 的启动要求。
+
+真实权重验证：iOS 模拟器上，同一活动合影分别生成中文和英文描述，均成功写入测试回调并释放模型。仅证明本次图文链路可运行，不代表各手机质量、速度、耗电或温升指标。Android 正式构建和手机实测另行记录。
