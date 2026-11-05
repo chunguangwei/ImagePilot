@@ -856,6 +856,14 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
    * 用户点"后台下载"只是 setUpdateProgress(null) 关 UI，下载 promise 不停；
    * 等它走完一样会拉起安装器，并把状态置 'done'（哪怕 UI 已关，重开也能看到）。
    */
+  const openUpdateDownloadPage = async info => {
+    try {
+      await UpdateService.openDownload({ pageUrl: info?.pageUrl || UpdateService.RELEASES_PAGE });
+    } catch (error) {
+      Alert.alert(t('common.error'), error?.message || String(error));
+    }
+  };
+
   const startUpdate = async (info, downloadedPath = null) => {
     setUpdateInfoModal(null);
     setUpdateProgress({ percent: downloadedPath ? 1 : 0, status: downloadedPath ? 'installing' : 'downloading', version: info?.latestVersion, info });
@@ -1521,9 +1529,8 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                     </TouchableOpacity>
                   </View>
                 )}
-                {tierKey === 'embeddinggemma2' && <LfmCaptionSettings
+                {tierKey === 'embeddinggemma2' && isActive && <LfmCaptionSettings
                   config={settings.embeddingCaption || {}}
-                  active={isActive}
                   colors={c}
                   onChange={async value => {
                     const latest = await UnifiedDataService.readSettings();
@@ -1555,10 +1562,10 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                     </View>
                   </View>
                 )}
-                {/* vlm 档：两个变体各自一行 —— 左侧选用勾(只表示"选哪个")，右侧独立的 下载/重新下载/删除。 */}
+                {/* 模型名称与操作分行，窄屏和大字体下完整显示；选中状态由档位行表示。 */}
                 {tierKey === 'vlm' && tier.readyForUse && (
                   <View style={styles.clipModelSelector}>
-                    <Text style={styles.clipModelSelectorLabel}>{t('settings.classifierModel.vlmModelLabel')}</Text>
+                    {VLM_MODEL_ORDER.length > 1 && <Text style={styles.clipModelSelectorLabel}>{t('settings.classifierModel.vlmModelLabel')}</Text>}
                     {VLM_MODEL_ORDER.map((mid) => {
                       const m = VLM_MODELS[mid];
                       const sel = classifierTier === 'vlm' && vlmModelId === mid && !!vlmDownloaded[mid] && !vlmUnsupported?.[mid];
@@ -1566,26 +1573,21 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                       const dl = !!vlmDownloaded[mid];
                       const dling = vlmDownloadingId === mid;
                       return (
-                        <View key={mid} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 }}>
+                        <View key={mid} style={{ paddingVertical: 8 }}>
                           <TouchableOpacity
-                            style={[{ flexDirection: 'row', alignItems: 'center', flex: 1 }, disabled && { opacity: 0.5 }]}
+                            style={[{ alignSelf: 'stretch' }, disabled && { opacity: 0.5 }]}
                             onPress={() => selectVlmVariant(mid)}
                             activeOpacity={0.6}
                             disabled={dling}
                           >
-                            <View style={{ width: 24 }}>
-                              {sel
-                                ? (SetIonicons ? <SetIonicons name="checkmark-circle" size={19} color={c.accent} /> : <Text style={{ color: c.accent, fontSize: 16 }}>✓</Text>)
-                                : (SetIonicons ? <SetIonicons name="ellipse-outline" size={19} color={c.subtext || '#9aa0a6'} /> : <Text style={{ color: c.subtext || '#9aa0a6', fontSize: 16 }}>○</Text>)}
-                            </View>
-                            <View style={{ flex: 1, paddingRight: 6 }}>
-                              <Text style={[styles.clipModelChipText, sel && { color: c.accent }]} numberOfLines={1}>{m.name}</Text>
-                              <Text style={styles.clipModelChipSub} numberOfLines={2}>
+                            <View>
+                              <Text style={[styles.clipModelChipText, sel && { color: c.accent }]}>{m.name}</Text>
+                              <Text style={styles.clipModelChipSub}>
                                 {disabled ? t('settings.classifierModel.vlmDisabled') : `${m.sublabel} · ${m.sizeMB}MB`}
                               </Text>
                             </View>
                           </TouchableOpacity>
-                          <View style={{ marginLeft: 8 }}>
+                          <View style={{ marginTop: 10, alignItems: 'flex-start' }}>
                             {dling ? (
                               <View style={styles.classifierTierRightInner}>
                                 <ActivityIndicator size="small" color={c.accent} />
@@ -2401,6 +2403,18 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                 <Text style={styles.progressText}>
                   {Math.round((updateProgress?.percent || 0) * 100)}%
                 </Text>
+              </View>
+            )}
+            {(updateProgress?.status === 'error' || updateProgress?.status === 'installing') && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={styles.updateSubtitle}>{t('settings.updateBrowserFallback')}</Text>
+                <TouchableOpacity
+                  accessibilityRole="link"
+                  style={[styles.updateBtn, styles.updateBtnPrimary, { marginLeft: 0 }]}
+                  onPress={() => openUpdateDownloadPage(updateProgress?.info)}
+                >
+                  <Text style={styles.updateBtnPrimaryText}>{t('settings.updateDownloadPage')}</Text>
+                </TouchableOpacity>
               </View>
             )}
             <View style={styles.updateFooter}>

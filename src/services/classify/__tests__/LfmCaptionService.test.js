@@ -1,3 +1,5 @@
+jest.mock('../captionLanguage', () => ({ captionLanguage: jest.fn(() => 'zh') }));
+import { captionLanguage } from '../captionLanguage';
 const mockContext = { initMultimodal: jest.fn(), clearCache: jest.fn(), completion: jest.fn(), release: jest.fn(async () => {}), stopCompletion: jest.fn() };
 jest.mock('llama.rn', () => ({ initLlama: jest.fn(async () => mockContext) }));
 jest.mock('../lfmCaptionModel', () => ({ captionModelReady: jest.fn(async () => true), captionModelPaths: () => ({ model: '/model.gguf', projector: '/projector.gguf' }) }));
@@ -7,7 +9,7 @@ import { runCaptionPass } from '../LfmCaptionService';
 import { initLlama } from 'llama.rn';
 import { captionModelReady } from '../lfmCaptionModel';
 
-beforeEach(() => { jest.clearAllMocks(); captionModelReady.mockResolvedValue(true); mockContext.initMultimodal.mockResolvedValue(true); mockContext.completion.mockResolvedValue({ text: '图片中有一只猫。' }); });
+beforeEach(() => { jest.clearAllMocks(); captionLanguage.mockReturnValue('zh'); captionModelReady.mockResolvedValue(true); mockContext.initMultimodal.mockResolvedValue(true); mockContext.completion.mockResolvedValue({ text: '图片中有一只猫。' }); });
 const images = [{ id: '1', uri: 'file:///a.jpg' }, { id: '2', uri: 'file:///b.jpg' }];
 const opts = () => ({ config: { enabled: true, language: 'zh' }, save: jest.fn(async () => ({ success: true })), shouldStop: () => false });
 test('disabled makes no runtime or model calls', async () => {
@@ -19,7 +21,7 @@ test('missing pair does not initialize or write', async () => {
   const r = await runCaptionPass(images, o); expect(r.skipped).toBe('model-missing'); expect(o.save).not.toHaveBeenCalled(); expect(initLlama).not.toHaveBeenCalled();
 });
 test.each(['zh', 'en'])('writes real %s captions using CPU and resets recurrent state for each image', async language => {
-  const o = opts(); o.config.language = language;
+  const o = opts(); o.config.language = language === 'zh' ? 'en' : 'zh'; captionLanguage.mockReturnValue(language);
   const r = await runCaptionPass(images, o);
   expect(r.generated).toBe(2); expect(initLlama).toHaveBeenCalledWith(expect.objectContaining({ n_gpu_layers: 0, n_threads: 2, ctx_shift: false }));
   expect(mockContext.initMultimodal).toHaveBeenCalledWith({ path: '/projector.gguf', use_gpu: false });
@@ -50,4 +52,26 @@ test('stop during image preparation does not begin inference', async () => {
 test('per-row persistence failures do not count as generated', async () => {
   const o = opts(); o.save.mockResolvedValue({ success: true, updatedCount: 0, failedCount: 1 });
   const r = await runCaptionPass(images, o); expect(r.generated).toBe(0); expect(r.failed).toBe(2);
+});
+
+test('reports the failing stage for each image when native initialization fails', async () => {
+  initLlama.mockRejectedValueOnce(new Error('native library unavailable'));
+  const onFailure = jest.fn(async () => {});
+  const r = await runCaptionPass(images, { ...opts(), onFailure });
+  expect(r.failed).toBe(2);
+  expect(onFailure).toHaveBeenCalledWith(images[0], { stage: 'model', error: 'native library unavailable' });
+  expect(onFailure).toHaveBeenCalledWith(images[1], { stage: 'model', error: 'native library unavailable' });
+});
+test('reports persistence failures separately from inference failures', async () => {
+  const o = opts(); o.save.mockResolvedValue({ updatedCount: 0 });
+  const onFailure = jest.fn(async () => {});
+  await runCaptionPass(images, { ...o, onFailure });
+  expect(onFailure).toHaveBeenCalledWith(images[0], { stage: 'save', error: 'Caption save failed' });
+});
+test('missing model reports actionable failure for every requested image', async () => {
+  captionModelReady.mockResolvedValue(false);
+  const onFailure = jest.fn(async () => {});
+  await runCaptionPass(images, { ...opts(), onFailure });
+  expect(onFailure).toHaveBeenCalledTimes(2);
+  expect(onFailure.mock.calls[0][1].stage).toBe('verify');
 });

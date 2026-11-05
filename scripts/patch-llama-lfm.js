@@ -43,4 +43,16 @@ for (const file of ['android/src/main/CMakeLists.txt', 'android/src/main/rnllama
   replace(file, anchor, '    # ImagePilot LFM CPU baseline (all CPU instruction variants retained)\n    set(ENABLE_OPENCL OFF)\n    set(ENABLE_HEXAGON OFF)\n\n' + anchor);
 }
 replace('android/gradle.properties', 'RNLlama_ndkversion=27.3.13750724', 'RNLlama_ndkversion=27.2.12479018');
+// 0.9.7 exports clearCache on iOS/new-arch only, although its JS API calls it on all platforms.
+// RN 0.72 uses this old-arch bridge; without the method every caption fails before completion.
+replace('android/src/oldarch/java/com/rnllama/RNLlamaModule.java',
+`  @ReactMethod
+  public void stopCompletion(double id, final Promise promise) {`,
+`  @ReactMethod
+  public void clearCache(double id, boolean clearData, final Promise promise) {
+    rnllama.clearCache(id, clearData, promise);
+  }
+
+  @ReactMethod
+  public void stopCompletion(double id, final Promise promise) {`);
 console.log('Applied llama.rn 0.9.7 LFM2.5-VL compatibility / CPU build patch');

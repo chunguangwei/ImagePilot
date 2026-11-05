@@ -88,3 +88,12 @@ GEM_HOME=/opt/homebrew/Cellar/cocoapods/<ver>/libexec /opt/homebrew/opt/ruby/bin
 ### 原生兼容修复
 
 官方 450M 视觉编码器没有输入 LayerNorm；llama.rn 0.9.7 预编译库会报缺少 `mm.input_norm.weight`。`scripts/patch-llama-lfm.js` 在 npm install/ci 后自动应用上游 optional-norm 逻辑，两端必须从源码构建，不能换回未修复预编译库。Android 手动注册 RNLlamaPackage，NDK 固定 27.2；所有 CPU 指令集分支保留，禁用 GPU/NPU 后端。iOS 禁用 Metal，并接入单窗口 Scene 生命周期以兼容本次 Xcode SDK 的启动要求。
+
+## 1.5.87：描述生成修复与配置简化（2026-11-05）
+
+- 修复 Android 旧架构缺少 `clearCache` 原生桥接，导致 LFM 每张图片生成前失败、描述为空的问题；补丁由安装依赖时自动应用。
+- EmbeddingGemma 类别编码改用官方 `task: classification | query:` 前缀；保留完整类别含义和自定义规则。相似度仍不是概率，单人照片准确率需更多原图回归。
+- 描述开关归入已选中的 EmbeddingGemma，打开后展开“下载并启用”；下载完成自动生效，关闭保留文件。移除语言按钮，中文系统生成中文，其它系统语言生成英文。
+- 图片信息显示描述生成状态和失败阶段，失败保留已有描述。Gemma 名称完整换行，移除多余选择圆圈。
+- Android 应用内下载或安装失败时提供下载页入口；安装器启动界面也保留手动下载安装入口。
+- Android/iOS 均更新至 1.5.87，iOS build 13。iOS 签名与分发状态以发布页实际附件说明为准，不将未签名归档视作可直接安装包或 TestFlight 发布。

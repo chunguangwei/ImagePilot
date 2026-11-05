@@ -33,7 +33,7 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath) {
     const lang = currentLang();
     const categories = getCategoryList();
     if (!categories.length) throw new Error('No categories available');
-    const texts = categories.map((c) => `task: classification | text: ${categoryText(c, lang)}`);
+    const texts = categories.map((c) => `task: classification | query: ${categoryText(c, lang)}`);
     const key = JSON.stringify([modelPath, categories.map((c) => c.id), texts]);
     let imagePath;
     try {

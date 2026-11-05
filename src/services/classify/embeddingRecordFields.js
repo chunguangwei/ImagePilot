@@ -1,11 +1,12 @@
 // Reuse the existing persisted JSON column; no DB migration and no fake image caption.
-export function embeddingRecordFields(result) {
+export function embeddingRecordFields(result, captionEnabled = false) {
   if (result?.engine !== 'embeddinggemma2') return {};
   return {
     confidence: null,
     mobileNetV3Detections: {
       embedding: {
         model: 'embeddinggemma2',
+        caption: { state: captionEnabled ? 'pending' : 'disabled' },
         accepted: result.classificationAccepted === true,
         similarity: result.similarity,
         margin: result.margin,

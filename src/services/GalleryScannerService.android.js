@@ -1,3 +1,4 @@
+import { captionRecordFields } from './classify/captionRecordFields';
 import { embeddingRecordFields } from './classify/embeddingRecordFields';
 /**
  * GalleryScannerService.android.js
@@ -677,7 +678,7 @@ class GalleryScannerService {
               }
               category = 'other';
             }
-            if (captionEnabled && r?.engine === 'embeddinggemma2' && r?.success !== false) captionBatch.push(image);
+            if (captionEnabled && r?.engine === 'embeddinggemma2' && r?.success !== false) captionBatch.push({ ...image, ...embeddingRecordFields(r, true) });
             classificationDataArray.push({
               uri: image?.uri || imageUri,
               id: image.id,
@@ -687,7 +688,7 @@ class GalleryScannerService {
               generalDetections: [],
               mobileNetV3Detections: null,
               // VLM 开放式打标：归不进已有类的图落 other，但把模型自拟标签存到 message。
-              ...(r?.engine === 'embeddinggemma2' ? embeddingRecordFields(r) : { message: r?.vlmLabel || null }),
+              ...(r?.engine === 'embeddinggemma2' ? embeddingRecordFields(r, captionEnabled) : { message: r?.vlmLabel || null }),
               background_color: null,
             });
           } catch (e) {
@@ -751,7 +752,8 @@ class GalleryScannerService {
             }
             return { uri: getUri(image) || image.uri };
           },
-          save: (image, message) => UnifiedDataService.batchUpdateClassification([{ id: image.id, uri: image.uri, message }], false),
+          save: (image, message) => UnifiedDataService.batchUpdateClassification([captionRecordFields(image, { state: 'generated' }, message)], false),
+          onFailure: (image, detail) => UnifiedDataService.batchUpdateClassification([captionRecordFields(image, { state: 'failed', ...detail })], false),
           onProgress: done => this.sendProgressMessage('remote_inference', naImages.length + done, progressTotal, this.imagesClassified, naImages.length),
         });
         stoppedByUser = stoppedByUser || captions.stopped;

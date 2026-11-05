@@ -81,3 +81,10 @@ test('editing a category description invalidates its encoded cache', async () =>
   await classifyWithEmbeddingGemma('photo', 'model');
   expect(embed).toHaveBeenCalledTimes(6);
 });
+
+test('uses the official classification query prefix for every category', async () => {
+  await classifyWithEmbeddingGemma('photo', 'model');
+  const texts = embed.mock.calls.map(([, text]) => text).filter(Boolean);
+  expect(texts).toHaveLength(cats.length);
+  expect(texts.every(text => text.startsWith('task: classification | query: '))).toBe(true);
+});

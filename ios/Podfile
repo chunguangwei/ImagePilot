@@ -80,7 +80,7 @@ target 'ImagePilot' do
     # SDK 26 头文件升级带来的连锁错误。
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
-        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0' unless config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f >= 14.0
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0' unless config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f >= 15.0
         extra_cflags = '-Wno-deprecated-literal-operator -Wno-nullability-completeness -Wno-non-modular-include-in-framework-module'
         config.build_settings['OTHER_CFLAGS']   = "$(inherited) #{extra_cflags}"
         config.build_settings['OTHER_CPLUSPLUSFLAGS'] = "$(inherited) #{extra_cflags}"
