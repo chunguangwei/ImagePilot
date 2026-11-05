@@ -855,42 +855,30 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
    * 用户点"后台下载"只是 setUpdateProgress(null) 关 UI，下载 promise 不停；
    * 等它走完一样会拉起安装器，并把状态置 'done'（哪怕 UI 已关，重开也能看到）。
    */
-  const startUpdate = async (info) => {
+  const startUpdate = async (info, downloadedPath = null) => {
     setUpdateInfoModal(null);
-    if (!info || !info.apkUrl) {
-      UpdateService.openDownload(info);
-      return;
-    }
-    setUpdateProgress({ percent: 0, status: 'downloading', version: info.latestVersion });
+    setUpdateProgress({ percent: downloadedPath ? 1 : 0, status: downloadedPath ? 'installing' : 'downloading', version: info?.latestVersion, info });
     try {
-      await UpdateService.downloadAndInstall(info.apkUrl, (p) => {
-        // 用 functional update：用户可能已"后台下载"把 modal 关了；
-        // null 时不再渲染，但保留这次写入用于"复开 → 看进度"
-        setUpdateProgress((prev) => prev ? { ...prev, percent: p } : prev);
-      });
+      if (downloadedPath) {
+        await UpdateService.installDownloadedApk(downloadedPath);
+      } else {
+        const apkUrl = await UpdateService.resolveApkUrl(info);
+        await UpdateService.downloadAndInstall(apkUrl, (p) => {
+          setUpdateProgress((prev) => prev ? { ...prev, percent: p } : prev);
+        });
+      }
       setUpdateProgress((prev) => prev ? { ...prev, percent: 1, status: 'installing' } : null);
-      // 华为/荣耀纯净模式可能拦截应用内安装（"恶意安装来源"误报，云端对包名签名档案的启发式判定）。
-      // 给出绕行引导：关纯净模式 或 用系统文件管理打开已下载的 APK（换"安装来源"即可绕开对本应用的信誉判定）。
-      try {
-        const manu = String((Platform.constants && (Platform.constants.Manufacturer || Platform.constants.Brand)) || '').toLowerCase();
-        if (Platform.OS === 'android' && /huawei|honor/.test(manu)) {
-          Alert.alert(
-            t('settings.huaweiInstallHintTitle', { defaultValue: '华为设备安装提示' }),
-            t('settings.huaweiInstallHintMessage', { defaultValue: '若系统提示"恶意安装来源，禁止安装"（华为误报）：\n\n方法一：设置 → 系统和更新 → 纯净模式 → 关闭后重试；\n方法二：打开系统"文件管理" → Download/ImagePilot 目录 → 点按已下载的安装包安装。' })
-          );
-        }
-      } catch (_) { /* 检测失败不影响安装流程 */ }
     } catch (e) {
       if (e && e.code === 'E_NEED_PERMISSION') {
-        setUpdateProgress(null);
         Alert.alert(t('settings.installPermTitle'), t('settings.installPermMessage'));
-        return;
       }
       // 失败哪怕用户已"后台下载"也要重新弹出告知（沉默失败体验最差）
       setUpdateProgress((prev) => ({
         percent: prev?.percent || 0,
         version: prev?.version || info?.latestVersion || '',
         status: 'error',
+        info,
+        apkPath: e?.code === 'E_NO_FILE' ? null : (e?.apkPath || downloadedPath),
         error: e?.message || String(e),
       }));
     }
@@ -2378,7 +2366,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
               {updateProgress?.status === 'installing'
                 ? '下载完成，准备安装…'
                 : updateProgress?.status === 'error'
-                  ? '下载失败'
+                  ? t('settings.updateFailedTitle')
                   : (t('settings.downloadingTitle') || '正在下载')}
             </Text>
             <Text style={styles.updateSubtitle}>
@@ -2411,9 +2399,9 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.updateBtn, styles.updateBtnPrimary]}
-                    onPress={() => { setUpdateProgress(null); UpdateService.openReleasesPage(); }}
+                    onPress={() => startUpdate(updateProgress?.info, updateProgress?.apkPath)}
                   >
-                    <Text style={styles.updateBtnPrimaryText}>{t('settings.openReleasesPage')}</Text>
+                    <Text style={styles.updateBtnPrimaryText}>{updateProgress?.apkPath ? t('settings.retryInstallation') : t('common.retry')}</Text>
                   </TouchableOpacity>
                 </>
               ) : updateProgress?.status === 'installing' ? (

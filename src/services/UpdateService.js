@@ -3,11 +3,12 @@
  *
  * 独立于上游 fork：更新源指向本产品自己的仓库 chunguangwei/ImagePilot。
  * 流程：拉取 releases/latest → 比对版本 → 有新版则引导下载最新 APK
- *       （用系统浏览器打开 APK 直链，下载完成后由 Android 安装器接管安装；
- *        无需 REQUEST_INSTALL_PACKAGES / 原生模块，稳妥且零原生依赖）。
+ *       应用内下载到私有缓存 → 原生 ApkInstaller 调起系统安装器。
+ *       API 失败时从 GitHub 同域附件列表解析地址，浏览器仅作为用户主动选择的备用入口。
  */
 
 import { Linking } from 'react-native';
+import SHA256 from 'crypto-js/sha256';
 import { BUILD_VERSION } from '../config/BuildInfo';
 
 export const UPDATE_REPO = 'chunguangwei/ImagePilot';
@@ -84,7 +85,7 @@ export async function checkForUpdate() {
     // 网络异常 → 落到 atom 兜底
   }
   // 兜底：github.com 的 releases.atom（与 api.github.com 不同域，常在 API 被拦时仍可达）。
-  // 注：atom 无 APK 直链，故 apkUrl=null，下载时回退到发布页。
+  // Atom 提供版本，再从同域附件列表解析实际 APK 地址。
   return await checkViaAtom();
 }
 
@@ -102,18 +103,38 @@ async function checkViaAtom() {
     // 没有任何 release entry
     return { hasUpdate: false, latestVersion: null, currentVersion: BUILD_VERSION, notes: '', apkUrl: null, pageUrl: RELEASES_PAGE };
   }
+  let apkUrl = null;
+  try { apkUrl = await resolveApkUrl({ latestVersion }); } catch (_) { /* Retry from the download UI. */ }
   return {
     hasUpdate: isNewer(latestVersion, BUILD_VERSION),
     latestVersion,
     currentVersion: BUILD_VERSION,
     notes: '',
-    // atom 拿不到资产列表，故没有 APK 直链。旧实现硬编码 `app-release.apk` 拼直链——但
-    // Release 里的资产名实际是 `<产品名>-android-arm-<版本>.apk`，从来不叫 app-release.apk，
-    // 必然 404（用户实测「跳到下载链接但不存在」）。改为 apkUrl=null → openDownload 回退到
-    // 该 Release 页，用户在页面手动下载，永不 404，也不受安装包改名影响。
-    apkUrl: null,
+    apkUrl,
     pageUrl: `https://github.com/${UPDATE_REPO}/releases/tag/${latestVersion}`,
   };
+}
+
+/** Resolve an actual asset even when api.github.com is unreachable. Never guess APK names. */
+export async function resolveApkUrl(info) {
+  if (info?.apkUrl) return info.apkUrl;
+  const version = String(info?.latestVersion || '');
+  if (!version) throw new Error('未获取更新版本，请重新检查更新');
+  const tag = encodeURIComponent(version);
+  const response = await fetch(`https://github.com/${UPDATE_REPO}/releases/expanded_assets/${tag}`, {
+    headers: { 'User-Agent': 'ImagePilot-App', Accept: 'text/html' },
+  });
+  if (!response.ok) throw new Error(`获取安装包链接失败 HTTP ${response.status}`);
+  const html = await response.text();
+  const prefix = `/${UPDATE_REPO}/releases/download/${tag}/`;
+  const links = [...html.matchAll(/href=["']([^"']+)["']/gi)].map(m => m[1].replace(/&amp;/g, '&'));
+  for (let link of links) {
+    if (link.startsWith('https://github.com/')) link = link.slice('https://github.com'.length);
+    if (link.startsWith(prefix) && /\.apk$/i.test(link) && !link.slice(prefix.length).includes('/')) {
+      return `https://github.com${link}`;
+    }
+  }
+  throw new Error('该版本没有可下载的 Android 安装包，请稍后重试');
 }
 
 /** 打开下载：优先 APK 直链（浏览器下载→系统安装器），无直链则打开 Release 页。 */
@@ -165,8 +186,21 @@ async function resolveRedirects(url) {
  * @throws E_NEED_PERMISSION（未授予安装未知应用权限，原生已引导去设置）/ 其它下载或安装错误
  * @returns {Promise<string>} 下载到的本地路径
  */
+export async function installDownloadedApk(path) {
+  const { NativeModules } = require('react-native');
+  try {
+    if (!NativeModules?.ApkInstaller?.install) throw new Error('ApkInstaller 原生模块不可用');
+    await NativeModules.ApkInstaller.install(path);
+    return path;
+  } catch (error) {
+    error.updateStage = 'install';
+    error.apkPath = path;
+    throw error;
+  }
+}
+
 export async function downloadAndInstall(apkUrl, onProgress) {
-  // 原生依赖懒加载（仅 Android 走这条路；web/异常由调用方兜底到浏览器）
+  // 原生依赖懒加载（仅 Android 走这条路；错误交由界面展示并重试）
   // eslint-disable-next-line global-require
   const RNFS = require('react-native-fs');
   // eslint-disable-next-line global-require
@@ -181,10 +215,9 @@ export async function downloadAndInstall(apkUrl, onProgress) {
   if (!ApkInstaller || typeof ApkInstaller.install !== 'function') {
     throw new Error('ApkInstaller 原生模块不可用');
   }
-  // 存到公共 Download 目录：华为纯净模式误报"恶意安装来源"拦截应用内安装时，
-  // 用户可改用系统"文件管理 → Download"手动点装（换安装来源即绕开对本应用的信誉判定）。
-  // FileProvider 的 file_paths.xml 已覆盖 external Download，应用内直装不受影响。
-  const dest = `${RNFS.DownloadDirectoryPath || RNFS.CachesDirectoryPath}/imagepilot-update.apk`;
+  // App-private cache avoids scoped-storage restrictions on public Download folders.
+  // Key by the original release URL so partial/completed files cannot cross versions.
+  const dest = `${RNFS.CachesDirectoryPath}/imagepilot-update-${SHA256(apkUrl).toString().slice(0, 24)}.apk`;
   const part = `${dest}.part`;
 
   // 跑掉重定向，给 RNFS 一个最终直链
@@ -204,6 +237,20 @@ export async function downloadAndInstall(apkUrl, onProgress) {
   // 失败时**不删 .part**，让用户下次还能续。
 
   let expectedTotal = await headContentLength(directUrl);
+  // Permission settings may interrupt installation after download. Reuse the verified file.
+  let reusable = false;
+  try {
+    if (expectedTotal > 0 && await RNFS.exists(dest) && Number((await RNFS.stat(dest)).size) === expectedTotal && expectedTotal >= 1024 * 1024) {
+      const magic = await RNFS.read(dest, 4, 0, 'ascii');
+      reusable = magic === 'PK\x03\x04';
+    }
+  } catch (_) { /* Continue with normal download. */ }
+  if (reusable) {
+    if (onProgress) onProgress(1);
+    await installDownloadedApk(dest);
+    return dest;
+  }
+
   let partSize = 0;
   try { if (await RNFS.exists(part)) partSize = Number((await RNFS.stat(part)).size) || 0; } catch (_) {}
 
@@ -281,11 +328,11 @@ export async function downloadAndInstall(apkUrl, onProgress) {
   let actualSize = 0;
   try { actualSize = Number((await RNFS.stat(dest)).size) || 0; } catch (_) {}
   const tooSmall = actualSize < 1024 * 1024;
-  const truncated = expectedTotal > 0 && actualSize < expectedTotal;
+  const truncated = expectedTotal > 0 && actualSize !== expectedTotal;
   let badMagic = false;
   try {
     const head = await RNFS.read(dest, 4, 0, 'ascii'); // ZIP/APK 魔数 'PK\x03\x04'
-    badMagic = !(head && head.charCodeAt(0) === 0x50 && head.charCodeAt(1) === 0x4b);
+    badMagic = !(head && head.charCodeAt(0) === 0x50 && head.charCodeAt(1) === 0x4b && head.charCodeAt(2) === 3 && head.charCodeAt(3) === 4);
   } catch (_) { badMagic = true; }
 
   if (tooSmall || truncated || badMagic) {
@@ -296,7 +343,7 @@ export async function downloadAndInstall(apkUrl, onProgress) {
     throw new Error(`E_CORRUPT 安装包下载不完整（${got}MB/${exp}MB），请重试或用浏览器下载`);
   }
 
-  await ApkInstaller.install(dest); // 未授权会 reject E_NEED_PERMISSION
+  await installDownloadedApk(dest); // 未授权会 reject E_NEED_PERMISSION
   return dest;
 }
 
@@ -335,4 +382,4 @@ async function appendFileToFile(RNFS, ApkInstaller, srcPath, dstPath) {
   }
 }
 
-export default { checkForUpdate, openDownload, openReleasesPage, downloadAndInstall, isNewer, CURRENT_VERSION, UPDATE_REPO, RELEASES_PAGE };
+export default { installDownloadedApk, resolveApkUrl, checkForUpdate, openDownload, openReleasesPage, downloadAndInstall, isNewer, CURRENT_VERSION, UPDATE_REPO, RELEASES_PAGE };

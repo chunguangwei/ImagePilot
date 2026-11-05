@@ -365,21 +365,31 @@ const HomeScreen = ({ navigation }) => {
                 {
                   text: t('settings.updateNow'),
                   style: 'default',
-                  onPress: async () => {
-                    if (!info.apkUrl) { UpdateService.openDownload(info); return; }
+                  onPress: async function performUpdate(downloadedPath = null) {
                     try {
                       setGlobalMessage(t('home.updateDownloading', { pct: 0 }));
-                      await UpdateService.downloadAndInstall(info.apkUrl, (p) =>
-                        setGlobalMessage(t('home.updateDownloading', { pct: Math.round(p * 100) })),
-                      );
+                      if (downloadedPath) {
+                        await UpdateService.installDownloadedApk(downloadedPath);
+                      } else {
+                        const apkUrl = await UpdateService.resolveApkUrl(info);
+                        await UpdateService.downloadAndInstall(apkUrl, (p) =>
+                          setGlobalMessage(t('home.updateDownloading', { pct: Math.round(p * 100) })),
+                        );
+                      }
                       setGlobalMessage('');
                     } catch (e) {
                       setGlobalMessage('');
-                      if (e && e.code === 'E_NEED_PERMISSION') {
-                        Alert.alert(t('settings.installPermTitle'), t('settings.installPermMessage'));
-                      } else {
-                        UpdateService.openDownload(info); // 下载/安装失败 → 兜底浏览器
-                      }
+                      const permission = e?.code === 'E_NEED_PERMISSION';
+                      const apkPath = e?.code === 'E_NO_FILE' ? null : (e?.apkPath || downloadedPath);
+                      Alert.alert(
+                        t(permission ? 'settings.installPermTitle' : 'settings.updateFailedTitle'),
+                        permission ? t('settings.installPermMessage') : t('settings.updateFailedMessage', { error: e?.message || String(e) }),
+                        [
+                          { text: t('common.cancel'), style: 'cancel' },
+                          { text: t('settings.openReleasesPage'), onPress: () => UpdateService.openDownload(info) },
+                          { text: apkPath ? t('settings.retryInstallation') : t('common.retry'), onPress: () => performUpdate(apkPath) },
+                        ],
+                      );
                     }
                   },
                 },

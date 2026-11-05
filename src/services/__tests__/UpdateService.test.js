@@ -153,13 +153,14 @@ describe('checkForUpdate — Android 主路径', () => {
       .mockResolvedValueOnce({                          // releases.atom
         ok: true,
         text: async () => '<feed><entry><link href="https://github.com/x/releases/tag/v1.7.0"/></entry></feed>',
-      });
+      })
+      .mockResolvedValueOnce({ ok: true, text: async () => '<a href="/chunguangwei/ImagePilot/releases/download/v1.7.0/ImagePilot-android-arm-1.7.0.apk">APK</a>' });
     const { checkForUpdate, UPDATE_REPO } = require('../UpdateService');
     const r = await checkForUpdate();
     expect(r.hasUpdate).toBe(true);
     expect(r.latestVersion).toBe('v1.7.0');
-    // atom 没资产列表 → apkUrl 按约定拼（资产名固定 app-release.apk）
-    expect(r.apkUrl).toBe(`https://github.com/${UPDATE_REPO}/releases/download/v1.7.0/app-release.apk`);
+    // API 不通时从实际发布附件列表获取 APK，不猜文件名。
+    expect(r.apkUrl).toBe(`https://github.com/${UPDATE_REPO}/releases/download/v1.7.0/ImagePilot-android-arm-1.7.0.apk`);
   });
 
   test('apk 资产缺失（仅源码包） → apkUrl=null（不会推一个错链接）', async () => {
@@ -174,5 +175,20 @@ describe('checkForUpdate — Android 主路径', () => {
     const { checkForUpdate } = require('../UpdateService');
     const r = await checkForUpdate();
     expect(r.apkUrl).toBeNull();
+  });
+});
+
+describe('resolveApkUrl — in-app fallback', () => {
+  beforeEach(() => { global.fetch = jest.fn(); });
+  afterEach(() => { delete global.fetch; });
+  test('resolves the actual APK from GitHub expanded assets without opening a browser', async () => {
+    global.fetch.mockResolvedValue({ ok: true, text: async () => '<a href="/chunguangwei/ImagePilot/releases/download/v1.8.0/renamed.apk">download</a>' });
+    const { resolveApkUrl } = require('../UpdateService');
+    expect(await resolveApkUrl({ latestVersion: 'v1.8.0' })).toBe('https://github.com/chunguangwei/ImagePilot/releases/download/v1.8.0/renamed.apk');
+  });
+  test('does not accept APK links from another repository or release', async () => {
+    global.fetch.mockResolvedValue({ ok: true, text: async () => '<a href="https://evil.test/app.apk">apk</a><a href="/other/repo/releases/download/v1.8.0/app.apk">apk</a><a href="/chunguangwei/ImagePilot/releases/download/v1.7.0/old.apk">old</a>' });
+    const { resolveApkUrl } = require('../UpdateService');
+    await expect(resolveApkUrl({ latestVersion: 'v1.8.0' })).rejects.toThrow();
   });
 });
