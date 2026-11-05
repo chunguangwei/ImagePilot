@@ -1,5 +1,5 @@
 import { NativeModules, Platform } from 'react-native';
-import { categoryDescription, categoryText } from './categorySemantics';
+import { categoryDescription, categoryEmbeddingTexts } from './categorySemantics';
 import { getCategoryList, currentLang, prepareImageFile, cleanupTmp } from './vlmShared';
 
 // Keep native requests and disposal ordered, including simultaneous single-photo requests.
@@ -33,24 +33,28 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath) {
     const lang = currentLang();
     const categories = getCategoryList();
     if (!categories.length) throw new Error('No categories available');
-    const texts = categories.map((c) => `task: classification | query: ${categoryText(c, lang)}`);
+    const texts = categories.map((c) => categoryEmbeddingTexts(c, lang).map(text => `task: classification | query: ${text}`));
     const key = JSON.stringify([modelPath, categories.map((c) => c.id), texts]);
     let imagePath;
     try {
       imagePath = await prepareImageFile(imageUri);
       if (!categoryCache || categoryCache.key !== key) {
         const vectors = [];
-        for (const text of texts) {
-          vectors.push(normalize(await native.embed(modelPath, text, '')));
+        for (const references of texts) {
+          const encoded = [];
+          for (const text of references) encoded.push(normalize(await native.embed(modelPath, text, '')));
+          vectors.push(encoded);
         }
         // Publish only a fully encoded cache; failed encodes must be retried.
         categoryCache = { key, vectors };
       }
       const vector = normalize(await native.embed(modelPath, '', imagePath));
       const predictions = categories.map((category, index) => {
-        const reference = categoryCache.vectors[index];
-        if (reference.length !== vector.length) throw new Error('Embedding dimension mismatch');
-        const similarity = Math.max(-1, Math.min(1, vector.reduce((sum, v, i) => sum + v * reference[i], 0)));
+        const scores = categoryCache.vectors[index].map(reference => {
+          if (reference.length !== vector.length) throw new Error('Embedding dimension mismatch');
+          return Math.max(-1, Math.min(1, vector.reduce((sum, v, i) => sum + v * reference[i], 0)));
+        });
+        const similarity = Math.max(...scores);
         return { name: category.id, appCategory: category.id, similarity };
       }).sort((a, b) => b.similarity - a.similarity);
       const top = predictions[0];

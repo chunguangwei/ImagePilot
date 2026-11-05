@@ -39,3 +39,15 @@ export function categoryText(category, lang = 'zh') {
   const description = categoryDescription(category, lang);
   return description ? `${name}: ${description}` : name;
 }
+
+// Builtin labels use both their full meaning and a concise visual prototype.
+// User-authored rules/descriptions remain the sole reference, so a broad label cannot bypass them.
+export function categoryEmbeddingTexts(category, lang = 'zh') {
+  const supplied = category.description;
+  const hasDescription = typeof supplied === 'string' ? !!supplied.trim()
+    : supplied && Object.values(supplied).some(value => typeof value === 'string' && value.trim());
+  if (!descriptions[category.id] || !category.en || (typeof category.rule === 'string' && category.rule.trim()) || hasDescription) {
+    return [categoryText(category, lang)];
+  }
+  return [categoryText(category, 'en'), `A photo of ${category.en}.`];
+}

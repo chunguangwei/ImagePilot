@@ -247,3 +247,5 @@ const result = await classifier.classifyImage(imagePath, {}, {
 选择 EmbeddingGemma 2 后，在该模型下打开“生成图片描述”，展开 LFM 下载入口。点击“下载并启用”，完成文件校验后自动用于后续分类；已有模型无需重复下载。关闭开关收起配置并保留模型文件。描述语言跟随设备系统语言：中文使用中文，其它语言使用英文，不再提供独立语言按钮；旧语言偏好不再用于描述生成。
 
 Android 描述为空已定位为旧架构缺少 clearCache 桥接，并在 1.5.87 补齐；安装包及 iOS 签名状态见发布记录。
+
+1.5.87 原生回归入口为 `scripts/mobile-caption-smoke.js`，仅供模拟器/测试安装使用，禁止替换正式入口 `index.js`。Documents 中放 sample.jpg 和 classify_models 官方模型，输出 caption-smoke-result.json：检查 bridgeReset、classificationSaved、generated/failed、数据库读回的 message 与 caption.state。

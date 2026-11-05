@@ -88,3 +88,23 @@ test('uses the official classification query prefix for every category', async (
   expect(texts).toHaveLength(cats.length);
   expect(texts.every(text => text.startsWith('task: classification | query: '))).toBe(true);
 });
+
+test('builtin visual prototype can recover a portrait without changing score thresholds', async () => {
+  getCategoryList.mockReturnValue([{ id: 'single_person', zh: '单人照片', en: 'Single Person' }, { id: 'fashion', zh: '服饰穿搭', en: 'Fashion' }]);
+  embed.mockImplementation(async (_path, text) => {
+    if (!text || text.includes('A photo of Single Person.')) return [0, 1];
+    if (text.includes('单人照片')) return [1, 0];
+    return [0.6, 0.8];
+  });
+  const r = await classifyWithEmbeddingGemma('portrait', 'model');
+  expect(r.topPrediction.appCategory).toBe('single_person');
+  expect(r.categoryDescription).toContain('一个人');
+  expect(r.similarity).toBe(1);
+});
+test('explicit rules cannot be bypassed by a broad builtin visual label', async () => {
+  getCategoryList.mockReturnValue([{ id: 'single_person', zh: '单人照片', en: 'Single Person', rule: '仅限室内自拍' }]);
+  embed.mockResolvedValue([1, 0]);
+  await classifyWithEmbeddingGemma('portrait', 'model');
+  expect(embed.mock.calls.filter(([, text]) => text)).toHaveLength(1);
+  expect(embed.mock.calls[0][1]).toContain('仅限室内自拍');
+});

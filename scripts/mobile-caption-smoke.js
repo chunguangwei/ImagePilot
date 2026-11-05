@@ -24,7 +24,12 @@ async function run() {
     const embeddingPath = `${RNFS.DocumentDirectoryPath}/classify_models/embeddinggemma-2-text-vision-440m.litertlm`;
     if (await RNFS.exists(embeddingPath)) {
       const { classifyWithEmbeddingGemma, disposeEmbeddingGemma } = require('../src/services/classify/EmbeddingGemmaClassifier');
-      try { report.classification = await classifyWithEmbeddingGemma(images[0].uri, embeddingPath); }
+      try {
+        report.classification = await classifyWithEmbeddingGemma(images[0].uri, embeddingPath);
+        const { embeddingRecordFields } = require('../src/services/classify/embeddingRecordFields');
+        for (const image of images) Object.assign(image, embeddingRecordFields(report.classification, true), { category: report.classification.topPrediction?.appCategory || 'other' });
+        report.classificationSaved = await storage.batchUpdateClassification(images);
+      }
       finally { await disposeEmbeddingGemma(); }
     }
     report.result = await runCaptionPass(images, {
@@ -41,6 +46,7 @@ async function run() {
   report.done = true;
   await RNFS.writeFile(file, JSON.stringify(report, null, 2));
 }
+AppRegistry.registerComponent('imagepilot', () => () => <Text>Caption smoke test</Text>);
 AppRegistry.registerComponent('ImageClassifier', () => () => <Text>Caption smoke test</Text>);
 AppRegistry.registerComponent('ImagePilot', () => () => <Text>Caption smoke test</Text>);
 run();
