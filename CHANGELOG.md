@@ -17,7 +17,7 @@ Android 测试发行；iOS 同步接入代码，本次不提交 App Store，不�
 
 ### 验证与范围
 - 分类单元测试 35 项通过；iOS 模拟器构建、Android Java 编译及两端生产 JS 打包已通过。
-- Android Release APK 签名与打包结果以本次 GitHub Actions 和发布资产为准。
+- Android Release APK 构建成功，v2/v3 签名校验通过，证书与 1.5.82 一致；包名不变、versionCode 提升至 11050544。详细校验见 [发布记录](docs/releases/1.5.83-beta.1.md)。
 - 已有更新服务测试 `UpdateService.test.js` 的网络/Atom 回退 URL 断言失败，不属于本次模型改动。
 - 未验证模型真机推理、准确率、耗电或温升；项目没有语音输入，因此不引入 740M 音频模型。
 
