@@ -1,6 +1,6 @@
 {
   "name": "imagepilot",
-  "version": "1.5.85",
+  "version": "1.5.86",
   "description": "ImagePilot-智能分类，便捷管理，仅你可见",
   "displayName": "ImagePilot",
   "main": "index.js",
@@ -15,7 +15,8 @@
     "harmonyos:test-deps": "node scripts/test-harmonyos-deps.js",
     "start": "react-native start",
     "test": "jest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "postinstall": "node scripts/patch-llama-lfm.js"
   },
   "dependencies": {
     "@babel/runtime": "^7.20.0",
@@ -41,6 +42,7 @@
     "jimp": "^0.22.12",
     "jpeg-js": "^0.4.4",
     "jsqr": "^1.4.0",
+    "llama.rn": "0.9.7",
     "onnxruntime-node": "^1.22.0-rev",
     "onnxruntime-react-native": "^1.17.0",
     "react": "18.2.0",

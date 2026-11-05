@@ -40,3 +40,19 @@ Android 测试版本为 **1.5.83-beta.1**，iOS 已接入同一能力，但本�
 ## 1.5.85 选中状态修正
 
 选择 EmbeddingGemma 时，Gemma4 变体不再因其是默认偏好而显示选中对勾。Gemma4 的对勾要求当前档位为多模态、当前变体匹配、已下载且未标记不可用；模型下载和选择逻辑不变。
+
+## 1.5.86 可选 LFM 图片描述
+
+EmbeddingGemma 自身仍不生成文本。设置中新增独立、默认关闭的 LFM2.5-VL-450M 描述模型（约 419 MB），可选跟随应用、中文或英文。图文分类后先释放 EmbeddingGemma，再运行描述阶段；每张图清空 LFM 循环状态，最长边 512，最多 160 输出 token。停止或失败不写半成品描述，成功写入已有 message 字段，分类及相似度元数据不变。
+
+- 官方权重：[LiquidAI GGUF](https://huggingface.co/LiquidAI/LFM2.5-VL-450M-GGUF)。下载依赖该站可达，不会偷偷启用外部推理 API。
+- Q4_K_M：229313568 字节，SHA-256 `1093f1331319199bbcacdbd7ecc9aa6e5678db6b55073948d0f508be90c8ab68`。
+- F16 视觉编码器：189126080 字节，SHA-256 `51b458cfdbc736982145a35f798ce37611af0aab639e58b33473ba0c7815fd99`。
+- 客户端验证完整长度与 SHA-256；两个文件完整才可启用。两种语言共用同一对权重。
+- llama.rn 0.9.7 支持 RN 0.72 旧架构，锁定精确版本；0.10+ 要求新架构，不能直接升级。两端 CPU、2 线程、n_gpu_layers=0，视觉 use_gpu=false。
+- 本地描述是可选增量开销；它不参与本次 EmbeddingGemma 相似度排名，不承诺分类准确率提升。图片描述质量及手机性能需要单独测量。
+- 已有图片需手动再次执行 AI 分类；中途停止的未生成描述不自动续跑。生成失败会保留原描述。
+
+### 原生兼容修复
+
+官方 450M 视觉编码器没有输入 LayerNorm；llama.rn 0.9.7 预编译库会报缺少 `mm.input_norm.weight`。`scripts/patch-llama-lfm.js` 在 npm install/ci 后自动应用上游 optional-norm 逻辑，两端必须从源码构建，不能换回未修复预编译库。Android 手动注册 RNLlamaPackage，NDK 固定 27.2；所有 CPU 指令集分支保留，禁用 GPU/NPU 后端。iOS 禁用 Metal，并接入单窗口 Scene 生命周期以兼容本次 Xcode SDK 的启动要求。

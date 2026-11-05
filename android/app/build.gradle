@@ -97,7 +97,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode getVersionCode()
-        versionName "1.5.85"
+        versionName "1.5.86"
     }
 
     splits {
@@ -189,6 +189,7 @@ dependencies {
     implementation project(':react-native-sound')
     implementation project(':react-native-document-picker')
     implementation project(':react-native-video')
+    implementation project(':llama.rn')
 
     // AndroidX ExifInterface - 用于读取图片EXIF信息（MediaStore需要）
     implementation 'androidx.exifinterface:exifinterface:1.3.6'

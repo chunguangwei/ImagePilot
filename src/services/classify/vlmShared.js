@@ -187,10 +187,10 @@ export function parseResult(raw, cats, lang) {
 }
 
 /** ph:// / file:// → 缩放后的本地 jpg 路径（file://）。最长边 768、contain 保留整图。 */
-export async function prepareImageFile(imageUri) {
+export async function prepareImageFile(imageUri, maxSize = 768) {
   if (!ImageResizer) throw new Error('react-native-image-resizer 不可用');
   const r = await ImageResizer.createResizedImage(
-    imageUri, 768, 768, 'JPEG', 90, 0, undefined, false, { mode: 'contain' },
+    imageUri, maxSize, maxSize, 'JPEG', 90, 0, undefined, false, { mode: 'contain' },
   );
   const uri = r.uri || '';
   return uri.startsWith('file://') ? uri : `file://${uri}`;

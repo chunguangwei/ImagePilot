@@ -47,7 +47,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'build-tools;34.0.0 platform-tools platforms;android-33 ndk;23.1.7779620'
+          packages: 'build-tools;34.0.0 platform-tools platforms;android-33 ndk;23.1.7779620 ndk;27.2.12479018'
 
       - name: Cache Node Modules
         uses: actions/cache@v4

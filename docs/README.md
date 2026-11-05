@@ -1,11 +1,11 @@
 # 项目文档索引
 
-## 当前发行：1.5.85（Android）
+## 当前开发：1.5.86（Android）
 
 - [EmbeddingGemma 2 接入与真机测试说明](features/EmbeddingGemma2.md)
 - [分类测试指南](testing/CLASSIFICATION_TEST_GUIDE.md)
 - [发布构建指南](platforms/BUILD_RELEASE.md) · [版本规范](RELEASE_VERSIONING.md)
-- [Android 1.5.85 构建与签名校验](releases/1.5.85.md)
+- [Android 1.5.86 构建与签名校验](releases/1.5.86.md)
 - [更新日志](../CHANGELOG.md) · [本次发布说明](../RELEASE_NOTES.md)
 
 本次仅发布 Android APK；iOS 代码已接入，桌面版本未更新。旧版设计和工作记录保留其历史上下文，当前模型行为以上述说明为准。

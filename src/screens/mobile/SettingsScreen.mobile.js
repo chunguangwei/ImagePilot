@@ -28,6 +28,7 @@ import KeepAwakeService from '../../services/KeepAwakeService';
 import GalleryScannerService from '../../services/GalleryScannerService';
 import ImageStorageService from '../../services/ImageStorageService';
 import * as UpdateService from '../../services/UpdateService';
+import LfmCaptionSettings from '../../components/LfmCaptionSettings';
 import DirectoryPicker from '../../components/DirectoryPicker.mobile';
 import { logger } from '../../adapters/WebAdapters';
 import { presetIcon } from '../../ui/ios/presetIcons';
@@ -1520,6 +1521,17 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                     </TouchableOpacity>
                   </View>
                 )}
+                {tierKey === 'embeddinggemma2' && <LfmCaptionSettings
+                  config={settings.embeddingCaption || {}}
+                  active={isActive}
+                  colors={c}
+                  onChange={async value => {
+                    const latest = await UnifiedDataService.readSettings();
+                    const next = { ...latest, embeddingCaption: value };
+                    await UnifiedDataService.writeSettings(next);
+                    setSettings(next);
+                  }}
+                />}
                 {/* clip 档：模型变体选择器（仅在有多个变体时显示；现仅 S2 一个 → 隐藏） */}
                 {tierKey === 'clip' && tier.readyForUse && CLIP_MODEL_ORDER.length > 1 && (
                   <View style={styles.clipModelSelector}>

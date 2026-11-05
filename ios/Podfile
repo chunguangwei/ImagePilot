@@ -1,3 +1,5 @@
+ENV['RNLLAMA_BUILD_FROM_SOURCE'] = '1'
+ENV['RNLLAMA_DISABLE_METAL'] = '1' # CPU baseline, including iPhone 13
 # Resolve react_native_pods.rb with node to allow for hoisting
 require Pod::Executable.execute_command('node', ['-p',
   'require.resolve(

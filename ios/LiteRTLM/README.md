@@ -80,3 +80,11 @@ GEM_HOME=/opt/homebrew/Cellar/cocoapods/<ver>/libexec /opt/homebrew/opt/ruby/bin
 ### 1.5.84 语义分类修正
 
 两端复用类别语义描述和结果保存逻辑。新分类保留已有图片描述，详情页分开呈现类别说明与候选相似度；并列/非正匹配归入其它。无需更新原生运行时或重新下载模型。旧记录重新分类后才具备诊断元数据。详见 [接入说明](../../docs/features/EmbeddingGemma2.md)。
+
+## LFM 可选图片描述（1.5.86）
+
+新增独立的 llama.rn 0.9.7（旧架构兼容）用于 LFM2.5-VL-450M；执行 npm ci 后需在 ios 执行 pod install。它不替换 LiteRT-LM，EmbeddingGemma 分类后释放，再加载 LFM CPU 描述模型。语言模型和视觉编码器均由用户单独下载，不放入应用资源。使用 n_gpu_layers=0、视觉 use_gpu=false，支持 iPhone 无可用 GPU 的 CPU 路径。已通过本机 iOS 模拟器编译；iPhone 13 真机性能仍待验证。
+
+### 原生兼容修复
+
+官方 450M 视觉编码器没有输入 LayerNorm；llama.rn 0.9.7 预编译库会报缺少 `mm.input_norm.weight`。`scripts/patch-llama-lfm.js` 在 npm install/ci 后自动应用上游 optional-norm 逻辑，两端必须从源码构建，不能换回未修复预编译库。Android 手动注册 RNLlamaPackage，NDK 固定 27.2；所有 CPU 指令集分支保留，禁用 GPU/NPU 后端。iOS 禁用 Metal，并接入单窗口 Scene 生命周期以兼容本次 Xcode SDK 的启动要求。

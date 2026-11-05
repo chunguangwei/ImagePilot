@@ -624,6 +624,10 @@ class GalleryScannerService {
       // 用户能实时看到百分比走动、结果逐张出现；基础/CLIP 等快引擎保持 20 批量以省 IO。
       preTier = await readActiveTier();
       const BATCH = (preTier === 'vlm' || preTier === 'embeddinggemma2') ? 1 : 20;
+      const captionConfig = (await UnifiedDataService.readSettings()).embeddingCaption || {};
+      const captionEnabled = preTier === 'embeddinggemma2' && captionConfig.enabled === true;
+      const captionImages = [];
+      const progressTotal = naImages.length * (captionEnabled ? 2 : 1);
       let stoppedByUser = false;
       for (let i = 0; i < naImages.length; i += BATCH) {
         // 用户停止：逐批检测，已分类的（每张已即时落库）保留，剩余 NA 图下次扫描自动续。
@@ -634,9 +638,10 @@ class GalleryScannerService {
         }
         const batch = naImages.slice(i, i + BATCH);
         const classificationDataArray = [];
+        const captionBatch = [];
         let perImageDone = i;   // 批内逐张进度计数（进度平滑滚动）
         // 当前批次共用一个 tier（每批读一次 settings，避免单图 IO）
-        const activeTier = await readActiveTier();
+        const activeTier = preTier; // 本轮固定模型，避免切换设置后多个引擎同时常驻。
         if (activeTier === 'embeddinggemma2') usedEmbeddingModel = true;
         for (const image of batch) {
           // 批内逐张可停（快引擎 BATCH=20 时也能即时停，不必等整批 20 张跑完）。
@@ -672,6 +677,7 @@ class GalleryScannerService {
               }
               category = 'other';
             }
+            if (captionEnabled && r?.engine === 'embeddinggemma2' && r?.success !== false) captionBatch.push(image);
             classificationDataArray.push({
               uri: image?.uri || imageUri,
               id: image.id,
@@ -693,12 +699,13 @@ class GalleryScannerService {
           }
           // 批内逐张发进度：百分比平滑滚动，不再 20 张跳一次（界面数据刷新仍按每 20 张节流）
           perImageDone++;
-          await this.sendProgressMessage('remote_inference', Math.min(perImageDone, naImages.length), naImages.length, this.imagesClassified, naImages.length);
+          await this.sendProgressMessage('remote_inference', Math.min(perImageDone, naImages.length), progressTotal, this.imagesClassified, naImages.length);
         }
         if (classificationDataArray.length > 0) {
           try {
             const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, false);
             if (updateResult && updateResult.success) {
+              captionImages.push(...captionBatch);
               processedCount += updateResult.updatedCount;
               this.imagesClassified += updateResult.updatedCount;
             } else {
@@ -710,7 +717,7 @@ class GalleryScannerService {
           }
         }
         const done = Math.min(i + BATCH, naImages.length);
-        await this.sendProgressMessage('remote_inference', done, naImages.length, this.imagesClassified, naImages.length);
+        await this.sendProgressMessage('remote_inference', done, progressTotal, this.imagesClassified, naImages.length);
       }
 
       logger.info(`${stoppedByUser ? '🛑 JS 离线分类已停止' : '✅ JS 离线分类完成'}：成功 ${processedCount}，失败 ${failedCount}`);
@@ -732,6 +739,25 @@ class GalleryScannerService {
         await require('./classify/EmbeddingGemmaClassifier').disposeEmbeddingGemma();
         usedEmbeddingModel = false;
       }
+      if (captionEnabled && !this._stopRequested && captionImages.length) {
+        const { runCaptionPass } = require('./classify/LfmCaptionService');
+        const captions = await runCaptionPass(captionImages, {
+          config: captionConfig,
+          shouldStop: () => !!this._stopRequested,
+          resolveImage: async image => {
+            if (String(image.mimeType || '').startsWith('video/')) {
+              const frame = await NativeModules.MediaStoreModule.extractVideoFrame(image?.uri || String(image?.id || ''));
+              return { uri: frame, cleanup: () => RNFS.unlink(frame.replace(/^file:\/\//, '')) };
+            }
+            return { uri: getUri(image) || image.uri };
+          },
+          save: (image, message) => UnifiedDataService.batchUpdateClassification([{ id: image.id, uri: image.uri, message }], false),
+          onProgress: done => this.sendProgressMessage('remote_inference', naImages.length + done, progressTotal, this.imagesClassified, naImages.length),
+        });
+        stoppedByUser = stoppedByUser || captions.stopped;
+        logger.info('[android] LFM captions:', captions);
+      }
+
       try {
         await UnifiedDataService.imageCache.refreshCache();
       } catch (e) {

@@ -914,7 +914,7 @@
         "vlm": "Multimodal LLM"
       },
       "tierDesc": {
-        "embeddinggemma2": "Offline image classification with custom categories. No generated descriptions; complex rules use semantic matching.",
+        "embeddinggemma2": "Offline image classification with custom categories. Optional LFM image captions; complex rules use semantic matching.",
         "basic": "Recognizes concrete objects in photos: items, animals, food, devices, etc.",
         "scene": "Recognizes the scene: kitchen / beach / office / classroom and 365 more",
         "clip": "AI semantic recognition — better at abstract scenes and mood",
