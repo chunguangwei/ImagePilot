@@ -1568,6 +1568,26 @@ const ImagePreviewScreen = ({ route, navigation }) => {
             );
           })()}
 
+          {currentImage.mobileNetV3Detections?.embedding && (() => {
+            const result = currentImage.mobileNetV3Detections.embedding;
+            return (
+              <View style={styles.detectionSection}>
+                <Text style={styles.detectionTitle}>EmbeddingGemma 2 · {t('imagePreview.semanticMatch')}</Text>
+                <Text style={styles.detectionText}>{t('imagePreview.embeddingCaptionHint')}</Text>
+                {!result.accepted && <Text style={styles.detectionText}>{t('imagePreview.embeddingUncertain')}</Text>}
+                {result.categoryDescription ? (
+                  <Text style={styles.detectionText}>{t('imagePreview.categoryMeaning')}: {result.categoryDescription}</Text>
+                ) : null}
+                {(result.candidates || []).map((candidate) => (
+                  <Text key={candidate.appCategory} style={styles.detectionText}>
+                    {getCategoryDisplayName(candidate.appCategory)} · {t('imagePreview.similarityScore')}: {Number.isFinite(candidate.similarity) ? candidate.similarity.toFixed(3) : '—'}
+                  </Text>
+                ))}
+                <Text style={styles.detectionText}>{t('imagePreview.similarityNotProbability')}</Text>
+              </View>
+            );
+          })()}
+
           {/* 检测结果 - 只有在检测到物体时才显示 */}
           {(currentImage.idCardDetections && currentImage.idCardDetections.length > 0) ||
            (currentImage.generalDetections && currentImage.generalDetections.length > 0) ||

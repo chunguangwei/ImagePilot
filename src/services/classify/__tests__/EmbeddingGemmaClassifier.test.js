@@ -53,3 +53,31 @@ test('dimension mismatch cannot silently produce a category', async () => {
   embed.mockImplementation(async (_path, text) => text ? [1, 0] : [1]);
   await expect(classifyWithEmbeddingGemma('photo', 'model')).rejects.toThrow(/dimension/i);
 });
+
+test('descriptive category text is encoded and saved as category explanation, not an image caption', async () => {
+  getCategoryList.mockReturnValue([{ id: 'food', zh: '食物', description: { zh: '餐桌上的食物和饮料' } }, cats[1]]);
+  await classifyWithEmbeddingGemma('photo', 'model');
+  expect(embed.mock.calls.some(([, text]) => text.includes('餐桌上的食物和饮料'))).toBe(true);
+});
+
+test('tied candidates do not force a category based on list order', async () => {
+  embed.mockResolvedValue([1, 0]);
+  const result = await classifyWithEmbeddingGemma('photo', 'model');
+  expect(result.classificationAccepted).toBe(false);
+  expect(result.topPrediction).toBeNull();
+  expect(result.predictions).toHaveLength(2);
+});
+
+test('non-positive similarity is not accepted as a match', async () => {
+  embed.mockImplementation(async (_path, text) => text ? [1, 0] : [-1, 0]);
+  const result = await classifyWithEmbeddingGemma('photo', 'model');
+  expect(result.classificationAccepted).toBe(false);
+  expect(result.topPrediction).toBeNull();
+});
+
+test('editing a category description invalidates its encoded cache', async () => {
+  await classifyWithEmbeddingGemma('photo', 'model');
+  getCategoryList.mockReturnValue([{ ...cats[0], description: '餐桌上的食物' }, cats[1]]);
+  await classifyWithEmbeddingGemma('photo', 'model');
+  expect(embed).toHaveBeenCalledTimes(6);
+});

@@ -1,3 +1,4 @@
+import { embeddingRecordFields } from './classify/embeddingRecordFields';
 /**
  * GalleryScannerService.android.js
  * Android平台专用的扫描服务
@@ -680,7 +681,7 @@ class GalleryScannerService {
               generalDetections: [],
               mobileNetV3Detections: null,
               // VLM 开放式打标：归不进已有类的图落 other，但把模型自拟标签存到 message。
-              message: r?.vlmLabel || null,
+              ...(r?.engine === 'embeddinggemma2' ? embeddingRecordFields(r) : { message: r?.vlmLabel || null }),
               background_color: null,
             });
           } catch (e) {

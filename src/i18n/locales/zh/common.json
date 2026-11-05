@@ -477,6 +477,12 @@
     "holidaysTitle": "节日回忆"
   },
   "imagePreview": {
+    "semanticMatch": "语义分类",
+    "embeddingCaptionHint": "本模型匹配图片与类别含义，不生成图片描述；已有描述会保留，也可点击上方手动添加。",
+    "embeddingUncertain": "候选类别并列或没有有效匹配，本次归入其它。",
+    "categoryMeaning": "类别说明（非图片描述）",
+    "similarityScore": "相似度",
+    "similarityNotProbability": "相似度用于比较候选类别，不代表识别正确的概率。",
     "similarGroup": "相似组",
     "stagingBox": "暂存箱",
     "stagedMessage": "已暂存",

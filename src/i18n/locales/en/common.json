@@ -477,6 +477,12 @@
     "holidaysTitle": "Holidays"
   },
   "imagePreview": {
+    "semanticMatch": "Semantic classification",
+    "embeddingCaptionHint": "This model matches images to category meanings and does not generate captions. Existing captions are retained; tap above to add one manually.",
+    "embeddingUncertain": "Candidates tied or no positive match was found. Assigned to Other.",
+    "categoryMeaning": "Category meaning (not an image caption)",
+    "similarityScore": "Similarity",
+    "similarityNotProbability": "Similarity ranks category matches; it is not a probability of correctness.",
     "similarGroup": "Similar Group",
     "stagingBox": "Staging Box",
     "stagedMessage": "Staged",

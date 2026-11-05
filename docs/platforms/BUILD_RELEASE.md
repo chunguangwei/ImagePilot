@@ -1,6 +1,6 @@
 # ImagePilot - 发布版本构建指南
 
-## Android 单端测试发布（1.5.83-beta.1）
+## Android 单端发布（1.5.84）
 
 本次从 `codex/embeddinggemma2-android-preview` 分支运行 `manual-build.yml`，传入 `platform=android`，使用仓库已有的四个 Android 签名 Secrets。流程产出签名 APK 后，再发布 GitHub Release（非 prerelease，设为 latest，兼容应用内检查更新）；不覆盖正式版资产，不构建桌面或提交 iOS。
 

@@ -1,4 +1,5 @@
 import { NativeModules, Platform } from 'react-native';
+import { categoryDescription, categoryText } from './categorySemantics';
 import { getCategoryList, currentLang, prepareImageFile, cleanupTmp } from './vlmShared';
 
 // Keep native requests and disposal ordered, including simultaneous single-photo requests.
@@ -32,10 +33,7 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath) {
     const lang = currentLang();
     const categories = getCategoryList();
     if (!categories.length) throw new Error('No categories available');
-    const texts = categories.map((c) => {
-      const name = lang === 'en' ? (c.en || c.zh || c.id) : (c.zh || c.en || c.id);
-      return `task: classification | text: ${name}${c.rule ? `. ${c.rule.trim()}` : ''}`;
-    });
+    const texts = categories.map((c) => `task: classification | text: ${categoryText(c, lang)}`);
     const key = JSON.stringify([modelPath, categories.map((c) => c.id), texts]);
     let imagePath;
     try {
@@ -53,15 +51,21 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath) {
         const reference = categoryCache.vectors[index];
         if (reference.length !== vector.length) throw new Error('Embedding dimension mismatch');
         const similarity = Math.max(-1, Math.min(1, vector.reduce((sum, v, i) => sum + v * reference[i], 0)));
-        return { name: category.id, appCategory: category.id, similarity, probability: Math.max(0, similarity) };
+        return { name: category.id, appCategory: category.id, similarity };
       }).sort((a, b) => b.similarity - a.similarity);
       const top = predictions[0];
+      const margin = predictions.length > 1 ? top.similarity - predictions[1].similarity : null;
+      // Reject a non-match or numerical tie; do not invent an uncalibrated probability threshold.
+      const accepted = top.similarity > 0 && (margin === null || margin > 1e-6);
+      const selected = categories.find((c) => c.id === top.appCategory);
       return {
         success: true, engine: 'embeddinggemma2', model: 'embeddinggemma-2-text-vision-440m',
-        topPrediction: top, predictions: predictions.slice(0, 5),
+        topPrediction: accepted ? top : null, predictions: predictions.slice(0, 5),
         // This is cosine similarity, not a calibrated probability. Do not apply ImageNet's threshold.
         confidence: Math.max(0, top.similarity), similarity: top.similarity,
-        classificationAccepted: true, processingTime: Date.now() - started,
+        classificationAccepted: accepted, margin,
+        categoryDescription: accepted ? categoryDescription(selected, lang) : '',
+        processingTime: Date.now() - started,
       };
     } finally {
       if (imagePath) await cleanupTmp(imagePath);

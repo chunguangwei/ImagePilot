@@ -1,6 +1,6 @@
 # 项目文档索引
 
-## 当前测试发行：1.5.83-beta.1
+## 当前发行：1.5.84（Android）
 
 - [EmbeddingGemma 2 接入与真机测试说明](features/EmbeddingGemma2.md)
 - [分类测试指南](testing/CLASSIFICATION_TEST_GUIDE.md)

@@ -1,16 +1,13 @@
-# ImagePilot 1.5.83-beta.1 — Android 图文分类测试版
+# ImagePilot 1.5.84 — 轻量图文分类优化
 
-- 新增 **EmbeddingGemma 2 440M**：设置 → 分类模型 → EmbeddingGemma 2 · 测试版，按需下载约 **388 MB**。无需同时下载 E2B。
-- 支持按内置和自定义类别进行图片语义分类；使用 CPU，不依赖 GPU。
-- 本地与外部 API 仍由用户主动选择；新模型失败不会自动调用外部 API。
-- 此模型不生成图片描述，也不支持润色或语音输入。分类准确率、长时间运行发热和耗电请真机实测。
+- 为所有内置类别补充自然语言描述，EmbeddingGemma 与 E2B 共用类别含义，自定义规则优先。
+- 新模型重新分类时保留已有 AI 描述和手工描述，不再清空。EmbeddingGemma 本身不生成新的图片描述。
+- 图片详情新增“类别说明（非图片描述）”与前五候选相似度，便于定位误分类；不再将新结果的相似度显示为百分比置信度。
+- 候选完全并列或没有正向匹配时归入其它，不再按列表顺序强行选类。
+- 不额外下载模型，不自动调用 E2B 或外部 API。无需重新下载已安装的 440M 模型。
 
-## 安装与测试
+## 更新后如何测试
 
-从本页下载 APK，覆盖安装现有 Android 版。本版保留 beta 测试标识，但已设为 GitHub 最新非预发布版本，旧版 Android 可通过「设置 → 检查更新」获取，也可通过本页链接下载安装。建议先用同一批 20–50 张照片，在分类页多选 →「AI 分类」重跑，对比 E2B 的结果、耗时和温升。仅增量扫描不会重分已分类照片。切换到本地分类后再测试，避免仍在使用已选择的外部 API。
+覆盖安装后选择本地 EmbeddingGemma，在分类页选中测试照片执行「AI 分类」。旧记录不会自动重新分类，新诊断信息只在重跑后出现。请保留原图和类别规则，比较成人合照、儿童照片、背景含卡通角色等样本的结果。已经被旧版清空且没有备份的描述无法自动恢复。
 
-本次只发布 Android APK；iOS 代码已接入，但尚未发布新安装包。模型为单独下载，不包含在 APK 中。已通过的编译和单元测试不等于真机推理验证。
-
-## English
-
-Android preview with an optional EmbeddingGemma 2 440M text/vision classifier (~388 MB separate download). Select it under Settings → Classification model. CPU inference, custom-category semantic matching, no generated captions, and no automatic API fallback. This beta is published as the latest non-prerelease so Android in-app update checks can find it; real-device quality, latency, heat and battery use still need testing. iOS integration is in source only for this release.
+本次只发布 Android APK；iOS 共用逻辑已更新，但尚未发布新安装包。44 项分类相关测试和两端生产 JS 打包通过；真机准确率、温升与耗时仍需实测，不能把逻辑修正视为具体样本已识别正确。

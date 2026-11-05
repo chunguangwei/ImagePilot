@@ -15,7 +15,7 @@ Android 测试版本为 **1.5.83-beta.1**，iOS 已接入同一能力，但本�
 - 文件大小：387710976 字节；SHA-256：`92dcbea108899e5d6e30d919b0744f90d9967e80c67a4ab5503ac16d54f62eb0`。下载完成检查文件长度；此处散列供人工校验，不代表客户端已实施散列校验。
 - 已验证下载地址可返回 HTTP 206 和 LITERTLM 文件头，尚未完成整个模型的真机下载及推理。
 - `classifierModelTiers.js` 定义下载档，`EmbeddingGemmaClassifier.js` 串行处理向量分类、类别缓存及释放。
-- 类别输入包含名称与规则，使用 `task: classification | text: ...` 前缀。余弦相似度选择候选类别，不使用 MobileNet 概率门限；相似度不是准确率或校准概率。
+- 类别输入包含名称、内置或配置中的完整语义描述；自定义规则优先。E2B 共用类别含义。使用 `task: classification | text: ...` 前缀。余弦相似度选择候选类别；非正向匹配或数值并列（差值不超过 1e-6）归入其它。此检查只排除无效/并列结果，不代表结果已达到可靠性门限。相似度不是准确率或校准概率。
 - Android `GemmaModule` 与 iOS `LiteRTLMModule` 使用 LiteRT-LM 0.18.0，CPU 两线程、视觉 token 预算 70；与 E2B 切换时释放上一引擎。
 - iOS XCFramework 恢复方法见 [运行时说明](../../ios/LiteRTLM/README.md)。
 
@@ -28,3 +28,11 @@ Android 测试版本为 **1.5.83-beta.1**，iOS 已接入同一能力，但本�
 ## 发布范围
 
 本次 Android 1.5.83-beta.1 为测试版；为支持 Android 应用内检查更新，Release 取消 prerelease 并设为 latest，保留历史正式版 v1.5.82；iOS 代码同步接入但未发布，PC 不新增此模型入口。历史版本文档保留原记录。
+
+## 1.5.84 修正
+
+新增 `categorySemantics.js` 为 E2B 和 EmbeddingGemma 提供统一类别描述；配置描述和自定义规则不会丢失。`embeddingRecordFields.js` 两端共用，将候选相似度等元数据存入已有 JSON 列 `mobileNetV3Detections.embedding`，无需数据库迁移。
+
+新结果的 `confidence` 为 null，不再显示误导性的百分比。已有 `message`（AI 或手工描述）保持原值，没有图片描述时仍可手工添加。详情页单列“类别说明（非图片描述）”及前五候选相似度，不能将其当作模型针对该照片生成的句子。
+
+旧记录不会被自动重分或猜测来源；请在新版本中对测试样本执行「AI 分类」生成新的诊断记录。已经被旧版清空且没有备份的描述无法由这些改动恢复。自定义规则包含否定或复杂逻辑时，向量匹配仍不等同于指令推理。
