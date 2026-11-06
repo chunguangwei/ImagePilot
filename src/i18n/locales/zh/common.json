@@ -488,7 +488,7 @@
     "classification_image": "分类依据：原图＋类别说明",
     "classification_fallback": "图文匹配暂未完成，已保留原图分类，可从首页重试",
     "semanticMatch": "语义分类",
-    "embeddingCaptionHint": "EmbeddingGemma 匹配原图与类别含义；开启描述时，先由 LFM 生成主体短描述参与分类。",
+    "embeddingCaptionHint": "EmbeddingGemma 仅进行图片语义分类，不生成描述。需要分类与描述，请选择 LFM 标准方案或 E2B。",
     "captionState_preserved": "图片描述：保留已有描述",
     "captionState_pending": "图片描述：待生成；中断后再次运行离线分类可续补",
     "captionState_disabled": "图片描述：本次分类未启用",
@@ -627,7 +627,8 @@
     "findSimilar": "找相似",
     "findSimilarAsk": "按哪种相似度找？",
     "similarByColor": "颜色相似（构图/色调）",
-    "similarByVector": "AI 相似（内容语义）"
+    "similarByVector": "AI 相似（内容语义）",
+    "lfmResult": "LFM · 分类与简短描述"
   },
   "enhanceResult": {
     "defaultPresetName": "照片创玩",
@@ -930,18 +931,20 @@
       "speedMedium": "中等",
       "speedSlowest": "最慢",
       "tierLabel": {
-        "embeddinggemma2": "EmbeddingGemma 2 · 测试版",
+        "embeddinggemma2": "EmbeddingGemma 2 · 快速分类",
         "basic": "物体识别",
         "scene": "场景识别",
         "clip": "AI 智能识别",
-        "vlm": "多模态大模型"
+        "vlm": "E2B · 本地多模态大模型",
+        "lfm": "LFM · 标准方案"
       },
       "tierDesc": {
-        "embeddinggemma2": "离线图片分类，支持自定义类别。可选 LFM 生成图片描述；复杂规则按语义匹配。",
+        "embeddinggemma2": "仅做图片分类，速度快，不生成描述。按语义相似度匹配类别，复杂内容和规则可能误判。",
         "basic": "识别照片里的物品、动物、食物、设备等具体对象",
         "scene": "识别拍摄场景：厨房 / 海滩 / 办公室 / 教室 等 365 类",
         "clip": "AI 语义识别，更懂抽象场景与氛围",
-        "vlm": "大模型看图理解，最懂内容与细节；单张/小批量精修最佳"
+        "vlm": "速度最慢，侧重内容与细节理解，适合更精细的分类和描述。耗时、内存和耗电更高，效果请以实际照片为准。",
+        "lfm": "LFM2.5-VL-450M，一次生成分类与简短描述，支持自定义类别，适合日常整理。语言跟随系统。"
       },
       "clipSublabel": "推荐 · 最佳质量",
       "vlmModelLabel": "大模型（可切换）",
@@ -953,7 +956,9 @@
       "lowMemMsg": "{{name}} 对内存要求较高，本机配置较低，将无法提供此项服务。可在 6GB+ 内存的机型上使用。",
       "vlmUnsupportedTitle": "本机无法加载",
       "vlmUnsupportedMsg": "{{name}} 在本机加载失败（内存不足或不支持）。可改用更小的 SmolVLM-500M，或重试一次。",
-      "vlmRetry": "重试"
+      "vlmRetry": "重试",
+      "lfmBusy": "正在使用 LFM，请结束分类后再删除模型。",
+      "legacyModels": "其他传统模型"
     },
     "superRes": {
       "title": "AI 增强模型",
@@ -1271,7 +1276,6 @@
     "exportFailed": "导出失败",
     "exportComingAndroid": "导出视频功能即将登陆安卓，先用播放功能哦",
     "editBtn": "编辑",
-    "editTitle": "编辑时刻秀",
     "addPhotosTitle": "添加照片",
     "alreadyAdded": "已添加",
     "addConfirmN": "确定({{count}})",

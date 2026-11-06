@@ -1,23 +1,11 @@
-/**
- * classifierModelTiers — 设备端分类模型三档配置
- *
- * Phase 0：先把"三档结构 + 设置 + 下载机制 + UI"搭起来。
- * 「物体识别」(basic) 走现有 MobileNetV3-ImageNet（已打包，无需下载）。
- * 「场景识别」(scene, Places365) 和「AI 智能识别」(clip, MobileCLIP) 留占位。
- * 后续 PR 接入实际 ONNX 模型 + 推理引擎。
- *
- * 三档定位：
- * - basic：物体（猫/车/食物 等 1000 类）— ImageNet 任务
- * - scene：场景（厨房/海滩/办公室 等 365 类）— Places365 任务
- * - clip ：自然语言（用户自定义类如"我家狗"）— CLIP 多模态
- *
- * 模型下载托管在 chunguangwei/ImagePilot Release（github.com 可达，
- * api.github.com 被某些设备 403）。
+/** Independent local choices: LFM standard, EmbeddingGemma fast classification,
+ * and E2B detailed multimodal understanding. Legacy classifiers remain available.
+ * Existing selections and bundled basic defaults are preserved; downloads are opt-in.
  */
 
 const BASE = 'https://modelscope.cn/models/chunguangwee/ImagePilot-models/resolve/master'; // ModelScope 主源（端侧国内更稳）；GitHub Release 留作兜底（见下载器）
 
-/** 三档配置。 readyForUse=false 表示推理引擎暂未接入，UI 应当 disable 选项。 */
+/** readyForUse=false disables a model whose runtime is not available. */
 export const CLASSIFIER_TIERS = {
   basic: {
     key: 'basic',
@@ -69,12 +57,19 @@ export const CLASSIFIER_TIERS = {
     weak: '比基础档稍慢；自定义类请用云端 AI 分类',
     classes: 20,
   },
+  lfm: {
+    key: 'lfm', label: 'LFM · 标准方案', sublabel: '分类与描述',
+    sizeMB: 419, speed: '中等', bundled: false,
+    engine: 'lfm', readyForUse: true, classes: 0,
+    desc: '一次识别完成图片分类和简短描述，支持自定义类别，适合日常整理。',
+    weak: '小模型可能误判细节，请核对分类和描述。',
+  },
   embeddinggemma2: {
     key: 'embeddinggemma2',
     label: 'EmbeddingGemma 2',
-    sublabel: '图文分类 · 测试版',
+    sublabel: '快速分类',
     sizeMB: 388,
-    speed: '中等',
+    speed: '快',
     bundled: false,
     filename: 'embeddinggemma-2-text-vision-440m.litertlm',
     // Verified byte count/header; server-reported SHA-256 matches the official HF file.
@@ -82,14 +77,14 @@ export const CLASSIFIER_TIERS = {
     bytes: 387710976,
     engine: 'embeddinggemma2',
     readyForUse: true,
-    desc: '离线图片分类，支持自定义类别，按需下载图文版',
+    desc: '仅做图片分类，速度快；支持自定义类别，不生成描述',
     weak: '不生成图片描述；复杂分类规则按语义匹配，准确性待测试',
     classes: 0,
   },
   vlm: {
     key: 'vlm',
     label: '多模态大模型',
-    sublabel: '最精准 · 按需下载',
+    sublabel: '细节理解 · 按需下载',
     // VLM 档体积/下载按所选变体（vlmModels.js）动态取；这里给默认 Qwen3-VL-2B 的体积占位。
     sizeMB: 1838,
     speed: '最慢',
@@ -100,13 +95,13 @@ export const CLASSIFIER_TIERS = {
     url: '',
     engine: 'vlm',
     readyForUse: true,
-    desc: '大模型看图理解，最懂内容与细节；单张/小批量精修最佳',
+    desc: '侧重内容与细节理解，适合单张或小批量精细分类与描述',
     weak: '秒级/张，整库批量慢、发热、建议插电',
     classes: 20,
   },
 };
 
-export const CLASSIFIER_TIER_ORDER = ['basic', 'scene', 'clip', 'embeddinggemma2', 'vlm'];
+export const CLASSIFIER_TIER_ORDER = ['lfm', 'embeddinggemma2', 'vlm', 'basic', 'scene', 'clip'];
 
 /** 默认档：basic（已打包，0 下载） */
 export const DEFAULT_CLASSIFIER_TIER = 'basic';

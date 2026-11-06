@@ -18,7 +18,7 @@ export function runCaptionPass(images, options = {}) {
   queue = task.catch(() => {});
   return task;
 }
-async function run(images, { config, save, resolveImage = async image => ({ uri: image.uri }), shouldStop = () => false, onProgress = () => {}, onFailure = async () => {} }) {
+async function run(images, { config, save, resolveImage = async image => ({ uri: image.uri }), shouldStop = () => false, onProgress = () => {}, onFailure = async () => {}, inference = {} }) {
   const result = { generated: 0, failed: 0, stopped: false };
   if (!config?.enabled || !images.length) return result;
   if (shouldStop()) return { ...result, stopped: true };
@@ -39,9 +39,10 @@ async function run(images, { config, save, resolveImage = async image => ({ uri:
   let timer;
   busy = true;
   try {
+    if (inference.beforeLoad) await inference.beforeLoad();
     const { initLlama } = require('llama.rn');
     const paths = captionModelPaths();
-    context = await initLlama({ model: paths.model, n_ctx: 2048, n_batch: 256, n_threads: 2, n_gpu_layers: 0, use_mmap: true, ctx_shift: false });
+    context = await initLlama({ model: paths.model, n_ctx: inference.contextSize || 2048, n_batch: 256, n_threads: 2, n_gpu_layers: 0, use_mmap: true, ctx_shift: false });
     stage = 'vision';
     if (!(await context.initMultimodal({ path: paths.projector, use_gpu: false }))) throw new Error('LFM vision initialization failed');
     let stopSent = false;
@@ -64,12 +65,12 @@ async function run(images, { config, save, resolveImage = async image => ({ uri:
         if (shouldStop()) { result.stopped = true; break; }
         completing = true;
         const output = await context.completion({
-          messages: [{ role: 'user', content: [{ type: 'text', text: captionPrompt(language) }, { type: 'image_url', image_url: { url: tmp } }] }],
-          n_predict: 40, temperature: 0.1, top_p: 0.9, penalty_repeat: 1.1,
+          messages: [{ role: 'user', content: [{ type: 'text', text: inference.prompt || captionPrompt(language) }, { type: 'image_url', image_url: { url: tmp } }] }],
+          n_predict: inference.maxTokens || 40, ...(inference.grammar ? { grammar: inference.grammar } : {}), temperature: 0.1, top_p: 0.9, penalty_repeat: 1.1,
           stop: ['<|im_end|>', '<|endoftext|>'],
         });
         if (shouldStop()) { result.stopped = true; break; }
-        const text = cleanSubjectCaption(output?.text);
+        const text = inference.parse ? inference.parse(output?.text) : cleanSubjectCaption(output?.text);
         if (!text) throw new Error('Empty caption');
         stage = 'save';
         const saved = await save(images[i], text);

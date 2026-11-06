@@ -9,58 +9,52 @@ jest.mock('../../similarityDetectionPhase', () => ({}));
 jest.mock('../../../adapters/ScanServiceAdapter', () => ({ ScanService: { stop: jest.fn() } }));
 jest.mock('../../../i18n', () => ({}));
 jest.mock('../../ClipVectorIndexService', () => ({ requestStop: jest.fn() }));
-jest.mock('../classifyByTier', () => ({ readActiveTier: async () => 'embeddinggemma2', classifyImageByTier: jest.fn(async () => ({ success: true, engine: 'embeddinggemma2', classificationAccepted: true, topPrediction: { appCategory: 'electronics' } })) }));
+jest.mock('../classifyByTier', () => ({ readActiveTier: jest.fn(async () => 'lfm'), classifyImageByTier: jest.fn(async () => ({ success: true, engine: 'embeddinggemma2', classificationAccepted: true, topPrediction: { appCategory: 'electronics' } })) }));
 jest.mock('../EmbeddingGemmaClassifier', () => ({ disposeEmbeddingGemma: jest.fn() }));
-jest.mock('../LfmCaptionService', () => ({ runCaptionPass: jest.fn(async (images, options) => {
-  for (const image of images) await options.save(image, 'description');
-  return { generated: images.length, failed: 0, stopped: false };
-}) }));
+jest.mock('../LfmClassifier', () => ({ runLfmClassification: jest.fn() }));
 const data = require('../../UnifiedDataService');
-const { classifyImageByTier } = require('../classifyByTier');
-const { runCaptionPass } = require('../LfmCaptionService');
-const { disposeEmbeddingGemma } = require('../EmbeddingGemmaClassifier');
-const row = id => ({ id, uri: `file://${id}`, category: 'electronics', mobileNetV3Detections: { embedding: { model: 'embeddinggemma2', caption: { state: 'pending' } } } });
+const { classifyImageByTier, readActiveTier } = require('../classifyByTier');
+const { runLfmClassification } = require('../LfmClassifier');
+const row = id => ({ id, uri: `file://${id}`, category: 'electronics', mobileNetV3Detections: { lfm: { state: 'pending' } } });
 for (const platform of ['android', 'ios']) {
   const Scanner = require(`../../GalleryScannerService.${platform}`).default;
   describe(platform, () => {
     let scanner;
-    beforeEach(() => { jest.clearAllMocks(); data.readSettings.mockResolvedValue({embeddingCaption:{enabled:true}}); data.readAllImages.mockResolvedValue([]); scanner = new Scanner(); scanner.sendProgressMessage = jest.fn(); });
-    test('resumes saved caption work with zero unclassified images', async () => {
+    beforeEach(() => {
+      jest.clearAllMocks();readActiveTier.mockResolvedValue('lfm');data.readAllImages.mockResolvedValue([]);
+      data.batchUpdateClassification.mockResolvedValue({success:true,updatedCount:1});
+      runLfmClassification.mockImplementation(async (images, options) => {
+        let generated=0;
+        for(const image of images){if(options.shouldStop()) break;await options.save(image,{topPrediction:{appCategory:'electronics'},vlmLabel:'A network rack'});generated++;await options.onProgress(generated);}
+        return {generated,failed:0,stopped:options.shouldStop()};
+      });
+      scanner = new Scanner(); scanner.sendProgressMessage = jest.fn();
+    });
+    test('independent LFM resumes interrupted classified photos with zero NA images', async () => {
       data.readAllImages.mockResolvedValue([row('interrupted')]);
-      await scanner._classifyAllNAImagesByLocalOnnxJS(null, null);
-      expect(classifyImageByTier).toHaveBeenCalledWith('file://interrupted', 'embeddinggemma2', {caption:'description'});
-      expect(runCaptionPass.mock.calls[0][0][0].id).toBe('interrupted');
-      expect(data.batchUpdateClassification.mock.calls.some(call=>call[0][0].message==='description')).toBe(true);
+      const r=await scanner._classifyAllNAImagesByLocalOnnxJS(null, null);
+      expect(r.processedCount).toBe(1);expect(classifyImageByTier).not.toHaveBeenCalled();
+      expect(data.batchUpdateClassification.mock.calls.at(-1)[0][0]).toMatchObject({category:'electronics',message:'A network rack',mobileNetV3Detections:{lfm:{state:'complete'}}});
     });
-    test('flushes a bounded batch before classifying the rest, with no overlapping models', async () => {
-      const images = Array.from({ length: 10 }, (_, i) => ({ id: String(i), uri: `file://${i}` }));
-      await scanner._classifyAllNAImagesByLocalOnnxJS(null, images);
-      expect(runCaptionPass.mock.calls.map(call => call[0].length)).toEqual([8, 2]);
-      expect(disposeEmbeddingGemma.mock.invocationCallOrder[0]).toBeLessThan(runCaptionPass.mock.invocationCallOrder[0]);
-      expect(runCaptionPass.mock.invocationCallOrder[0]).toBeLessThan(classifyImageByTier.mock.invocationCallOrder[8]);
+    test('reclassification preserves manual descriptions and removes obsolete embedding evidence', async () => {
+      await scanner._classifyAllNAImagesByLocalOnnxJS(null, [{...row('manual'),message:'My caption',mobileNetV3Detections:{embedding:{model:'embeddinggemma2'}}}]);
+      const saved=data.batchUpdateClassification.mock.calls.at(-1)[0][0];expect(saved).not.toHaveProperty('message');expect(saved.mobileNetV3Detections).not.toHaveProperty('embedding');expect(saved.confidence).toBeNull();expect(saved.generalDetections).toEqual([]);
     });
-    test('reclassification does not overwrite an existing description', async () => {
-      await scanner._classifyAllNAImagesByLocalOnnxJS(null, [{ id: 'manual', uri: 'file://manual', message: 'My caption' }]);
-      expect(runCaptionPass).toHaveBeenCalledTimes(1);
-      expect(data.batchUpdateClassification.mock.calls.every(call=>!('message' in call[0][0]))).toBe(true);
-      expect(data.batchUpdateClassification.mock.calls[0][0][0]).not.toHaveProperty('message');
-      expect(data.batchUpdateClassification.mock.calls.at(-1)[0][0].mobileNetV3Detections.embedding.caption.state).toBe('preserved');
-    });
-    test('switch off runs image-only classification without caption generation', async () => {
-      data.readSettings.mockResolvedValue({embeddingCaption:{enabled:false}});
+    test('EmbeddingGemma ignores old enabled caption config and stays image-only', async () => {
+      readActiveTier.mockResolvedValue('embeddinggemma2');data.readSettings.mockResolvedValue({embeddingCaption:{enabled:true}});
       await scanner._classifyAllNAImagesByLocalOnnxJS(null,[{id:'off',uri:'file://off'}]);
-      expect(runCaptionPass).not.toHaveBeenCalled();
-      expect(classifyImageByTier.mock.calls[0][2].caption).toBeUndefined();
+      expect(runLfmClassification).not.toHaveBeenCalled();expect(classifyImageByTier.mock.calls[0][2].caption).toBeUndefined();
     });
-    test('stop during classification preserves pending state and resumes next run', async () => {
-      data.batchUpdateClassification.mockImplementationOnce(async () => { scanner._stopRequested = true; return { success: true, updatedCount: 1 }; });
-      await scanner._classifyAllNAImagesByLocalOnnxJS(null, [{ id: 'stopped', uri: 'file://stopped' }]);
-      expect(runCaptionPass).not.toHaveBeenCalled();
-      const saved = data.batchUpdateClassification.mock.calls[0][0][0];
-      expect(saved.mobileNetV3Detections.embedding.caption.state).toBe('pending');
-      data.readAllImages.mockResolvedValue([saved]);
-      await scanner._classifyAllNAImagesByLocalOnnxJS(null, null);
-      expect(runCaptionPass).toHaveBeenCalledTimes(1);
+    test('stop preserves remaining selection as pending without half-saving category and description', async () => {
+      scanner.sendProgressMessage.mockImplementation(async(stage,n)=>{if(n===1 && stage!=='initializing') scanner._stopRequested=true;});
+      const images=[row('a'),row('b')];const r=await scanner._classifyAllNAImagesByLocalOnnxJS(null,images);
+      expect(r.processedCount).toBe(1);expect(images[1].mobileNetV3Detections.lfm.state).toBe('pending');expect(images[0].message).toBe('A network rack');
     });
   });
 }
+
+test('selecting LFM can recover legacy interrupted caption work',()=>{
+ const {pendingLfm}=require('../lfmScanner');
+ const legacy={id:'legacy',category:'electronics',mobileNetV3Detections:{embedding:{model:'embeddinggemma2',caption:{state:'pending'}}}};
+ expect(pendingLfm([legacy,{...legacy,id:'na',category:'NA'}])).toEqual([legacy]);
+});

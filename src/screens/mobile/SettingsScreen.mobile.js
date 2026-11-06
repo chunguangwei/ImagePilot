@@ -28,7 +28,8 @@ import KeepAwakeService from '../../services/KeepAwakeService';
 import GalleryScannerService from '../../services/GalleryScannerService';
 import ImageStorageService from '../../services/ImageStorageService';
 import * as UpdateService from '../../services/UpdateService';
-import LfmCaptionSettings from '../../components/LfmCaptionSettings';
+import { captionModelReady, downloadCaptionModel, deleteCaptionModel } from '../../services/classify/lfmCaptionModel';
+import { isCaptionBusy } from '../../services/classify/LfmCaptionService';
 import DirectoryPicker from '../../components/DirectoryPicker.mobile';
 import { logger } from '../../adapters/WebAdapters';
 import { presetIcon } from '../../ui/ios/presetIcons';
@@ -286,8 +287,10 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
           if (k === 'vlm') {
             const vm = getVlmModel(vlmMid);
             const a = await isLargeModelCompleteFile(vm.model.filename, vm.model.bytes);
-            const b = await isLargeModelCompleteFile(vm.mmproj.filename, vm.mmproj.bytes);
+            const b = !vm.mmproj || await isLargeModelCompleteFile(vm.mmproj.filename, vm.mmproj.bytes);
             dlMap[k] = a && b;
+          } else if (k === 'lfm') {
+            dlMap[k] = await captionModelReady();
           } else if (k === 'embeddinggemma2') {
             dlMap[k] = await isLargeModelCompleteFile(tier.filename, tier.bytes);
           } else {
@@ -1138,7 +1141,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
     const asset = clipAssetOf(tierKey);  // clip 档下载用户所选的变体；vlm 档为 VLM 变体对象
     const isVlm = tier.engine === 'vlm';
     if (!tier || !asset) return;
-    if (!isVlm && !asset.url) return;
+    if (!isVlm && tierKey !== 'lfm' && !asset.url) return;
     if (isVlm && !(asset.model && asset.model.url)) return;
     // 旧 controller 残留先 abort（防御 double-click）
     try { classifierAbortRef.current?.abort(); } catch (_) {}
@@ -1148,7 +1151,9 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
     setClassifierDownloadProgress(0);
     try {
       await KeepAwakeService.activate(); // 下载期间防自动锁屏（屏幕常亮，锁屏会中断下载）
-      if (isVlm) {
+      if (tierKey === 'lfm') {
+        await downloadCaptionModel(setClassifierDownloadProgress, controller.signal);
+      } else if (isVlm) {
         // VLM 双文件（model + mmproj）：续传下载，按字节合并进度。
         const totalBytes = (asset.model.bytes || 0) + (asset.mmproj.bytes || 0);
         const mkProg = (base) => (p) => {
@@ -1239,7 +1244,10 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
           style: 'destructive',
           onPress: async () => {
             try {
-              if (tier.engine === 'vlm') {
+              if (tierKey === 'lfm') {
+                if (isCaptionBusy()) throw new Error(t('settings.classifierModel.lfmBusy'));
+                await deleteCaptionModel();
+              } else if (tier.engine === 'vlm') {
                 const vm = clipAssetOf(tierKey); // VLM 变体对象
                 await deleteClassifierModelFile(vm.model.filename);
                 await deleteClassifierModelFile(vm.mmproj.filename);
@@ -1468,12 +1476,13 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
               `${asset.sizeMB}MB`,
               speedI18n,
               // vlm 是开放式打标，不限类别数 → 不显示"N 类"
-              tierKey === 'embeddinggemma2' ? t('settings.classifierModel.semanticCategories') : tierKey === 'vlm'
+              ['embeddinggemma2', 'lfm'].includes(tierKey) ? t('settings.classifierModel.semanticCategories') : tierKey === 'vlm'
                 ? t('settings.classifierModel.openLabeling')
                 : t('settings.classifierModel.classesUnit', { n: tier.classes }),
             ];
             return (
               <View key={tierKey}>
+                {tierKey === 'basic' && <Text style={[styles.classifierTierMeta, { marginTop: 18 }]}>{t('settings.classifierModel.legacyModels')}</Text>}
                 <TouchableOpacity
                   style={[
                     styles.classifierTierRow,
@@ -1500,7 +1509,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                           <Text style={[styles.classifierFooterBtnText, { color: c.danger }]}>{t('settings.classifierModel.cancelDownload')}</Text>
                         </TouchableOpacity>
                       </View>
-                    ) : isActive ? (
+                    ) : isActive && (downloaded || tier.bundled) ? (
                       SetIonicons
                         ? <SetIonicons name="checkmark" size={22} color={c.accent} />
                         : <Text style={{ color: c.accent, fontSize: 18 }}>✓</Text>
@@ -1529,16 +1538,6 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                     </TouchableOpacity>
                   </View>
                 )}
-                {tierKey === 'embeddinggemma2' && isActive && <LfmCaptionSettings
-                  config={settings.embeddingCaption || {}}
-                  colors={c}
-                  onChange={async value => {
-                    const latest = await UnifiedDataService.readSettings();
-                    const next = { ...latest, embeddingCaption: value };
-                    await UnifiedDataService.writeSettings(next);
-                    setSettings(next);
-                  }}
-                />}
                 {/* clip 档：模型变体选择器（仅在有多个变体时显示；现仅 S2 一个 → 隐藏） */}
                 {tierKey === 'clip' && tier.readyForUse && CLIP_MODEL_ORDER.length > 1 && (
                   <View style={styles.clipModelSelector}>

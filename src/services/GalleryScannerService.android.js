@@ -1,4 +1,4 @@
-import { pendingCaptions } from './classify/captionQueue';
+import { pendingLfm } from './classify/lfmScanner';
 import { embeddingRecordFields } from './classify/embeddingRecordFields';
 /**
  * GalleryScannerService.android.js
@@ -599,12 +599,11 @@ class GalleryScannerService {
         } catch (_) {}
       }
       preTier = await readActiveTier();
-      const captionConfig = (await UnifiedDataService.readSettings()).embeddingCaption || {};
-      const captionEnabled = preTier === 'embeddinggemma2' && captionConfig.enabled === true;
+      const lfmEnabled = preTier === 'lfm';
       const explicitImages = Array.isArray(imagesToClassify) && imagesToClassify.length > 0;
       // Recover previous interrupted work even when there are no NA images left.
-      const recoveryImages = captionEnabled && !explicitImages
-        ? pendingCaptions(await UnifiedDataService.readAllImages()) : [];
+      const recoveryImages = lfmEnabled && !explicitImages
+        ? pendingLfm(await UnifiedDataService.readAllImages()) : [];
       this.totalImagesToBeClassified = naImages.length;
       this.imagesClassified = 0;
       logger.info(`📊 JS 离线分类目标：${naImages.length} 张 NA 图片（含待分类视频）`);
@@ -616,15 +615,15 @@ class GalleryScannerService {
         return { success: true, processedCount: 0, failedCount: 0 };
       }
 
-      if (captionEnabled) {
-        const { runScannerCaptionFirst } = require('./classify/captionFirstScanner');
+      if (lfmEnabled) {
+        const { runScannerLfm } = require('./classify/lfmScanner');
         const seen = new Set();
         const targets = [...recoveryImages, ...naImages].filter(image => {
           const key = String(image.id || image.uri);
           if (seen.has(key)) return false;
           seen.add(key); return true;
         });
-        return await runScannerCaptionFirst(this, targets, captionConfig, 'android');
+        return await runScannerLfm(this, targets, 'android');
       }
 
       // 初始化分类器（首次会从配置加载模型表 + ONNX runtime + 加载 mobilenetv3 模型；幂等）

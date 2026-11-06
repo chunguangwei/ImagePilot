@@ -1568,6 +1568,14 @@ const ImagePreviewScreen = ({ route, navigation }) => {
             );
           })()}
 
+          {currentImage.mobileNetV3Detections?.lfm && <View style={styles.detectionSection}>
+            <Text style={styles.detectionTitle}>{t('imagePreview.lfmResult')}</Text>
+            {currentImage.mobileNetV3Detections.lfm.state !== 'complete' && <Text style={styles.detectionText}>
+              {t(`imagePreview.classification_${currentImage.mobileNetV3Detections.lfm.state}`)}
+              {currentImage.mobileNetV3Detections.lfm.error ? `: ${currentImage.mobileNetV3Detections.lfm.error}` : ''}
+            </Text>}
+          </View>}
+
           {currentImage.mobileNetV3Detections?.embedding && (() => {
             const result = currentImage.mobileNetV3Detections.embedding;
             return (

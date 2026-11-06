@@ -1,3 +1,5 @@
+const mockLfm = jest.fn();
+jest.mock('../LfmClassifier', () => ({ classifyWithLfm: (...a) => mockLfm(...a) }));
 /**
  * classifyByTier — 档位路由 + 模型缺失/引擎报错 fallback 语义测试。
  *
@@ -281,3 +283,9 @@ describe('classifyImageByTier — tier 兜底', () => {
     expect(r.engine).toBe('imagenet'); // 兜底走 basic
   });
 });
+
+ test('LFM is routed independently with no embedding or basic fallback', async()=>{
+ mockLfm.mockResolvedValue({engine:'lfm',topPrediction:{appCategory:'pets'},vlmLabel:'cat'});
+ expect((await classifyImageByTier('photo','lfm')).engine).toBe('lfm');expect(mockLfm).toHaveBeenCalledWith('photo');expect(mockEmbeddingClassify).not.toHaveBeenCalled();expect(mockMobileNet).not.toHaveBeenCalled();
+ mockLfm.mockRejectedValueOnce(new Error('LFM missing'));await expect(classifyImageByTier('photo','lfm')).rejects.toThrow('LFM missing');
+ });

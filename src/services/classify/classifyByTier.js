@@ -100,6 +100,10 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
     }
     return await runImageNet(imageUri, sharedClassifier);
   }
+  if (tierCfg.engine === 'lfm') {
+    const { classifyWithLfm } = require('./LfmClassifier');
+    return classifyWithLfm(imageUri);
+  }
   if (tierCfg.engine === 'embeddinggemma2') {
     // Never silently substitute another model during evaluation of this opt-in model.
     if (!(await isLargeModelComplete(tierCfg.filename, tierCfg.bytes))) {
@@ -107,7 +111,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
     }
     const modelPath = await ensureLargeModel(tierCfg.filename, tierCfg.url, undefined, { expectedBytes: tierCfg.bytes });
     const { classifyWithEmbeddingGemma } = require('./EmbeddingGemmaClassifier');
-    return classifyWithEmbeddingGemma(imageUri, modelPath, { caption: opts.caption });
+    return classifyWithEmbeddingGemma(imageUri, modelPath);
   }
   if (tierCfg.engine === 'places365') {
     const downloaded = await isClassifierModelDownloaded(tierCfg.filename);

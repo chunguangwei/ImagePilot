@@ -1,4 +1,4 @@
-import { pendingCaptions } from '../../services/classify/captionQueue';
+import { pendingLfm } from '../../services/classify/lfmScanner';
 import { readActiveTier } from '../../services/classify/classifyByTier';
 /**
  * ImagePilot - 移动端首页
@@ -712,8 +712,8 @@ const HomeScreen = ({ navigation }) => {
       let customList = [];
       try {
         const settings = (await UnifiedDataService.readSettings()) || {};
-        setPendingCaptionCount(settings.embeddingCaption?.enabled && (await readActiveTier()) === 'embeddinggemma2'
-          ? pendingCaptions(cache.allImages || []).length : 0);
+        setPendingCaptionCount((await readActiveTier()) === 'lfm'
+          ? pendingLfm(cache.allImages || []).length : 0);
         const raw = settings?.aiProvider?.customCategories;
         customList = Array.isArray(raw) ? raw.filter((c) => c && c.id && c.name) : [];
       } catch (e) {
@@ -1266,8 +1266,8 @@ const HomeScreen = ({ navigation }) => {
     // Completed classifications can still have durable caption work after a stop/restart.
     if (!categoryId || categoryId === 'NA' || categoryId === 'NA_video') {
       const settings = await UnifiedDataService.readSettings();
-      if (settings.embeddingCaption?.enabled && (await readActiveTier()) === 'embeddinggemma2') {
-        const pending = pendingCaptions(await UnifiedDataService.readAllImages()).length;
+      if ((await readActiveTier()) === 'lfm') {
+        const pending = pendingLfm(await UnifiedDataService.readAllImages()).length;
         if (pending) {
           naCount += pending;
           categoryId = null; // resume pending captions and remaining NA records together

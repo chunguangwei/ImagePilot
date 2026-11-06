@@ -488,7 +488,7 @@
     "classification_image": "Classification: image + category meanings",
     "classification_fallback": "Joint match incomplete; image-only category retained. Retry from Home.",
     "semanticMatch": "Semantic classification",
-    "embeddingCaptionHint": "EmbeddingGemma matches images to category meanings. When enabled, LFM first generates a short subject caption to assist classification.",
+    "embeddingCaptionHint": "EmbeddingGemma classifies images without generating captions. Choose LFM Standard or E2B for classification with captions.",
     "captionState_preserved": "Description: existing description preserved",
     "captionState_pending": "Description: pending; run offline classification again to resume",
     "captionState_disabled": "Description: disabled for this classification",
@@ -627,7 +627,8 @@
     "findSimilar": "Similar",
     "findSimilarAsk": "Find similar by…",
     "similarByColor": "Color (composition/tone)",
-    "similarByVector": "AI (content semantics)"
+    "similarByVector": "AI (content semantics)",
+    "lfmResult": "LFM · Classification and short caption"
   },
   "enhanceResult": {
     "defaultPresetName": "Photo Enhancement",
@@ -930,18 +931,20 @@
       "speedMedium": "Medium",
       "speedSlowest": "Slowest",
       "tierLabel": {
-        "embeddinggemma2": "EmbeddingGemma 2 · Preview",
+        "embeddinggemma2": "EmbeddingGemma 2 · Fast classification",
         "basic": "Object recognition",
         "scene": "Scene recognition",
         "clip": "AI smart recognition",
-        "vlm": "Multimodal LLM"
+        "vlm": "E2B · Local multimodal model",
+        "lfm": "LFM · Standard"
       },
       "tierDesc": {
-        "embeddinggemma2": "Offline image classification with custom categories. Optional LFM image captions; complex rules use semantic matching.",
+        "embeddinggemma2": "Fast image classification only, without captions. Matches category meanings by similarity; complex content and rules may be misclassified.",
         "basic": "Recognizes concrete objects in photos: items, animals, food, devices, etc.",
         "scene": "Recognizes the scene: kitchen / beach / office / classroom and 365 more",
         "clip": "AI semantic recognition — better at abstract scenes and mood",
-        "vlm": "An LLM reads the image — best understanding of content & detail; ideal for single/small-batch refinement"
+        "vlm": "Slowest; focuses on richer content and detail for finer classification and captions. Uses more time, memory and battery; results vary by photo.",
+        "lfm": "LFM2.5-VL-450M generates a category and short caption in one pass. Supports custom categories for everyday use. Uses the system language."
       },
       "clipSublabel": "Recommended · best quality",
       "vlmModelLabel": "LLM (switchable)",
@@ -953,7 +956,9 @@
       "lowMemMsg": "{{name}} needs more memory than this device has, so it's unavailable here. Use a device with 6GB+ RAM.",
       "vlmUnsupportedTitle": "Can't load on this device",
       "vlmUnsupportedMsg": "{{name}} failed to load on this device (out of memory or unsupported). Switch to the smaller SmolVLM-500M, or retry.",
-      "vlmRetry": "Retry"
+      "vlmRetry": "Retry",
+      "lfmBusy": "LFM is in use. Finish classification before deleting the model.",
+      "legacyModels": "Other legacy models"
     },
     "superRes": {
       "title": "AI Enhancement Model",
@@ -1271,7 +1276,6 @@
     "exportFailed": "Export failed",
     "exportComingAndroid": "Video export is coming to Android soon",
     "editBtn": "Edit",
-    "editTitle": "Edit Showtime",
     "addPhotosTitle": "Add Photos",
     "alreadyAdded": "Added",
     "addConfirmN": "Done ({{count}})",

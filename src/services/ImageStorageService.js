@@ -3319,8 +3319,8 @@ class ImageStorageService {
           background_color: img.background_color || null, // 背景颜色字段
           message: img.message || null, // 🤖 AI 描述（VLM 多模态档生成）——必须带上，否则详情页缓存里没有、不显示
           // Durable caption queue must survive the lightweight gallery projection.
-          mobileNetV3Detections: img.mobileNetV3Detections?.embedding
-            ? { embedding: img.mobileNetV3Detections.embedding } : null,
+          mobileNetV3Detections: img.mobileNetV3Detections?.embedding || img.mobileNetV3Detections?.lfm
+            ? { ...(img.mobileNetV3Detections.embedding ? { embedding: img.mobileNetV3Detections.embedding } : {}), ...(img.mobileNetV3Detections.lfm ? { lfm: img.mobileNetV3Detections.lfm } : {}) } : null,
           mimeType: img.mimeType || null, // 格式统计需要
           imageDimensions: img.imageDimensions || null, // 保留原始 imageDimensions 字段
           // 🔥 GPS坐标字段（用于位置信息补全）
