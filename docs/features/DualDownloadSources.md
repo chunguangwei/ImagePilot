@@ -22,3 +22,5 @@
 SmolVLM 主模型分别从 ModelScope 与 Hugging Face 完整下载，两份 SHA-256 均为 `9d4612de6a42214499e301494a3ecc2be0abdd9de44e663bda63f1152fad1bf4`；视觉文件完整校验为 `d1eb8b6b23979205fdf63703ed10f788131a3f812c7b1f72e0119d5d81295150`。安卓 1.5.91 APK 加速链接返回正确 PK 头、382607188 字节总大小；API 加速返回有效 latest 元数据。新发布 APK 必须在发布后再次验证加速路线。
 
 最终上线仅保留 EmbeddingGemma 与 E2B 分类入口。SmolVLM 文件验证记录仅作为下线前实验记录保留；图像增强模型的双路下载继续有效。
+
+1.5.92 正式发布后再次验证：APK直连与加速均返回206、正确PK头及382612487字节总大小；GitHub原站与加速API均识别latest=v1.5.92。发布附件SHA-256与本地一致，见[最终发布记录](../releases/v1.5.92.md)。
