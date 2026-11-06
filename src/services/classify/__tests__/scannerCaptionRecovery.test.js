@@ -43,12 +43,27 @@ for (const platform of ['android', 'ios']) {
       const r=await scanner._classifyAllNAImagesByLocalOnnxJS(null,[{id:'missing',uri:'file://x',category:'NA'}]);
       expect(r.uncertainCount).toBe(0);expect(r.failedCount).toBe(1);expect(scanner.imagesClassified).toBe(0);
     });
-    test('uncertain embedding results preserve pending or existing category and report uncertainty',async()=>{
+    test.each(['NA','plants','NA_video'])('uncertain embedding result moves %s to Other and reports uncertainty',async category=>{
       readActiveTier.mockResolvedValue('embeddinggemma2');
       classifyImageByTier.mockResolvedValueOnce({success:true,engine:'embeddinggemma2',classificationAccepted:false,topPrediction:null,predictions:[],similarity:0.67,margin:0.003});
-      const r=await scanner._classifyAllNAImagesByLocalOnnxJS(null,[{id:'uncertain',uri:'file://x',category:'NA'}]);
+      const r=await scanner._classifyAllNAImagesByLocalOnnxJS(null,[{id:'uncertain',uri:'file://x',category}]);
       const saved=data.batchUpdateClassification.mock.calls.at(-1)[0][0];
-      expect(saved.category).toBe('NA');expect(r.uncertainCount).toBe(1);expect(scanner.imagesClassified).toBe(0);
+      expect(saved.category).toBe('other');expect(saved.mobileNetV3Detections.embedding.fallbackCategory).toBe('other');expect(r.uncertainCount).toBe(1);expect(scanner.imagesClassified).toBe(0);
+    });
+    test('inference exceptions preserve the old category and remain retryable',async()=>{
+      readActiveTier.mockResolvedValue('embeddinggemma2');
+      classifyImageByTier.mockRejectedValueOnce(new Error('native failed'));
+      const r=await scanner._classifyAllNAImagesByLocalOnnxJS(null,[{id:'failed',uri:'file://x',category:'plants'}]);
+      expect(data.batchUpdateClassification).not.toHaveBeenCalled();
+      expect(r.failedCount).toBe(1);expect(r.uncertainCount).toBe(0);
+    });
+    test('ordinary scans select only pending buckets, not already manually classified records',async()=>{
+      readActiveTier.mockResolvedValue('embeddinggemma2');
+      data.readImagesByCategory.mockResolvedValue([]);
+      await scanner._classifyAllNAImagesByLocalOnnxJS(null,null);
+      expect(data.readImagesByCategory.mock.calls.map(c=>c[0])).toEqual(['NA','NA_video']);
+      expect(data.readAllImages).not.toHaveBeenCalled();
+      expect(data.batchUpdateClassification).not.toHaveBeenCalled();
     });
     test('independent LFM resumes interrupted classified photos with zero NA images', async () => {
       data.readAllImages.mockResolvedValue([row('interrupted')]);

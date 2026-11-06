@@ -1610,7 +1610,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
             const result = currentImage.mobileNetV3Detections.embedding;
             return (
               <View style={styles.detectionSection}>
-                <Text style={styles.detectionTitle}>EmbeddingGemma 2 · {t('imagePreview.semanticMatch')}</Text>
+                <Text style={styles.detectionTitle}>Gemma 2 · {t('imagePreview.semanticMatch')}</Text>
                 <Text style={styles.detectionText}>{t('imagePreview.embeddingCaptionHint')}</Text>
                 {result.scoringVersion !== EMBEDDING_SCORING_VERSION && <Text style={styles.detectionText}>{t('imagePreview.embeddingLegacyResult')}</Text>}
                 {result.caption && result.caption.state !== 'disabled' && <Text style={styles.detectionText}>
@@ -1622,7 +1622,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   {t(`imagePreview.classification_${result.classification.state === 'complete' ? result.classification.mode : result.classification.state}`)}
                   {result.classification.error ? `: ${result.classification.error}` : ''}
                 </Text>}
-                {!result.accepted && <Text style={styles.detectionText}>{t(['prototype-disagreement', 'weak-prototype-support', 'strongest-prototype-disagreement', 'category-view-disagreement', 'exclusion-conflict'].includes(result.rejectionReason) ? 'imagePreview.embeddingEvidenceConflict' : 'imagePreview.embeddingUncertain')}</Text>}
+                {!result.accepted && <Text style={styles.detectionText}>{t(result.fallbackCategory === 'other' ? 'imagePreview.embeddingAssignedOther' : ['prototype-disagreement', 'weak-prototype-support', 'strongest-prototype-disagreement', 'category-view-disagreement', 'exclusion-conflict'].includes(result.rejectionReason) ? 'imagePreview.embeddingEvidenceConflict' : 'imagePreview.embeddingUncertain')}</Text>}
                 <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: showModelDetails }} onPress={() => setShowModelDetails(v => !v)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: cTheme.accent, fontSize: 15 }}>{t(showModelDetails ? 'imagePreview.hideModelDetails' : 'imagePreview.modelDetails')}</Text></TouchableOpacity>
                 {showModelDetails && <>
                 {result.categoryDescription ? (
@@ -1640,7 +1640,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                     try {
                       await Share.share({ title: t('imagePreview.embeddingDiagnostics'), message: JSON.stringify({
                         model: result.model, scoringVersion: result.scoringVersion, accepted: result.accepted,
-                        rejectionReason: result.rejectionReason, minimumMargin: result.minimumMargin,
+                        rejectionReason: result.rejectionReason, fallbackCategory: result.fallbackCategory, minimumMargin: result.minimumMargin,
                         ...result.diagnostics,
                       }, null, 2) });
                     } catch (error) { Alert.alert(t('common.tip'), String(error?.message || error)); }

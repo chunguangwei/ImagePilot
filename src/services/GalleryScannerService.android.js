@@ -690,8 +690,8 @@ class GalleryScannerService {
             const conf = (typeof r?.confidence === 'number') ? r.confidence : 0;
             let category;
             if (r?.engine === 'embeddinggemma2' && r.classificationAccepted !== true) {
-              // Do not overwrite an existing label or force an uncertain photo into Other.
-              category = image.category || (isVideo ? 'NA_video' : 'NA');
+              // A completed but uncertain inference is Other; exceptions remain retryable.
+              category = 'other';
             } else if (top && (r.classificationAccepted === true || conf >= MOBILENET_MAP_THRESHOLD)) {
               category = top.appCategory || 'other';
             } else {

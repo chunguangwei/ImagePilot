@@ -509,8 +509,8 @@ class GalleryScannerService {
             // 两端都低于阈值时落 other（仅 basic 需要阈值，places365 准度更高，
             // 但保留同阈值兼容）。
             if (r?.engine === 'embeddinggemma2' && r.classificationAccepted !== true) {
-              // Do not overwrite an existing label or force an uncertain photo into Other.
-              category = image.category || (isVideo ? 'NA_video' : 'NA');
+              // A completed but uncertain inference is Other; exceptions remain retryable.
+              category = 'other';
             } else if (top && (r.classificationAccepted === true || conf >= MOBILENET_MAP_THRESHOLD)) {
               category = top.appCategory || 'other';
             } else {

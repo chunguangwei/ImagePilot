@@ -277,7 +277,7 @@ public class GemmaModule extends ReactContextBaseJavaModule {
         promise.resolve(result);
       } catch (Throwable error) {
         Throwable cause = error.getCause() != null ? error.getCause() : error;
-        promise.reject("E_EMBEDDING", "EmbeddingGemma 2: " + cause.getMessage(), cause);
+        promise.reject("E_EMBEDDING", "Gemma 2: " + cause.getMessage(), cause);
       }
     });
   }

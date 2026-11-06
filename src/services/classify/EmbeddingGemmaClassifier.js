@@ -10,7 +10,7 @@ let pending = Promise.resolve();
 let categoryCache = null;
 // Conservative ambiguity band, not a calibrated accuracy/probability threshold.
 export const EMBEDDING_MIN_MARGIN = 0.005;
-export const EMBEDDING_SCORING_VERSION = 'subtype-consensus-v2';
+export const EMBEDDING_SCORING_VERSION = 'subtype-consensus-v3';
 function serial(work) {
   const result = pending.then(work);
   pending = result.catch(() => {});
@@ -19,7 +19,7 @@ function serial(work) {
 function nativeEngine() {
   const mod = Platform.OS === 'ios' ? NativeModules.LiteRTLMModule : NativeModules.GemmaModule;
   if (!mod || typeof mod.embed !== 'function') {
-    throw new Error('EmbeddingGemma 2 requires the updated native app (LiteRT-LM 0.18.0)');
+    throw new Error('Gemma 2 requires the updated native app (LiteRT-LM 0.18.0)');
   }
   return mod;
 }

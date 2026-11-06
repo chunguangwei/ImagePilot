@@ -103,7 +103,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
   if (tierCfg.engine === 'embeddinggemma2') {
     // Never silently substitute another model during evaluation of this opt-in model.
     if (!(await isLargeModelComplete(tierCfg.filename, tierCfg.bytes))) {
-      throw new Error('EmbeddingGemma 2 model is not downloaded');
+      throw new Error('Gemma 2 model is not downloaded');
     }
     const modelPath = await ensureLargeModel(tierCfg.filename, tierCfg.url, undefined, { expectedBytes: tierCfg.bytes });
     const { classifyWithEmbeddingGemma } = require('./EmbeddingGemmaClassifier');

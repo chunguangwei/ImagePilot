@@ -60,3 +60,22 @@ test('an exact subtype tie is resolved by the same clear legacy parent regardles
   expect(result.predictions[0].appCategory).toBe('a');
  }
 });
+
+test('Android 1.5.95 rack evidence cannot reaccept the parent vetoed by strongest reference',()=>{
+ const {selectGroupedDecision}=require('../embeddingGroups');
+ const legacy=[{appCategory:'plants',similarity:0.674255187852352},{appCategory:'electronics',similarity:0.6601617596206656}];
+ const decision={rejectionReason:'strongest-prototype-disagreement',strongestCategory:'electronics',strongestMargin:0.0045044306018126035};
+ const grouped=[{appCategory:'plants',similarity:0.6891738180279177},{appCategory:'architecture',similarity:0.6800176431488831},{appCategory:'electronics',similarity:0.6648403530476786}];
+ expect(selectGroupedDecision(legacy,decision,grouped,0.005).rejectionReason).toBe('strongest-prototype-disagreement');
+});
+
+test('strongest reference veto is category agnostic and allows a clearly supported corrected parent',()=>{
+ const {selectGroupedDecision}=require('../embeddingGroups');
+ const legacy=[{appCategory:'custom_a',similarity:.8},{appCategory:'custom_b',similarity:.7}];
+ const decision={rejectionReason:'strongest-prototype-disagreement',strongestCategory:'custom_b'};
+ expect(selectGroupedDecision(legacy,decision,legacy,.005).rejectionReason).toBe('strongest-prototype-disagreement');
+ const corrected=[{appCategory:'custom_b',similarity:.8},{appCategory:'custom_a',similarity:.7}];
+ expect(selectGroupedDecision(legacy,decision,corrected,.005).rejectionReason).toBeNull();
+ const tied=[{appCategory:'custom_b',similarity:.8},{appCategory:'custom_a',similarity:.8}];
+ expect(selectGroupedDecision(legacy,decision,tied,.005).rejectionReason).toBe('ambiguous');
+});

@@ -37,7 +37,7 @@ export default function LfmCaptionSettings({ config = {}, onChange, colors }) {
   };
   const remove = () => {
     if (isCaptionBusy()) { Alert.alert(text('正在生成描述，请结束后再删除', 'Finish caption generation before deleting the model')); return; }
-    Alert.alert(text('删除描述模型？', 'Delete caption model?'), text('不会删除 EmbeddingGemma 或已保存的图片描述。', 'EmbeddingGemma and saved descriptions will be kept.'), [
+    Alert.alert(text('删除描述模型？', 'Delete caption model?'), text('不会删除 Gemma 2 或已保存的图片描述。', 'Gemma 2 and saved descriptions will be kept.'), [
       { text: text('取消', 'Cancel'), style: 'cancel' },
       { text: text('删除', 'Delete'), style: 'destructive', onPress: async () => {
         setSaving(true);

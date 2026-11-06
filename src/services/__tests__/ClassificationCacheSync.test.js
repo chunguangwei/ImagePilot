@@ -74,3 +74,15 @@ test('partial manual move reloads actual rows and reports incomplete success',as
  expect(result.success).toBe(false);
  expect(cache.getCache().categoryCounts).toEqual({electronics:1,NA:1});
 });
+test('uncertain reclassification moves a prior AI category to Other and refreshes counts without losing a caption',async()=>{
+ const {embeddingRecordFields}=require('../classify/embeddingRecordFields');
+ await data.batchUpdateClassification([{id:'a',category:'electronics',message:'Saved caption'}],true);
+ const listener=jest.fn();const off=data.addCacheListener(listener);
+ const fields=embeddingRecordFields({engine:'embeddinggemma2',classificationAccepted:false,rejectionReason:'ambiguous'},false,{message:'Saved caption'});
+ await data.batchUpdateClassification([{id:'a',...fields}],true);
+ expect(cache.getCache().categoryCounts.other).toBe(1);
+ expect(cache.getCache().categoryCounts.electronics || 0).toBe(0);
+ expect(cache.getCache().allImages[0]).toMatchObject({category:'other',message:'Saved caption',confidence:null});
+ expect(cache.getCache().recentImages[0].category).toBe('other');
+ expect(listener).toHaveBeenCalledTimes(1);off();
+});

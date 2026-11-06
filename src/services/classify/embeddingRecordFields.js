@@ -2,12 +2,14 @@
 export function embeddingRecordFields(result, captionEnabled = false, image = {}) {
   if (result?.engine !== 'embeddinggemma2') return {};
   return {
+    ...(result.classificationAccepted !== true ? {category:'other'} : {}),
     confidence: null,
     mobileNetV3Detections: {
       embedding: {
         model: 'embeddinggemma2',
         caption: { state: String(image.message || '').trim() ? 'preserved' : captionEnabled ? 'pending' : 'disabled' },
         accepted: result.classificationAccepted === true,
+        fallbackCategory: result.classificationAccepted !== true ? 'other' : undefined,
         similarity: result.similarity,
         margin: result.margin,
         minimumMargin: result.minimumMargin,

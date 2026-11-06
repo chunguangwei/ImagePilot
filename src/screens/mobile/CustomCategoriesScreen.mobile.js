@@ -441,8 +441,8 @@ function MatchingFields({value, onChange, disabled, isEn}) {
     </TouchableOpacity>
     {expanded && <View>
       <Text style={{color:theme.secondaryLabel,marginBottom:8}}>{isEn
-        ? 'Keep your original rule. Add alternative visual scenarios, one per line. All categories compete together; uncertain matches stay unchanged.'
-        : '保留原有规则。可补充不同的画面场景，每行一个。所有分类一起比较，不确定时不自动改类。'}</Text>
+        ? 'Keep your original rule. Add alternative visual scenarios, one per line. All categories compete together; uncertain matches go to Other.'
+        : '保留原有规则。可补充不同的画面场景，每行一个。所有分类一起比较，不确定时归入“其他”。'}</Text>
       <TextInput accessibilityLabel={isEn ? 'Visual scenarios' : '画面场景'} editable={!disabled} style={inputStyle}
         placeholder={isEn ? 'For example: network equipment cabinet\nOffice printer' : '例如：网络设备机柜\n办公室打印机'} placeholderTextColor={theme.tertiaryLabel}
         value={scenarios} multiline onChangeText={scenarios => onChange({...value,scenarios})} />

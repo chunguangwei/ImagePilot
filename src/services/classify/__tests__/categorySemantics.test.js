@@ -45,3 +45,16 @@ test('builtin prototypes cover alternate appearances while explicit rules remain
  const custom=categoryEmbeddingTexts({id:'single_person',zh:'单人照片',en:'Single Person',rule:'仅限室内自拍'});
  expect(custom).toHaveLength(1);expect(custom[0]).toContain('仅限室内自拍');
 });
+test('uncertain embedding results move to Other while preserving captions and diagnostic rejection',()=>{
+ const fields=embeddingRecordFields({engine:'embeddinggemma2',classificationAccepted:false,rejectionReason:'strongest-prototype-disagreement'},false,{category:'plants',message:'原有描述'});
+ expect(fields.category).toBe('other');
+ expect(fields.mobileNetV3Detections.embedding.accepted).toBe(false);
+ expect(fields.mobileNetV3Detections.embedding.fallbackCategory).toBe('other');
+ expect(fields.mobileNetV3Detections.embedding.rejectionReason).toBe('strongest-prototype-disagreement');
+ expect(fields).not.toHaveProperty('message');
+});
+test('accepted embedding results do not override the selected category with Other',()=>{
+ const fields=embeddingRecordFields({engine:'embeddinggemma2',classificationAccepted:true});
+ expect(fields).not.toHaveProperty('category');
+ expect(fields.mobileNetV3Detections.embedding.fallbackCategory).toBeUndefined();
+});

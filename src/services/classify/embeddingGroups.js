@@ -28,6 +28,13 @@ export function groupedDecision(predictions, minimumMargin) {
 
 export function selectGroupedDecision(legacyPredictions, legacyDecision, groupedPredictions, minimumMargin) {
   const grouped = groupedDecision(groupedPredictions, minimumMargin);
+  // A subtype may resolve diluted category evidence, but must not silently
+  // reaccept a parent already vetoed by a stronger reference in another parent.
+  if (legacyDecision.rejectionReason === 'strongest-prototype-disagreement'
+      && (legacyDecision.strongestMargin === 0
+        || groupedPredictions[0].appCategory !== legacyDecision.strongestCategory)) {
+    return {...grouped, rejectionReason:'strongest-prototype-disagreement', method:'subtype', predictions:groupedPredictions};
+  }
   const legacyParent = groupedPredictions.find(p => p.appCategory === legacyPredictions[0].appCategory);
   // An exact cross-parent tie has no unique first parent; ordering must not change fallback.
   const sameParent = legacyParent?.similarity === groupedPredictions[0].similarity;

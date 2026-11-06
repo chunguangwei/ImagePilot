@@ -5,7 +5,7 @@
 //  与安卓 GemmaModule.java 对称：本模块只做「跑一次推理(模型路径, 图片路径, prompt) → 返回原始文本」，
 //  prompt 构建与解析在 JS（vlmShared.js，与安卓共享）。这样 iOS / Android 统一到同一模型同一逻辑。
 //
-//  E2B 与 EmbeddingGemma 2 均固定 CPU；缓存当前引擎，切换模型时释放前一个。
+//  E2B 与 Gemma 2 均固定 CPU；缓存当前引擎，切换模型时释放前一个。
 //  引擎初始化失败（GPU & CPU 都挂，通常是内存不足 / 机型不支持）→ 抛 E_LOAD，
 //  JS 侧据此 markVlmUnsupported → 设置页禁用该变体、分类回退 basic。
 //
@@ -120,7 +120,7 @@ class LiteRTLMModule: NSObject {
           text: text, imagePath: Self.stripScheme(imagePath))
         resolve(vector.map { Double($0) })
       } catch {
-        reject("E_EMBEDDING", "EmbeddingGemma 2: \(error)", error)
+        reject("E_EMBEDDING", "Gemma 2: \(error)", error)
       }
     }
   }

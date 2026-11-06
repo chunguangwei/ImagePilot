@@ -57,7 +57,7 @@ export const CLASSIFIER_TIERS = {
   },
   embeddinggemma2: {
     key: 'embeddinggemma2',
-    label: 'EmbeddingGemma 2',
+    label: 'Gemma 2',
     sublabel: '快速分类',
     sizeMB: 388,
     speed: '快',

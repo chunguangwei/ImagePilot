@@ -131,13 +131,14 @@ test('near-tied positive similarities are uncertain rather than a forced winner'
  const r=await classifyWithEmbeddingGemma('near-tie','model');
  expect(r.classificationAccepted).toBe(false);expect(r.topPrediction).toBeNull();expect(r.rejectionReason).toBe('ambiguous');
 });
-test('a single overly broad reference cannot override consistent subtype evidence',async()=>{
+test('a conflicting strongest reference remains uncertain instead of promoting either parent',async()=>{
  getCategoryList.mockReturnValue([{id:'foods',zh:'美食',en:'Food Records'},{id:'pets',zh:'宠物',en:'Pets'}]);
  let foods=0;
  embed.mockImplementation(async(_p,text)=>!text?[1,0]:text.includes('Food Records')?(foods++===0?[1,0]:[0,1]):[0.8,0.6]);
  const r=await classifyWithEmbeddingGemma('photo','model');
- expect(r.topPrediction.appCategory).toBe('pets');
- expect(r.rejectionReason).toBeNull();
+ expect(r.topPrediction).toBeNull();
+ expect(r.classificationAccepted).toBe(false);
+ expect(r.rejectionReason).toBe('strongest-prototype-disagreement');
  expect(r.diagnostics.legacyRejectionReason).toBe('strongest-prototype-disagreement');
  expect(r.diagnostics.strongestCategory).toBe('foods');
 });
