@@ -1,8 +1,8 @@
 # ImagePilot - AI 智能照片分类管理工具
 
-## 开发中：三个独立本地模型入口
+## 1.5.90：三个独立本地模型入口
 
-LFM 标准方案一次完成分类与简短描述；EmbeddingGemma 仅做快速图片分类；E2B 保留更精细的本地多模态能力。LFM 不再挂在 EmbeddingGemma 下。已下载文件和当前选择保留，未自动发布，当前公开版仍为 1.5.89。[方案与迁移说明](docs/features/IndependentLocalModels.md)。下方旧版本章节保留历史行为。
+LFM 标准方案一次完成分类与简短描述；EmbeddingGemma 仅做快速图片分类；E2B 保留更精细的本地多模态能力。LFM 不再挂在 EmbeddingGemma 下。1.5.90 保留已下载文件和当前模型选择；需要分类与描述时请主动选择 LFM 标准方案。[方案与迁移说明](docs/features/IndependentLocalModels.md)。下方旧版本章节保留历史行为。
 
 ## 1.5.89 描述优先联合分类
 
