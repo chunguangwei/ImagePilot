@@ -1,9 +1,12 @@
 // The database caption state is the durable queue; this buffer only limits model switches.
 export function pendingCaptions(images) {
   return images.filter(image => {
-    if (String(image.message || '').trim() || ['NA', 'NA_video'].includes(image.category)) return false;
+    if (['NA', 'NA_video'].includes(image.category)) return false;
     const embedding = image.mobileNetV3Detections?.embedding;
-    return embedding?.model === 'embeddinggemma2' && ['pending', 'failed'].includes(embedding.caption?.state);
+    if (embedding?.model !== 'embeddinggemma2') return false;
+    if (['pending', 'failed', 'fallback'].includes(embedding.classification?.state)) return true;
+    return ['pending', 'failed'].includes(embedding.caption?.state)
+      && (embedding.caption?.style === 'subject-scene-v1' || !String(image.message || '').trim());
   });
 }
 

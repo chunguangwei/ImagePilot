@@ -1411,6 +1411,8 @@ const HomeScreen = ({ navigation }) => {
       logger.debug('✅ AI分类完成');
       setGlobalMessage(result?.stopped
         ? t('home.aiClassificationStopped')
+        : result?.fusionFailed > 0
+          ? t('home.aiFusionIncomplete', { count: result.fusionFailed })
         : result?.captionsFailed > 0
           ? t('home.aiCaptionIncomplete', { count: result.captionsFailed })
           : t('home.aiClassificationComplete'));

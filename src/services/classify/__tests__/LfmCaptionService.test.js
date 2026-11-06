@@ -28,7 +28,7 @@ test.each(['zh', 'en'])('writes real %s captions using CPU and resets recurrent 
   expect(mockContext.clearCache).toHaveBeenCalledTimes(2);
   const prompt = mockContext.completion.mock.calls[0][0].messages[0].content[0].text;
   expect(prompt).toContain(language === 'zh' ? '中文' : 'English');
-  expect(o.save).toHaveBeenCalledWith(images[0], '图片中有一只猫。'); expect(mockContext.release).toHaveBeenCalledTimes(1);
+  expect(o.save).toHaveBeenCalledWith(images[0], '图片中有一只猫'); expect(mockContext.release).toHaveBeenCalledTimes(1);
 });
 test('empty or failed captions do not overwrite existing descriptions', async () => {
   mockContext.completion.mockRejectedValueOnce(new Error('bad image')).mockResolvedValueOnce({ text: '  ' });
@@ -74,4 +74,12 @@ test('missing model reports actionable failure for every requested image', async
   await runCaptionPass(images, { ...opts(), onFailure });
   expect(onFailure).toHaveBeenCalledTimes(2);
   expect(onFailure.mock.calls[0][1].stage).toBe('verify');
+});
+
+test('short subject caption skips OCR details and bounds generation', async () => {
+  await runCaptionPass(images.slice(0,1), opts());
+  const request = mockContext.completion.mock.calls[0][0];
+  expect(request.n_predict).toBe(40);
+  expect(request.messages[0].content[0].text).toContain('15');
+  expect(request.messages[0].content[0].text).toContain('不转录');
 });

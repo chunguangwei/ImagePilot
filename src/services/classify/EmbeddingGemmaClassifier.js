@@ -26,7 +26,7 @@ function normalize(vector) {
   return vector.map((v) => v / norm);
 }
 
-export function classifyWithEmbeddingGemma(imageUri, modelPath) {
+export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
   return serial(async () => {
     const started = Date.now();
     const native = nativeEngine();
@@ -49,7 +49,7 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath) {
         categoryCache = { key, vectors };
       }
       const vector = normalize(await native.embed(modelPath, '', imagePath));
-      const predictions = categories.map((category, index) => {
+      const rank = vector => categories.map((category, index) => {
         const scores = categoryCache.vectors[index].map(reference => {
           if (reference.length !== vector.length) throw new Error('Embedding dimension mismatch');
           return Math.max(-1, Math.min(1, vector.reduce((sum, v, i) => sum + v * reference[i], 0)));
@@ -57,12 +57,28 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath) {
         const similarity = Math.max(...scores);
         return { name: category.id, appCategory: category.id, similarity };
       }).sort((a, b) => b.similarity - a.similarity);
+      const imagePredictions = rank(vector);
+      let predictions = imagePredictions;
+      let classificationMode = 'image';
+      let fusionError;
+      const caption = typeof options.caption === 'string' ? options.caption.trim() : '';
+      if (caption) {
+        try {
+          // Native multimodal input retains the original pixels; no text-only replacement or invented weights.
+          const joint = normalize(await native.embed(modelPath, caption, imagePath));
+          predictions = rank(joint);
+          classificationMode = 'image-caption';
+        } catch (error) {
+          fusionError = String(error?.message || error).slice(0, 300);
+        }
+      }
       const top = predictions[0];
       const margin = predictions.length > 1 ? top.similarity - predictions[1].similarity : null;
       // Reject a non-match or numerical tie; do not invent an uncalibrated probability threshold.
       const accepted = top.similarity > 0 && (margin === null || margin > 1e-6);
       const selected = categories.find((c) => c.id === top.appCategory);
       return {
+        classificationMode, imageOnlyCategory: imagePredictions[0]?.appCategory, fusionError,
         success: true, engine: 'embeddinggemma2', model: 'embeddinggemma-2-text-vision-440m',
         topPrediction: accepted ? top : null, predictions: predictions.slice(0, 5),
         // This is cosine similarity, not a calibrated probability. Do not apply ImageNet's threshold.

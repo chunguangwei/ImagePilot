@@ -108,3 +108,21 @@ test('explicit rules cannot be bypassed by a broad builtin visual label', async 
   expect(embed.mock.calls.filter(([, text]) => text)).toHaveLength(1);
   expect(embed.mock.calls[0][1]).toContain('仅限室内自拍');
 });
+
+test('optional caption is embedded together with the image, retaining image-only evidence', async () => {
+  const r = await classifyWithEmbeddingGemma('photo', 'model', { caption: '一只猫坐在室内。' });
+  expect(embed).toHaveBeenCalledWith('model', '一只猫坐在室内。', 'file:///tmp/photo.jpg');
+  expect(r.classificationMode).toBe('image-caption');
+  expect(r.imageOnlyCategory).toBe('pets');
+});
+test('joint embedding failure falls back to the image without discarding its classification', async () => {
+  embed.mockImplementation(async (_path, text, image) => {
+    if (text && image) throw new Error('joint unsupported');
+    if (text.includes('食物')) return [1, 0];
+    return [0, 1];
+  });
+  const r = await classifyWithEmbeddingGemma('photo', 'model', { caption: '猫' });
+  expect(r.topPrediction.appCategory).toBe('pets');
+  expect(r.classificationMode).toBe('image');
+  expect(r.fusionError).toContain('joint unsupported');
+});

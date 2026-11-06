@@ -1,3 +1,4 @@
+import { cleanSubjectCaption } from './subjectCaption';
 import { captionLanguage } from './captionLanguage';
 import { captionModelReady, captionModelPaths } from './lfmCaptionModel';
 import { prepareImageFile, cleanupTmp } from './vlmShared';
@@ -8,8 +9,8 @@ let busy = false;
 export function isCaptionBusy() { return busy; }
 export function captionPrompt(language) {
   return language === 'en'
-    ? 'Describe the visible image in English in one or two concise sentences. Mention the main subjects, actions and setting. Only describe what is visible; do not guess names, identities or unreadable text. Output only the description.'
-    : '请用中文一到两句话简洁描述图片中可见的主体、动作和场景。只描述实际可见内容，不猜测姓名、身份或看不清的文字。只输出图片描述，不要前言。';
+    ? 'What is the main subject and setting? Answer in one English phrase of 8-12 words. Do not read any text in the image.'
+    : '图片主要主体和场景是什么？只用一个中文短语回答，约15字，不转录图片中的文字。';
 }
 /** A separate pass: caller must release EmbeddingGemma before entering. No network fallback. */
 export function runCaptionPass(images, options = {}) {
@@ -64,11 +65,11 @@ async function run(images, { config, save, resolveImage = async image => ({ uri:
         completing = true;
         const output = await context.completion({
           messages: [{ role: 'user', content: [{ type: 'text', text: captionPrompt(language) }, { type: 'image_url', image_url: { url: tmp } }] }],
-          n_predict: 160, temperature: 0.1, top_p: 0.9, penalty_repeat: 1.1,
+          n_predict: 40, temperature: 0.1, top_p: 0.9, penalty_repeat: 1.1,
           stop: ['<|im_end|>', '<|endoftext|>'],
         });
         if (shouldStop()) { result.stopped = true; break; }
-        const text = String(output?.text || '').replace(/<\|[^>]+\|>/g, '').trim();
+        const text = cleanSubjectCaption(output?.text);
         if (!text) throw new Error('Empty caption');
         stage = 'save';
         const saved = await save(images[i], text);

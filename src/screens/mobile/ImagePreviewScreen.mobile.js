@@ -1579,6 +1579,10 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   {result.caption.stage ? ` · ${t(`imagePreview.captionStage_${result.caption.stage}`)}` : ''}
                   {result.caption.error ? `: ${result.caption.error}` : ''}
                 </Text>}
+                {result.classification && <Text style={styles.detectionText}>
+                  {t(`imagePreview.classification_${result.classification.state === 'complete' ? result.classification.mode : result.classification.state}`)}
+                  {result.classification.error ? `: ${result.classification.error}` : ''}
+                </Text>}
                 {!result.accepted && <Text style={styles.detectionText}>{t('imagePreview.embeddingUncertain')}</Text>}
                 {result.categoryDescription ? (
                   <Text style={styles.detectionText}>{t('imagePreview.categoryMeaning')}: {result.categoryDescription}</Text>

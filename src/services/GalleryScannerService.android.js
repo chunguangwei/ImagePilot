@@ -1,5 +1,4 @@
-import { pendingCaptions, createCaptionQueue } from './classify/captionQueue';
-import { captionRecordFields } from './classify/captionRecordFields';
+import { pendingCaptions } from './classify/captionQueue';
 import { embeddingRecordFields } from './classify/embeddingRecordFields';
 /**
  * GalleryScannerService.android.js
@@ -617,6 +616,17 @@ class GalleryScannerService {
         return { success: true, processedCount: 0, failedCount: 0 };
       }
 
+      if (captionEnabled) {
+        const { runScannerCaptionFirst } = require('./classify/captionFirstScanner');
+        const seen = new Set();
+        const targets = [...recoveryImages, ...naImages].filter(image => {
+          const key = String(image.id || image.uri);
+          if (seen.has(key)) return false;
+          seen.add(key); return true;
+        });
+        return await runScannerCaptionFirst(this, targets, captionConfig, 'android');
+      }
+
       // 初始化分类器（首次会从配置加载模型表 + ONNX runtime + 加载 mobilenetv3 模型；幂等）
       try {
         if ((await readActiveTier()) !== 'embeddinggemma2') await this.imageClassifier.initialize();
@@ -632,46 +642,8 @@ class GalleryScannerService {
       // VLM（多模态大模型）秒级/张：用 BATCH=1，让进度条与落库都「一张一张」推进，
       // 用户能实时看到百分比走动、结果逐张出现；基础/CLIP 等快引擎保持 20 批量以省 IO。
       const BATCH = (preTier === 'vlm' || preTier === 'embeddinggemma2') ? 1 : 20;
-      const progressTotal = naImages.length * (captionEnabled ? 2 : 1) + recoveryImages.length;
-      let captionDone = 0;
-      let captionsGenerated = 0;
-      let captionsFailed = 0;
-      let classificationDone = 0;
+      const progressTotal = naImages.length;
       let stoppedByUser = false;
-      const captionQueue = createCaptionQueue({
-        shouldStop: () => !!this._stopRequested,
-        release: async () => {
-          if (usedEmbeddingModel) {
-            await require('./classify/EmbeddingGemmaClassifier').disposeEmbeddingGemma();
-            usedEmbeddingModel = false;
-          }
-        },
-        run: async images => {
-          const { runCaptionPass } = require('./classify/LfmCaptionService');
-          await this.sendProgressMessage('caption_generation', classificationDone + captionDone, progressTotal, this.imagesClassified, naImages.length);
-          const captions = await runCaptionPass(images, {
-            config: captionConfig,
-            shouldStop: () => !!this._stopRequested,
-            resolveImage: async image => {
-              if (String(image.mimeType || '').startsWith('video/')) {
-                const frame = await NativeModules.MediaStoreModule.extractVideoFrame(image?.uri || String(image?.id || ''));
-                return { uri: frame, cleanup: () => RNFS.unlink(frame.replace(/^file:\/\//, '')) };
-              }
-              return { uri: getUri(image) || image.uri };
-            },
-            save: (image, message) => UnifiedDataService.batchUpdateClassification([captionRecordFields(image, { state: 'generated' }, message)], false),
-            onFailure: (image, detail) => UnifiedDataService.batchUpdateClassification([captionRecordFields(image, { state: 'failed', ...detail })], false),
-            onProgress: done => this.sendProgressMessage('caption_generation', classificationDone + captionDone + done, progressTotal, this.imagesClassified, naImages.length),
-          });
-          stoppedByUser = stoppedByUser || captions.stopped;
-          logger.info('[android] LFM captions:', captions);
-          captionDone += captions.generated + captions.failed;
-          captionsGenerated += captions.generated;
-          captionsFailed += captions.failed;
-        },
-      });
-      await captionQueue.add(recoveryImages);
-      await captionQueue.flush();
       for (let i = 0; i < naImages.length; i += BATCH) {
         // 用户停止：逐批检测，已分类的（每张已即时落库）保留，剩余 NA 图下次扫描自动续。
         if (this._stopRequested) {
@@ -681,7 +653,6 @@ class GalleryScannerService {
         }
         const batch = naImages.slice(i, i + BATCH);
         const classificationDataArray = [];
-        const captionBatch = [];
         let perImageDone = i;   // 批内逐张进度计数（进度平滑滚动）
         // 当前批次共用一个 tier（每批读一次 settings，避免单图 IO）
         const activeTier = preTier; // 本轮固定模型，避免切换设置后多个引擎同时常驻。
@@ -720,7 +691,6 @@ class GalleryScannerService {
               }
               category = 'other';
             }
-            if (captionEnabled && !String(image.message || '').trim() && r?.engine === 'embeddinggemma2' && r?.success !== false) captionBatch.push({ ...image, ...embeddingRecordFields(r, true) });
             classificationDataArray.push({
               uri: image?.uri || imageUri,
               id: image.id,
@@ -730,7 +700,7 @@ class GalleryScannerService {
               generalDetections: [],
               mobileNetV3Detections: null,
               // VLM 开放式打标：归不进已有类的图落 other，但把模型自拟标签存到 message。
-              ...(r?.engine === 'embeddinggemma2' ? embeddingRecordFields(r, captionEnabled, image) : { message: r?.vlmLabel || null }),
+              ...(r?.engine === 'embeddinggemma2' ? embeddingRecordFields(r, false, image) : { message: r?.vlmLabel || null }),
               background_color: null,
             });
           } catch (e) {
@@ -742,7 +712,7 @@ class GalleryScannerService {
           }
           // 批内逐张发进度：百分比平滑滚动，不再 20 张跳一次（界面数据刷新仍按每 20 张节流）
           perImageDone++;
-          await this.sendProgressMessage('remote_inference', Math.min(perImageDone, naImages.length) + captionDone, progressTotal, this.imagesClassified, naImages.length);
+          await this.sendProgressMessage('remote_inference', Math.min(perImageDone, naImages.length), progressTotal, this.imagesClassified, naImages.length);
         }
         if (classificationDataArray.length > 0) {
           try {
@@ -750,8 +720,6 @@ class GalleryScannerService {
             if (updateResult && updateResult.success) {
               processedCount += updateResult.updatedCount;
               this.imagesClassified += updateResult.updatedCount;
-              classificationDone = Math.min(i + BATCH, naImages.length);
-              if (captionEnabled) await captionQueue.add(captionBatch);
             } else {
               failedCount += classificationDataArray.length;
             }
@@ -761,8 +729,7 @@ class GalleryScannerService {
           }
         }
         const done = Math.min(i + BATCH, naImages.length);
-        classificationDone = done;
-        await this.sendProgressMessage('remote_inference', done + captionDone, progressTotal, this.imagesClassified, naImages.length);
+        await this.sendProgressMessage('remote_inference', done, progressTotal, this.imagesClassified, naImages.length);
       }
 
       logger.info(`${stoppedByUser ? '🛑 JS 离线分类已停止' : '✅ JS 离线分类完成'}：成功 ${processedCount}，失败 ${failedCount}`);
@@ -784,7 +751,6 @@ class GalleryScannerService {
         await require('./classify/EmbeddingGemmaClassifier').disposeEmbeddingGemma();
         usedEmbeddingModel = false;
       }
-      if (captionEnabled) await captionQueue.flush();
 
       try {
         await UnifiedDataService.imageCache.refreshCache();
@@ -792,7 +758,7 @@ class GalleryScannerService {
         logger.warn('[Android] 分类后刷新 GlobalImageCache 失败:', e?.message || e);
       }
       await this.sendProgressMessage('completed', processedCount, naImages.length, this.imagesClassified, naImages.length);
-      return { success: true, processedCount, failedCount, stopped: stoppedByUser || !!this._stopRequested, captionsGenerated, captionsFailed };
+      return { success: true, processedCount, failedCount, stopped: stoppedByUser || !!this._stopRequested };
     } catch (error) {
       logger.error('❌ JS 离线分类失败:', error);
       throw error;

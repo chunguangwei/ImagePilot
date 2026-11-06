@@ -107,7 +107,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
     }
     const modelPath = await ensureLargeModel(tierCfg.filename, tierCfg.url, undefined, { expectedBytes: tierCfg.bytes });
     const { classifyWithEmbeddingGemma } = require('./EmbeddingGemmaClassifier');
-    return classifyWithEmbeddingGemma(imageUri, modelPath);
+    return classifyWithEmbeddingGemma(imageUri, modelPath, { caption: opts.caption });
   }
   if (tierCfg.engine === 'places365') {
     const downloaded = await isClassifierModelDownloaded(tierCfg.filename);

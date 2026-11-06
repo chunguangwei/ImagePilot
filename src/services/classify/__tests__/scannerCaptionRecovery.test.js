@@ -13,7 +13,7 @@ jest.mock('../classifyByTier', () => ({ readActiveTier: async () => 'embeddingge
 jest.mock('../EmbeddingGemmaClassifier', () => ({ disposeEmbeddingGemma: jest.fn() }));
 jest.mock('../LfmCaptionService', () => ({ runCaptionPass: jest.fn(async (images, options) => {
   for (const image of images) await options.save(image, 'description');
-  return { generated: images.length, stopped: false };
+  return { generated: images.length, failed: 0, stopped: false };
 }) }));
 const data = require('../../UnifiedDataService');
 const { classifyImageByTier } = require('../classifyByTier');
@@ -24,13 +24,13 @@ for (const platform of ['android', 'ios']) {
   const Scanner = require(`../../GalleryScannerService.${platform}`).default;
   describe(platform, () => {
     let scanner;
-    beforeEach(() => { jest.clearAllMocks(); data.readAllImages.mockResolvedValue([]); scanner = new Scanner(); scanner.sendProgressMessage = jest.fn(); });
+    beforeEach(() => { jest.clearAllMocks(); data.readSettings.mockResolvedValue({embeddingCaption:{enabled:true}}); data.readAllImages.mockResolvedValue([]); scanner = new Scanner(); scanner.sendProgressMessage = jest.fn(); });
     test('resumes saved caption work with zero unclassified images', async () => {
       data.readAllImages.mockResolvedValue([row('interrupted')]);
       await scanner._classifyAllNAImagesByLocalOnnxJS(null, null);
-      expect(classifyImageByTier).not.toHaveBeenCalled();
+      expect(classifyImageByTier).toHaveBeenCalledWith('file://interrupted', 'embeddinggemma2', {caption:'description'});
       expect(runCaptionPass.mock.calls[0][0][0].id).toBe('interrupted');
-      expect(data.batchUpdateClassification.mock.calls[0][0][0].message).toBe('description');
+      expect(data.batchUpdateClassification.mock.calls.some(call=>call[0][0].message==='description')).toBe(true);
     });
     test('flushes a bounded batch before classifying the rest, with no overlapping models', async () => {
       const images = Array.from({ length: 10 }, (_, i) => ({ id: String(i), uri: `file://${i}` }));
@@ -41,9 +41,16 @@ for (const platform of ['android', 'ios']) {
     });
     test('reclassification does not overwrite an existing description', async () => {
       await scanner._classifyAllNAImagesByLocalOnnxJS(null, [{ id: 'manual', uri: 'file://manual', message: 'My caption' }]);
-      expect(runCaptionPass).not.toHaveBeenCalled();
+      expect(runCaptionPass).toHaveBeenCalledTimes(1);
+      expect(data.batchUpdateClassification.mock.calls.every(call=>!('message' in call[0][0]))).toBe(true);
       expect(data.batchUpdateClassification.mock.calls[0][0][0]).not.toHaveProperty('message');
-      expect(data.batchUpdateClassification.mock.calls[0][0][0].mobileNetV3Detections.embedding.caption.state).toBe('preserved');
+      expect(data.batchUpdateClassification.mock.calls.at(-1)[0][0].mobileNetV3Detections.embedding.caption.state).toBe('preserved');
+    });
+    test('switch off runs image-only classification without caption generation', async () => {
+      data.readSettings.mockResolvedValue({embeddingCaption:{enabled:false}});
+      await scanner._classifyAllNAImagesByLocalOnnxJS(null,[{id:'off',uri:'file://off'}]);
+      expect(runCaptionPass).not.toHaveBeenCalled();
+      expect(classifyImageByTier.mock.calls[0][2].caption).toBeUndefined();
     });
     test('stop during classification preserves pending state and resumes next run', async () => {
       data.batchUpdateClassification.mockImplementationOnce(async () => { scanner._stopRequested = true; return { success: true, updatedCount: 1 }; });
