@@ -380,6 +380,7 @@ const HomeScreen = ({ navigation }) => {
                         const apkUrl = await UpdateService.resolveApkUrl(info);
                         await UpdateService.downloadAndInstall(apkUrl, (p) =>
                           setGlobalMessage(t('home.updateDownloading', { pct: Math.round(p * 100) })),
+                          {size: info?.apkSize, sha256: info?.apkSha256},
                         );
                       }
                       setGlobalMessage('');

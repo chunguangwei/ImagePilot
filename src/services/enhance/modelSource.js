@@ -52,19 +52,25 @@ export async function isModelDownloaded(filename) {
  *                                          并清理 .part 临时文件后 throw E_ABORTED
  */
 export async function ensureModel(filename, url, onProgress, opts = {}) {
+  const { downloadCandidates } = require('../classify/modelRegion');
+  let failure;
+  for (const source of downloadCandidates(url)) {
+    try { return await ensureModelFromUrl(filename, source, onProgress, opts); }
+    catch (error) {
+      if (opts.signal?.aborted || String(error?.message || error).includes('E_ABORTED')) throw error;
+      failure = error;
+    }
+  }
+  throw failure || new Error('E_DOWNLOAD No model sources');
+}
+
+async function ensureModelFromUrl(filename, url, onProgress, opts = {}) {
   const dest = modelLocalPath(filename);
   // onnxruntime-react-native 在 Android 需要 file:// 前缀，否则报 "no content provider"。
   // RNFS 文件操作用裸路径(dest)，交给推理引擎的是 file:// URI。
   const asUri = (p) => (p.startsWith('file://') ? p : `file://${p}`);
   if (await isModelDownloaded(filename)) return asUri(dest);
   if (!url) throw new Error('E_NO_MODEL 未配置模型下载地址，请在设置里填写');
-
-  // 按地区选源：本产品模型库的链接换成地区首选源（国内 ModelScope / 海外 GitHub）。
-  // 自定义/外部 url 保持原样。
-  try {
-    const mr = require('../classify/modelRegion');
-    if (mr.modelFilenameFromUrl(url)) url = mr.modelPrimaryUrl(filename);
-  } catch (_) { /* 取不到地区模块 → 用原 url */ }
 
   const { signal } = opts;
   if (signal && signal.aborted) throw new Error('E_ABORTED 下载已取消');
@@ -79,6 +85,8 @@ export async function ensureModel(filename, url, onProgress, opts = {}) {
   const { jobId, promise } = RNFS.downloadFile({
     fromUrl: url,
     toFile: tmp,
+    connectionTimeout: 15000,
+    readTimeout: 60000,
     progressInterval: 400,
     begin: (r) => { if (r && r.contentLength > 0) totalBytes = r.contentLength; },
     progress: (r) => {

@@ -59,21 +59,8 @@ async function copyBundledModelIfPresent(filename, dest) {
 }
 
 // 模型按「地区选源」：国内 ModelScope 优先、海外 GitHub 直连优先（互为兜底）。见 modelRegion.js。
-const GH_MIRROR = 'https://gh-proxy.com/';
-const { modelCandidates, modelFilenameFromUrl } = require('./modelRegion');
-function buildUrlCandidates(url) {
-  // 防御纵深：地区选源（modelRegion）任何异常都不能让下载链路崩 —— 退回用原始 url。
-  try {
-    // 本产品模型库（ModelScope 直链 或 GitHub models-v1）→ 按地区排好的候选列表
-    const fn = modelFilenameFromUrl(url);
-    if (fn) return modelCandidates(fn);
-    // 其它 github.com 链接：代理 + 直连
-    if (/^https?:\/\/github\.com\//i.test(url)) return [GH_MIRROR + url, url];
-  } catch (e) {
-    logger.debug(`[classifierModelSource] buildUrlCandidates 选源异常，退回原始 url: ${e?.message || e}`);
-  }
-  return [url];
-}
+const { downloadCandidates } = require('./modelRegion');
+const buildUrlCandidates = downloadCandidates;
 
 /** 单源下载到 dest（成功无返回；失败抛错；用户 abort 抛 E_ABORTED）。供多源循环调用。 */
 async function downloadUrlToFile(url, tmp, dest, filename, onProgress, signal) {
@@ -84,6 +71,8 @@ async function downloadUrlToFile(url, tmp, dest, filename, onProgress, signal) {
   const { jobId, promise } = RNFS.downloadFile({
     fromUrl: url,
     toFile: tmp,
+    connectionTimeout: 15000,
+    readTimeout: 60000,
     progressInterval: 400,
     begin: (r) => { if (r && r.contentLength > 0) totalBytes = r.contentLength; },
     progress: (r) => {
@@ -214,7 +203,7 @@ export async function isLargeModelComplete(filename, expectedBytes) {
     const p = modelLocalPath(filename);
     if (!(await RNFS.exists(p))) return false;
     const size = Number((await RNFS.stat(p)).size) || 0;
-    if (expectedBytes && expectedBytes > 0) return size >= expectedBytes;
+    if (expectedBytes && expectedBytes > 0) return size === expectedBytes;
     return size > 1000000; // 无期望值时至少 1MB
   } catch (_) { return false; }
 }
@@ -227,10 +216,34 @@ export async function isLargeModelComplete(filename, expectedBytes) {
  * @param {{ signal?: AbortSignal, expectedBytes?: number }} [opts]
  */
 export async function ensureLargeModel(filename, url, onProgress, opts = {}) {
+  let failure;
+  for (const source of downloadCandidates(url)) {
+    if (opts.signal?.aborted) throw new Error('E_ABORTED');
+    try {
+      const result = await ensureLargeModelFromUrl(filename, source, onProgress, opts);
+      if (opts.expectedSha256) {
+        const path = modelLocalPath(filename);
+        if ((await RNFS.hash(path, 'sha256')) !== opts.expectedSha256) {
+          await RNFS.unlink(path);
+          throw new Error('E_CORRUPT Model SHA-256 mismatch');
+        }
+      }
+      return result;
+    } catch (error) {
+      if (String(error?.message || error).includes('E_ABORTED')) throw error;
+      failure = error;
+      logger.warn(`[model download] source failed; trying alternate: ${error?.message || error}`);
+    }
+  }
+  throw failure || new Error('E_DOWNLOAD No model sources');
+}
+
+async function ensureLargeModelFromUrl(filename, url, onProgress, opts = {}) {
   const dest = modelLocalPath(filename);
   const asUri = (p) => (p.startsWith('file://') ? p : `file://${p}`);
   const { signal, expectedBytes = 0 } = opts;
   if (await isLargeModelComplete(filename, expectedBytes)) return asUri(dest);
+  if (await RNFS.exists(dest)) await RNFS.unlink(dest);
   if (!url) throw new Error('E_NO_MODEL 未配置模型下载地址');
   if (signal && signal.aborted) throw new Error('E_ABORTED 下载已取消');
 
@@ -240,8 +253,11 @@ export async function ensureLargeModel(filename, url, onProgress, opts = {}) {
   // 已下字节（断点）
   let existing = 0;
   try { if (await RNFS.exists(tmp)) existing = Number((await RNFS.stat(tmp)).size) || 0; } catch (_) { existing = 0; }
+  if ((existing > 0 && !(await verifyModelMagic(tmp, filename))) || (expectedBytes && existing > expectedBytes)) {
+    await RNFS.unlink(tmp); existing = 0;
+  }
   // 已下满（.part 已是完整文件）→ 直接转正
-  if (expectedBytes && existing >= expectedBytes) {
+  if (expectedBytes && existing === expectedBytes) {
     await RNFS.moveFile(tmp, dest);
     return asUri(dest);
   }
@@ -258,6 +274,8 @@ export async function ensureLargeModel(filename, url, onProgress, opts = {}) {
   const dlOpts = {
     fromUrl: url,
     toFile: tail,
+    connectionTimeout: 15000,
+    readTimeout: 60000,
     progressInterval: 500,
     // iOS 后台会话：锁屏/切后台也继续下（大模型 1~2.5GB，普通会话锁屏即暂停）。
     // discretionary:false 让系统别等 WiFi/充电才下。Android 忽略这两项。
@@ -285,11 +303,13 @@ export async function ensureLargeModel(filename, url, onProgress, opts = {}) {
     const code = res && res.statusCode;
     if (code && code >= 400) {
       // 416（Range 越界，通常是已下完）容错：若 .part 达标就转正
-      if (code === 416 && expectedBytes && existing >= expectedBytes) {
+      if (code === 416 && expectedBytes && existing === expectedBytes) {
         if (resuming) { try { await RNFS.unlink(tail); } catch (_) {} }
         await RNFS.moveFile(tmp, dest);
         return asUri(dest);
       }
+      // HTTP error bodies must not become a resumable model prefix.
+      if (!resuming && await RNFS.exists(tmp)) await RNFS.unlink(tmp);
       throw new Error(`E_DOWNLOAD 模型下载失败 HTTP ${code}`);
     }
 
@@ -308,14 +328,14 @@ export async function ensureLargeModel(filename, url, onProgress, opts = {}) {
     // 完整性校验
     const st = await RNFS.stat(tmp).catch(() => null);
     const size = st ? Number(st.size) : 0;
-    if (!size || (expectedBytes && size < expectedBytes)) {
-      throw new Error(`E_CORRUPT 模型下载不完整 ${size}/${expectedBytes || '?'}`);
-    }
     // 内容校验：头部魔数不对（下成 HTML 错误页 / 文件头损坏）→ 删 .part 强制干净重下，
     // 否则会"大小够就放行"，等到端侧加载模型才崩、还看不出是下载坏了。
     if (!(await verifyModelMagic(tmp, filename))) {
       try { await RNFS.unlink(tmp); } catch (_) {}
       throw new Error('E_CORRUPT 模型文件头校验失败（可能下到错误页或文件损坏），已清除，请重试');
+    }
+    if (!size || (expectedBytes && size !== expectedBytes)) {
+      throw new Error(`E_CORRUPT 模型下载不完整 ${size}/${expectedBytes || '?'}`);
     }
     await RNFS.moveFile(tmp, dest);
     logger.debug(`[classifierModelSource] 大模型完成 ${filename} size=${size}`);

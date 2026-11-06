@@ -79,7 +79,14 @@ async function run(images, { config, save, resolveImage = async image => ({ uri:
         const text = inference.parse ? inference.parse(output?.text) : cleanSubjectCaption(output?.text);
         if (!text) throw new Error('Empty caption');
         const timing = { setupMs: result.generated === 0 ? setupMs : 0, preprocessingMs, inferenceMs };
-        // Diagnostics contain durations only, never photo paths or generated text.
+        // Native prompt time is distinct from generated-token time; wall time may also
+        // include vision encoding/template/sampling overhead. Do not label the remainder OCR.
+        const nativeTiming = output?.timings;
+        for (const [field, nativeField] of Object.entries({promptMs:'prompt_ms', generationMs:'predicted_ms', promptTokens:'prompt_n', generatedTokens:'predicted_n', tokensPerSecond:'predicted_per_second'})) {
+          const value = nativeTiming?.[nativeField];
+          if (typeof value === 'number' && Number.isFinite(value) && value >= 0) timing[field] = value;
+        }
+        // Diagnostics contain durations/counts only, never photo paths or generated text.
         logger.info?.('[LFM timing]', timing);
         try { await onTiming(images[i], timing); } catch (e) { logger.warn('[LFM timing callback]', e?.message || e); }
         stage = 'save';

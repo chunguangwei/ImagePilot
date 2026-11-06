@@ -44,3 +44,8 @@ test('unsupported models expose retry and never claim active',()=>{
  expect(content(tree)).toContain('unavailable');
  expect(button(tree,'retry')).toBeDefined();
 });
+test('obsolete model cleanup remains available before replacement weights are downloaded',()=>{
+ const cleanup=jest.fn();const tree=mount([model({downloaded:false,cleanupLabel:'Remove old LFM files',onCleanup:cleanup})]);
+ act(()=>button(tree,'details').props.onPress());
+ act(()=>button(tree,'Remove old LFM files').props.onPress());expect(cleanup).toHaveBeenCalled();
+});

@@ -45,3 +45,19 @@ test('an installation failure retains the local path and retries without any net
   expect(global.fetch).not.toHaveBeenCalled();
   expect(fsMock.downloadFile).toHaveBeenCalledTimes(1);
 });
+
+test('a download failure retries the alternate route and installs only once',async()=>{
+ const normal=fsMock.downloadFile.getMockImplementation();
+ fsMock.downloadFile.mockImplementationOnce(()=>({promise:Promise.reject(new Error('network blocked'))})).mockImplementation(normal);
+ const {downloadAndInstall}=require('../UpdateService');
+ await downloadAndInstall('https://github.com/a/v4/app.apk');
+ expect(fsMock.downloadFile).toHaveBeenCalledTimes(2);
+ expect(fsMock.downloadFile.mock.calls[1][0].fromUrl).toContain('gh-proxy.com/');
+ expect(installer.install).toHaveBeenCalledTimes(1);
+});
+test('checksum mismatch is never passed to the installer',async()=>{
+ fsMock.hash=jest.fn(async()=> 'incorrect');
+ const {downloadAndInstall}=require('../UpdateService');
+ await expect(downloadAndInstall('https://github.com/a/v5/app.apk',null,{sha256:'a'.repeat(64)})).rejects.toThrow(/SHA-256/);
+ expect(installer.install).not.toHaveBeenCalled();
+});

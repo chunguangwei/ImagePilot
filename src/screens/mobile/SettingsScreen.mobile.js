@@ -29,7 +29,7 @@ import KeepAwakeService from '../../services/KeepAwakeService';
 import GalleryScannerService from '../../services/GalleryScannerService';
 import ImageStorageService from '../../services/ImageStorageService';
 import * as UpdateService from '../../services/UpdateService';
-import { captionModelReady, downloadCaptionModel, deleteCaptionModel } from '../../services/classify/lfmCaptionModel';
+import { captionModelReady, downloadCaptionModel, deleteCaptionModel, hasLegacyCaptionModel, deleteLegacyCaptionModel } from '../../services/classify/lfmCaptionModel';
 import { isCaptionBusy } from '../../services/classify/LfmCaptionService';
 import DirectoryPicker from '../../components/DirectoryPicker.mobile';
 import { logger } from '../../adapters/WebAdapters';
@@ -110,6 +110,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
   const [vlmDownloadProgress, setVlmDownloadProgress] = useState(0);
   const vlmAbortRef = useRef(null);
   // 各档下载状态 + 当前下载中进度（key 是 tier key）
+  const [legacyCaptionPresent, setLegacyCaptionPresent] = useState(false);
   const [classifierDownloaded, setClassifierDownloaded] = useState({});  // { scene: true/false, ... }
 
   // 解析某档实际要下载/判断的模型资产：clip 档按所选 CLIP 变体，vlm 档按所选 VLM 变体，其它档按 tier 自身。
@@ -295,6 +296,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
             dlMap[k] = a && b;
           } else if (k === 'lfm') {
             dlMap[k] = await captionModelReady();
+            setLegacyCaptionPresent(await hasLegacyCaptionModel());
           } else if (k === 'embeddinggemma2') {
             dlMap[k] = await isLargeModelCompleteFile(tier.filename, tier.bytes);
           } else {
@@ -883,7 +885,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
         const apkUrl = await UpdateService.resolveApkUrl(info);
         await UpdateService.downloadAndInstall(apkUrl, (p) => {
           setUpdateProgress((prev) => prev ? { ...prev, percent: p } : prev);
-        });
+        }, {size: info?.apkSize, sha256: info?.apkSha256});
       }
       setUpdateProgress((prev) => prev ? { ...prev, percent: 1, status: 'installing' } : null);
     } catch (e) {
@@ -1482,6 +1484,13 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
               downloading: isVlm ? vlmDownloadingId === vlmModelId : classifierDownloadingKey === tierKey,
               cancelling: cancellingModel,
               progress: isVlm ? vlmDownloadProgress : classifierDownloadProgress,
+              cleanupLabel: t('settings.modelPicker.removeLegacyLfm'),
+              onCleanup: tierKey === 'lfm' && legacyCaptionPresent ? () => Alert.alert(
+                t('settings.modelPicker.removeLegacyLfm'), t('settings.modelPicker.removeLegacyLfmHint'),
+                [{text:t('common.cancel'),style:'cancel'},{text:t('common.delete'),style:'destructive',onPress:async()=>{
+                  try {await deleteLegacyCaptionModel();setLegacyCaptionPresent(false);}
+                  catch(error){Alert.alert(t('common.error'),error?.message || String(error));}
+                }}]) : undefined,
               onSelect: () => selectClassifierTier(tierKey),
               onCancel: isVlm ? cancelVlmDownload : cancelClassifierDownload,
               onRedownload: () => isVlm ? downloadVlmVariant(vlmModelId) : downloadClassifierModel(tierKey).catch(() => {}),

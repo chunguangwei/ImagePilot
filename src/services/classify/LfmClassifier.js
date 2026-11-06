@@ -1,6 +1,6 @@
 import { runCaptionPass } from './LfmCaptionService';
 import { getCategoryList } from './vlmShared';
-import { captionLanguage } from './captionLanguage';
+// SmolVLM is English-first; UI category labels remain localized.
 import { categoryDescription } from './categorySemantics';
 import { cleanSubjectCaption } from './subjectCaption';
 
@@ -35,14 +35,14 @@ export function parseLfmResult(raw, categories, language = 'zh') {
   }
   const names = categories.filter(c => categoryLabel(c, categories, language) === value.category);
   const matched = names.length ? names : categories.filter(c => c.id === value.category);
-  if (matched.length !== 1) throw new Error('LFM returned an unknown or ambiguous category');
+  if (matched.length !== 1) throw new Error('SmolVLM returned an unknown or ambiguous category');
   value.category = matched[0].id;
   const description = typeof value.description === 'string' ? cleanSubjectCaption(value.description) : '';
-  if (!description) throw new Error('LFM returned an empty description');
+  if (!description) throw new Error('SmolVLM returned an empty description');
   if (language === 'zh' ? /[a-zA-Z]/.test(description) || !/[一-鿿]/.test(description) : /[一-鿿]/.test(description)) {
-    throw new Error('LFM returned a description in the wrong language');
+    throw new Error('SmolVLM returned a description in the wrong language');
   }
-  return { success: true, engine: 'lfm', topPrediction: { name: value.category, appCategory: value.category }, vlmLabel: description, predictions: [] };
+  return { success: true, engine: 'smolvlm', topPrediction: { name: value.category, appCategory: value.category }, vlmLabel: description, predictions: [] };
 }
 
 export function runLfmClassification(images, options) {
@@ -52,9 +52,9 @@ export function runLfmClassification(images, options) {
     ...options, config: { enabled: true },
     inference: {
       beforeLoad: () => require('./EmbeddingGemmaClassifier').disposeEmbeddingGemma(),
-      prompt: lfmPrompt(categories, captionLanguage()), grammar: outputGrammar(categories, captionLanguage()),
+      prompt: lfmPrompt(categories, 'en'), grammar: outputGrammar(categories, 'en'),
       contextSize: 4096, maxTokens: 96,
-      parse: text => parseLfmResult(text, categories, captionLanguage()),
+      parse: text => parseLfmResult(text, categories, 'en'),
     },
   });
 }
@@ -65,6 +65,6 @@ export async function classifyWithLfm(uri) {
     save: async (_image, result) => { output = result; return { success: true }; },
     onFailure: async (_image, detail) => { failure = detail.error; },
   });
-  if (!output) throw new Error(failure || 'LFM classification failed');
+  if (!output) throw new Error(failure || 'SmolVLM classification failed');
   return output;
 }

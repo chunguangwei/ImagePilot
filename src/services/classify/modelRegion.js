@@ -25,7 +25,8 @@ function deviceLocale() {
       if (!s) return '';
       return s.AppleLocale || (Array.isArray(s.AppleLanguages) ? s.AppleLanguages[0] : '') || '';
     }
-    return (NativeModules.I18nManager && NativeModules.I18nManager.localeIdentifier) || '';
+    const manager = NativeModules.I18nManager;
+    return manager?.getConstants?.()?.localeIdentifier || manager?.localeIdentifier || '';
   } catch (_) { return ''; }
 }
 
@@ -57,7 +58,7 @@ export function modelPrimaryUrl(filename) {
 
 /** 判断一个 url 是否指向本产品模型库（ModelScope 直链 或 GitHub models-v1），并提取文件名。 */
 export function modelFilenameFromUrl(url) {
-  const ms = String(url || '').match(/modelscope\.cn\/.*\/resolve\/master\/([^?]+)$/i);
+  const ms = String(url || '').match(/modelscope\.cn\/models\/chunguangwee\/ImagePilot-models\/resolve\/master\/([^?]+)$/i);
   if (ms) return ms[1];
   const gh = String(url || '').match(/releases\/download\/models-v1\/([^?]+)$/i);
   if (gh) return gh[1];
@@ -65,3 +66,27 @@ export function modelFilenameFromUrl(url) {
 }
 
 export default { prefersChinaSource, modelCandidates, modelPrimaryUrl, modelFilenameFromUrl };
+
+// Explicit known mirrors only: never guess that an arbitrary repository is mirrored.
+const MIRRORED_REPOS = [
+  'ggml-org/SmolVLM-500M-Instruct-GGUF',
+  'litert-community/gemma-4-E2B-it-litert-lm',
+  'litert-community/embeddinggemma-2-text-vision-440m-litert-lm',
+];
+export function downloadCandidates(url) {
+  if (typeof url !== 'string' || !url) return [url];
+  const own = modelFilenameFromUrl(url);
+  if (own) return modelCandidates(own);
+  for (const repo of MIRRORED_REPOS) {
+    const hfPrefix = `https://huggingface.co/${repo}/resolve/`;
+    const msPrefix = `https://modelscope.cn/models/${repo}/resolve/`;
+    if (!url.startsWith(hfPrefix) && !url.startsWith(msPrefix)) continue;
+    const tail = url.slice((url.startsWith(hfPrefix) ? hfPrefix : msPrefix).length);
+    const file = tail.slice(tail.indexOf('/') + 1);
+    const hf = url.startsWith(hfPrefix) ? url : `${hfPrefix}main/${file}`;
+    const ms = url.startsWith(msPrefix) ? url : `${msPrefix}master/${file}`;
+    return prefersChinaSource() ? [ms, hf] : [hf, ms];
+  }
+  if (url.startsWith('https://github.com/')) return prefersChinaSource() ? [GH_PROXY + url, url] : [url, GH_PROXY + url];
+  return [url];
+}

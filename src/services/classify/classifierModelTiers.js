@@ -1,4 +1,4 @@
-/** Independent local choices: LFM standard, EmbeddingGemma fast classification,
+/** Independent local choices: SmolVLM experimental, EmbeddingGemma fast classification,
  * and E2B detailed multimodal understanding. Legacy classifiers remain available.
  * Existing selections and bundled basic defaults are preserved; downloads are opt-in.
  */
@@ -58,10 +58,10 @@ export const CLASSIFIER_TIERS = {
     classes: 20,
   },
   lfm: {
-    key: 'lfm', label: 'LFM · 标准方案', sublabel: '分类与描述',
-    sizeMB: 419, speed: '中等', bundled: false,
+    key: 'lfm', label: 'SmolVLM · 测试方案', sublabel: '分类与描述',
+    sizeMB: 546, speed: '中等', bundled: false,
     engine: 'lfm', readyForUse: true, classes: 0,
-    desc: '一次识别完成图片分类和简短描述，支持自定义类别，适合日常整理。',
+    desc: '实验模型：图片分类和英文描述；实测分类准确率有限，请小批量对照。',
     weak: '小模型可能误判细节，请核对分类和描述。',
   },
   embeddinggemma2: {

@@ -94,41 +94,68 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
      */
     @ReactMethod
     public void requestDeleteByPath(String filePath, Promise promise) {
+        requestMediaDeletion(Collections.singletonList(filePath), promise);
+    }
+
+    @ReactMethod
+    public void requestDeleteMedia(ReadableArray sources, Promise promise) {
+        List<String> items = new ArrayList<>();
+        for (int i = 0; i < sources.size(); i++) items.add(sources.getString(i));
+        requestMediaDeletion(items, promise);
+    }
+
+    private Uri resolveDeleteUri(String source) throws Exception {
+        if (source == null || source.isEmpty()) throw new IllegalArgumentException("Empty media reference");
+        String[] parts = source.split("\\|\\|", 2);
+        Uri supplied = Uri.parse(parts[0]);
+        if ("content".equals(supplied.getScheme()) && "media".equals(supplied.getAuthority())) {
+            return supplied;
+        }
+        String path = parts.length > 1 ? parts[1] : parts[0];
+        if (path.startsWith("file://")) path = Uri.parse(path).getPath();
+        // Resolve photos and videos; never feed a FileProvider/document URI to createDeleteRequest.
+        for (Uri collection : new Uri[]{MediaStore.Images.Media.EXTERNAL_CONTENT_URI, MediaStore.Video.Media.EXTERNAL_CONTENT_URI}) {
+            try (Cursor cursor = reactContext.getContentResolver().query(collection,
+                    new String[]{MediaStore.MediaColumns._ID}, MediaStore.MediaColumns.DATA + "=?",
+                    new String[]{path}, null)) {
+                if (cursor != null && cursor.moveToFirst()) return ContentUris.withAppendedId(collection, cursor.getLong(0));
+            }
+        }
+        throw new IllegalArgumentException("媒体库未找到该文件，请刷新相册后重试");
+    }
+
+    private void requestMediaDeletion(List<String> sources, Promise promise) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             promise.reject("E_UNSUPPORTED", "需要 Android 11+");
             return;
         }
+        final List<Uri> uris = new ArrayList<>();
         try {
-            ContentResolver cr = reactContext.getContentResolver();
-            Cursor cursor = cr.query(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                new String[]{ MediaStore.Images.Media._ID },
-                MediaStore.Images.Media.DATA + "=?",
-                new String[]{ filePath },
-                null
-            );
-            if (cursor == null || !cursor.moveToFirst()) {
-                if (cursor != null) cursor.close();
-                promise.reject("E_NOT_FOUND", "媒体库未找到该文件");
+            for (String source : sources) {
+                Uri uri = resolveDeleteUri(source);
+                if (!uris.contains(uri)) uris.add(uri);
+            }
+            if (uris.isEmpty()) throw new IllegalArgumentException("没有待删除照片");
+        } catch (Exception e) {
+            promise.reject("E_NOT_FOUND", e.getMessage());
+            return;
+        }
+        com.facebook.react.bridge.UiThreadUtil.runOnUiThread(() -> {
+            if (pendingDeletePromise != null) {
+                promise.reject("E_BUSY", "请先完成当前删除确认");
                 return;
             }
-            long id = cursor.getLong(cursor.getColumnIndex(MediaStore.Images.Media._ID));
-            cursor.close();
-            Uri uri = Uri.withAppendedPath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, String.valueOf(id));
-
-            Activity act = getCurrentActivity();
-            if (act == null) { promise.reject("E_NO_ACTIVITY", "当前无 Activity"); return; }
-
-            PendingIntent pi = MediaStore.createDeleteRequest(cr, Collections.singletonList(uri));
-            if (pendingDeletePromise != null) {
-                try { pendingDeletePromise.reject("E_REPLACED", "请求被新请求替换"); } catch (Exception ignored) {}
+            Activity activity = getCurrentActivity();
+            if (activity == null) { promise.reject("E_NO_ACTIVITY", "当前无 Activity"); return; }
+            try {
+                PendingIntent request = MediaStore.createDeleteRequest(reactContext.getContentResolver(), uris);
+                pendingDeletePromise = promise;
+                activity.startIntentSenderForResult(request.getIntentSender(), REQUEST_DELETE, null, 0, 0, 0);
+            } catch (Exception e) {
+                pendingDeletePromise = null;
+                promise.reject("E_REQUEST", "请求删除授权失败: " + e.getMessage());
             }
-            pendingDeletePromise = promise;
-            act.startIntentSenderForResult(pi.getIntentSender(), REQUEST_DELETE, null, 0, 0, 0);
-        } catch (Exception e) {
-            pendingDeletePromise = null;
-            promise.reject("E_REQUEST", "请求删除授权失败: " + e.getMessage());
-        }
+        });
     }
 
     @ReactMethod

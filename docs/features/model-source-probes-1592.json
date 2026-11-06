@@ -1,0 +1,222 @@
+[
+  {
+    "file": "mobilenetv3_rw_Opset17.onnx",
+    "route": "cn",
+    "url": "https://modelscope.cn/models/chunguangwee/ImagePilot-models/resolve/master/mobilenetv3_rw_Opset17.onnx",
+    "status": 206,
+    "range": "bytes 0-63/21906718",
+    "head": "080812077079746f",
+    "readBytes": 64,
+    "host": "cdn-lfs-cn-1.modelscope.cn"
+  },
+  {
+    "file": "mobilenetv3_rw_Opset17.onnx",
+    "route": "global",
+    "url": "https://github.com/chunguangwei/ImagePilot/releases/download/models-v1/mobilenetv3_rw_Opset17.onnx",
+    "status": 206,
+    "range": "bytes 0-63/21906718",
+    "head": "080812077079746f",
+    "readBytes": 64,
+    "host": "release-assets.githubusercontent.com"
+  },
+  {
+    "file": "resnet18_places365.onnx",
+    "route": "cn",
+    "url": "https://modelscope.cn/models/chunguangwee/ImagePilot-models/resolve/master/resnet18_places365.onnx",
+    "status": 206,
+    "range": "bytes 0-63/45445541",
+    "head": "080812077079746f",
+    "readBytes": 64,
+    "host": "cdn-lfs-cn-1.modelscope.cn"
+  },
+  {
+    "file": "resnet18_places365.onnx",
+    "route": "global",
+    "url": "https://github.com/chunguangwei/ImagePilot/releases/download/models-v1/resnet18_places365.onnx",
+    "status": 206,
+    "range": "bytes 0-63/45445541",
+    "head": "080812077079746f",
+    "readBytes": 64,
+    "host": "release-assets.githubusercontent.com"
+  },
+  {
+    "file": "mobileclip2_s2_fp32_image_encoder.onnx",
+    "route": "cn",
+    "url": "https://modelscope.cn/models/chunguangwee/ImagePilot-models/resolve/master/mobileclip2_s2_fp32_image_encoder.onnx",
+    "status": 206,
+    "range": "bytes 0-63/146868976",
+    "head": "080812077079746f",
+    "readBytes": 64,
+    "host": "cdn-lfs-cn-1.modelscope.cn"
+  },
+  {
+    "file": "mobileclip2_s2_fp32_image_encoder.onnx",
+    "route": "global",
+    "url": "https://github.com/chunguangwei/ImagePilot/releases/download/models-v1/mobileclip2_s2_fp32_image_encoder.onnx",
+    "status": 206,
+    "range": "bytes 0-63/146868976",
+    "head": "080812077079746f",
+    "readBytes": 64,
+    "host": "release-assets.githubusercontent.com"
+  },
+  {
+    "file": "real_esrgan_x4v3_merged.onnx",
+    "route": "cn",
+    "url": "https://modelscope.cn/models/chunguangwee/ImagePilot-models/resolve/master/real_esrgan_x4v3_merged.onnx",
+    "status": 206,
+    "range": "bytes 0-63/4876685",
+    "head": "080912195175616c",
+    "readBytes": 64,
+    "host": "cdn-lfs-cn-1.modelscope.cn"
+  },
+  {
+    "file": "real_esrgan_x4v3_merged.onnx",
+    "route": "global",
+    "url": "https://github.com/chunguangwei/ImagePilot/releases/download/models-v1/real_esrgan_x4v3_merged.onnx",
+    "status": 206,
+    "range": "bytes 0-63/4876685",
+    "head": "080912195175616c",
+    "readBytes": 64,
+    "host": "release-assets.githubusercontent.com"
+  },
+  {
+    "file": "Real-ESRGAN-x4plus.onnx",
+    "route": "cn",
+    "url": "https://modelscope.cn/models/chunguangwee/ImagePilot-models/resolve/master/Real-ESRGAN-x4plus.onnx",
+    "status": 206,
+    "range": "bytes 0-63/67123162",
+    "head": "080812077079746f",
+    "readBytes": 64,
+    "host": "cdn-lfs-cn-1.modelscope.cn"
+  },
+  {
+    "file": "Real-ESRGAN-x4plus.onnx",
+    "route": "global",
+    "url": "https://github.com/chunguangwei/ImagePilot/releases/download/models-v1/Real-ESRGAN-x4plus.onnx",
+    "status": 206,
+    "range": "bytes 0-63/67123162",
+    "head": "080812077079746f",
+    "readBytes": 64,
+    "host": "release-assets.githubusercontent.com"
+  },
+  {
+    "file": "u2netp.onnx",
+    "route": "cn",
+    "url": "https://modelscope.cn/models/chunguangwee/ImagePilot-models/resolve/master/u2netp.onnx",
+    "status": 206,
+    "range": "bytes 0-63/4574861",
+    "head": "080612077079746f",
+    "readBytes": 64,
+    "host": "cdn-lfs-cn-1.modelscope.cn"
+  },
+  {
+    "file": "u2netp.onnx",
+    "route": "global",
+    "url": "https://github.com/chunguangwei/ImagePilot/releases/download/models-v1/u2netp.onnx",
+    "status": 206,
+    "range": "bytes 0-63/4574861",
+    "head": "080612077079746f",
+    "readBytes": 64,
+    "host": "release-assets.githubusercontent.com"
+  },
+  {
+    "file": "migan_pipeline_v2.onnx",
+    "route": "cn",
+    "url": "https://modelscope.cn/models/chunguangwee/ImagePilot-models/resolve/master/migan_pipeline_v2.onnx",
+    "status": 206,
+    "range": "bytes 0-63/28079181",
+    "head": "080812077079746f",
+    "readBytes": 64,
+    "host": "cdn-lfs-cn-1.modelscope.cn"
+  },
+  {
+    "file": "migan_pipeline_v2.onnx",
+    "route": "global",
+    "url": "https://github.com/chunguangwei/ImagePilot/releases/download/models-v1/migan_pipeline_v2.onnx",
+    "status": 206,
+    "range": "bytes 0-63/28079181",
+    "head": "080812077079746f",
+    "readBytes": 64,
+    "host": "release-assets.githubusercontent.com"
+  },
+  {
+    "file": "SmolVLM-500M-Instruct-Q8_0.gguf",
+    "route": "cn",
+    "url": "https://modelscope.cn/models/ggml-org/SmolVLM-500M-Instruct-GGUF/resolve/master/SmolVLM-500M-Instruct-Q8_0.gguf",
+    "status": 206,
+    "range": "bytes 0-63/436806912",
+    "head": "4747554603000000",
+    "readBytes": 64,
+    "host": "cdn-lfs-cn-1.modelscope.cn"
+  },
+  {
+    "file": "SmolVLM-500M-Instruct-Q8_0.gguf",
+    "route": "global",
+    "url": "https://huggingface.co/ggml-org/SmolVLM-500M-Instruct-GGUF/resolve/main/SmolVLM-500M-Instruct-Q8_0.gguf",
+    "status": 206,
+    "range": "bytes 0-63/436806912",
+    "head": "4747554603000000",
+    "readBytes": 64,
+    "host": "us.aws.cdn.hf.co"
+  },
+  {
+    "file": "mmproj-SmolVLM-500M-Instruct-Q8_0.gguf",
+    "route": "cn",
+    "url": "https://modelscope.cn/models/ggml-org/SmolVLM-500M-Instruct-GGUF/resolve/master/mmproj-SmolVLM-500M-Instruct-Q8_0.gguf",
+    "status": 206,
+    "range": "bytes 0-63/108783360",
+    "head": "4747554603000000",
+    "readBytes": 64,
+    "host": "cdn-lfs-cn-1.modelscope.cn"
+  },
+  {
+    "file": "mmproj-SmolVLM-500M-Instruct-Q8_0.gguf",
+    "route": "global",
+    "url": "https://huggingface.co/ggml-org/SmolVLM-500M-Instruct-GGUF/resolve/main/mmproj-SmolVLM-500M-Instruct-Q8_0.gguf",
+    "status": 206,
+    "range": "bytes 0-63/108783360",
+    "head": "4747554603000000",
+    "readBytes": 64,
+    "host": "us.aws.cdn.hf.co"
+  },
+  {
+    "file": "gemma-4-E2B-it.litertlm",
+    "route": "cn",
+    "url": "https://modelscope.cn/models/litert-community/gemma-4-E2B-it-litert-lm/resolve/master/gemma-4-E2B-it.litertlm",
+    "status": 206,
+    "range": "bytes 0-63/2588147712",
+    "head": "4c49544552544c4d",
+    "readBytes": 64,
+    "host": "cdn-lfs-cn-1.modelscope.cn"
+  },
+  {
+    "file": "gemma-4-E2B-it.litertlm",
+    "route": "global",
+    "url": "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm",
+    "status": 206,
+    "range": "bytes 0-63/2588147712",
+    "head": "4c49544552544c4d",
+    "readBytes": 64,
+    "host": "us.aws.cdn.hf.co"
+  },
+  {
+    "file": "embeddinggemma-2-text-vision-440m.litertlm",
+    "route": "cn",
+    "url": "https://modelscope.cn/models/litert-community/embeddinggemma-2-text-vision-440m-litert-lm/resolve/master/embeddinggemma-2-text-vision-440m.litertlm",
+    "status": 206,
+    "range": "bytes 0-63/387710976",
+    "head": "4c49544552544c4d",
+    "readBytes": 64,
+    "host": "cdn-lfs-cn-1.modelscope.cn"
+  },
+  {
+    "file": "embeddinggemma-2-text-vision-440m.litertlm",
+    "route": "global",
+    "url": "https://huggingface.co/litert-community/embeddinggemma-2-text-vision-440m-litert-lm/resolve/main/embeddinggemma-2-text-vision-440m.litertlm",
+    "status": 206,
+    "range": "bytes 0-63/387710976",
+    "head": "4c49544552544c4d",
+    "readBytes": 64,
+    "host": "us.aws.cdn.hf.co"
+  }
+]

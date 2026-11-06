@@ -8,7 +8,7 @@ beforeEach(async () => {
   await deleteCaptionModel(); jest.clearAllMocks(); files = new Map();
   RNFS.stat.mockImplementation(async path => { if (!files.has(path)) throw new Error('missing'); return files.get(path); });
   RNFS.exists.mockImplementation(async path => files.has(path));
-  RNFS.hash.mockImplementation(async path => CAPTION_FILES.find(f => path.endsWith(f.filename)).sha256);
+  RNFS.hash.mockImplementation(async path => CAPTION_FILES.find(f => path.split('/').pop() === f.filename).sha256);
   ensureLargeModel.mockImplementation(async (filename, url, progress) => {
     const f = CAPTION_FILES.find(x => x.filename === filename); files.set('/models/' + filename, { size: f.bytes, mtime: 1 }); progress(1);
   });
@@ -29,4 +29,12 @@ test('corrupt final file is rejected and removed', async () => {
 });
 test('abort prevents model downloads', async () => {
   await expect(downloadCaptionModel(null, { aborted: true })).rejects.toThrow('E_ABORTED'); expect(ensureLargeModel).not.toHaveBeenCalled();
+});
+test('legacy cleanup removes only old LFM files and preserves SmolVLM',async()=>{
+ const {deleteLegacyCaptionModel}=require('../lfmCaptionModel');
+ files.set('/models/LFM2.5-VL-450M-Q4_K_M.gguf',{size:1});
+ files.set('/models/'+CAPTION_FILES[0].filename,{size:CAPTION_FILES[0].bytes});
+ await deleteLegacyCaptionModel();
+ expect(RNFS.unlink).toHaveBeenCalledWith('/models/LFM2.5-VL-450M-Q4_K_M.gguf');
+ expect(RNFS.unlink).not.toHaveBeenCalledWith('/models/'+CAPTION_FILES[0].filename);
 });

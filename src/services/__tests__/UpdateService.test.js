@@ -149,7 +149,7 @@ describe('checkForUpdate — Android 主路径', () => {
 
   test('API throw（网络挂） + atom 兜底拿到版本 → 用 atom 结果', async () => {
     global.fetch
-      .mockRejectedValueOnce(new Error('network'))      // api.github.com
+      .mockRejectedValueOnce(new Error('network')).mockRejectedValueOnce(new Error('proxy network'))      // api.github.com
       .mockResolvedValueOnce({                          // releases.atom
         ok: true,
         text: async () => '<feed><entry><link href="https://github.com/x/releases/tag/v1.7.0"/></entry></feed>',
@@ -191,4 +191,17 @@ describe('resolveApkUrl — in-app fallback', () => {
     const { resolveApkUrl } = require('../UpdateService');
     await expect(resolveApkUrl({ latestVersion: 'v1.8.0' })).rejects.toThrow();
   });
+});
+
+describe('mainland update metadata fallback',()=>{
+ beforeEach(()=>{jest.resetModules();jest.doMock('react-native',()=>({Platform:{OS:'android'},Linking:{openURL:jest.fn()}}));});
+ afterEach(()=>{delete global.fetch;});
+ test('API connection failure tries the verified proxy route',async()=>{
+  global.fetch=jest.fn(async url=>{
+   if(url.startsWith('https://api.github.com/'))throw new Error('blocked');
+   if(url.startsWith('https://gh-proxy.com/https://api.github.com/')) return {ok:true,status:200,json:async()=>({tag_name:'v9.0.0',assets:[],html_url:'https://github.com/chunguangwei/ImagePilot/releases/tag/v9.0.0'})};
+   throw new Error('unexpected');
+  });
+  expect((await require('../UpdateService').checkForUpdate()).hasUpdate).toBe(true);
+ });
 });

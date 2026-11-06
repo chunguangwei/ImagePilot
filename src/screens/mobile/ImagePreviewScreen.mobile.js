@@ -850,6 +850,11 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   logger.debug('列表已空，已返回上一页');
                 }
               } else {
+                if (result.cancelled) return;
+                if (result.authorizationAttempted) {
+                  Alert.alert(t('category.deleteFailedTitle'), result.error || t('category.deleteFailedMessage'));
+                  return;
+                }
                 // Android 11+ 删除别的应用创建的媒体需系统授权；走 MediaStore.createDeleteRequest 弹原生确认。
                 logger.debug('删除失败，尝试系统授权流程:', result);
                 await tryRequestDeleteThenFinalize();
@@ -1578,12 +1583,20 @@ const ImagePreviewScreen = ({ route, navigation }) => {
           })()}
 
           {currentImage.mobileNetV3Detections?.lfm && <View style={styles.detectionSection}>
-            <Text style={styles.detectionTitle}>{t('imagePreview.lfmResult')}</Text>
+            <Text style={styles.detectionTitle}>{t(currentImage.mobileNetV3Detections.lfm.model === 'smolvlm-500m-instruct' ? 'imagePreview.smolResult' : 'imagePreview.lfmResult')}</Text>
             {currentImage.mobileNetV3Detections.lfm.timing && <Text style={styles.detectionText}>
               {t('imagePreview.lfmTiming', {
                 setup: (currentImage.mobileNetV3Detections.lfm.timing.setupMs / 1000).toFixed(1),
                 image: (currentImage.mobileNetV3Detections.lfm.timing.preprocessingMs / 1000).toFixed(1),
                 inference: (currentImage.mobileNetV3Detections.lfm.timing.inferenceMs / 1000).toFixed(1),
+              })}
+            </Text>}
+            {Number.isFinite(currentImage.mobileNetV3Detections.lfm.timing?.promptMs) &&
+             Number.isFinite(currentImage.mobileNetV3Detections.lfm.timing?.generationMs) && <Text style={styles.detectionText}>
+              {t('imagePreview.lfmNativeTiming', {
+                prompt: (currentImage.mobileNetV3Detections.lfm.timing.promptMs / 1000).toFixed(1),
+                generation: (currentImage.mobileNetV3Detections.lfm.timing.generationMs / 1000).toFixed(1),
+                tokens: currentImage.mobileNetV3Detections.lfm.timing.generatedTokens ?? '—',
               })}
             </Text>}
             {currentImage.mobileNetV3Detections.lfm.state !== 'complete' && <Text style={styles.detectionText}>

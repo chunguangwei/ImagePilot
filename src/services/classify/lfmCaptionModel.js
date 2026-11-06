@@ -1,11 +1,13 @@
 import RNFS from 'react-native-fs';
 import { ensureLargeModel, modelLocalPath, deleteClassifierModel } from './classifierModelSource';
 
-// Official LiquidAI GGUF assets. Both files are required; languages share weights.
-const BASE = 'https://huggingface.co/LiquidAI/LFM2.5-VL-450M-GGUF/resolve/main/';
+// Keep legacy module/settings keys for migration; files and model metadata are distinct.
+export const CAPTION_MODEL_ID = 'smolvlm-500m-instruct';
+export const CAPTION_MODEL_NAME = 'SmolVLM-500M-Instruct';
+const BASE = 'https://huggingface.co/ggml-org/SmolVLM-500M-Instruct-GGUF/resolve/72e986006ef53e37cdd3f6d4241c90b0f01df376/';
 export const CAPTION_FILES = [
-  { filename: 'LFM2.5-VL-450M-Q4_K_M.gguf', bytes: 229313568, sha256: '1093f1331319199bbcacdbd7ecc9aa6e5678db6b55073948d0f508be90c8ab68' },
-  { filename: 'mmproj-LFM2.5-VL-450m-F16.gguf', bytes: 189126080, sha256: '51b458cfdbc736982145a35f798ce37611af0aab639e58b33473ba0c7815fd99' },
+  { filename: 'SmolVLM-500M-Instruct-Q8_0.gguf', bytes: 436806912, sha256: '9d4612de6a42214499e301494a3ecc2be0abdd9de44e663bda63f1152fad1bf4' },
+  { filename: 'mmproj-SmolVLM-500M-Instruct-Q8_0.gguf', bytes: 108783360, sha256: 'd1eb8b6b23979205fdf63703ed10f788131a3f812c7b1f72e0119d5d81295150' },
 ];
 export const CAPTION_SIZE_MB = Math.ceil(CAPTION_FILES.reduce((n, f) => n + f.bytes, 0) / 1000000);
 const verified = new Map();
@@ -42,10 +44,10 @@ export async function downloadCaptionModel(onProgress, signal) {
         const path = modelLocalPath(f.filename);
         if (await RNFS.exists(path)) await RNFS.unlink(path);
         verified.delete(path);
-        await ensureLargeModel(f.filename, BASE + f.filename, p => onProgress?.((done + p * f.bytes) / total), { expectedBytes: f.bytes, signal });
+        await ensureLargeModel(f.filename, BASE + f.filename, p => onProgress?.((done + p * f.bytes) / total), { expectedBytes: f.bytes, expectedSha256: f.sha256, signal });
         if (!(await verifyFile(f))) {
           await deleteClassifierModel(f.filename);
-          throw new Error('E_CORRUPT LFM model checksum mismatch');
+          throw new Error('E_CORRUPT SmolVLM model checksum mismatch');
         }
       }
       done += f.bytes; onProgress?.(done / total);
@@ -60,5 +62,19 @@ export async function deleteCaptionModel() {
     for (const suffix of ['', '.part', '.tail']) {
       if (await RNFS.exists(path + suffix)) await RNFS.unlink(path + suffix);
     }
+  }
+}
+
+const LEGACY_FILES = ['LFM2.5-VL-450M-Q4_K_M.gguf', 'mmproj-LFM2.5-VL-450m-F16.gguf'];
+export async function hasLegacyCaptionModel() {
+  for (const name of LEGACY_FILES) for (const suffix of ['', '.part', '.tail']) {
+    if (await RNFS.exists(modelLocalPath(name) + suffix)) return true;
+  }
+  return false;
+}
+export async function deleteLegacyCaptionModel() {
+  for (const name of LEGACY_FILES) for (const suffix of ['', '.part', '.tail']) {
+    const path = modelLocalPath(name) + suffix;
+    if (await RNFS.exists(path)) await RNFS.unlink(path);
   }
 }

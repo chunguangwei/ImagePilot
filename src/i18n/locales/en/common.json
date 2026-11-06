@@ -495,7 +495,7 @@
     "classification_image": "Classification: image + category meanings",
     "classification_fallback": "Joint match incomplete; image-only category retained. Retry from Home.",
     "semanticMatch": "Semantic classification",
-    "embeddingCaptionHint": "EmbeddingGemma classifies images without generating captions. Choose LFM Standard or E2B for classification with captions.",
+    "embeddingCaptionHint": "EmbeddingGemma classifies images without generating captions. Choose SmolVLM Preview or E2B for classification with captions.",
     "captionState_preserved": "Description: existing description preserved",
     "captionState_pending": "Description: pending; run offline classification again to resume",
     "captionState_disabled": "Description: disabled for this classification",
@@ -635,9 +635,11 @@
     "findSimilarAsk": "Find similar by…",
     "similarByColor": "Color (composition/tone)",
     "similarByVector": "AI (content semantics)",
+    "smolResult": "SmolVLM · Classification and English caption",
     "lfmResult": "LFM · Classification and short caption",
     "modelDetails": "Show match details",
     "hideModelDetails": "Hide match details",
+    "lfmNativeTiming": "Prompt processing {{prompt}}s · Text generation {{generation}}s · Output {{tokens}} tokens",
     "lfmTiming": "Model setup {{setup}}s · Image preparation {{image}}s · Inference {{inference}}s (setup counted on first successful photo only)"
   },
   "enhanceResult": {
@@ -946,7 +948,7 @@
         "scene": "Scene recognition",
         "clip": "AI smart recognition",
         "vlm": "E2B · Local multimodal model",
-        "lfm": "LFM · Standard"
+        "lfm": "SmolVLM · Preview"
       },
       "tierDesc": {
         "embeddinggemma2": "Fast image classification only, without captions. Matches category meanings by similarity; complex content and rules may be misclassified.",
@@ -954,7 +956,7 @@
         "scene": "Recognizes the scene: kitchen / beach / office / classroom and 365 more",
         "clip": "AI semantic recognition — better at abstract scenes and mood",
         "vlm": "Slowest; focuses on richer content and detail for finer classification and captions. Uses more time, memory and battery; results vary by photo.",
-        "lfm": "LFM2.5-VL-450M generates a category and short caption in one pass. Supports custom categories for everyday use. Uses the system language."
+        "lfm": "SmolVLM-500M-Instruct generates a category and English caption. Only 2 of 6 regression images were classified correctly; avoid bulk automatic recategorization. Chinese rules are limited. New model files are required."
       },
       "clipSublabel": "Recommended · best quality",
       "vlmModelLabel": "LLM (switchable)",
@@ -967,7 +969,7 @@
       "vlmUnsupportedTitle": "Can't load on this device",
       "vlmUnsupportedMsg": "{{name}} failed to load on this device (out of memory or unsupported). Switch to the smaller SmolVLM-500M, or retry.",
       "vlmRetry": "Retry",
-      "lfmBusy": "LFM is in use. Finish classification before deleting the model.",
+      "lfmBusy": "SmolVLM is in use. Finish classification before deleting the model.",
       "legacyModels": "Other legacy models"
     },
     "superRes": {
@@ -1008,6 +1010,8 @@
     "huaweiInstallHintTitle": "Huawei Device Note",
     "huaweiInstallHintMessage": "If the system blocks the install (\"malicious install source\", a Huawei false positive):\n\nOption 1: Settings → System & updates → Pure Mode → turn off, then retry;\nOption 2: Open the system Files app → Download → tap imagepilot-update.apk to install.",
     "modelPicker": {
+      "removeLegacyLfm": "Remove old LFM files",
+      "removeLegacyLfmHint": "Remove only retired LFM model files (about 419 MB). Photos, captions and the new model are preserved.",
       "active": "In use",
       "downloaded": "Downloaded",
       "notDownloaded": "Not downloaded",

@@ -1,0 +1,203 @@
+{
+  "note": "Isolated simulator, six regression fixtures; not phone latency or population accuracy.",
+  "onePass": {
+    "model": "smolvlm-500m-instruct",
+    "started": 1793961324473,
+    "records": [
+      {
+        "id": "smol-smoke-rack",
+        "category": "single_person",
+        "message": "A portrait photograph with one person as the main subject, showing their face and body"
+      },
+      {
+        "id": "smol-smoke-trophy",
+        "category": "single_person",
+        "message": "A gold and clear award trophy with the text:"
+      },
+      {
+        "id": "smol-smoke-portrait",
+        "category": "single_person",
+        "message": "A smiling woman in an orange space suit with the name 'NASA' on her left shoulder and 'Johnson Space Center' on her right, standing next to a black helmet"
+      },
+      {
+        "id": "smol-smoke-cat",
+        "category": "single_person",
+        "message": "A closeup portrait photograph of a cat looking directly at the camera with wide green eyes and a pink nose"
+      },
+      {
+        "id": "smol-smoke-food",
+        "category": "foods",
+        "message": "A cup of coffee is placed on a saucer next to a spoon"
+      },
+      {
+        "id": "smol-smoke-group",
+        "category": "single_person",
+        "message": "Description of the image is not provided"
+      }
+    ],
+    "timings": [
+      {
+        "id": "smol-smoke-rack",
+        "setupMs": 627,
+        "preprocessingMs": 231,
+        "inferenceMs": 3894,
+        "promptMs": 3609.607,
+        "generationMs": 258.967,
+        "promptTokens": 566,
+        "generatedTokens": 33,
+        "tokensPerSecond": 127.42936358686629
+      },
+      {
+        "id": "smol-smoke-trophy",
+        "setupMs": 0,
+        "preprocessingMs": 18,
+        "inferenceMs": 3867,
+        "promptMs": 3580.4030000000002,
+        "generationMs": 241.234,
+        "promptTokens": 566,
+        "generatedTokens": 30,
+        "tokensPerSecond": 124.3605793544857
+      },
+      {
+        "id": "smol-smoke-portrait",
+        "setupMs": 0,
+        "preprocessingMs": 15,
+        "inferenceMs": 4002,
+        "promptMs": 3567.871,
+        "generationMs": 410.366,
+        "promptTokens": 566,
+        "generatedTokens": 51,
+        "tokensPerSecond": 124.27930189148225
+      },
+      {
+        "id": "smol-smoke-cat",
+        "setupMs": 0,
+        "preprocessingMs": 38,
+        "inferenceMs": 3886,
+        "promptMs": 3560.648,
+        "generationMs": 298.005,
+        "promptTokens": 566,
+        "generatedTokens": 38,
+        "tokensPerSecond": 127.51463901612388
+      },
+      {
+        "id": "smol-smoke-food",
+        "setupMs": 0,
+        "preprocessingMs": 11,
+        "inferenceMs": 3829,
+        "promptMs": 3558.657,
+        "generationMs": 246.906,
+        "promptTokens": 566,
+        "generatedTokens": 31,
+        "tokensPerSecond": 125.55385450333324
+      },
+      {
+        "id": "smol-smoke-group",
+        "setupMs": 0,
+        "preprocessingMs": 30,
+        "inferenceMs": 3805,
+        "promptMs": 3555.913,
+        "generationMs": 189.612,
+        "promptTokens": 566,
+        "generatedTokens": 24,
+        "tokensPerSecond": 126.57426745142712
+      }
+    ],
+    "failures": [],
+    "result": {
+      "generated": 6,
+      "failed": 0,
+      "stopped": false
+    },
+    "done": true,
+    "elapsedMs": 24407
+  },
+  "captionThenTextClassification": {
+    "records": [
+      {
+        "name": "rack",
+        "caption": " A black vertical cabinet with many items in it.",
+        "category": "idcard",
+        "ms": 3586
+      },
+      {
+        "name": "trophy",
+        "caption": " A trophy.",
+        "category": "idcard",
+        "ms": 3521
+      },
+      {
+        "name": "portrait",
+        "caption": " Woman.",
+        "category": "idcard",
+        "ms": 3493
+      },
+      {
+        "name": "cat",
+        "caption": " A cat.",
+        "category": "idcard",
+        "ms": 3514
+      },
+      {
+        "name": "food",
+        "caption": " Cup of coffee.",
+        "category": "idcard",
+        "ms": 3523
+      },
+      {
+        "name": "group",
+        "caption": " People.",
+        "category": "idcard",
+        "ms": 3511
+      }
+    ],
+    "done": true
+  },
+  "imageMultipleChoice": {
+    "records": [
+      {
+        "name": "rack",
+        "caption": " A black vertical cabinet with many items in it.",
+        "category": "single_person",
+        "raw": "A",
+        "ms": 5560
+      },
+      {
+        "name": "trophy",
+        "caption": " A trophy.",
+        "category": "night_scene",
+        "raw": "G",
+        "ms": 5461
+      },
+      {
+        "name": "portrait",
+        "caption": " Woman.",
+        "category": "single_person",
+        "raw": "A",
+        "ms": 5445
+      },
+      {
+        "name": "cat",
+        "caption": " A cat.",
+        "category": "single_person",
+        "raw": "A",
+        "ms": 5482
+      },
+      {
+        "name": "food",
+        "caption": " Cup of coffee.",
+        "category": "single_person",
+        "raw": "A",
+        "ms": 5481
+      },
+      {
+        "name": "group",
+        "caption": " People.",
+        "category": "travel_scenery",
+        "raw": "F",
+        "ms": 5486
+      }
+    ],
+    "done": true
+  }
+}

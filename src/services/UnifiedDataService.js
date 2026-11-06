@@ -1876,6 +1876,35 @@ class UnifiedDataService {
           // PhotoKitModule 不可用 → 落到下面通用流程（在 iOS 上基本删不动，但不至于崩）
         }
 
+        // Scoped storage: one system consent request for both single and batch deletion.
+        // Read access (or RNFS.exists=false) is not proof that a shared photo was deleted.
+        if (Platform.OS === 'android') {
+          const native = require('react-native');
+          const request = native.NativeModules?.MediaStoreModule?.requestDeleteMedia;
+          if (Number(native.Platform.Version) >= 30 && request) {
+            try {
+              const sources = imageIds.map(id => {
+                const image = this.imageCache._getImageById(id);
+                const source = image?.uri || image?.path;
+                if (!source) throw new Error('Photo unavailable; refresh the library and try again');
+                return source;
+              });
+              if (!sources.length) return {success:false, filesDeleted:0, filesFailed:0, successfulImageIds:[], failedImageIds:[]};
+              const approved = await request(sources);
+              if (approved !== true) throw new Error('System deletion was not confirmed');
+              const cleanup = await this.imageStorageService.deleteImages(imageIds);
+              await this.imageCache.refreshCache();
+              if (cleanup?.success === false || cleanup?.filesFailed > 0) throw new Error('Photos deleted by system, but library cleanup failed; refresh and retry');
+              onProgress?.({filesDeleted:total, filesFailed:0, total});
+              return {success:true, processed:total, filesDeleted:total, filesFailed:0, successfulImageIds:imageIds, failedImageIds:[], authorizationAttempted:true};
+            } catch (error) {
+              const cancelled = error?.code === 'E_DENIED';
+              onProgress?.({filesDeleted:0, filesFailed:total, total});
+              return {success:false, processed:0, filesDeleted:0, filesFailed:total, successfulImageIds:[], failedImageIds:imageIds, cancelled, authorizationAttempted:true, error:String(error?.message || error)};
+            }
+          }
+        }
+
         // 1. 收集 (id, 本地路径)。没有路径（content:// 或缓存里没此图）的直接计为失败，
         //    交由上层（系统授权流程 / 错误提示）处理。
         const imageIdToPathMap = new Map();

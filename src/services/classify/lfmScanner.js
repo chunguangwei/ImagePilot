@@ -21,7 +21,7 @@ export async function runScannerLfm(scanner, images, platform) {
     Object.assign(image, patch);
     return r;
   };
-  const state = (image, value) => ({ ...image.mobileNetV3Detections, lfm: { model: 'lfm2.5-vl-450m', ...value } });
+  const state = (image, value) => ({ ...image.mobileNetV3Detections, lfm: { model: 'smolvlm-500m-instruct', ...value } });
   try {
     // Queue the explicit selection too: a stopped reclassification must not vanish from recovery.
     const pending = images.map(image => ({ id: image.id, uri: image.uri,
@@ -47,7 +47,7 @@ export async function runScannerLfm(scanner, images, platform) {
       save: async (image, classification) => {
         const preserve = !!String(image.message || '').trim();
         // Remove obsolete embedding evidence so the preview never presents old similarity as new LFM evidence.
-        const detections = { lfm: { model: 'lfm2.5-vl-450m', state: 'complete', description: classification.vlmLabel, ...(timings.has(image.id) ? { timing: timings.get(image.id) } : {}) } };
+        const detections = { lfm: { model: 'smolvlm-500m-instruct', state: 'complete', description: classification.vlmLabel, ...(timings.has(image.id) ? { timing: timings.get(image.id) } : {}) } };
         const r = await save(image, {
           category: classification.topPrediction.appCategory,
           confidence: null, idCardDetections: [], generalDetections: [],

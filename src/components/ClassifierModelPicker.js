@@ -38,6 +38,7 @@ export default function ClassifierModelPicker({ models, colors: c, busy = false 
       </TouchableOpacity>
       {expanded[m.id] && <View>
         <Text style={[styles.summary, { color: secondary }]}>{m.description}</Text>
+        {m.onCleanup && button(m.cleanupLabel, m.onCleanup, busy, true)}
         {m.downloaded && !m.bundled && <View style={styles.actions}>
           {button(label('redownload'), m.onRedownload, busy)}
           {button(label('delete'), m.onDelete, busy, true)}

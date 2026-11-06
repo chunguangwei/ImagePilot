@@ -495,7 +495,7 @@
     "classification_image": "分类依据：原图＋类别说明",
     "classification_fallback": "图文匹配暂未完成，已保留原图分类，可从首页重试",
     "semanticMatch": "语义分类",
-    "embeddingCaptionHint": "EmbeddingGemma 仅进行图片语义分类，不生成描述。需要分类与描述，请选择 LFM 标准方案或 E2B。",
+    "embeddingCaptionHint": "EmbeddingGemma 仅进行图片语义分类，不生成描述。需要分类与描述，请选择 SmolVLM 测试方案或 E2B。",
     "captionState_preserved": "图片描述：保留已有描述",
     "captionState_pending": "图片描述：待生成；中断后再次运行离线分类可续补",
     "captionState_disabled": "图片描述：本次分类未启用",
@@ -635,9 +635,11 @@
     "findSimilarAsk": "按哪种相似度找？",
     "similarByColor": "颜色相似（构图/色调）",
     "similarByVector": "AI 相似（内容语义）",
+    "smolResult": "SmolVLM · 分类与英文描述",
     "lfmResult": "LFM · 分类与简短描述",
     "modelDetails": "查看匹配详情",
     "hideModelDetails": "收起匹配详情",
+    "lfmNativeTiming": "提示处理 {{prompt}} 秒 · 文字生成 {{generation}} 秒 · 输出 {{tokens}} token",
     "lfmTiming": "模型准备 {{setup}} 秒 · 图片处理 {{image}} 秒 · 推理 {{inference}} 秒（准备仅首张成功计入）"
   },
   "enhanceResult": {
@@ -946,7 +948,7 @@
         "scene": "场景识别",
         "clip": "AI 智能识别",
         "vlm": "E2B · 本地多模态大模型",
-        "lfm": "LFM · 标准方案"
+        "lfm": "SmolVLM · 测试方案"
       },
       "tierDesc": {
         "embeddinggemma2": "仅做图片分类，速度快，不生成描述。按语义相似度匹配类别，复杂内容和规则可能误判。",
@@ -954,7 +956,7 @@
         "scene": "识别拍摄场景：厨房 / 海滩 / 办公室 / 教室 等 365 类",
         "clip": "AI 语义识别，更懂抽象场景与氛围",
         "vlm": "速度最慢，侧重内容与细节理解，适合更精细的分类和描述。耗时、内存和耗电更高，效果请以实际照片为准。",
-        "lfm": "LFM2.5-VL-450M，一次生成分类与简短描述，支持自定义类别，适合日常整理。语言跟随系统。"
+        "lfm": "SmolVLM-500M-Instruct，分类并生成英文描述。六图测试仅2张分类正确，不建议批量自动改类；中文规则理解有限。需重新下载，原 LFM 文件不能复用。"
       },
       "clipSublabel": "推荐 · 最佳质量",
       "vlmModelLabel": "大模型（可切换）",
@@ -967,7 +969,7 @@
       "vlmUnsupportedTitle": "本机无法加载",
       "vlmUnsupportedMsg": "{{name}} 在本机加载失败（内存不足或不支持）。可改用更小的 SmolVLM-500M，或重试一次。",
       "vlmRetry": "重试",
-      "lfmBusy": "正在使用 LFM，请结束分类后再删除模型。",
+      "lfmBusy": "正在使用 SmolVLM，请结束分类后再删除模型。",
       "legacyModels": "其他传统模型"
     },
     "superRes": {
@@ -1008,6 +1010,8 @@
     "huaweiInstallHintTitle": "华为设备安装提示",
     "huaweiInstallHintMessage": "若系统提示\"恶意安装来源，禁止安装\"（华为误报）：\n\n方法一：设置 → 系统和更新 → 纯净模式 → 关闭后重试；\n方法二：打开系统\"文件管理\" → 内部存储 → Download → 点按 imagepilot-update.apk 安装。",
     "modelPicker": {
+      "removeLegacyLfm": "删除旧 LFM 文件",
+      "removeLegacyLfmHint": "仅清理已停用的 LFM 模型文件（约419 MB），保留照片、描述和新模型。",
       "active": "使用中",
       "downloaded": "已下载",
       "notDownloaded": "未下载",
@@ -1024,7 +1028,7 @@
       "legacy": "其他传统模型",
       "large": "精细分类",
       "summary": {
-        "lfm": "日常整理：分类并生成简短描述。",
+        "lfm": "测试方案：分类并生成简短英文描述。",
         "embeddinggemma2": "快速整理：仅图片分类，不生成描述。",
         "vlm": "深入理解图片，耗时和内存占用更高。",
         "basic": "识别常见物品、动物和食物。",

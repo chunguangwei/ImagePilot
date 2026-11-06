@@ -57,7 +57,7 @@ export default function LfmCaptionSettings({ config = {}, onChange, colors }) {
       <Switch accessibilityLabel={text('生成图片描述', 'Generate captions')} value={!!config.enabled} disabled={checking || saving} onValueChange={change} />
     </View>
     {!!config.enabled && <>
-    <Text style={{ color: colors.secondaryLabel, marginTop: 6 }}>LFM2.5-VL-450M · {CAPTION_SIZE_MB} MB</Text>
+    <Text style={{ color: colors.secondaryLabel, marginTop: 6 }}>SmolVLM-500M-Instruct · {CAPTION_SIZE_MB} MB</Text>
     <Text style={{ color: colors.secondaryLabel, marginTop: 6, lineHeight: 20 }}>{text('先生成简短的主体和场景描述，再结合原图与类别说明分类，忽略具体文字。语言跟随系统，启用后耗时和耗电会增加。', 'Generate a short subject-and-setting caption first, then classify with the original image and category meanings, ignoring written text. Uses the system language and adds processing time and battery use.')}</Text>
     {ready && <Text style={{ color: colors.secondaryLabel, marginTop: 6 }}>{text('描述模型已启用', 'Caption model enabled')}</Text>}
     {checking ? <ActivityIndicator style={{ marginTop: 12 }} color={colors.accent} /> : progress !== null ? <View style={{ marginTop: 12 }}>

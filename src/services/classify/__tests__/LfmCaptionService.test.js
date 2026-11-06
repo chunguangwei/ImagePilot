@@ -100,3 +100,9 @@ test('setup timing survives a failed first image and is attached to the first su
    expect(onTiming.mock.calls[0][1].setupMs).toBeGreaterThan(0);
  } finally {clock.mockRestore();}
 });
+
+test('retains native prompt and generation timing to diagnose slow inference',async()=>{
+ mockContext.completion.mockResolvedValueOnce({text:'一只猫',timings:{prompt_ms:70000,predicted_ms:6000,prompt_n:900,predicted_n:32,predicted_per_second:5.3}});
+ const onTiming=jest.fn();await runCaptionPass(images.slice(0,1),{...opts(),onTiming});
+ expect(onTiming.mock.calls[0][1]).toMatchObject({promptMs:70000,generationMs:6000,promptTokens:900,generatedTokens:32,tokensPerSecond:5.3});
+});

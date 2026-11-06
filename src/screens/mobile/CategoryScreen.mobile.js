@@ -1611,7 +1611,7 @@ const CategoryScreen = ({ route, navigation }) => {
                 setSelectionMode(false);
                 
                 // 显示删除结果（只有失败时才显示弹窗）
-                if (result.filesFailed > 0 || !result.success) {
+                if (!result.cancelled && (result.filesFailed > 0 || !result.success)) {
                   Alert.alert(
                     t('category.deleteComplete'), 
                     t('category.deletePartialSuccessMessage', { deleted: result.filesDeleted || 0, failed: result.filesFailed || imageIds.length }),

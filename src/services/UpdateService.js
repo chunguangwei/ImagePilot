@@ -9,6 +9,7 @@
 
 import { Linking } from 'react-native';
 import SHA256 from 'crypto-js/sha256';
+import { downloadCandidates } from './classify/modelRegion';
 import { BUILD_VERSION } from '../config/BuildInfo';
 
 export const UPDATE_REPO = 'chunguangwei/ImagePilot';
@@ -23,6 +24,17 @@ const GH_HEADERS = {
 };
 
 export const CURRENT_VERSION = BUILD_VERSION;
+
+async function fetchWithTimeout(url, options = {}) {
+  if (typeof AbortController === 'undefined') return fetch(url, options);
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  options.signal?.addEventListener?.('abort', abort);
+  if (options.signal?.aborted) abort();
+  const timer = setTimeout(abort, 15000);
+  try { return await fetch(url, {...options, signal:controller.signal}); }
+  finally { clearTimeout(timer); options.signal?.removeEventListener?.('abort', abort); }
+}
 
 /** "v1.2.3" / "1.2.3" → [1,2,3] */
 function parseVersion(v) {
@@ -62,7 +74,14 @@ export async function checkForUpdate() {
   }
   // 主路径：api.github.com（能拿到 APK 直链与更新说明）
   try {
-    const res = await fetch(RELEASES_API, { headers: GH_HEADERS });
+    let res;
+    for (const endpoint of [RELEASES_API, `https://gh-proxy.com/${RELEASES_API}`]) {
+      try {
+        res = await fetchWithTimeout(endpoint, { headers: GH_HEADERS });
+        if (res.ok || res.status === 404) break;
+      } catch (_) { /* Try alternate route. */ }
+    }
+    if (!res) throw new Error('Update metadata unavailable');
     if (res.status === 404) {
       // 仓库尚无任何 Release（明确无更新，不必再走兜底）
       return { hasUpdate: false, latestVersion: null, currentVersion: BUILD_VERSION, notes: '', apkUrl: null, pageUrl: RELEASES_PAGE };
@@ -77,6 +96,8 @@ export async function checkForUpdate() {
         currentVersion: BUILD_VERSION,
         notes: data.body || '',
         apkUrl: apkAsset ? apkAsset.browser_download_url : null,
+        apkSize: apkAsset?.size || 0,
+        apkSha256: /^sha256:[a-f0-9]{64}$/i.test(apkAsset?.digest || '') ? apkAsset.digest.slice(7) : null,
         pageUrl: data.html_url || RELEASES_PAGE,
       };
     }
@@ -91,7 +112,7 @@ export async function checkForUpdate() {
 
 /** 解析 github.com/<repo>/releases.atom 取最新版本（API 不可达时的兜底）。 */
 async function checkViaAtom() {
-  const res = await fetch(`https://github.com/${UPDATE_REPO}/releases.atom`, {
+  const res = await fetchWithTimeout(`https://github.com/${UPDATE_REPO}/releases.atom`, {
     headers: { 'User-Agent': 'ImagePilot-App', Accept: 'application/atom+xml' },
   });
   if (!res.ok) throw new Error(`GitHub ${res.status}`);
@@ -121,7 +142,7 @@ export async function resolveApkUrl(info) {
   const version = String(info?.latestVersion || '');
   if (!version) throw new Error('未获取更新版本，请重新检查更新');
   const tag = encodeURIComponent(version);
-  const response = await fetch(`https://github.com/${UPDATE_REPO}/releases/expanded_assets/${tag}`, {
+  const response = await fetchWithTimeout(`https://github.com/${UPDATE_REPO}/releases/expanded_assets/${tag}`, {
     headers: { 'User-Agent': 'ImagePilot-App', Accept: 'text/html' },
   });
   if (!response.ok) throw new Error(`获取安装包链接失败 HTTP ${response.status}`);
@@ -164,7 +185,7 @@ async function resolveRedirects(url) {
     // eslint-disable-next-line no-undef
     const Ctor = typeof AbortController !== 'undefined' ? AbortController : null;
     const ctrl = Ctor ? new Ctor() : null;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: 'GET',
       headers: { Range: 'bytes=0-0', 'User-Agent': 'ImagePilot-App', Accept: '*/*' },
       signal: ctrl ? ctrl.signal : undefined,
@@ -199,7 +220,28 @@ export async function installDownloadedApk(path) {
   }
 }
 
-export async function downloadAndInstall(apkUrl, onProgress) {
+export async function downloadAndInstall(apkUrl, onProgress, options = {}) {
+  let failure;
+  for (const source of downloadCandidates(apkUrl)) {
+    try { return await downloadAndInstallFromUrl(source, onProgress, options); }
+    catch (error) {
+      // Permission/installation failure must not re-download or re-open installer.
+      if (error?.updateStage === 'install' || error?.code === 'E_IOS_UNSUPPORTED') throw error;
+      failure = error;
+    }
+  }
+  throw failure || new Error('No update download sources available');
+}
+
+async function verifyApkHash(RNFS, path, sha256) {
+  if (!sha256) return;
+  if ((await RNFS.hash(path, 'sha256')).toLowerCase() !== sha256.toLowerCase()) {
+    await RNFS.unlink(path);
+    throw new Error('E_CORRUPT APK SHA-256 mismatch');
+  }
+}
+
+async function downloadAndInstallFromUrl(apkUrl, onProgress, options = {}) {
   // 原生依赖懒加载（仅 Android 走这条路；错误交由界面展示并重试）
   // eslint-disable-next-line global-require
   const RNFS = require('react-native-fs');
@@ -236,7 +278,7 @@ export async function downloadAndInstall(apkUrl, onProgress) {
   //
   // 失败时**不删 .part**，让用户下次还能续。
 
-  let expectedTotal = await headContentLength(directUrl);
+  let expectedTotal = options.size || await headContentLength(directUrl);
   // Permission settings may interrupt installation after download. Reuse the verified file.
   let reusable = false;
   try {
@@ -247,6 +289,7 @@ export async function downloadAndInstall(apkUrl, onProgress) {
   } catch (_) { /* Continue with normal download. */ }
   if (reusable) {
     if (onProgress) onProgress(1);
+    await verifyApkHash(RNFS, dest, options.sha256);
     await installDownloadedApk(dest);
     return dest;
   }
@@ -277,6 +320,8 @@ export async function downloadAndInstall(apkUrl, onProgress) {
       fromUrl: directUrl,
       toFile: tmp,
       headers,
+      connectionTimeout: 15000,
+      readTimeout: 60000,
       progressInterval: 300,
       begin: (res) => {
         if (canResume && res && res.statusCode === 200) {
@@ -343,6 +388,7 @@ export async function downloadAndInstall(apkUrl, onProgress) {
     throw new Error(`E_CORRUPT 安装包下载不完整（${got}MB/${exp}MB），请重试或用浏览器下载`);
   }
 
+  await verifyApkHash(RNFS, dest, options.sha256);
   await installDownloadedApk(dest); // 未授权会 reject E_NEED_PERMISSION
   return dest;
 }
@@ -350,13 +396,13 @@ export async function downloadAndInstall(apkUrl, onProgress) {
 /** HEAD 拿 Content-Length（GitHub Releases 支持 HEAD；用 GET Range:0-0 兜底） */
 async function headContentLength(url) {
   try {
-    const r = await fetch(url, { method: 'HEAD', headers: { 'User-Agent': 'ImagePilot-App' } });
+    const r = await fetchWithTimeout(url, { method: 'HEAD', headers: { 'User-Agent': 'ImagePilot-App' } });
     const cl = r && r.headers && r.headers.get && r.headers.get('content-length');
     if (cl) return Number(cl) || 0;
   } catch (_) {}
   // HEAD 失败试 Range
   try {
-    const r = await fetch(url, { method: 'GET', headers: { 'User-Agent': 'ImagePilot-App', Range: 'bytes=0-0' } });
+    const r = await fetchWithTimeout(url, { method: 'GET', headers: { 'User-Agent': 'ImagePilot-App', Range: 'bytes=0-0' } });
     const cr = r && r.headers && r.headers.get && r.headers.get('content-range');
     if (cr) { const m = /\/(\d+)$/.exec(cr); if (m) return Number(m[1]) || 0; }
   } catch (_) {}
