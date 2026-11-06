@@ -8,7 +8,7 @@
 
 import { NativeModules, Platform } from 'react-native';
 import i18n from '../../i18n';
-import { categoryDescription } from './categorySemantics';
+import { categoryMatchingRule, categoryDescription } from './categorySemantics';
 
 // eslint-disable-next-line global-require
 const RNFS = require('react-native-fs');
@@ -72,17 +72,18 @@ export function getCategoryList() {
       const arr = ConfigService.getAllCategoriesWithUI();
       if (Array.isArray(arr) && arr.length) {
         // 自定义分类的判定规则（{id: rule}）——带进提示词，让本地模型按规则归入自定义类（对齐在线模型）。
+        const matching = ConfigService.getCustomCategoryMatching?.() || {};
         const rules = (typeof ConfigService.getCustomCategoryRules === 'function') ? (ConfigService.getCustomCategoryRules() || {}) : {};
         const list = arr
           .filter((x) => x && x.id && x.id !== 'NA' && x.id !== 'NA_video')   // NA/NA_video 是系统待分类桶，不作分类目标
-          .map((x) => ({ id: x.id, zh: x.chinese || x.name || x.id, en: x.english || x.id, rule: rules[x.id] || '', description: x.description }));
+          .map((x) => ({ id: x.id, zh: x.chinese || x.name || x.id, en: x.english || x.id, ...matching[x.id], rule: rules[x.id] || '', description: x.description }));
         // ⚠️ getAllCategoriesWithUI 只含「内置分类」(categoryNameMap∩displayOrder)，不含自定义分类！
         // 必须在此补上自定义分类，否则本地模型清单里根本没有它们 → 永远分不进、全落 other。
         const names = (typeof ConfigService.getCustomCategoryNames === 'function') ? (ConfigService.getCustomCategoryNames() || {}) : {};
         const seen = new Set(list.map((c) => c.id));
         for (const id of Object.keys(names)) {
           if (id && id !== 'NA' && id !== 'other' && !seen.has(id)) {
-            list.push({ id, zh: names[id], en: names[id], rule: rules[id] || '' });
+            list.push({ ...matching[id], id, zh: names[id], en: names[id], rule: rules[id] || '' });
           }
         }
         if (list.length) return list;
@@ -102,7 +103,7 @@ export function buildPrompt(cats, lang, opts = {}) {
   const detailed = !!opts.detailed;
   if (lang === 'en') {
     // 带「规则」的自定义分类，把规则一并给模型 → 像在线模型一样按规则归类。
-    const lines = cats.map((c) => `${c.id} = ${c.en}${!c.rule && categoryDescription(c, 'en') ? ` (${categoryDescription(c, 'en')})` : ''}${c.rule ? ` (rule: ${c.rule})` : ''}`).join('\n');
+    const lines = cats.map((c) => `${c.id} = ${c.en}${categoryMatchingRule(c, 'en') ? ` (${categoryMatchingRule(c, 'en')})` : ''}`).join('\n');
     const descLine = detailed
       ? 'desc: 2-3 detailed English sentences (30-50 words): main subject, what it is doing, scene/background, any visible text, notable details.\n'
       : 'desc: one short English sentence (max 15 words) describing the image.\n';
@@ -115,7 +116,7 @@ export function buildPrompt(cats, lang, opts = {}) {
       'desc: '
     );
   }
-  const lines = cats.map((c) => `${c.id} = ${c.zh}${!c.rule && categoryDescription(c, 'zh') ? `（${categoryDescription(c, 'zh')}）` : ''}${c.rule ? `（规则：${c.rule}）` : ''}`).join('\n');
+  const lines = cats.map((c) => `${c.id} = ${c.zh}${categoryMatchingRule(c, 'zh') ? `（${categoryMatchingRule(c, 'zh')}）` : ''}`).join('\n');
   const descLine = detailed
     ? '描述: 用50~80字简体中文详细描述：主体是什么、在做什么、所处场景/背景、画面中可见的文字、其它显著细节（必须用中文）。\n'
     : '描述: 一句不超过15字的简体中文图片内容概括（必须用中文）。\n';

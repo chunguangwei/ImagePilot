@@ -37,3 +37,7 @@ test('every enabled builtin plus custom category is included; pending buckets an
   expect(cats.map(c => c.id).sort()).toEqual([...expected, 'custom'].sort());
   expect(cats.find(c => c.id === 'custom').rule).toBe('同事在会议现场合影');
 });
+test.each(['zh','en'])('E2B receives optional details even without a base rule (%s)',lang=>{
+ const prompt=buildPrompt([{id:'work',zh:'工作',en:'Work',scenarios:['网络机柜'],exclusions:'盆栽'}],lang);
+ expect(prompt).toContain('网络机柜');expect(prompt).toContain('盆栽');
+});

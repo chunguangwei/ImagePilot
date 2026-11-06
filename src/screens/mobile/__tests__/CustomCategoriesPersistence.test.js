@@ -47,3 +47,11 @@ test('pending edit cannot be dismissed by its backdrop; failure retains the draf
  await act(async()=>{reject(new Error('disk full'));await pending;});
  expect(byText(tree,'common.save')).toBeDefined();
 });
+test('editing preserves optional scenarios and exclusions when the details remain collapsed',async()=>{
+ const category={id:'office',name:'Office',rule:'Original rule',iconKey:'photo',scenarios:['Network cabinet','Printer'],exclusions:'Plants'};
+ const tree=await mount([category]);
+ act(()=>byText(tree,'customCategories.edit').props.onPress());
+ config.setCustomCategories.mockResolvedValueOnce();
+ await act(async()=>{await byText(tree,'common.save').props.onPress();});
+ expect(config.setCustomCategories).toHaveBeenCalledWith([category]);
+});

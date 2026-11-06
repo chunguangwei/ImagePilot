@@ -10,10 +10,14 @@ export function rankGroupedEvidence(vector, categories, groupsByCategory) {
     const groups = groupsByCategory[index].map(group => {
       if (!group.vectors.length) throw new Error('Empty reference group');
       const referenceScores = group.vectors.map(dot);
-      return {id: group.id, referenceScores, similarity: referenceScores.reduce((a,b)=>a+b,0)/referenceScores.length};
+      return {id: group.id, exclude: !!group.exclude, referenceScores, similarity: referenceScores.reduce((a,b)=>a+b,0)/referenceScores.length};
     }).sort((a,b)=>b.similarity-a.similarity);
     if (!groups.length) throw new Error('Empty category groups');
-    return {appCategory:category.id, similarity:groups[0].similarity, matchedGroup:groups[0].id, groups};
+    const positive = groups.find(g => !g.exclude);
+    if (!positive) throw new Error('No positive category group');
+    const exclusion = groups.find(g => g.exclude);
+    return {appCategory:category.id, similarity:positive.similarity, matchedGroup:positive.id,
+      exclusionSimilarity:exclusion?.similarity, groups};
   }).sort((a,b)=>b.similarity-a.similarity);
 }
 export function groupedDecision(predictions, minimumMargin) {
@@ -31,7 +35,15 @@ export function selectGroupedDecision(legacyPredictions, legacyDecision, grouped
     return {...grouped, rejectionReason:'category-view-disagreement', method:'subtype', predictions:groupedPredictions};
   }
   if (grouped.rejectionReason === 'ambiguous' && legacyDecision.rejectionReason === null && sameParent) {
-    return {margin:legacyDecision.margin, rejectionReason:null, method:'category-fallback', predictions:legacyPredictions};
+    return checkExclusion({margin:legacyDecision.margin, rejectionReason:null, method:'category-fallback', predictions:legacyPredictions}, groupedPredictions, minimumMargin);
   }
-  return {...grouped,method:'subtype',predictions:groupedPredictions};
+  return checkExclusion({...grouped,method:'subtype',predictions:groupedPredictions}, groupedPredictions, minimumMargin);
+}
+
+function checkExclusion(decision, groupedPredictions, minimumMargin) {
+  const winner = groupedPredictions.find(p => p.appCategory === decision.predictions[0].appCategory);
+  if (winner.exclusionSimilarity != null && winner.similarity - winner.exclusionSimilarity < minimumMargin) {
+    return {...decision, rejectionReason:'exclusion-conflict'};
+  }
+  return decision;
 }

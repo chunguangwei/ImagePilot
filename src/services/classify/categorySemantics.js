@@ -79,6 +79,10 @@ export function categoryEmbeddingTexts(category, lang = 'zh') {
 
 // Group paraphrases describe one visual subtype; user-authored rules remain the sole group.
 export function categoryEmbeddingGroups(category, lang = 'zh') {
+  const {scenarios} = normalizeCustomMatching(category);
+  if (scenarios.length) return scenarios.map((scenario, index) => ({
+    id: `scenario-${index}`, texts: [`${categoryText(category, lang)} / ${lang === 'en' ? 'Visual scenario within this rule' : '规则内的具体场景'}: ${scenario}`],
+  }));
   const refs = categoryEmbeddingTexts(category, lang);
   const subtypes = require('./embeddingSubtypes').EMBEDDING_SUBTYPES[category.id];
   if (refs.length === 1 || !subtypes) return [{ id: 'rule', texts: [categoryText(category, lang)] }];
@@ -86,4 +90,22 @@ export function categoryEmbeddingGroups(category, lang = 'zh') {
     `${category.en}: A photograph focused on ${first}.`,
     `${category.en}: The main subject of the photograph is ${second}.`,
   ] }));
+}
+
+// Only explicit scenario lines are split; never rewrite a user's original rule.
+export function normalizeCustomMatching(category = {}) {
+  const raw = Array.isArray(category.scenarios) ? category.scenarios
+    : typeof category.scenarios === 'string' ? category.scenarios.split(/\r?\n/) : [];
+  return {scenarios: [...new Set(raw.filter(x => typeof x === 'string').map(x => x.trim()).filter(Boolean))],
+    exclusions: typeof category.exclusions === 'string' ? category.exclusions.trim() : ''};
+}
+
+export function categoryMatchingRule(category, lang = 'zh') {
+  const {scenarios, exclusions} = normalizeCustomMatching(category);
+  const parts = [categoryDescription(category, lang)];
+  if (scenarios.length) parts.push(lang === 'en'
+    ? `Within the original rule, possible visual scenarios: ${scenarios.join('; ')}`
+    : `在原有规则范围内，可出现的场景：${scenarios.join('；')}`);
+  if (exclusions) parts.push(lang === 'en' ? `Exclude: ${exclusions}` : `排除：${exclusions}`);
+  return parts.filter(Boolean).join(' / ');
 }

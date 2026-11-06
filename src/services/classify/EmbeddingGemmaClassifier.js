@@ -2,7 +2,7 @@ import { BUILD_VERSION } from '../../config/BuildInfo';
 import { rankGroupedEvidence, selectGroupedDecision } from './embeddingGroups';
 import { rankEmbeddingEvidence, embeddingDecision } from './embeddingRanking';
 import { NativeModules, Platform } from 'react-native';
-import { categoryDescription, categoryEmbeddingTexts, categoryEmbeddingGroups } from './categorySemantics';
+import { categoryDescription, categoryEmbeddingTexts, categoryEmbeddingGroups, normalizeCustomMatching } from './categorySemantics';
 import { getCategoryList, currentLang, prepareImageFile, cleanupTmp } from './vlmShared';
 
 // Keep native requests and disposal ordered, including simultaneous single-photo requests.
@@ -10,7 +10,7 @@ let pending = Promise.resolve();
 let categoryCache = null;
 // Conservative ambiguity band, not a calibrated accuracy/probability threshold.
 export const EMBEDDING_MIN_MARGIN = 0.005;
-export const EMBEDDING_SCORING_VERSION = 'subtype-consensus-v1';
+export const EMBEDDING_SCORING_VERSION = 'subtype-consensus-v2';
 function serial(work) {
   const result = pending.then(work);
   pending = result.catch(() => {});
@@ -40,8 +40,12 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
     const categories = getCategoryList();
     if (!categories.length) throw new Error('No categories available');
     const texts = categories.map((c) => categoryEmbeddingTexts(c, lang).map(text => `task: classification | query: ${text}`));
-    const groups = categories.map(c => categoryEmbeddingGroups(c, lang).map(g => ({...g,
-      texts:g.texts.map(text => `task: classification | query: ${text}`)})));
+    const groups = categories.map(c => {
+      const positive = categoryEmbeddingGroups(c, lang);
+      const {exclusions} = normalizeCustomMatching(c);
+      const all = exclusions ? [...positive, {id:'exclusion', exclude:true, texts:[exclusions]}] : positive;
+      return all.map(g => ({...g, texts:g.texts.map(text => `task: classification | query: ${text}`)}));
+    });
     const key = JSON.stringify([modelPath, categories.map((c) => c.id), texts, groups]);
     let imagePath;
     try {
@@ -68,7 +72,7 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
           for (const group of categoryGroups) {
             const references = [];
             for (const text of group.texts) references.push(await encode(text));
-            encoded.push({id:group.id,vectors:references});
+            encoded.push({id:group.id,exclude:group.exclude,vectors:references});
           }
           encodedGroups.push(encoded);
         }
@@ -120,7 +124,7 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
               groupedSimilarity:grouped.similarity,matchedGroup:grouped.matchedGroup,
               supportSimilarity:legacy.supportSimilarity,
               references:texts[index].map((text,i)=>({text,similarity:legacy.referenceScores[i]})),
-              groups:grouped.groups.map(g=>({id:g.id,similarity:g.similarity,
+              groups:grouped.groups.map(g=>({id:g.id,exclude:g.exclude,similarity:g.similarity,
                 references:groups[index].find(x=>x.id===g.id).texts.map((text,i)=>({text,similarity:g.referenceScores[i]}))}))};
           }) },
         minimumMargin: EMBEDDING_MIN_MARGIN, scoringVersion: EMBEDDING_SCORING_VERSION,

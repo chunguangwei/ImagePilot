@@ -1,3 +1,4 @@
+import { categoryMatchingRule } from '../classify/categorySemantics';
 /**
  * LLMClassifyOrchestrator — 基于多模态大模型的新一代云端分类（最佳实践）
  *
@@ -61,7 +62,7 @@ function buildTaxonomy(aiCfg, lang) {
   for (const c of customs) {
     if (!c || typeof c.id !== 'string' || !c.id.trim() || typeof c.name !== 'string' || !c.name.trim()) continue;
     if (out.some(x => x.id === c.id)) continue;
-    out.push({ id: c.id.trim(), name: c.name.trim(), rule: (c.rule || '').trim() });
+    out.push({ id: c.id.trim(), name: c.name.trim(), rule: categoryMatchingRule(c, lang) });
   }
   return out;
 }

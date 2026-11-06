@@ -1,4 +1,4 @@
-# 全局子类型判别（未发布）
+# 全局子类型判别（1.5.95）
 
 ## 审查与范围
 
@@ -13,7 +13,7 @@
 3. 子类型明确、整体视角不确定时，采用子类型。子类型间隔不足，但其首选与整体明确首选相同，则使用整体视角的分数和间隔。两者都不明确时拒判。
 4. 不降低0.005初始间隔，不转成概率；拒判保留原类别或待分类。不存在指定某类必须赢的逻辑。
 
-版本subtype-consensus-v1。诊断增加decisionMethod、groupedMargin、legacyCategory、legacyRejectionReason及各子类型实际文本/分数；每个候选的similarity来自最终使用的同一视角，legacySimilarity/groupedSimilarity分开保存。旧算法结果仍提示重分类。
+版本subtype-consensus-v2（自定义扩展；内置七图记录来自等价的v1内置判别）。诊断增加decisionMethod、groupedMargin、legacyCategory、legacyRejectionReason及各子类型实际文本/分数；每个候选的similarity来自最终使用的同一视角，legacySimilarity/groupedSimilarity分开保存。旧算法结果仍提示重分类。
 
 ## 性能成本
 
@@ -31,3 +31,5 @@
 - 用户Android机柜v2诊断没有新子类型向量，不能用旧分数推算此次机柜结果。仍需新版本真机分类与诊断验证。
 
 本变更未打包发布，线上仍为1.5.94。
+
+自定义场景与排除说明见 [自定义分类匹配](CustomCategoryMatching.md)。本次完整回归241项/32套通过。

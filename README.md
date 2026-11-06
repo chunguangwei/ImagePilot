@@ -1,7 +1,13 @@
 # ImagePilot - AI 智能照片分类管理工具
 
-> **当前 1.5.94：** 线上只提供 EmbeddingGemma 2（快速分类、不生成描述）和 Gemma4-E2B（多模态分类与描述）。LFM/SmolVLM 已下线，旧选择迁移至 EmbeddingGemma，缺少文件需主动下载；已有分类与描述保留。下文旧模型试验属于历史记录，不是当前可用功能。
+> **当前 1.5.95：** 线上只提供 EmbeddingGemma 2（快速分类、不生成描述）和 Gemma4-E2B（多模态分类与描述）。LFM/SmolVLM 已下线，旧选择迁移至 EmbeddingGemma，缺少文件需主动下载；已有分类与描述保留。下文旧模型试验属于历史记录，不是当前可用功能。
 
+
+## 1.5.95：整体分类与自定义场景
+
+内置分类改为按视觉子类型分别匹配；自定义分类保留原有名称、规则与操作，可展开“匹配细节”添加场景和排除对象。冲突时不强行改类，不自动启用云端。无需重新下载模型，更新后请重新分类测试照片。首次分类的文本准备会增加，Android 准确率仍需真机测试。iOS build24 仅开发测试。
+
+[分类策略与验证](docs/features/EmbeddingGlobalDecision.md) · [自定义分类](docs/features/CustomCategoryMatching.md)
 
 ## 1.5.94：分类一致性与远程诊断
 

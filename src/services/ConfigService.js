@@ -31,10 +31,12 @@ class ConfigService {
   setCustomCategories(list) {
     const map = {};
     const rules = {};
+    const matching = {};
     if (Array.isArray(list)) {
       for (const c of list) {
         if (c && typeof c.id === 'string' && c.id.trim() && typeof c.name === 'string' && c.name.trim()) {
           map[c.id.trim()] = c.name.trim();
+          matching[c.id.trim()] = {scenarios:c.scenarios, exclusions:c.exclusions};
           // 同时存「判定规则」rule —— 供本地多模态(Gemma)分类提示词使用，让模型像在线模型一样
           // 按用户规则把图片归入自定义分类（见 vlmShared.getCategoryList/buildPrompt）。
           if (typeof c.rule === 'string' && c.rule.trim()) rules[c.id.trim()] = c.rule.trim();
@@ -43,9 +45,12 @@ class ConfigService {
     }
     this.customCategoryNames = map;
     this.customCategoryRules = rules;
+    this.customCategoryMatching = matching;
   }
 
   /** 取自定义分类的判定规则映射 { id: rule }（供本地 VLM 提示词用）。 */
+  getCustomCategoryMatching() { return this.customCategoryMatching || {}; }
+
   getCustomCategoryRules() {
     return this.customCategoryRules || {};
   }

@@ -163,3 +163,18 @@ test('subtype references are cached and no extra image inference is added',async
  expect(embed.mock.calls.filter(([,text,image])=>image&&!text)).toHaveLength(2);
  expect(first.diagnostics.categories[0].groups.length).toBeGreaterThan(1);
 });
+test('optional details invalidate the cache and exclusion conflict cannot write a category',async()=>{
+ const custom={id:'work',zh:'工作',rule:'设备',scenarios:['机柜']};
+ getCategoryList.mockReturnValue([custom,{id:'other',zh:'其他'}]);
+ embed.mockImplementation(async(_path,text)=>text.includes('其他')?[0,1]:text.includes('盆栽')?[1,0]:text?[0.99,0.1]:[1,0]);
+ const first=await classifyWithEmbeddingGemma('photo','model');
+ expect(first.classificationAccepted).toBe(true);
+ const count=embed.mock.calls.length;
+ getCategoryList.mockReturnValue([{...custom,exclusions:'盆栽'},{id:'other',zh:'其他'}]);
+ const second=await classifyWithEmbeddingGemma('photo','model');
+ expect(embed.mock.calls.length).toBeGreaterThan(count+1);
+ expect(second.classificationAccepted).toBe(false);
+ expect(second.rejectionReason).toBe('exclusion-conflict');
+ expect(second.topPrediction).toBeNull();
+ expect(second.diagnostics.categories.find(c=>c.id==='work').groups.find(g=>g.exclude).references[0].text).toContain('盆栽');
+});

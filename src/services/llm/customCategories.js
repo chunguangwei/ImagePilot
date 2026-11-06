@@ -8,6 +8,7 @@
  * 纯逻辑，可在骨架单测；fork 端 wireLLMRouting 读 settings.customCategories 后调用。
  */
 
+import { categoryMatchingRule, normalizeCustomMatching } from '../classify/categorySemantics';
 import { mapSchemaCategoryToApp } from './adapters/categoryMapper.js';
 
 /** 过滤出合法的自定义分类（需有 id + name；id 不与内置冲突由调用方保证） */
@@ -20,7 +21,7 @@ export function validCustomCategories(list = []) {
     const id = c.id.trim();
     if (seen.has(id)) continue;
     seen.add(id);
-    out.push({ id, name: c.name.trim(), rule: typeof c.rule === 'string' ? c.rule.trim() : '' });
+    out.push({ ...normalizeCustomMatching(c), id, name: c.name.trim(), rule: typeof c.rule === 'string' ? c.rule.trim() : '' });
   }
   return out;
 }
@@ -34,18 +35,18 @@ export function buildCustomCategoryPromptSection(customCategories = [], lang = '
   const valid = validCustomCategories(customCategories);
   if (!valid.length) return '';
   if (lang === 'en') {
-    const lines = valid.map((c) => `  - ${c.id}: ${c.name}${c.rule ? ` — ${c.rule}` : ''}`);
+    const lines = valid.map((c) => `  - ${c.id}: ${c.name}${categoryMatchingRule(c, 'en') ? ` — ${categoryMatchingRule(c, 'en')}` : ''}`);
     return (
       '\nUser-defined categories — if the image matches one of these rules, ' +
-      'output that id in contentCategory (these take priority over the generic categories):\n' +
+      'compare them with all other categories and output the best matching id in contentCategory:\n' +
       lines.join('\n') +
       '\n'
     );
   }
-  const lines = valid.map((c) => `  - ${c.id}：${c.name}${c.rule ? `——${c.rule}` : ''}`);
+  const lines = valid.map((c) => `  - ${c.id}：${c.name}${categoryMatchingRule(c, 'zh') ? `——${categoryMatchingRule(c, 'zh')}` : ''}`);
   return (
     '\n用户自定义分类——若图片符合以下任一规则，请在 contentCategory 中输出对应 id' +
-    '（优先于上面的通用分类）：\n' +
+    '（与通用分类一起比较，选择最贴近的一类）：\n' +
     lines.join('\n') +
     '\n'
   );

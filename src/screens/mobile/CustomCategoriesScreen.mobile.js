@@ -1,3 +1,4 @@
+import { normalizeCustomMatching } from '../../services/classify/categorySemantics';
 import { categoryDescription } from '../../services/classify/categorySemantics';
 import initialSettings from '../../../public/initialSettings.json';
 /**
@@ -39,6 +40,7 @@ export default function CustomCategoriesScreen({ navigation }) {
   const [id, setId] = useState('');
   const [name, setName] = useState('');
   const [rule, setRule] = useState('');
+  const [matching, setMatching] = useState({scenarios:'', exclusions:''});
   const [iconKey, setIconKey] = useState(CUSTOM_ICON_PRESETS[0].key);
   // 编辑弹窗（editing 为 { id, name, rule, iconKey } 时打开）
   const [editing, setEditing] = useState(null);
@@ -171,14 +173,15 @@ export default function CustomCategoriesScreen({ navigation }) {
       Alert.alert(t('customCategories.idDuplicateTitle'), t('customCategories.idDuplicateMessage'));
       return;
     }
-    if (!await persist([...list, { id: cid, name: cname, rule: rule.trim(), iconKey }])) return;
-    setId(''); setName(''); setRule(''); setIconKey(CUSTOM_ICON_PRESETS[0].key);
+    if (!await persist([...list, { id: cid, name: cname, rule: rule.trim(), ...normalizeCustomMatching(matching), iconKey }])) return;
+    setId(''); setName(''); setRule(''); setMatching({scenarios:'',exclusions:''}); setIconKey(CUSTOM_ICON_PRESETS[0].key);
     Haptics.notification('success');
   };
 
   // 打开编辑弹窗：拷贝一份编辑态，id 不可改（避免历史归属图断链）
   const onOpenEdit = (c) => {
     setEditing({
+      ...normalizeCustomMatching(c),
       id: c.id,
       name: c.name || '',
       rule: c.rule || '',
@@ -194,7 +197,7 @@ export default function CustomCategoriesScreen({ navigation }) {
       return;
     }
     const next = list.map((c) =>
-      c.id === editing.id ? { ...c, name: cname, rule: editing.rule.trim(), iconKey: editing.iconKey } : c
+      c.id === editing.id ? { ...c, name: cname, rule: editing.rule.trim(), ...normalizeCustomMatching(editing), iconKey: editing.iconKey } : c
     );
     if (!await persist(next)) return;
     setEditing(null);
@@ -276,6 +279,7 @@ export default function CustomCategoriesScreen({ navigation }) {
           <TextInput editable={!saving} style={[styles.input, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder={t('customCategories.namePlaceholder')} placeholderTextColor={theme.tertiaryLabel} value={name} onChangeText={setName} />
           <TextInput editable={!saving} style={[styles.input, styles.multiline, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder={t('customCategories.rulePlaceholder')} placeholderTextColor={theme.tertiaryLabel} value={rule} onChangeText={setRule} multiline />
 
+          <MatchingFields value={matching} onChange={setMatching} disabled={saving} isEn={isEn} />
           <Text style={[styles.iconPickerLabel, { color: theme.secondaryLabel }]}>{t('customCategories.iconPickerLabel')}</Text>
           <IconGrid selectedKey={iconKey} onSelect={setIconKey} />
 
@@ -402,6 +406,7 @@ export default function CustomCategoriesScreen({ navigation }) {
                 onChangeText={(v) => setEditing((s) => ({ ...s, rule: v }))}
                 multiline
               />
+              <MatchingFields value={editing} onChange={v => setEditing(s => ({...s,...v}))} disabled={saving} isEn={isEn} />
               <Text style={styles.iconPickerLabel}>{t('customCategories.iconPickerLabel')}</Text>
               <IconGrid
                 selectedKey={editing?.iconKey}
@@ -422,6 +427,33 @@ export default function CustomCategoriesScreen({ navigation }) {
       )}
     </SafeAreaView>
   );
+}
+
+function MatchingFields({value, onChange, disabled, isEn}) {
+  const theme = useIosColors();
+  const [expanded, setExpanded] = useState(false);
+  const scenarios = Array.isArray(value.scenarios) ? value.scenarios.join('\n') : (value.scenarios || '');
+  const inputStyle = [styles.input, styles.multiline, {backgroundColor:theme.groupedBg, color:theme.label, borderColor:theme.separator}];
+  return <View>
+    <TouchableOpacity accessibilityRole="button" accessibilityState={{expanded}} disabled={disabled}
+      style={{minHeight:44,justifyContent:'center'}} onPress={() => setExpanded(!expanded)}>
+      <Text style={{color:theme.tint || '#007AFF'}}>{isEn ? 'Matching details (optional)' : '匹配细节（可选）'} {expanded ? '⌃' : '⌄'}</Text>
+    </TouchableOpacity>
+    {expanded && <View>
+      <Text style={{color:theme.secondaryLabel,marginBottom:8}}>{isEn
+        ? 'Keep your original rule. Add alternative visual scenarios, one per line. All categories compete together; uncertain matches stay unchanged.'
+        : '保留原有规则。可补充不同的画面场景，每行一个。所有分类一起比较，不确定时不自动改类。'}</Text>
+      <TextInput accessibilityLabel={isEn ? 'Visual scenarios' : '画面场景'} editable={!disabled} style={inputStyle}
+        placeholder={isEn ? 'For example: network equipment cabinet\nOffice printer' : '例如：网络设备机柜\n办公室打印机'} placeholderTextColor={theme.tertiaryLabel}
+        value={scenarios} multiline onChangeText={scenarios => onChange({...value,scenarios})} />
+      <TextInput accessibilityLabel={isEn ? 'Excluded subjects' : '排除对象'} editable={!disabled} style={inputStyle}
+        placeholder={isEn ? 'Excluded subjects, e.g. potted plants' : '排除对象，例如：盆栽植物'} placeholderTextColor={theme.tertiaryLabel}
+        value={value.exclusions || ''} multiline onChangeText={exclusions => onChange({...value,exclusions})} />
+      <Text style={{color:theme.secondaryLabel,marginBottom:12}}>{isEn
+        ? 'Embedding uses exclusions as uncertainty checks, not hard rules. Exact counts, text and logical conditions are better suited to E2B or your chosen online model.'
+        : 'Embedding 将排除对象作为疑似冲突检查，不能保证严格排除。精确人数、文字及逻辑条件更适合 E2B 或你选择的在线模型。'}</Text>
+    </View>}
+  </View>;
 }
 
 const styles = StyleSheet.create({
