@@ -322,6 +322,7 @@
     "scanFailed": "Scan failed: {{error}}",
     "scanAlreadyInProgress": "Scan is already in progress, please wait for the current scan to complete",
     "aiClassificationInProgress": "AI Classification in Progress...",
+    "resumeCaptionWork": "Resume offline processing · {{count}} descriptions pending",
     "aiClassificationStopped": "Stopped. Saved categories and descriptions are retained; run offline classification again to resume descriptions.",
     "aiCaptionIncomplete": "Classification processed; {{count}} descriptions failed. Run offline classification again to retry.",
     "aiClassificationComplete": "AI Classification Complete",

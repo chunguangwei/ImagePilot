@@ -266,6 +266,7 @@ const HomeScreen = ({ navigation }) => {
   
   // 分类数据
   const [categories, setCategories] = useState([]);
+  const [pendingCaptionCount, setPendingCaptionCount] = useState(0);
   // 用户自定义分类（settings.aiProvider.customCategories；云端 LLM 才会真正归类到此）
   const [customCategoryList, setCustomCategoryList] = useState([]);
   
@@ -711,6 +712,8 @@ const HomeScreen = ({ navigation }) => {
       let customList = [];
       try {
         const settings = (await UnifiedDataService.readSettings()) || {};
+        setPendingCaptionCount(settings.embeddingCaption?.enabled && (await readActiveTier()) === 'embeddinggemma2'
+          ? pendingCaptions(cache.allImages || []).length : 0);
         const raw = settings?.aiProvider?.customCategories;
         customList = Array.isArray(raw) ? raw.filter((c) => c && c.id && c.name) : [];
       } catch (e) {
@@ -1900,6 +1903,17 @@ const HomeScreen = ({ navigation }) => {
             </TouchableOpacity>
         </View>
         
+        {pendingCaptionCount > 0 && (
+          <TouchableOpacity
+            style={[styles.toggleButton, { alignSelf: 'flex-start', marginBottom: 12, opacity: isScanning ? 0.5 : 1 }]}
+            disabled={isScanning}
+            onPress={() => executeAIClassify({ forceLocal: true })}
+            accessibilityRole="button"
+          >
+            <Text style={styles.toggleButtonText}>{t('home.resumeCaptionWork', { count: pendingCaptionCount })}</Text>
+          </TouchableOpacity>
+        )}
+
         {!hasContent ? (
           <View style={styles.emptyState}>
             <View style={{ marginBottom: 10 }}><SkeuomorphicCamera size={60} scheme="onLight" /></View>

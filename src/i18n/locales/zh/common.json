@@ -322,6 +322,7 @@
     "scanFailed": "扫描失败: {{error}}",
     "scanAlreadyInProgress": "扫描已在进行中，请等待当前扫描完成",
     "aiClassificationInProgress": "AI分类进行中...",
+    "resumeCaptionWork": "继续离线处理 · {{count}} 张待补描述",
     "aiClassificationStopped": "任务已停止，已保存的分类和描述保留；再次运行离线分类可续补描述",
     "aiCaptionIncomplete": "分类已处理，{{count}} 张描述生成失败，可再次运行离线分类重试",
     "aiClassificationComplete": "AI分类完成",
