@@ -1,8 +1,8 @@
 // Task-scoped choices. Never write the default model/provider setting.
 export const RECLASSIFICATION_TIERS = ['embeddinggemma2','basic','scene','clip','vlm'];
 const PROVIDERS = ['openai','kimi','anthropic','gemini','custom'];
-export async function buildReclassificationChoices({isReady,aiCfg,hasKey}) {
-  const local = await Promise.all(RECLASSIFICATION_TIERS.map(async id => ({id,available:await isReady(id),kind:'local'})));
+export async function buildReclassificationChoices({isReady,aiCfg,hasKey,localTiers=RECLASSIFICATION_TIERS}) {
+  const local = await Promise.all(localTiers.filter(id=>RECLASSIFICATION_TIERS.includes(id)).map(async id => ({id,available:await isReady(id),kind:'local'})));
   const online = await Promise.all(PROVIDERS.map(async provider => {
     const config=aiCfg?.providers?.[provider];
     const configured=!!(config?.model && config?.baseURL);

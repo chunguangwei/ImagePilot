@@ -4,22 +4,22 @@
 
 ---
 
-## 一、当前移动端发行（2026-11-06）
+## 一、当前移动端发行（2026-11-07）
 
 | 范围 | 版本 | 状态 |
 | --- | --- | --- |
-| Android | `1.5.97` | 使用现有正式签名；GitHub Release 非 prerelease 并设为 latest |
-| iOS | `1.5.97` / build `26` | 开发签名真机测试，不提交 App Store |
+| Android | `1.5.98` | 使用现有正式签名；GitHub Release 非 prerelease 并设为 latest |
+| iOS | `1.5.98` / build `27` | 开发签名真机测试，不提交 App Store |
 | PC | `1.5.82` | 本次不构建、不升级桌面版本 |
 
 本次只发布移动端，更新根目录 package/package-lock、Android versionName、iOS marketing/build 和 BuildInfo。分支 `codex/embeddinggemma2-android-preview`，手动 workflow 选择 android。iOS 构建与安装结果以最终发布记录为准，不能将开发签名包当作通用 Ad Hoc / TestFlight 安装包。
 
 ## 二、下一版号段规则
 
-- Android 下次版本名须高于 1.5.97，才能被应用内 `releases/latest` 更新检测识别。不得覆盖同版本 APK 代替递增版本。
-- iOS 下次重新打包 build 至少为 24；需要提交 App Store 时使用正确分发签名并单独完成审核流程。
+- Android 下次版本名须高于 1.5.98，才能被应用内 `releases/latest` 更新检测识别。不得覆盖同版本 APK 代替递增版本。
+- iOS 下次重新打包 build 至少为 28；需要提交 App Store 时使用正确分发签名并单独完成审核流程。
 - Android versionCode 为构建时间生成，发布前核实大于上一版本；签名证书须与 1.5.90 一致。
-- 若未来发布桌面端，另同步桌面 package 版本；本次不能把未构建的桌面端声明为 1.5.97。
+- 若未来发布桌面端，另同步桌面 package 版本；本次不能把未构建的桌面端声明为 1.5.98。
 
 ---
 
@@ -52,7 +52,7 @@
 
 ---
 
-_最后更新：2026-11-06。下方旧版章节为历史记录。_
+_最后更新：2026-11-07。下方旧版章节为历史记录。_
 
 ### 1.5.86 LFM 可选描述
 

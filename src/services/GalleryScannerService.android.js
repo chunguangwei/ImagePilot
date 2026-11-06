@@ -1,3 +1,5 @@
+import retryVideoFrames from './classify/retryVideoFrames';
+import {localResultCategory} from './classify/videoClassificationRetry';
 import { pendingLfm } from './classify/lfmScanner';
 import { embeddingRecordFields } from './classify/embeddingRecordFields';
 /**
@@ -32,7 +34,7 @@ const { GalleryScanModule } = NativeModules;
  * 0.15：低于此值映射出来错得离谱（5~10% conf ≈ 1/1000 随机猜），
  * 提升路子在改善 1000→9 映射表 + Places365 模型，不在调阈值上。
  */
-const MOBILENET_MAP_THRESHOLD = 0.15;
+
 
 /**
  * 云端 LLM 分类的图片上传规格：长边 768px / JPEG q85。
@@ -685,21 +687,16 @@ class GalleryScannerService {
             }
             if (!imageUri) { failedCount++; continue; }
             // P1：按 tier 路由（basic→ImageNet / scene→Places365 / clip→未接入回退）
-            const r = await classifyImageByTier(imageUri, activeTier, { imageClassifier: this.imageClassifier, detailed: !!clsOpts.detailed, strict: !!clsOpts.strict });
-            const top = r?.topPrediction || null;
+            const infer=uri=>classifyImageByTier(uri, activeTier, { imageClassifier: this.imageClassifier, detailed: !!clsOpts.detailed, strict: !!clsOpts.strict });
+            let r = await infer(imageUri);
+            if(isVideo)r=await retryVideoFrames(r,{
+              initialFrame:frameTemp,categoryOf:localResultCategory,
+              shouldStop:()=>this._stopRequested,
+              extractFrame:position=>NativeModules.MediaStoreModule.extractVideoFrameAtPosition(image?.uri || String(image?.id || ''),position),
+              classifyFrame:infer,onError:error=>logger.warn('Video retry:',error?.message),
+            });
             const conf = (typeof r?.confidence === 'number') ? r.confidence : 0;
-            let category;
-            if (r?.engine === 'embeddinggemma2' && r.classificationAccepted !== true) {
-              // A completed but uncertain inference is Other; exceptions remain retryable.
-              category = 'other';
-            } else if (top && (r.classificationAccepted === true || conf >= MOBILENET_MAP_THRESHOLD)) {
-              category = top.appCategory || 'other';
-            } else {
-              if (top && conf < MOBILENET_MAP_THRESHOLD) {
-                logger.debug(`[Android] ${r?.engine || '?'} conf=${conf.toFixed(3)} < ${MOBILENET_MAP_THRESHOLD}，top="${top?.name}" 落 other`);
-              }
-              category = 'other';
-            }
+            const category=localResultCategory(r);
             classificationDataArray.push({
               uri: image?.uri || imageUri,
               id: image.id,
@@ -713,6 +710,7 @@ class GalleryScannerService {
               background_color: null,
             });
           } catch (e) {
+            if(e?.code==='CLASSIFICATION_CANCELLED'){stoppedByUser=true;break;}
             logger.warn(`⚠️ 离线分类单张失败: ${e?.message || e}`);
             failedCount++;
           } finally {
@@ -853,6 +851,7 @@ class GalleryScannerService {
         // 1) 每张图压成 1024 jpeg → base64
         const inputs = [];
         const validResults = [];
+        const initialFrameHashes=new Map();
         for (const image of batch) {
           let frameTemp = null;
           try {
@@ -868,6 +867,7 @@ class GalleryScannerService {
               }
             }
             if (!sourceUri) { failedCount++; continue; }
+            if(frameTemp)try{initialFrameHashes.set(image.id,await RNFS.hash(frameTemp.replace(/^file:\/\//,''),'sha256'));}catch(_){}
             const resized = await ImageProcessor.resizeImage(sourceUri, CLOUD_LLM_MAX_EDGE, CLOUD_LLM_MAX_EDGE, {
               maintainAspectRatio: true, outputFormat: 'jpeg', quality: CLOUD_LLM_JPEG_QUALITY,
             });
@@ -906,6 +906,30 @@ class GalleryScannerService {
         const classificationDataArray = [];
         for (const item of (batchOut?.items || [])) {
           if (!item.success || !item.data) { failedCount++; continue; }
+          if(String(item.imageData?.mimeType||'').startsWith('video/')&&item.data.category==='other'){
+            try{
+              item.data=await retryVideoFrames(item.data,{
+                initialFrameHash:initialFrameHashes.get(item.imageData.id),
+                categoryOf:data=>data.category,shouldStop:()=>this._stopRequested,
+                extractFrame:position=>NativeModules.MediaStoreModule.extractVideoFrameAtPosition(item.imageData?.uri || String(item.imageData?.id || ''),position),
+                classifyFrame:async uri=>{
+                  let resizedUri;
+                  try{
+                    const resized=await ImageProcessor.resizeImage(uri,CLOUD_LLM_MAX_EDGE,CLOUD_LLM_MAX_EDGE,{maintainAspectRatio:true,outputFormat:'jpeg',quality:CLOUD_LLM_JPEG_QUALITY});
+                    resizedUri=resized?.uri;
+                    if(!resizedUri)throw new Error('Video frame resize failed');
+                    const imageBase64=await RNFS.readFile(resizedUri.replace(/^file:\/\//,''),'base64');
+                    const out=await classifyCloudBatch({imageClassifier:this.imageClassifier,platform:Platform.OS,
+                      inputs:[{id:item.imageData.id||item.imageData.hash||uri,imageBase64}],
+                      validResults:[{imageData:item.imageData,hash:item.imageData.hash||item.imageData.id}],aiCfg,detailed:!!clsOpts.detailed});
+                    const prediction=out?.items?.[0];
+                    if(!prediction?.success||!prediction.data)throw new Error('Video frame classification failed');
+                    return prediction.data;
+                  }finally{if(resizedUri&&resizedUri!==uri)try{await RNFS.unlink(resizedUri.replace(/^file:\/\//,''));}catch(_){}}
+                },onError:error=>logger.warn('Cloud video retry:',error?.message),
+              });
+            }catch(error){if(error?.code==='CLASSIFICATION_CANCELLED'){break;}failedCount++;continue;}
+          }
           classificationDataArray.push({
             uri: item.imageData?.uri,
             id: item.imageData?.id,
@@ -943,7 +967,7 @@ class GalleryScannerService {
         logger.warn('[Android] 云端分类后刷新 GlobalImageCache 失败:', e?.message || e);
       }
       await this.sendProgressMessage('completed', processedCount, naImages.length, this.imagesClassified, naImages.length);
-      return { success: true, processedCount, failedCount };
+      return { success: true, processedCount, failedCount, stopped:!!this._stopRequested };
     } catch (error) {
       logger.error('❌ JS 云端分类失败:', error);
       throw error;

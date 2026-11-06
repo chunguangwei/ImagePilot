@@ -31,6 +31,10 @@ RCT_EXTERN_METHOD(playVideo:(NSString *)localIdentifier
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(extractVideoFrameAtPosition:(NSString *)localIdentifier
+                  position:(double)position
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(extractVideoFrame:(NSString *)localIdentifier
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)

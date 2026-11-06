@@ -385,6 +385,14 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
      */
     @ReactMethod
     public void extractVideoFrame(String combinedUri, Promise promise) {
+        extractVideoFrameAtPosition(combinedUri, 0.5, promise);
+    }
+
+    @ReactMethod
+    public void extractVideoFrameAtPosition(String combinedUri, double position, Promise promise) {
+        if (Double.isNaN(position) || Double.isInfinite(position)) {
+            promise.reject("E_FRAME", "Invalid frame position"); return;
+        }
         MediaMetadataRetriever mmr = new MediaMetadataRetriever();
         try {
             String s = combinedUri == null ? "" : combinedUri;
@@ -400,17 +408,19 @@ public class MediaStoreModule extends ReactContextBaseJavaModule {
             long durMs = 0;
             try { durMs = durStr != null ? Long.parseLong(durStr) : 0; } catch (NumberFormatException ignore) {}
             // 中点帧；OPTION_CLOSEST_SYNC 就近取关键帧，避免逐帧解码慢
-            Bitmap bmp = mmr.getFrameAtTime(Math.max(durMs * 1000L / 2, 0), MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+            Bitmap bmp = mmr.getFrameAtTime(Math.max((long)(durMs * 1000.0 * Math.max(0.01, Math.min(0.99, position))), 0), MediaMetadataRetriever.OPTION_CLOSEST);
             if (bmp == null) { promise.reject("E_FRAME", "getFrameAtTime 返回空"); return; }
             int w = bmp.getWidth(), h = bmp.getHeight();
             float scale = 1024f / Math.max(w, h);
             if (scale < 1f) {
-                bmp = Bitmap.createScaledBitmap(bmp, Math.round(w * scale), Math.round(h * scale), true);
+                Bitmap original = bmp;
+                bmp = Bitmap.createScaledBitmap(original, Math.round(w * scale), Math.round(h * scale), true);
+                if (bmp != original) original.recycle();
             }
-            File out = new File(getReactApplicationContext().getCacheDir(), "vframe_" + Math.abs(s.hashCode()) + ".jpg");
+            File out = new File(getReactApplicationContext().getCacheDir(), "vframe_" + java.util.UUID.randomUUID().toString() + ".jpg");
             FileOutputStream fos = new FileOutputStream(out);
-            bmp.compress(Bitmap.CompressFormat.JPEG, 85, fos);
-            fos.close();
+            try { bmp.compress(Bitmap.CompressFormat.JPEG, 85, fos); }
+            finally { fos.close(); bmp.recycle(); }
             promise.resolve("file://" + out.getAbsolutePath());
         } catch (Exception e) {
             promise.reject("E_FRAME", e.getMessage());

@@ -708,6 +708,7 @@ export const AsyncStorage = {
 
 // ========== 3. RNFS 适配 ==========
 export const RNFS = {
+  hash: async (filePath, algorithm) => RNFS_Native.hash(filePath.replace(/^file:\/\//, ''), algorithm),
   read: async (filePath, start, length, encoding) => {
     return await RNFS_Native.read(filePath, start, length, encoding);
   },

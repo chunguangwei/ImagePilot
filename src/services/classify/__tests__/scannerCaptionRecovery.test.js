@@ -1,6 +1,6 @@
 jest.mock('../../llm/adapters/UnifiedDataConfigService',()=>({default:{getAIProviderConfig:async()=>({active:'openai',providers:{openai:{model:'default'},kimi:{model:'chosen'}}})},__esModule:true}));
-jest.mock('react-native', () => ({ NativeModules: {}, Platform: { OS: 'android' } }));
-jest.mock('../../../adapters/WebAdapters', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() }, getUri: image => image.uri }));
+jest.mock('react-native', () => ({ NativeModules: {MediaStoreModule:{extractVideoFrame:jest.fn(async()=> 'file:///mid.jpg'),extractVideoFrameAtPosition:jest.fn(async(_,position)=>`file:///frame-${position}.jpg`)},PhotoKitModule:{extractVideoFrame:jest.fn(async()=> 'file:///mid.jpg'),extractVideoFrameAtPosition:jest.fn(async(_,position)=>`file:///frame-${position}.jpg`)}}, Platform: { OS: 'android' } }));
+jest.mock('../../../adapters/WebAdapters', () => ({ RNFS:{hash:jest.fn(async path=>path),unlink:jest.fn(async()=>{})},logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() }, getUri: image => image.uri }));
 jest.mock('../../UnifiedDataService', () => ({ readSettings: jest.fn(async () => ({ embeddingCaption: { enabled: true } })), readImagesByCategory: jest.fn(async () => []), readAllImages: jest.fn(async () => []), migrateUnclassifiedVideos: jest.fn(), batchUpdateClassification: jest.fn(async () => ({ success: true, updatedCount: 1 })), imageCache: { buildCache: jest.fn(), refreshCache: jest.fn() } }));
 jest.mock('../../ImageClassifierService', () => jest.fn());
 jest.mock('../../ImageProcessor', () => ({}));
@@ -30,6 +30,16 @@ for (const platform of ['android', 'ios']) {
         return {generated,failed:0,stopped:options.shouldStop()};
       });
       scanner = new Scanner(); scanner.sendProgressMessage = jest.fn();
+    });
+    test('Other videos retry different frames with the same chosen tier on both platforms',async()=>{
+      classifyImageByTier.mockResolvedValueOnce({success:true,engine:'embeddinggemma2',classificationAccepted:false,topPrediction:null});
+      const video={id:'video',uri:platform==='ios'?'ph://asset-id':'content://video/1',mimeType:'video/mp4',category:'NA_video'};
+      await scanner._classifyAllNAImagesByLocalOnnxJS(null,[video],{tier:'embeddinggemma2',strict:true});
+      expect(classifyImageByTier).toHaveBeenCalledTimes(3);
+      expect(classifyImageByTier.mock.calls.every(call=>call[1]==='embeddinggemma2'&&call[2].strict)).toBe(true);
+      expect(data.batchUpdateClassification.mock.calls.at(-1)[0][0].category).toBe('electronics');
+      const native=require('react-native').NativeModules[platform==='ios'?'PhotoKitModule':'MediaStoreModule'];
+      expect(native.extractVideoFrameAtPosition.mock.calls[0][0]).toBe(platform==='ios'?'asset-id':'content://video/1');
     });
     test('task model override reaches inference without reading or changing the default tier',async()=>{
       await scanner._classifyAllNAImagesByLocalOnnxJS(null,[row('task')],{tier:'scene',strict:true});

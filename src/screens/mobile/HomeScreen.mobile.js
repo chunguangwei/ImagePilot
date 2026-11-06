@@ -1264,7 +1264,7 @@ const HomeScreen = ({ navigation }) => {
       return;
     }
 
-    reclassification.open(naCount, modelOptions=>executeAIClassify({...modelOptions,naCount,categoryId}));
+    reclassification.open(naCount, modelOptions=>executeAIClassify({...modelOptions,naCount,categoryId}), {scope:!categoryId||['NA','NA_video'].includes(categoryId)?'pending':'all'});
   };
 
   /**

@@ -1,3 +1,4 @@
+import usePhotoRangeSelection from '../../hooks/usePhotoRangeSelection';
 import {useReclassificationPicker} from '../../components/ReclassificationModelPicker';
 import { subscribeCacheRefresh } from '../../services/subscribeCacheRefresh';
 /**
@@ -160,6 +161,24 @@ const CategoryScreen = ({ route, navigation }) => {
   const [highlightedImageId, setHighlightedImageId] = useState(null);
   const flatListRef = useRef(null);
   const hasProcessedReturnedImageIdRef = useRef(false); // 用于防止重复处理 returnedImageId
+  const selectionModeRef=useRef(false);selectionModeRef.current=selectionMode;
+  const visualIds=Object.values(groupedImages).flat().filter(Boolean).map(image=>image.id);
+  const rangeSelection=usePhotoRangeSelection({ids:visualIds,
+    isSelected:id=>UnifiedDataService.isImageSelected(id),
+    setSelected:(id,value)=>UnifiedDataService.setImageSelection(id,value),
+    onChange:count=>{setSelectionMode(true);setSelectedCount(count);},listRef:flatListRef});
+  const resetSelectionRef=useRef(null);
+  resetSelectionRef.current=()=>{
+    rangeSelection.reset();
+    images.forEach(image=>UnifiedDataService.setImageSelection(image.id,false));
+    selectionModeRef.current=false;setSelectionMode(false);setSelectedCount(0);
+    setShowActionMenu(false);setShowCategoryModal(false);setPendingImageIds([]);
+  };
+  useFocusEffect(useCallback(()=>{
+    resetSelectionRef.current?.();
+    return ()=>resetSelectionRef.current?.();
+  },[filterType,filterValue]));
+
   
   // 暂存箱图片ID集合（用于快速检查图片是否在暂存箱中）
   const [stagingBoxImageIds, setStagingBoxImageIds] = useState(new Set());
@@ -802,7 +821,12 @@ const CategoryScreen = ({ route, navigation }) => {
         }
       }
       
-      setSelectionMode(selectedCount > 0);
+      // Selection belongs to this screen visit, never restore it from the cache.
+      if(!selectionModeRef.current){
+        filteredImages.forEach(image=>UnifiedDataService.setImageSelection(image.id,false));
+        selectedCount=0;
+      }
+      setSelectedCount(selectedCount);
       
       logger.debug(`📸 加载图片: ${filteredImages.length}张`);
       
@@ -855,7 +879,7 @@ const CategoryScreen = ({ route, navigation }) => {
       Haptics.impact('light'); // 进入多选 → 轻量触感
       setSelectionMode(true);
       UnifiedDataService.setImageSelection(image.id, true);
-      setSelectedCount(calculateSelectedCount());
+      calculateSelectedCount().then(setSelectedCount);
     }
   };
 
@@ -901,30 +925,9 @@ const CategoryScreen = ({ route, navigation }) => {
     setSelectedCount(newCount);
   };
 
-  /**
-   * 退出选择模式（保持选中状态不变）
-   */
-  function exitSelectionMode() {
-    setSelectionMode(false);
-    setShowActionMenu(false);
-    // 不改变任何选中状态，保持用户的选中结果
-  }
-
-  /**
-   * 处理取消按钮点击
-   * - 当有选中图片时：清除选中状态
-   * - 当没有选中图片时：退出选择模式
-   */
-  const handleCancelPress = async () => {
-    const currentSelectedCount = await calculateSelectedCount();
-    if (currentSelectedCount > 0) {
-      // 有选中图片时，清除选中状态
-      await clearSelections();
-    } else {
-      // 没有选中图片时，退出选择模式
-      exitSelectionMode();
-    }
-  };
+  /** Finish/cancel selection clears the ephemeral cache flags as well. */
+  function exitSelectionMode() { resetSelectionRef.current?.(); }
+  const handleCancelPress = () => exitSelectionMode();
 
   // ==================== 批量操作 ====================
 
@@ -1471,7 +1474,7 @@ const CategoryScreen = ({ route, navigation }) => {
   };
 
   const batchAIClassify = async (imageIds) => {
-    reclassification.open(imageIds.length, opts=>runBatchAIClassify(imageIds,opts));
+    reclassification.open(imageIds.length, opts=>runBatchAIClassify(imageIds,opts), {scope:filterType==='category'&&['NA','NA_video'].includes(filterValue)?'pending':'all'});
   };
 
   /**
@@ -1802,7 +1805,10 @@ const CategoryScreen = ({ route, navigation }) => {
     }
 
     return (
+      <View style={{flex:1}} {...rangeSelection.containerProps}>
       <FlatList
+        {...rangeSelection.listProps}
+        extraData={{selectionMode,selectedCount}}
         ref={flatListRef}
         data={Object.keys(groupedImages)}
         keyExtractor={(dateKey) => dateKey}
@@ -1895,6 +1901,9 @@ const CategoryScreen = ({ route, navigation }) => {
                 return (
                   <TouchableOpacity
                     key={image.id}
+                    ref={rangeSelection.cellRef(image.id)}
+                    accessibilityRole="button"
+                    accessibilityState={{selected:UnifiedDataService.isImageSelected(image.id)}}
                     style={[
                       styles.timelineItem,
                       { width: gridItemSize, height: gridItemSize },  // 响应式：折叠屏宽度变化实时重算
@@ -1902,6 +1911,7 @@ const CategoryScreen = ({ route, navigation }) => {
                       isHighlighted && styles.timelineItemHighlighted
                     ]}
                     onPress={() => {
+                      if(rangeSelection.shouldIgnorePress())return;
                       if (selectionMode) {
                         toggleImageSelection(image.id);
                       } else {
@@ -1920,12 +1930,10 @@ const CategoryScreen = ({ route, navigation }) => {
                         });
                       }
                     }}
-                    onLongPress={() => {
-                      if (!selectionMode) {
-                        Haptics.impact('light'); // 进入多选 → 轻量触感
-                        enterSelectionMode();
-                        toggleImageSelection(image.id);
-                      }
+                    onLongPress={event => {
+                      Haptics.impact('light');
+                      setSelectionMode(true);
+                      rangeSelection.start(image.id,event);
                     }}
                   >
                     <Image
@@ -1964,9 +1972,10 @@ const CategoryScreen = ({ route, navigation }) => {
         }}
         contentContainerStyle={styles.timelineContainer}
         refreshing={refreshing}
-        onRefresh={onRefresh}
+        onRefresh={rangeSelection.active?undefined:onRefresh}
         ListEmptyComponent={renderEmpty}
       />
+      </View>
     );
   };
 
@@ -2110,6 +2119,7 @@ const CategoryScreen = ({ route, navigation }) => {
       {renderTopBar()}
 
       {/* 时间轴视图 */}
+      {selectionMode&&<Text style={{color:c.secondaryLabel,fontSize:12,paddingHorizontal:16,paddingBottom:8}}>{String(i18n.language).startsWith('en')?'Long press and drag to select a range; hold near an edge to scroll.':'长按照片后滑动连续多选，停在上下边缘可继续滚动'}</Text>}
       {renderTimeline()}
 
       {/* 底部操作栏 */}

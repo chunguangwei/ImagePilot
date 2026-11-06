@@ -462,6 +462,15 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
   func extractVideoFrame(_ localIdentifier: String,
                          resolver resolve: @escaping RCTPromiseResolveBlock,
                          rejecter reject: @escaping RCTPromiseRejectBlock) {
+    extractVideoFrameAtPosition(localIdentifier, position: 0.5, resolver: resolve, rejecter: reject)
+  }
+
+  @objc(extractVideoFrameAtPosition:position:resolver:rejecter:)
+  func extractVideoFrameAtPosition(_ localIdentifier: String,
+                                  position: Double,
+                                  resolver resolve: @escaping RCTPromiseResolveBlock,
+                                  rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard position.isFinite else { reject("E_FRAME", "Invalid frame position", nil); return }
     let fetch = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
     guard let asset = fetch.firstObject, asset.mediaType == .video else {
       reject("E_NO_VIDEO", "未找到该视频", nil); return
@@ -475,16 +484,16 @@ class PhotoKitModule: RCTEventEmitter, PHPhotoLibraryChangeObserver {
       gen.appliesPreferredTrackTransform = true
       gen.maximumSize = CGSize(width: 1024, height: 1024)
       // 容差 ±1s：允许就近取关键帧，避免逐帧解码慢
-      let tol = CMTime(seconds: 1, preferredTimescale: 600)
+      let tol = CMTime(seconds: 0.05, preferredTimescale: 600)
       gen.requestedTimeToleranceBefore = tol
       gen.requestedTimeToleranceAfter = tol
-      let mid = CMTimeMultiplyByFloat64(avAsset.duration, multiplier: 0.5)
+      let mid = CMTimeMultiplyByFloat64(avAsset.duration, multiplier: min(0.99, max(0.01, position)))
       do {
         let cg = try gen.copyCGImage(at: mid, actualTime: nil)
         guard let data = UIImage(cgImage: cg).jpegData(compressionQuality: 0.85) else {
           reject("E_JPEG", "帧编码失败", nil); return
         }
-        let path = NSTemporaryDirectory() + "vframe_\(abs(localIdentifier.hashValue)).jpg"
+        let path = NSTemporaryDirectory() + "vframe_\(UUID().uuidString).jpg"
         try data.write(to: URL(fileURLWithPath: path))
         resolve("file://" + path)
       } catch {

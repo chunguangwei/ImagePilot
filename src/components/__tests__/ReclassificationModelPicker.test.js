@@ -29,3 +29,11 @@ test('cancelled download does not block selection after reopening',async()=>{
  await act(async()=>{await find(tree,'Gemma 2').props.onPress();});
  expect(run).toHaveBeenCalledWith({forceLocal:true,tier:'embeddinggemma2',strict:true});
 });
+jest.mock('../../services/classify/classifyByTier',()=>({readActiveTier:async()=> 'vlm'}));
+test('pending picker shows only default local model and uses classification wording',async()=>{
+ let tree;await act(async()=>{tree=renderer.create(<Picker request={{count:4,run:jest.fn(),scope:'pending'}} onClose={jest.fn()}/>);});
+ expect(content(tree)).toContain('Gemma4-E2B');
+ for(const name of ['Gemma 2','物体识别','场景识别','MobileCLIP'])expect(content(tree)).not.toContain(name);
+ expect(content(tree)).toContain('开始分类');
+ expect(content(tree)).not.toContain('重新分类');
+});
