@@ -9,8 +9,8 @@
 | 范围 | 版本 | 状态 |
 | --- | --- | --- |
 | 历史正式版 | `v1.5.82` | 保留现有 Android / 桌面资产 |
-| 本次 Android | `1.5.87` | 描述桥接修复、分类改进和下载页兜底 |
-| iOS | 工程 `1.5.87` / build `13` | 已安装 iPhone 13 供真机测试，暂不上 App Store |
+| 本次 Android | `1.5.88` | 分类语义说明与描述中断恢复（待发布验证） |
+| iOS | 工程 `1.5.88` / build `14` | 新构建验证中，暂不上 App Store |
 | PC | `1.5.82` | 本次不构建，不升级桌面版本 |
 
 本次同步 iOS 工程版本、根目录 `package.json`、`package-lock.json`、Android `versionName` 与生成的 `BuildInfo.js`。测试分支为 `codex/embeddinggemma2-android-preview`，手动工作流选择 `platform=android`，使用现有正式签名。本次 GitHub Release 使用非 prerelease 并设为 latest。现有比较器忽略 beta 后缀，因此从 1.5.83-beta.1 升级采用 1.5.84，不能仅增加 beta 序号。旧版应用读取 `releases/latest` 即可发现更新。

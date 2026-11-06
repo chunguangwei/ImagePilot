@@ -249,3 +249,10 @@ const result = await classifier.classifyImage(imagePath, {}, {
 Android 描述为空已定位为旧架构缺少 clearCache 桥接，并在 1.5.87 补齐；安装包及 iOS 签名状态见发布记录。
 
 1.5.87 原生回归入口为 `scripts/mobile-caption-smoke.js`，仅供模拟器/测试安装使用，禁止替换正式入口 `index.js`。Documents 中放 sample.jpg 和 classify_models 官方模型，输出 caption-smoke-result.json：检查 bridgeReset、classificationSaved、generated/failed、数据库读回的 message 与 caption.state。
+
+## 1.5.88 中断恢复回归
+
+- 双端 scannerCaptionRecovery 测试：0 张 NA 仍续补、8 张一批串行释放、分类中停止后下轮续补、重新分类保留已有描述。
+- 类别测试：有效系统全集 + 自定义类别/规则进入清单，裸名称标签不能绕过类别说明。
+- 原生脚本 `scripts/caption-recovery-smoke.js`：在隔离模拟器 Documents 放 rack/trophy/portrait/cat/food/group.jpg 和官方模型；实际分类入 SQLite，重新创建存储客户端并读取精简相册，恢复 pending 队列、生成描述并再次读库。仅用于开发验证，不得用作正式包入口。
+- 截图照片裁出图像区域后用于诊断，不能等同于原始照片全分辨率测试；除机柜、奖杯外，回测人像、合影、猫、咖啡。尚不代表真机温升/耗电或整体准确率。

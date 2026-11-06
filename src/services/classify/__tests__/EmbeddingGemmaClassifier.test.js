@@ -89,10 +89,10 @@ test('uses the official classification query prefix for every category', async (
   expect(texts.every(text => text.startsWith('task: classification | query: '))).toBe(true);
 });
 
-test('builtin visual prototype can recover a portrait without changing score thresholds', async () => {
+test('builtin classification uses the full visual meaning without changing score thresholds', async () => {
   getCategoryList.mockReturnValue([{ id: 'single_person', zh: '单人照片', en: 'Single Person' }, { id: 'fashion', zh: '服饰穿搭', en: 'Fashion' }]);
   embed.mockImplementation(async (_path, text) => {
-    if (!text || text.includes('A photo of Single Person.')) return [0, 1];
+    if (!text || text.includes('A portrait photograph with one person as the main subject')) return [0, 1];
     if (text.includes('单人照片')) return [1, 0];
     return [0.6, 0.8];
   });

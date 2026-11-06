@@ -23,3 +23,16 @@ test('embedding persistence preserves existing image descriptions and does not s
   expect(fields.mobileNetV3Detections.embedding.similarity).toBe(0.685);
   expect(fields.mobileNetV3Detections.embedding.candidates[0].appCategory).toBe('kids');
 });
+
+test('reclassification preserves an existing caption instead of queuing an overwrite', () => {
+  const fields = embeddingRecordFields({ engine: 'embeddinggemma2' }, true, { message: '用户写的说明' });
+  expect(fields.mobileNetV3Detections.embedding.caption.state).toBe('preserved');
+  expect(fields).not.toHaveProperty('message');
+});
+
+test('builtin references always carry a visual meaning instead of a bare category label', () => {
+  const { categoryEmbeddingTexts } = require('../categorySemantics');
+  const refs = categoryEmbeddingTexts({ id: 'foods', zh: '美食记录', en: 'Food Records' });
+  expect(refs.some(text => text === 'A photo of Food Records.')).toBe(false);
+  expect(refs.every(text => text.includes('food') || text.includes('Food') && text.includes('dishes'))).toBe(true);
+});

@@ -1,7 +1,7 @@
 // Shared category meanings, not captions generated for an individual image.
 const descriptions = {
   social_activities: ['多人聚会、同事或朋友合影、会议、庆典及集体活动的照片', 'A photograph of people together at a gathering, colleagues posing for a group photo, a meeting or a celebration.'],
-  single_person: ['以一个人为主要拍摄对象的人像、自拍或个人生活照片', 'A portrait, selfie or everyday photograph with one person as the main subject.'],
+  single_person: ['人物肖像照片：以一个人的面容和身体为主体，包括自拍和个人写真', 'A portrait photograph with one person as the main subject, showing their face and body.'],
   kids: ['以真实婴儿、幼儿或儿童为主要拍摄对象的照片，记录孩子的面容、玩耍或日常生活', 'A photograph whose main subject is a real baby, toddler or child, showing children playing or in everyday life.'],
   pets: ['以猫、狗或其他宠物动物为主要拍摄对象的照片', 'A photograph of a cat, dog or another pet animal as the main subject.'],
   foods: ['展示食物、菜肴、甜点、饮料或餐桌美食的照片', 'A photograph showing food, prepared dishes, desserts, drinks or a meal on a table.'],
@@ -18,7 +18,7 @@ const descriptions = {
   fashion: ['重点展示服装搭配、鞋帽、配饰或穿搭造型的照片', 'A photograph focused on clothing outfits, shoes, hats, accessories or fashion styling.'],
   products: ['展示商品、包装或待售物品外观的产品照片', 'A product photograph showing merchandise, packaging or an item for sale.'],
   documents: ['以纸质或电子文档、表格、发票、收据、票据上的文字为主体的图片', 'An image primarily showing text in a document, form, invoice, receipt or ticket.'],
-  art: ['以绘画、雕塑、书法、手工艺术等作品为主体的图片', 'An image focused on a painting, sculpture, calligraphy, craft or other artwork.'],
+  art: ['以绘画、雕塑、书法、手工艺术、装饰艺术、奖杯或奖牌为主体的图片', 'A photograph of a painting, sculpture, calligraphy, craft, decorative artwork, trophy or award.'],
   cartoon: ['以卡通角色、漫画、表情包或插画为主要内容的图片', 'An image primarily showing cartoon characters, comics, memes or illustrations.'],
   other: ['不属于现有具体类别的其他图片内容', 'Other image content outside the available specific categories.'],
 };
@@ -40,7 +40,7 @@ export function categoryText(category, lang = 'zh') {
   return description ? `${name}: ${description}` : name;
 }
 
-// Builtin labels use both their full meaning and a concise visual prototype.
+// Every reference includes a visual meaning; bare labels can override the actual category definition.
 // User-authored rules/descriptions remain the sole reference, so a broad label cannot bypass them.
 export function categoryEmbeddingTexts(category, lang = 'zh') {
   const supplied = category.description;
@@ -49,5 +49,8 @@ export function categoryEmbeddingTexts(category, lang = 'zh') {
   if (!descriptions[category.id] || !category.en || (typeof category.rule === 'string' && category.rule.trim()) || hasDescription) {
     return [categoryText(category, lang)];
   }
-  return [categoryText(category, 'en'), `A photo of ${category.en}.`];
+  const references = [categoryText(category, 'en')];
+  // Network equipment is part of Electronics, distinct from consumer device examples.
+  if (category.id === 'electronics') references.push('Electronics: A photograph focused on a network equipment cabinet containing servers, switches, routers and cables.');
+  return references;
 }

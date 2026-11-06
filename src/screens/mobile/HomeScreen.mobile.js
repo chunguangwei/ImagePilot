@@ -1,3 +1,5 @@
+import { pendingCaptions } from '../../services/classify/captionQueue';
+import { readActiveTier } from '../../services/classify/classifyByTier';
 /**
  * ImagePilot - 移动端首页
  * 
@@ -1255,9 +1257,20 @@ const HomeScreen = ({ navigation }) => {
     // 从缓存获取数量：指定目录只数该目录；否则待分类全量（图片 NA + 视频 NA_video）
     const cache = GlobalImageCache.getCache();
     const categoryCounts = cache.categoryCounts || {};
-    const naCount = categoryId
+    let naCount = categoryId
       ? (categoryCounts[categoryId] || 0)
       : (categoryCounts['NA'] || 0) + (categoryCounts['NA_video'] || 0);
+    // Completed classifications can still have durable caption work after a stop/restart.
+    if (!categoryId || categoryId === 'NA' || categoryId === 'NA_video') {
+      const settings = await UnifiedDataService.readSettings();
+      if (settings.embeddingCaption?.enabled && (await readActiveTier()) === 'embeddinggemma2') {
+        const pending = pendingCaptions(await UnifiedDataService.readAllImages()).length;
+        if (pending) {
+          naCount += pending;
+          categoryId = null; // resume pending captions and remaining NA records together
+        }
+      }
+    }
     if (naCount === 0) {
       Alert.alert(t('common.tip'), t('home.aiClassifyEmptyCategory', { defaultValue: '该目录暂无内容可分类' }));
       return;
@@ -1393,7 +1406,11 @@ const HomeScreen = ({ navigation }) => {
       const result = await galleryScannerService.aiImageClassifyByContent(new Date(), imagesToClassify, { forceLocal });
 
       logger.debug('✅ AI分类完成');
-      setGlobalMessage(t('home.aiClassificationComplete'));
+      setGlobalMessage(result?.stopped
+        ? t('home.aiClassificationStopped')
+        : result?.captionsFailed > 0
+          ? t('home.aiCaptionIncomplete', { count: result.captionsFailed })
+          : t('home.aiClassificationComplete'));
 
       // 分类完成后，清除防抖定时器并立即刷新数据（避免与进度回调中的刷新重复）
       if (loadDataDebounceTimerRef.current) {

@@ -3,7 +3,7 @@ jest.mock('react-native-fs', () => ({}));
 jest.mock('react-native-image-resizer', () => ({}));
 jest.mock('../../../i18n', () => ({ language: 'zh' }));
 jest.mock('../../ConfigService', () => ({
-  getAllCategoriesWithUI: () => [{ id: 'kids', chinese: '儿童', english: 'Kids', description: { zh: '真实儿童为主体', en: 'A real child as the subject' } }],
+  getAllCategoriesWithUI: jest.fn(() => [{ id: 'kids', chinese: '儿童', english: 'Kids', description: { zh: '真实儿童为主体', en: 'A real child as the subject' } }]),
   getCustomCategoryRules: () => ({ custom: '同事在会议现场合影' }),
   getCustomCategoryNames: () => ({ custom: '工作活动' }),
 }));
@@ -24,4 +24,16 @@ test('E2B keeps its description/category output contract with shared meanings', 
   expect(prompt).toContain('colleagues posing for a group photo');
   expect(prompt).toContain('desc: 2-3 detailed');
   expect(prompt).toContain('cat: output ONE category');
+});
+
+
+test('every enabled builtin plus custom category is included; pending buckets and deleted builtins are excluded', () => {
+  const Config = require('../../ConfigService');
+  const settings = require('../../../../public/initialSettings.json');
+  const enabled = Object.entries(settings.categoryNameMap).filter(([id]) => id !== 'kids');
+  Config.getAllCategoriesWithUI.mockReturnValue(enabled.map(([id, names]) => ({ id, ...names })));
+  const cats = getCategoryList();
+  const expected = enabled.map(([id]) => id).filter(id => !['NA', 'NA_video'].includes(id));
+  expect(cats.map(c => c.id).sort()).toEqual([...expected, 'custom'].sort());
+  expect(cats.find(c => c.id === 'custom').rule).toBe('同事在会议现场合影');
 });
