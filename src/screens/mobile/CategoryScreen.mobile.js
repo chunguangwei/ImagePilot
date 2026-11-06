@@ -1808,7 +1808,7 @@ const CategoryScreen = ({ route, navigation }) => {
       <View style={{flex:1}} {...rangeSelection.containerProps}>
       <FlatList
         {...rangeSelection.listProps}
-        extraData={{selectionMode,selectedCount}}
+        extraData={{selectionMode,selectedCount,revision:rangeSelection.revision}}
         ref={flatListRef}
         data={Object.keys(groupedImages)}
         keyExtractor={(dateKey) => dateKey}

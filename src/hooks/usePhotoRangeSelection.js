@@ -8,6 +8,7 @@ export default function usePhotoRangeSelection({ids,isSelected,setSelected,onCha
   const viewport=useRef(null),bounds=useRef(null),scroll=useRef({offset:0,height:0,content:0});
   const pointer=useRef(null),timer=useRef(null),suppress=useRef(0),epoch=useRef(0);
   const [active,setActive]=useState(false);
+  const [revision,setRevision]=useState(0);
   const measure=()=>{
     const token=epoch.current;
     viewport.current?.measureInWindow((x,y,width,height)=>{if(token===epoch.current)bounds.current={x,y,width,height};});
@@ -21,9 +22,10 @@ export default function usePhotoRangeSelection({ids,isSelected,setSelected,onCha
     const selected=rangeSelection(g.ids,g.initial,g.anchor,end,g.selecting);
     current.forEach(id=>{if(has(id)!==selected.has(id))set(id,selected.has(id));});
     change(current.filter(id=>selected.has(id)).length);
+    setRevision(value=>value+1);
   };
   const hit=()=>{
-    const p=pointer.current,b=bounds.current;if(!p||!b)return;
+    const p=pointer.current,b=bounds.current;if(!gesture.current?.moved||!p||!b)return;
     const y=Math.max(b.y+2,Math.min(p.y,b.y+b.height-2));
     for(const [id,r] of rects.current){
       if(r.width>0&&r.height>0&&p.x>=r.x&&p.x<=r.x+r.width&&y>=r.y&&y<=r.y+r.height){apply(id);break;}
@@ -38,13 +40,14 @@ export default function usePhotoRangeSelection({ids,isSelected,setSelected,onCha
   const start=(id,event)=>{
     stop();const api=latest.current;
     const initial=new Set(api.ids.filter(api.isSelected));
-    gesture.current={ids:[...api.ids],initial,anchor:id,selecting:!initial.has(id),end:null};
+    gesture.current={ids:[...api.ids],initial,anchor:id,selecting:!initial.has(id),end:null,moved:false};
     const e=event?.nativeEvent;if(e)pointer.current={x:e.pageX,y:e.pageY};
+    gesture.current.origin=pointer.current;
     setActive(true);measure();apply(id);
     timer.current=setInterval(()=>{
       if(!gesture.current)return;
       const b=bounds.current,p=pointer.current,s=scroll.current;
-      if(b&&p){
+      if(gesture.current.moved&&b&&p){
         const direction=p.y<b.y+48?-1:p.y>b.y+b.height-48?1:0;
         const next=Math.max(0,Math.min(Math.max(0,s.content-s.height),s.offset+direction*24));
         if(next!==s.offset){listRef.current?.scrollToOffset({offset:next,animated:false});}
@@ -52,11 +55,16 @@ export default function usePhotoRangeSelection({ids,isSelected,setSelected,onCha
       measure();hit();
     },80);
   };
-  return {active,start,reset,stop,shouldIgnorePress:()=>!!gesture.current||Date.now()<suppress.current,
+  return {active,revision,start,reset,stop,shouldIgnorePress:()=>!!gesture.current||Date.now()<suppress.current,
     cellRef:id=>node=>{if(node)nodes.current.set(id,node);else{nodes.current.delete(id);rects.current.delete(id);}},
     containerProps:{ref:viewport,onLayout:measure,
       onMoveShouldSetResponderCapture:()=>!!gesture.current,
-      onResponderMove:e=>{pointer.current={x:e.nativeEvent.pageX,y:e.nativeEvent.pageY};hit();},
+      onResponderMove:e=>{
+        pointer.current={x:e.nativeEvent.pageX,y:e.nativeEvent.pageY};
+        const g=gesture.current,p=pointer.current;
+        if(g&&(!g.origin||Math.hypot(p.x-g.origin.x,p.y-g.origin.y)>=8))g.moved=true;
+        hit();
+      },
       onResponderRelease:stop,onResponderTerminate:stop,onResponderTerminationRequest:()=>false,
       onTouchEnd:stop,onTouchCancel:stop},
     listProps:{scrollEnabled:!active,scrollEventThrottle:16,
