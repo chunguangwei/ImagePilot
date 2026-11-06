@@ -138,3 +138,14 @@ test('a single overly broad prototype cannot override the category consensus',as
  const r=await classifyWithEmbeddingGemma('photo','model');
  expect(r.topPrediction.appCategory).toBe('pets');
 });
+
+test('diagnostics retain all actually encoded references without photo or model paths',async()=>{
+ const r=await classifyWithEmbeddingGemma('private/photo.jpg','private/model');
+ expect(r.diagnostics.categories).toHaveLength(cats.length);
+ expect(r.diagnostics.categories.every(c=>c.references.length===1)).toBe(true);
+ expect(r.diagnostics.categories.flatMap(c=>c.references.map(x=>x.text)).sort()).toEqual(embed.mock.calls.filter(c=>c[1]).map(c=>c[1]).sort());
+ expect(JSON.stringify(r.diagnostics)).not.toContain('private/');
+ expect(embed).toHaveBeenCalledTimes(3);
+ const {embeddingRecordFields}=require('../embeddingRecordFields');
+ expect(embeddingRecordFields(r).mobileNetV3Detections.embedding.diagnostics).toEqual(r.diagnostics);
+});

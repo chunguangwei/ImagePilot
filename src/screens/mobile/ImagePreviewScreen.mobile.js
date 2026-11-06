@@ -62,6 +62,7 @@ import { presetIcon, ACTION_ICONS } from '../../ui/ios/presetIcons';
 import { SafeAreaView, Alert } from '../../adapters/WebAdapters';
 import Toast from '../../components/shared/Toast';
 import UnifiedDataService from '../../services/UnifiedDataService';
+import { EMBEDDING_SCORING_VERSION } from '../../services/classify/EmbeddingGemmaClassifier';
 import WeChatAuthService from '../../services/WeChatAuthService';
 import configService from '../../services/ConfigService';
 import cityLocationService from '../../services/CityLocationService';
@@ -1611,7 +1612,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
               <View style={styles.detectionSection}>
                 <Text style={styles.detectionTitle}>EmbeddingGemma 2 · {t('imagePreview.semanticMatch')}</Text>
                 <Text style={styles.detectionText}>{t('imagePreview.embeddingCaptionHint')}</Text>
-                {!result.scoringVersion && <Text style={styles.detectionText}>{t('imagePreview.embeddingLegacyResult')}</Text>}
+                {result.scoringVersion !== EMBEDDING_SCORING_VERSION && <Text style={styles.detectionText}>{t('imagePreview.embeddingLegacyResult')}</Text>}
                 {result.caption && result.caption.state !== 'disabled' && <Text style={styles.detectionText}>
                   {t(`imagePreview.captionState_${result.caption.state}`)}
                   {result.caption.stage ? ` · ${t(`imagePreview.captionStage_${result.caption.stage}`)}` : ''}
@@ -1621,7 +1622,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   {t(`imagePreview.classification_${result.classification.state === 'complete' ? result.classification.mode : result.classification.state}`)}
                   {result.classification.error ? `: ${result.classification.error}` : ''}
                 </Text>}
-                {!result.accepted && <Text style={styles.detectionText}>{t('imagePreview.embeddingUncertain')}</Text>}
+                {!result.accepted && <Text style={styles.detectionText}>{t(['prototype-disagreement', 'weak-prototype-support'].includes(result.rejectionReason) ? 'imagePreview.embeddingEvidenceConflict' : 'imagePreview.embeddingUncertain')}</Text>}
                 <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: showModelDetails }} onPress={() => setShowModelDetails(v => !v)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: cTheme.accent, fontSize: 15 }}>{t(showModelDetails ? 'imagePreview.hideModelDetails' : 'imagePreview.modelDetails')}</Text></TouchableOpacity>
                 {showModelDetails && <>
                 {result.categoryDescription ? (
@@ -1633,6 +1634,19 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   </Text>
                 ))}
                 <Text style={styles.detectionText}>{t('imagePreview.similarityNotProbability')}</Text>
+                {result.diagnostics && <>
+                  <Text style={styles.detectionText}>{t('imagePreview.embeddingDiagnosticsHint')}</Text>
+                  <TouchableOpacity accessibilityRole="button" style={{ minHeight: 48, justifyContent: 'center' }} onPress={async () => {
+                    try {
+                      await Share.share({ title: t('imagePreview.embeddingDiagnostics'), message: JSON.stringify({
+                        model: result.model, scoringVersion: result.scoringVersion, accepted: result.accepted,
+                        rejectionReason: result.rejectionReason, minimumMargin: result.minimumMargin,
+                        ...result.diagnostics,
+                      }, null, 2) });
+                    } catch (error) { Alert.alert(t('common.tip'), String(error?.message || error)); }
+                  }}><Text style={{ color: cTheme.accent, fontSize: 15 }}>{t('imagePreview.embeddingDiagnostics')}</Text></TouchableOpacity>
+                </>}
+
                 </>}
               </View>
             );

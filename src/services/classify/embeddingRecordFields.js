@@ -12,6 +12,7 @@ export function embeddingRecordFields(result, captionEnabled = false, image = {}
         margin: result.margin,
         minimumMargin: result.minimumMargin,
         scoringVersion: result.scoringVersion,
+        diagnostics: result.diagnostics,
         rejectionReason: result.rejectionReason,
         categoryDescription: result.categoryDescription || '',
         candidates: (result.predictions || []).map(({ appCategory, similarity }) => ({ appCategory, similarity })),

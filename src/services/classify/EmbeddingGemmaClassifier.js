@@ -1,3 +1,5 @@
+import { BUILD_VERSION } from '../../config/BuildInfo';
+import { rankEmbeddingEvidence, embeddingDecision } from './embeddingRanking';
 import { NativeModules, Platform } from 'react-native';
 import { categoryDescription, categoryEmbeddingTexts } from './categorySemantics';
 import { getCategoryList, currentLang, prepareImageFile, cleanupTmp } from './vlmShared';
@@ -7,7 +9,7 @@ let pending = Promise.resolve();
 let categoryCache = null;
 // Conservative ambiguity band, not a calibrated accuracy/probability threshold.
 export const EMBEDDING_MIN_MARGIN = 0.005;
-export const EMBEDDING_SCORING_VERSION = 'prototype-centroid-v1';
+export const EMBEDDING_SCORING_VERSION = 'prototype-consensus-v2';
 function serial(work) {
   const result = pending.then(work);
   pending = result.catch(() => {});
@@ -43,22 +45,19 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
       imagePath = await prepareImageFile(imageUri);
       if (!categoryCache || categoryCache.key !== key) {
         const vectors = [];
+        const prototypes = [];
         for (const references of texts) {
           const encoded = [];
           for (const text of references) encoded.push(normalize(await native.embed(modelPath, text, '')));
+          prototypes.push(encoded);
           // Equal-weight normalized prototypes avoid one generic reference winning by itself.
           vectors.push(normalize(encoded[0].map((_, index) => encoded.reduce((sum, reference) => sum + reference[index], 0))));
         }
         // Publish only a fully encoded cache; failed encodes must be retried.
-        categoryCache = { key, vectors };
+        categoryCache = { key, vectors, prototypes };
       }
       const vector = normalize(await native.embed(modelPath, '', imagePath));
-      const rank = vector => categories.map((category, index) => {
-        const reference = categoryCache.vectors[index];
-        if (reference.length !== vector.length) throw new Error('Embedding dimension mismatch');
-        const similarity = Math.max(-1, Math.min(1, vector.reduce((sum, v, i) => sum + v * reference[i], 0)));
-        return { name: category.id, appCategory: category.id, similarity };
-      }).sort((a, b) => b.similarity - a.similarity);
+      const rank = vector => rankEmbeddingEvidence(vector, categories, categoryCache.vectors, categoryCache.prototypes);
       const imagePredictions = rank(vector);
       let predictions = imagePredictions;
       let classificationMode = 'image';
@@ -75,8 +74,7 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
         }
       }
       const top = predictions[0];
-      const margin = predictions.length > 1 ? top.similarity - predictions[1].similarity : null;
-      const rejectionReason = top.similarity <= 0 ? 'non-positive' : margin !== null && margin < EMBEDDING_MIN_MARGIN ? 'ambiguous' : null;
+      const { margin, supportMargin, supportCategory, rejectionReason } = embeddingDecision(predictions, EMBEDDING_MIN_MARGIN);
       const accepted = rejectionReason === null;
       const selected = categories.find((c) => c.id === top.appCategory);
       return {
@@ -86,6 +84,11 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
         // This is cosine similarity, not a calibrated probability. Do not apply ImageNet's threshold.
         confidence: Math.max(0, top.similarity), similarity: top.similarity,
         classificationAccepted: accepted, margin, rejectionReason,
+        diagnostics: { appVersion: BUILD_VERSION, platform: Platform.OS, language: lang, inputMaxEdge: 768,
+          scoringVersion: EMBEDDING_SCORING_VERSION, supportMargin, supportCategory,
+          categories: predictions.map(p => ({ id: p.appCategory, similarity: p.similarity,
+            supportSimilarity: p.supportSimilarity, references: texts[categories.findIndex(c => c.id === p.appCategory)]
+              .map((text, i) => ({ text, similarity: p.referenceScores[i] })) })) },
         minimumMargin: EMBEDDING_MIN_MARGIN, scoringVersion: EMBEDDING_SCORING_VERSION,
         categoryDescription: accepted ? categoryDescription(selected, lang) : '',
         processingTime: Date.now() - started,
