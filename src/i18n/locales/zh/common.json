@@ -265,6 +265,7 @@
     "changeCategoryTimedOut": "修改结果暂未确认。已保存的结果会自动同步，请稍后查看。"
   },
   "search": {
+    "failedRetry": "搜索未完成，请重试。",
     "title": "搜索",
     "rewriteBtn": "润色",
     "placeholder": "搜索照片和视频…",

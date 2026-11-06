@@ -108,8 +108,12 @@ export default function InpaintScreen({ route, navigation }) {
   const onClear = () => setStrokes([]);
   const onRedraw = () => { setResultUri(null); setSaved(false); setComparing(false); }; // 回到涂抹（保留笔画）
 
+  const [saving, setSaving] = useState(false);
+  const saveLock = useRef(false);
   const onSave = async () => {
-    if (!resultUri || saved) return;
+    if (!resultUri || saved || saveLock.current) return;
+    saveLock.current = true;
+    setSaving(true);
     try {
       const fileName = `erased_${Date.now()}.jpg`;
       await RNFS.saveImageToGallery(resultUri, fileName); // data URL 由原生 MediaStore 落盘
@@ -117,6 +121,9 @@ export default function InpaintScreen({ route, navigation }) {
       Alert.alert(t('inpaint.savedTitle'), t('inpaint.savedToGallery'));
     } catch (e) {
       Alert.alert(t('inpaint.saveFailed'), e?.message || String(e));
+    } finally {
+      saveLock.current = false;
+      setSaving(false);
     }
   };
 
@@ -128,7 +135,7 @@ export default function InpaintScreen({ route, navigation }) {
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.headerBtn}>‹ {t('inpaint.back')}</Text></TouchableOpacity>
         <Text style={styles.title}>{t('inpaint.title')}</Text>
-        <TouchableOpacity onPress={onSave} disabled={!resultUri || saved}>
+        <TouchableOpacity onPress={onSave} disabled={!resultUri || saved || saving}>
           <Text style={[styles.headerBtn, (!resultUri || saved) && styles.disabled]}>{saved ? t('inpaint.saved') : t('inpaint.save')}</Text>
         </TouchableOpacity>
       </View>
@@ -189,7 +196,7 @@ export default function InpaintScreen({ route, navigation }) {
         </>
       ) : (
         <View style={styles.resultRow}>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={onRedraw}><Text style={styles.secondaryText}>{t('inpaint.continueDraw')}</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryBtn} disabled={saving} onPress={onRedraw}><Text style={styles.secondaryText}>{t('inpaint.continueDraw')}</Text></TouchableOpacity>
           <TouchableOpacity
             style={styles.compareBtn}
             activeOpacity={1}
@@ -197,7 +204,7 @@ export default function InpaintScreen({ route, navigation }) {
             onPressOut={() => setComparing(false)}>
             <Text style={styles.compareText}>{t('inpaint.compareHold')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.primaryBtnSmall, saved && styles.primaryBtnDisabled]} onPress={onSave} disabled={saved}>
+          <TouchableOpacity style={[styles.primaryBtnSmall, saved && styles.primaryBtnDisabled]} onPress={onSave} disabled={saved || saving}>
             <Text style={styles.primaryBtnText}>{saved ? t('inpaint.saved') : t('inpaint.saveToGallery')}</Text>
           </TouchableOpacity>
         </View>

@@ -1,7 +1,13 @@
 # ImagePilot - AI 智能照片分类管理工具
 
-> **1.5.92 最终方案：** 线上只提供 EmbeddingGemma 2（快速分类、不生成描述）和 Gemma4-E2B（多模态分类与描述）。LFM/SmolVLM 已下线，旧选择迁移至 EmbeddingGemma，缺少文件需主动下载；已有分类与描述保留。下文旧模型试验属于历史记录，不是当前可用功能。
+> **当前 1.5.93：** 线上只提供 EmbeddingGemma 2（快速分类、不生成描述）和 Gemma4-E2B（多模态分类与描述）。LFM/SmolVLM 已下线，旧选择迁移至 EmbeddingGemma，缺少文件需主动下载；已有分类与描述保留。下文旧模型试验属于历史记录，不是当前可用功能。
 
+
+## 1.5.93：扫描、搜索与交互修复
+
+修复 Android 扫描事务错误、搜索请求乱序、下载取消卡住及保存重复操作。MobileCLIP 搜索依赖有独立下载入口，分类只保留 EmbeddingGemma 与 E2B；已有照片、描述和向量索引保留。iOS build22 用于真机测试。
+
+[代码与 UI 审查记录](docs/features/MobileReview1593.md) · [扫描与搜索依赖](docs/features/ScanTransactionAndSearchModelFix.md) · [机柜分类验证](docs/features/RackClassificationAndRetiredCopy.md)。以下版本章节为历史记录。
 
 ## 1.5.92：双模型分类与国内外下载
 

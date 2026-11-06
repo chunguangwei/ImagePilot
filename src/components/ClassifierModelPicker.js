@@ -34,7 +34,7 @@ export default function ClassifierModelPicker({ models, colors: c, busy = false 
       </View> : !active && button(label(m.unsupported ? 'retry' : m.downloaded ? 'use' : 'downloadUse'), m.onSelect, busy || !m.ready, false, true)}
       <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: !!expanded[m.id] }}
         onPress={() => setExpanded(prev => ({ ...prev, [m.id]: !prev[m.id] }))} style={styles.disclosure}>
-        <Text style={{ color: accent, fontSize: 14 }}>{label(expanded[m.id] ? 'hideDetails' : 'details')} {expanded[m.id] ? '⌃' : '⌄'}</Text>
+        <Text style={{ color: accent, fontSize: 14 }}>{label(expanded[m.id] ? 'hideDetails' : 'details')} {expanded[m.id] ? '⌄' : '›'}</Text>
       </TouchableOpacity>
       {expanded[m.id] && <View>
         <Text style={[styles.summary, { color: secondary }]}>{m.description}</Text>

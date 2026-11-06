@@ -265,6 +265,7 @@
     "changeCategoryTimedOut": "The change is not yet confirmed. Saved results will sync automatically; check again shortly."
   },
   "search": {
+    "failedRetry": "Search could not be completed. Please retry.",
     "title": "Search",
     "rewriteBtn": "Refine",
     "placeholder": "Search photos & videos…",

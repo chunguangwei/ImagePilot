@@ -42,3 +42,15 @@ test('a legitimate interrupted GGUF prefix remains resumable across sources',asy
  await ensureLargeModel('model.gguf',url,null,{expectedBytes:2000000});
  expect(mockFs.downloadFile.mock.calls[1][0].headers.Range).toBe('bytes=1000000-');
 });
+
+test.each(['large','small'])('%s cancellation settles even when RNFS leaves its promise pending',async kind=>{
+ const controller=new AbortController();
+ mockFs.downloadFile.mockImplementationOnce(()=>{
+  Promise.resolve().then(()=>controller.abort());
+  return {jobId:42,promise:new Promise(()=>{})};
+ });
+ const {ensureClassifierModel}=require('../classifierModelSource');
+ const run=kind==='large'?ensureLargeModel:ensureClassifierModel;
+ await expect(run('cancel.gguf',url,null,{signal:controller.signal})).rejects.toThrow('E_ABORTED');
+ expect(mockFs.stopDownload).toHaveBeenCalledWith(42);expect(mockFs.downloadFile).toHaveBeenCalledTimes(1);
+},1000);

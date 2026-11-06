@@ -67,7 +67,7 @@ export default function DuplicatesScreen({ navigation }) {
                 setDeleteProgress({ done: p.filesDeleted || 0, total: ids.length });
               });
               const failed = (result && result.filesFailed) || 0;
-              if (failed > 0) {
+              if (failed > 0 && !result?.cancelled) {
                 Alert.alert(
                   t('category.deleteComplete', { defaultValue: '删除完成' }),
                   t('category.deletePartialSuccessMessage', { deleted: (result && result.filesDeleted) || 0, failed, defaultValue: `成功 ${(result && result.filesDeleted) || 0} 张，失败 ${failed} 张` })
@@ -150,7 +150,7 @@ export default function DuplicatesScreen({ navigation }) {
     <SafeAreaView style={[styles.container, { backgroundColor: c.groupedBg || '#F2F2F7' }]}>
       {/* 头部 */}
       <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.back')} onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Icon name="arrow-back-ios" size={20} color={c.accent || '#007AFF'} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: c.label }]} numberOfLines={1}>
@@ -210,7 +210,7 @@ export default function DuplicatesScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
-  backBtn: { width: 36, paddingVertical: 2 },
+  backBtn: { width: 44, minHeight: 44, justifyContent: 'center' },
   title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyText: { marginTop: 12, fontSize: 14, textAlign: 'center', lineHeight: 20 },

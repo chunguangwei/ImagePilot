@@ -105,14 +105,21 @@ export default function DocScanScreen({ route, navigation }) {
   };
 
   const onRedo = () => { setResultUri(null); setSaved(false); setComparing(false); };
+  const [saving, setSaving] = useState(false);
+  const saveLock = useRef(false);
   const onSave = async () => {
-    if (!resultUri || saved) return;
+    if (!resultUri || saved || saveLock.current) return;
+    saveLock.current = true;
+    setSaving(true);
     try {
       await RNFS.saveImageToGallery(resultUri, `scan_${Date.now()}.jpg`);
       setSaved(true);
       Alert.alert(t('docScan.savedTitle'), t('docScan.savedToGallery'));
     } catch (e) {
       Alert.alert(t('docScan.saveFailed'), e?.message || String(e));
+    } finally {
+      saveLock.current = false;
+      setSaving(false);
     }
   };
 
@@ -136,7 +143,7 @@ export default function DocScanScreen({ route, navigation }) {
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.headerBtn}>‹ {t('docScan.back')}</Text></TouchableOpacity>
         <Text style={styles.title}>{t('docScan.title')}</Text>
-        <TouchableOpacity onPress={onSave} disabled={!resultUri || saved}>
+        <TouchableOpacity onPress={onSave} disabled={!resultUri || saved || saving}>
           <Text style={[styles.headerBtn, (!resultUri || saved) && styles.disabled]}>{saved ? t('docScan.saved') : t('docScan.save')}</Text>
         </TouchableOpacity>
       </View>
@@ -178,11 +185,11 @@ export default function DocScanScreen({ route, navigation }) {
         </TouchableOpacity>
       ) : (
         <View style={styles.resultRow}>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={onRedo}><Text style={styles.secondaryText}>{t('docScan.retryBtn')}</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryBtn} disabled={saving} onPress={onRedo}><Text style={styles.secondaryText}>{t('docScan.retryBtn')}</Text></TouchableOpacity>
           <TouchableOpacity style={styles.compareBtn} activeOpacity={1} onPressIn={() => setComparing(true)} onPressOut={() => setComparing(false)}>
             <Text style={styles.compareText}>{t('docScan.compareHold')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.primaryBtnSmall, saved && styles.primaryBtnDisabled]} onPress={onSave} disabled={saved}>
+          <TouchableOpacity style={[styles.primaryBtnSmall, saved && styles.primaryBtnDisabled]} onPress={onSave} disabled={saved || saving}>
             <Text style={styles.primaryBtnText}>{saved ? t('docScan.saved') : t('docScan.saveToGallery')}</Text>
           </TouchableOpacity>
         </View>

@@ -214,6 +214,8 @@ class GalleryScannerService {
       scanResolve = resolve;
       scanReject = reject;
     });
+    // Native startup can reject before execution reaches await scanPromise.
+    scanPromise.catch(() => {});
     this.scanResolve = scanResolve;
     this.scanReject = scanReject;
 

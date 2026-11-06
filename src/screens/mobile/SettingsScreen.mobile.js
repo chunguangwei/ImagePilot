@@ -1232,6 +1232,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
       throw e;
     } finally {
       await KeepAwakeService.deactivate(); // 下载结束/取消 → 恢复自动锁屏，省电
+      setCancellingModel(false);
       setClassifierDownloadingKey(null);
       setClassifierDownloadProgress(0);
       if (classifierAbortRef.current === controller) classifierAbortRef.current = null;
@@ -1398,6 +1399,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
       }
     } finally {
       await KeepAwakeService.deactivate(); // 恢复自动锁屏
+      setCancellingModel(false);
       setVlmDownloadingId(null);
       setVlmDownloadProgress(0);
       if (vlmAbortRef.current === controller) vlmAbortRef.current = null;
@@ -1738,10 +1740,10 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
               </Text>
               {!vecReady && <View style={styles.quickDirectoryRow}>
                 <TouchableOpacity style={styles.quickDirectoryButton}
-                  disabled={!!vlmDownloadingId || (!!classifierDownloadingKey && classifierDownloadingKey !== 'clip')}
+                  disabled={cancellingModel || !!vlmDownloadingId || (!!classifierDownloadingKey && classifierDownloadingKey !== 'clip')}
                   onPress={() => classifierDownloadingKey === 'clip' ? cancelClassifierDownload() : downloadClassifierModel('clip', { switchAfter: false }).catch(() => {})}>
                   <Text style={styles.quickDirectoryButtonText}>{classifierDownloadingKey === 'clip'
-                    ? `${t('common.cancel')} · ${Math.round(classifierDownloadProgress * 100)}%`
+                    ? `${t(cancellingModel ? 'settings.modelPicker.cancelling' : 'common.cancel')} · ${Math.round(classifierDownloadProgress * 100)}%`
                     : t('settings.vectorIndex.downloadModel', { size: getClipModel(clipModelId).sizeMB })}</Text>
                 </TouchableOpacity>
               </View>}

@@ -112,7 +112,7 @@ export default function StatsScreen({ navigation }) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.groupedBg || '#F2F2F7' }]}>
       <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.back')} onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Icon name="arrow-back-ios" size={20} color={c.accent || '#007AFF'} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: c.label }]}>{t('stats.title', { defaultValue: '相册报告' })}</Text>
@@ -206,7 +206,7 @@ export default function StatsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
-  backBtn: { width: 36 },
+  backBtn: { width: 44, minHeight: 44, justifyContent: 'center' },
   title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   card: { borderRadius: 12, padding: 14, marginBottom: 10 },

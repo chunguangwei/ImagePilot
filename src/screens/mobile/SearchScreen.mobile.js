@@ -55,6 +55,13 @@ export default function SearchScreen({ navigation, route }) {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [pickerVisible, setPickerVisible] = useState(false);
   const debounceRef = useRef(null);
+  const searchRequestRef = useRef(0);
+  const latestQueryRef = useRef('');
+  const [searchError, setSearchError] = useState('');
+  useEffect(() => () => {
+    searchRequestRef.current += 1;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+  }, []);
 
   const exitSelMode = () => { setSelMode(false); setSelectedIds(new Set()); setPickerVisible(false); };
   const toggleSel = (id) => {
@@ -90,13 +97,15 @@ export default function SearchScreen({ navigation, route }) {
 
   /** ✨改写：云端 LLM 把口语查询规整成画面描述，回填并立即搜索 */
   const onRewriteQuery = async () => {
+    const originalQuery = query;
     const q = query.trim();
     if (!q || rewriting) return;
     setRewriting(true);
     try {
       const { rewriteSearchQuery } = require('../../services/llm/queryRewrite');
       const better = await rewriteSearchQuery(q, t); // 传 t：端侧+云端都可用时弹框文案用
-      if (better && better !== q) { setQuery(better); runSearch(better, 'semantic'); }
+      if (latestQueryRef.current !== originalQuery) return;
+      if (better && better !== q) { latestQueryRef.current = better; setQuery(better); runSearch(better, 'semantic'); }
     } catch (e) {
       if (String(e?.message || '').includes('E_CANCEL')) { /* 用户取消选择，静默 */ }
       else { Alert.alert(t('common.tip', { defaultValue: '提示' }), e?.message || t('search.rewriteFailed', { defaultValue: '改写失败' })); }
@@ -107,6 +116,10 @@ export default function SearchScreen({ navigation, route }) {
 
   /** 用指定引擎给目标图打分类+描述，然后做语义比对 */
   const runAISearch = async (pickedUri, forceLocal) => {
+    exitSelMode();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const requestId = ++searchRequestRef.current;
+    setSearchError('');
     setAiTarget({ uri: pickedUri });
     setSearching(true);
     setSearched(false);
@@ -118,7 +131,7 @@ export default function SearchScreen({ navigation, route }) {
         const ImageClassifierService = require('../../services/ImageClassifierService').default;
         const classifier = new ImageClassifierService();
         const tier = await readActiveTier();
-        if (!['embeddinggemma2', 'lfm'].includes(tier)) await classifier.initialize();
+        if (['basic', 'scene', 'clip'].includes(tier)) await classifier.initialize();
         const r = await classifyImageByTier(pickedUri, tier, { imageClassifier: classifier });
         cat = r?.topPrediction?.appCategory || null;
         desc = r?.vlmLabel || '';
@@ -144,6 +157,7 @@ export default function SearchScreen({ navigation, route }) {
           desc = item.data.description || '';
         }
       }
+      if (requestId !== searchRequestRef.current) return;
       // 把识别结果亮给用户（搜不到时能看出是识别错了还是库里确实没有）
       let catName = '';
       try {
@@ -185,15 +199,19 @@ export default function SearchScreen({ navigation, route }) {
         else { byId.set(s.id, s); }
       }
       const merged = Array.from(byId.values()).sort((a, b) => b.aiScore - a.aiScore || ((b.takenAt || 0) - (a.takenAt || 0)));
+      if (requestId !== searchRequestRef.current) return;
       setResults(merged.slice(0, 80));
       setSearched(true);
     } catch (e) {
+      if (requestId !== searchRequestRef.current) return;
       logger.warn('AI 搜图失败:', e?.message || e);
       Alert.alert(t('common.tip', { defaultValue: '提示' }), e?.message || 'AI 搜图失败');
       setAiTarget(null);
     } finally {
-      setAiPhase('');
-      setSearching(false);
+      if (requestId === searchRequestRef.current) {
+        setAiPhase('');
+        setSearching(false);
+      }
     }
   };
 
@@ -290,27 +308,39 @@ export default function SearchScreen({ navigation, route }) {
   const [searchMode, setSearchMode] = useState('keyword');
 
   const runSearch = useCallback(async (text, mode = searchMode) => {
+    exitSelMode();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const request = ++searchRequestRef.current;
     const q = String(text || '').trim();
-    if (!q) { setResults([]); setUntaggedCount(0); setSearched(false); return; }
+    setSearchError('');
+    if (!q) { setResults([]); setUntaggedCount(0); setSearched(false); setSearching(false); return; }
     setSearching(true);
     try {
       const r = mode === 'semantic'
         ? await UnifiedDataService.searchBySemanticText(q)
         : await UnifiedDataService.searchImages(q);
+      if (request !== searchRequestRef.current) return;
       setResults(r.results || []);
       setUntaggedCount(r.untaggedCount || 0);
       setSearched(true);
     } catch (e) {
+      if (request !== searchRequestRef.current) return;
       logger.warn('搜索失败:', e?.message || e);
-      setResults([]);
+      setResults([]); setSearched(true);
+      setSearchError(t('search.failedRetry'));
     } finally {
-      setSearching(false);
+      if (request === searchRequestRef.current) setSearching(false);
     }
-  }, [searchMode]);
+  }, [searchMode, t]);
 
   const onChangeQuery = (text) => {
-    setQuery(text);
+    exitSelMode();
+    searchRequestRef.current += 1;
+    latestQueryRef.current = text;
+    setQuery(text); setSearchError('');
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!text.trim()) { runSearch(''); return; }
+    setSearching(true);
     debounceRef.current = setTimeout(() => runSearch(text), 300);
   };
 
@@ -363,7 +393,7 @@ export default function SearchScreen({ navigation, route }) {
     <SafeAreaView style={[styles.container, { backgroundColor: c.groupedBg || '#F2F2F7' }]}>
       {/* 顶部：返回 + 搜索框 */}
       <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.back')} onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Icon name="arrow-back-ios" size={20} color={c.accent || '#007AFF'} />
         </TouchableOpacity>
         {similarTo ? (
@@ -383,7 +413,7 @@ export default function SearchScreen({ navigation, route }) {
             <Text style={[styles.similarTitle, { color: c.label }]} numberOfLines={1}>
               {t('search.aiSearchTitle', { defaultValue: 'AI 搜图' })}
             </Text>
-            <TouchableOpacity onPress={() => { setAiTarget(null); setResults([]); setSearched(false); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.close')} onPress={() => { ++searchRequestRef.current; exitSelMode(); setAiTarget(null); setAiPhase(''); setSearching(false); setResults([]); setSearched(false); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Icon name="close" size={18} color={c.tertiaryLabel || '#9aa0a6'} />
             </TouchableOpacity>
           </View>
@@ -413,7 +443,7 @@ export default function SearchScreen({ navigation, route }) {
         )}
         {/* AI 搜图入口：选一张图 → AI 识别 → 按分类+描述语义找相似（文字搜索模式下显示） */}
         {!similarTo && !aiTarget && (
-          <TouchableOpacity onPress={onPressAISearch} style={styles.aiSearchBtn} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+          <TouchableOpacity disabled={searching || rewriting} accessibilityRole="button" accessibilityLabel={t('search.aiSearch', {defaultValue:'AI 搜图'})} onPress={onPressAISearch} style={styles.aiSearchBtn} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
             <Icon name="image-search" size={22} color={c.accent || '#007AFF'} />
           </TouchableOpacity>
         )}
@@ -513,6 +543,12 @@ export default function SearchScreen({ navigation, route }) {
             </Text>
           ) : null}
         </View>
+      ) : searchError ? (
+        <View style={styles.center} accessibilityLiveRegion="polite">
+          <Text style={[styles.emptyText, {color:c.label}]}>{searchError}</Text>
+          <TouchableOpacity accessibilityRole="button" style={[styles.modeChip,{minHeight:48,justifyContent:'center',marginTop:12}]}
+            onPress={() => runSearch(query)}><Text style={{color:c.accent}}>{t('common.retry')}</Text></TouchableOpacity>
+        </View>
       ) : aiTarget && results.length === 0 && searched ? (
         <View style={styles.center}>
           <Icon name="image-search" size={48} color={c.tertiaryLabel || '#C7C7CC'} />
@@ -572,7 +608,7 @@ export default function SearchScreen({ navigation, route }) {
                   <TouchableOpacity
                     key={ex}
                     style={[styles.exampleChip, { backgroundColor: c.card }]}
-                    onPress={() => { setQuery(ex); runSearch(ex); }}
+                    onPress={() => { latestQueryRef.current = ex; setQuery(ex); runSearch(ex); }}
                   >
                     <Text style={[styles.exampleChipText, { color: c.accent || '#007AFF' }]}>{ex}</Text>
                   </TouchableOpacity>
@@ -593,7 +629,7 @@ export default function SearchScreen({ navigation, route }) {
                   <TouchableOpacity
                     key={ex}
                     style={[styles.exampleChip, { backgroundColor: c.card }]}
-                    onPress={() => { setQuery(ex); runSearch(ex); }}
+                    onPress={() => { latestQueryRef.current = ex; setQuery(ex); runSearch(ex); }}
                   >
                     <Text style={[styles.exampleChipText, { color: c.accent || '#007AFF' }]}>{ex}</Text>
                   </TouchableOpacity>
@@ -642,7 +678,7 @@ export default function SearchScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
-  backBtn: { paddingRight: 8, paddingVertical: 6 },
+  backBtn: { minWidth: 44, minHeight: 44, justifyContent: 'center' },
   searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 10, height: 38 },
   searchInput: { flex: 1, marginLeft: 6, fontSize: 16, padding: 0 },
   // 以图搜图模式头部

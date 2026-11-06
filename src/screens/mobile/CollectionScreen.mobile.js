@@ -88,7 +88,7 @@ export default function CollectionScreen({ navigation, route }) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.groupedBg || '#F2F2F7' }]}>
       <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.back')} onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Icon name="arrow-back-ios" size={20} color={c.accent || '#007AFF'} />
         </TouchableOpacity>
         <View style={styles.titleWrap}>
@@ -152,7 +152,7 @@ export default function CollectionScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
-  backBtn: { width: 36, paddingVertical: 2 },
+  backBtn: { width: 44, minHeight: 44, justifyContent: 'center' },
   titleWrap: { flex: 1, alignItems: 'center' },
   title: { fontSize: 16, fontWeight: '600' },
   subtitle: { fontSize: 11.5, marginTop: 1 },

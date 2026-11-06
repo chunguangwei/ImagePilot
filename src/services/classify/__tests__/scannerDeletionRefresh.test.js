@@ -30,3 +30,12 @@ test('deletion-only scan also refreshes when no progress callback is supplied',a
  await scanner.startScan({});
  expect(data.imageCache.refreshCache).toHaveBeenCalledTimes(1);
 });
+
+test('native startup failure is reported once without an unobserved scan rejection',async()=>{
+ const native=require('react-native').NativeModules.GalleryScanModule;
+ native.startBasicImageScan.mockRejectedValueOnce(new Error('Database cleanup failed: locked'));
+ const scanner=new Scanner();scanner.setupEventListeners=jest.fn();scanner._cleanupScanState=jest.fn();
+ await expect(scanner.startScan({})).rejects.toThrow('Database cleanup failed');
+ await new Promise(resolve=>setImmediate(resolve));
+ expect(scanner.scanReject).toBeNull();expect(scanner._cleanupScanState).toHaveBeenCalled();
+});

@@ -10,6 +10,7 @@
 import { logger } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../UnifiedDataService';
 import { Platform } from 'react-native';
+import { awaitDownload } from '../downloads/awaitDownload';
 
 // 注意：adapters 的 RNFS 是裁剪过的子集，没有 downloadFile/moveFile 等；
 // 这里直接用原生 react-native-fs（与 UpdateService 一致），否则会 "undefined is not a function"。
@@ -97,24 +98,8 @@ async function ensureModelFromUrl(filename, url, onProgress, opts = {}) {
     },
   });
 
-  // AbortSignal → RNFS.stopDownload(jobId)；abort 后 promise 会以 statusCode 抛错/或正常返回部分文件，
-  // 统一交由 cleanup 分支识别并抛 E_ABORTED
-  let aborted = false;
-  const onAbort = () => {
-    aborted = true;
-    try { RNFS.stopDownload(jobId); } catch (_) {}
-  };
-  if (signal) signal.addEventListener('abort', onAbort);
-
   try {
-    const res = await promise.catch((e) => {
-      if (aborted) return null;
-      throw e;
-    });
-    if (aborted) {
-      try { if (await RNFS.exists(tmp)) await RNFS.unlink(tmp); } catch (_) {}
-      throw new Error('E_ABORTED 下载已取消');
-    }
+    const res = await awaitDownload({ jobId, promise }, signal, id => RNFS.stopDownload(id));
     if (res && res.statusCode && res.statusCode >= 400) {
       try { await RNFS.unlink(tmp); } catch (_) {}
       throw new Error('模型下载失败 HTTP ' + res.statusCode);
@@ -127,10 +112,11 @@ async function ensureModelFromUrl(filename, url, onProgress, opts = {}) {
     await RNFS.moveFile(tmp, dest);
     logger.debug('✅ 模型下载完成', { filename, size: st.size });
     return asUri(dest);
-  } finally {
-    if (signal) {
-      try { signal.removeEventListener('abort', onAbort); } catch (_) {}
+  } catch (error) {
+    if (signal?.aborted) {
+      try { if (await RNFS.exists(tmp)) await RNFS.unlink(tmp); } catch (_) {}
     }
+    throw error;
   }
 }
 

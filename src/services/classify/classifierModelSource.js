@@ -14,6 +14,7 @@
 
 import { logger } from '../../adapters/WebAdapters';
 import { Platform } from 'react-native';
+import { awaitDownload } from '../downloads/awaitDownload';
 
 // eslint-disable-next-line global-require
 const RNFS = require('react-native-fs');
@@ -82,15 +83,8 @@ async function downloadUrlToFile(url, tmp, dest, filename, onProgress, signal) {
       else if (r.bytesWritten > 0) onProgress(0.01);
     },
   });
-  let aborted = false;
-  const onAbort = () => { aborted = true; try { RNFS.stopDownload(jobId); } catch (_) {} };
-  if (signal) signal.addEventListener('abort', onAbort);
   try {
-    const res = await promise.catch((e) => { if (aborted) return null; throw e; });
-    if (aborted) {
-      try { if (await RNFS.exists(tmp)) await RNFS.unlink(tmp); } catch (_) {}
-      throw new Error('E_ABORTED 下载已取消');
-    }
+    const res = await awaitDownload({ jobId, promise }, signal, id => RNFS.stopDownload(id));
     if (res && res.statusCode && res.statusCode >= 400) {
       try { await RNFS.unlink(tmp); } catch (_) {}
       throw new Error(`E_DOWNLOAD 分类模型下载失败 HTTP ${res.statusCode}`);
@@ -102,8 +96,11 @@ async function downloadUrlToFile(url, tmp, dest, filename, onProgress, signal) {
     }
     await RNFS.moveFile(tmp, dest);
     logger.debug(`[classifierModelSource] 下载完成: ${filename}, size=${st.size}`);
-  } finally {
-    if (signal) { try { signal.removeEventListener('abort', onAbort); } catch (_) {} }
+  } catch (error) {
+    if (signal?.aborted) {
+      try { if (await RNFS.exists(tmp)) await RNFS.unlink(tmp); } catch (_) {}
+    }
+    throw error;
   }
 }
 
@@ -293,13 +290,8 @@ async function ensureLargeModelFromUrl(filename, url, onProgress, opts = {}) {
   if (resuming) dlOpts.headers = { Range: `bytes=${existing}-` };
   const { jobId, promise } = RNFS.downloadFile(dlOpts);
 
-  let aborted = false;
-  const onAbort = () => { aborted = true; try { RNFS.stopDownload(jobId); } catch (_) {} };
-  if (signal) signal.addEventListener('abort', onAbort);
-
   try {
-    const res = await promise.catch((e) => { if (aborted) return null; throw e; });
-    if (aborted) throw new Error('E_ABORTED 下载已取消');
+    const res = await awaitDownload({ jobId, promise }, signal, id => RNFS.stopDownload(id));
     const code = res && res.statusCode;
     if (code && code >= 400) {
       // 416（Range 越界，通常是已下完）容错：若 .part 达标就转正
@@ -344,8 +336,6 @@ async function ensureLargeModelFromUrl(filename, url, onProgress, opts = {}) {
     // 续传失败保留 .part 供下次继续；清理半成品 .tail
     if (resuming) { try { if (await RNFS.exists(tail)) await RNFS.unlink(tail); } catch (_) {} }
     throw e;
-  } finally {
-    if (signal) { try { signal.removeEventListener('abort', onAbort); } catch (_) {} }
   }
 }
 

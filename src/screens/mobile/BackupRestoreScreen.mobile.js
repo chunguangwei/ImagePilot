@@ -156,7 +156,7 @@ export default function BackupRestoreScreen({ navigation }) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.groupedBg }]}>
       <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.separator, borderBottomWidth: 0.5 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.back')} onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: c.label }]}>{t('backupRestore.title')}</Text>
@@ -233,7 +233,7 @@ export default function BackupRestoreScreen({ navigation }) {
 const createStyles = (c) => StyleSheet.create({
   container: { flex: 1 },
   header: { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
-  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  backButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   backIcon: { fontSize: 32, color: c.accent, fontWeight: 'bold' },
   headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', textAlign: 'center' },
   headerRight: { width: 40 },
