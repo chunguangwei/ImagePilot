@@ -9,7 +9,7 @@ let pending = Promise.resolve();
 let categoryCache = null;
 // Conservative ambiguity band, not a calibrated accuracy/probability threshold.
 export const EMBEDDING_MIN_MARGIN = 0.005;
-export const EMBEDDING_SCORING_VERSION = 'prototype-consensus-v2';
+export const EMBEDDING_SCORING_VERSION = 'prototype-consensus-v3';
 function serial(work) {
   const result = pending.then(work);
   pending = result.catch(() => {});
@@ -74,7 +74,7 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
         }
       }
       const top = predictions[0];
-      const { margin, supportMargin, supportCategory, rejectionReason } = embeddingDecision(predictions, EMBEDDING_MIN_MARGIN);
+      const { margin, supportMargin, supportCategory, strongestCategory, strongestMargin, rejectionReason } = embeddingDecision(predictions, EMBEDDING_MIN_MARGIN);
       const accepted = rejectionReason === null;
       const selected = categories.find((c) => c.id === top.appCategory);
       return {
@@ -85,7 +85,7 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
         confidence: Math.max(0, top.similarity), similarity: top.similarity,
         classificationAccepted: accepted, margin, rejectionReason,
         diagnostics: { appVersion: BUILD_VERSION, platform: Platform.OS, language: lang, inputMaxEdge: 768,
-          scoringVersion: EMBEDDING_SCORING_VERSION, supportMargin, supportCategory,
+          scoringVersion: EMBEDDING_SCORING_VERSION, supportMargin, supportCategory, strongestCategory, strongestMargin,
           categories: predictions.map(p => ({ id: p.appCategory, similarity: p.similarity,
             supportSimilarity: p.supportSimilarity, references: texts[categories.findIndex(c => c.id === p.appCategory)]
               .map((text, i) => ({ text, similarity: p.referenceScores[i] })) })) },

@@ -136,7 +136,9 @@ test('a single overly broad prototype cannot override the category consensus',as
  let foods=0;
  embed.mockImplementation(async(_p,text)=>!text?[1,0]:text.includes('Food Records')?(foods++===0?[1,0]:[0,1]):[0.8,0.6]);
  const r=await classifyWithEmbeddingGemma('photo','model');
- expect(r.topPrediction.appCategory).toBe('pets');
+ expect(r.topPrediction).toBeNull();
+ expect(r.rejectionReason).toBe('strongest-prototype-disagreement');
+ expect(r.diagnostics.strongestCategory).toBe('foods');
 });
 
 test('diagnostics retain all actually encoded references without photo or model paths',async()=>{
