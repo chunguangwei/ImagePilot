@@ -496,7 +496,8 @@
     "classification_image": "Classification: image + category meanings",
     "classification_fallback": "Joint match incomplete; image-only category retained. Retry from Home.",
     "semanticMatch": "Semantic classification",
-    "embeddingCaptionHint": "EmbeddingGemma classifies images without generating captions. Choose SmolVLM Preview or E2B for classification with captions.",
+    "embeddingLegacyResult": "This is an earlier classification result. Updating the app does not recalculate it. Run AI classification again to use the current method.",
+    "embeddingCaptionHint": "EmbeddingGemma classifies images without generating captions. Choose E2B for classification with captions.",
     "captionState_preserved": "Description: existing description preserved",
     "captionState_pending": "Description: pending; run offline classification again to resume",
     "captionState_disabled": "Description: disabled for this classification",
@@ -968,7 +969,7 @@
       "lowMemTitle": "Device memory too low",
       "lowMemMsg": "{{name}} needs more memory than this device has, so it's unavailable here. Use a device with 6GB+ RAM.",
       "vlmUnsupportedTitle": "Can't load on this device",
-      "vlmUnsupportedMsg": "{{name}} failed to load on this device (out of memory or unsupported). Switch to the smaller SmolVLM-500M, or retry.",
+      "vlmUnsupportedMsg": "{{name}} failed to load on this device (out of memory or unsupported). Switch to EmbeddingGemma for fast classification, or retry.",
       "vlmRetry": "Retry",
       "lfmBusy": "SmolVLM is in use. Finish classification before deleting the model.",
       "legacyModels": "Other legacy models"

@@ -1611,7 +1611,8 @@ const ImagePreviewScreen = ({ route, navigation }) => {
               <View style={styles.detectionSection}>
                 <Text style={styles.detectionTitle}>EmbeddingGemma 2 · {t('imagePreview.semanticMatch')}</Text>
                 <Text style={styles.detectionText}>{t('imagePreview.embeddingCaptionHint')}</Text>
-                {result.caption && <Text style={styles.detectionText}>
+                {!result.scoringVersion && <Text style={styles.detectionText}>{t('imagePreview.embeddingLegacyResult')}</Text>}
+                {result.caption && result.caption.state !== 'disabled' && <Text style={styles.detectionText}>
                   {t(`imagePreview.captionState_${result.caption.state}`)}
                   {result.caption.stage ? ` · ${t(`imagePreview.captionStage_${result.caption.stage}`)}` : ''}
                   {result.caption.error ? `: ${result.caption.error}` : ''}

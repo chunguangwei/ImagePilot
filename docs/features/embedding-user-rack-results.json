@@ -1,0 +1,880 @@
+{
+  "started": 1793969001718,
+  "images": [
+    {
+      "name": "user-rack",
+      "singleZh": [
+        {
+          "id": "plants",
+          "score": 0.6491653865125394
+        },
+        {
+          "id": "single_person",
+          "score": 0.6417309063212524
+        },
+        {
+          "id": "electronics",
+          "score": 0.6382571670046888
+        },
+        {
+          "id": "products",
+          "score": 0.6378364368584295
+        },
+        {
+          "id": "qrcode",
+          "score": 0.6334549644993632
+        }
+      ],
+      "baseline": [
+        {
+          "id": "electronics",
+          "score": 0.704234800848096
+        },
+        {
+          "id": "single_person",
+          "score": 0.6573088673870502
+        },
+        {
+          "id": "plants",
+          "score": 0.6456940179791062
+        },
+        {
+          "id": "products",
+          "score": 0.6424670607246183
+        },
+        {
+          "id": "documents",
+          "score": 0.6403520425985056
+        }
+      ],
+      "maximum": [
+        {
+          "id": "electronics",
+          "score": 0.704234800848096
+        },
+        {
+          "id": "architecture",
+          "score": 0.6666677711017351
+        },
+        {
+          "id": "single_person",
+          "score": 0.6573088673870502
+        },
+        {
+          "id": "plants",
+          "score": 0.656024973772592
+        },
+        {
+          "id": "products",
+          "score": 0.654826140604358
+        }
+      ],
+      "centroid": [
+        {
+          "id": "electronics",
+          "score": 0.6802793648071208
+        },
+        {
+          "id": "single_person",
+          "score": 0.663050818796958
+        },
+        {
+          "id": "products",
+          "score": 0.6603340887819775
+        },
+        {
+          "id": "plants",
+          "score": 0.6566762923621533
+        },
+        {
+          "id": "architecture",
+          "score": 0.6528662626121923
+        }
+      ],
+      "topTwo": [
+        {
+          "id": "electronics",
+          "score": 0.6734742344964082
+        },
+        {
+          "id": "single_person",
+          "score": 0.6542140416735516
+        },
+        {
+          "id": "architecture",
+          "score": 0.6520892036040343
+        },
+        {
+          "id": "plants",
+          "score": 0.6512638754529421
+        },
+        {
+          "id": "products",
+          "score": 0.6487767522767863
+        }
+      ],
+      "imageMs": 585
+    },
+    {
+      "name": "rack",
+      "singleZh": [
+        {
+          "id": "single_person",
+          "score": 0.6365971675948048
+        },
+        {
+          "id": "electronics",
+          "score": 0.6317179012396686
+        },
+        {
+          "id": "qrcode",
+          "score": 0.6298959373343564
+        },
+        {
+          "id": "products",
+          "score": 0.6297210022505458
+        },
+        {
+          "id": "fashion",
+          "score": 0.6245027496754169
+        }
+      ],
+      "baseline": [
+        {
+          "id": "electronics",
+          "score": 0.6978019258629526
+        },
+        {
+          "id": "single_person",
+          "score": 0.6557615005195542
+        },
+        {
+          "id": "documents",
+          "score": 0.6403186135212225
+        },
+        {
+          "id": "products",
+          "score": 0.6380963387248745
+        },
+        {
+          "id": "other",
+          "score": 0.6308859579306386
+        }
+      ],
+      "maximum": [
+        {
+          "id": "electronics",
+          "score": 0.6978019258629526
+        },
+        {
+          "id": "architecture",
+          "score": 0.6563080109397695
+        },
+        {
+          "id": "single_person",
+          "score": 0.6557615005195542
+        },
+        {
+          "id": "idcard",
+          "score": 0.6457230528545255
+        },
+        {
+          "id": "products",
+          "score": 0.6450550212766133
+        }
+      ],
+      "centroid": [
+        {
+          "id": "electronics",
+          "score": 0.6766704423264848
+        },
+        {
+          "id": "single_person",
+          "score": 0.6613098899206533
+        },
+        {
+          "id": "products",
+          "score": 0.6531040135399832
+        },
+        {
+          "id": "documents",
+          "score": 0.6456143051170673
+        },
+        {
+          "id": "idcard",
+          "score": 0.6452471487126444
+        }
+      ],
+      "topTwo": [
+        {
+          "id": "electronics",
+          "score": 0.6692447868650231
+        },
+        {
+          "id": "single_person",
+          "score": 0.6544056324350567
+        },
+        {
+          "id": "architecture",
+          "score": 0.6426506075941317
+        },
+        {
+          "id": "products",
+          "score": 0.6415756800007439
+        },
+        {
+          "id": "idcard",
+          "score": 0.6365632680960345
+        }
+      ],
+      "imageMs": 214
+    },
+    {
+      "name": "trophy",
+      "singleZh": [
+        {
+          "id": "art",
+          "score": 0.7015351993089877
+        },
+        {
+          "id": "social_activities",
+          "score": 0.6637078342073912
+        },
+        {
+          "id": "cartoon",
+          "score": 0.6574628480830724
+        },
+        {
+          "id": "pets",
+          "score": 0.657032943385838
+        },
+        {
+          "id": "sports",
+          "score": 0.6554874560873344
+        }
+      ],
+      "baseline": [
+        {
+          "id": "art",
+          "score": 0.6831456076781219
+        },
+        {
+          "id": "social_activities",
+          "score": 0.6482163784110995
+        },
+        {
+          "id": "products",
+          "score": 0.6447738505953297
+        },
+        {
+          "id": "sports",
+          "score": 0.6433743098141504
+        },
+        {
+          "id": "foods",
+          "score": 0.6385796427793939
+        }
+      ],
+      "maximum": [
+        {
+          "id": "art",
+          "score": 0.7105481741482347
+        },
+        {
+          "id": "products",
+          "score": 0.6537985664228877
+        },
+        {
+          "id": "social_activities",
+          "score": 0.6482163784110995
+        },
+        {
+          "id": "foods",
+          "score": 0.6465310670233517
+        },
+        {
+          "id": "cartoon",
+          "score": 0.6460545893050507
+        }
+      ],
+      "centroid": [
+        {
+          "id": "art",
+          "score": 0.6949108929105273
+        },
+        {
+          "id": "social_activities",
+          "score": 0.6586619105313015
+        },
+        {
+          "id": "products",
+          "score": 0.6579878220258774
+        },
+        {
+          "id": "foods",
+          "score": 0.6527022504007453
+        },
+        {
+          "id": "cartoon",
+          "score": 0.6497107700232958
+        }
+      ],
+      "topTwo": [
+        {
+          "id": "art",
+          "score": 0.6968468909131783
+        },
+        {
+          "id": "products",
+          "score": 0.6492862085091087
+        },
+        {
+          "id": "social_activities",
+          "score": 0.6466462427783498
+        },
+        {
+          "id": "foods",
+          "score": 0.6443570291424636
+        },
+        {
+          "id": "cartoon",
+          "score": 0.6415815929323931
+        }
+      ],
+      "imageMs": 215
+    },
+    {
+      "name": "portrait",
+      "singleZh": [
+        {
+          "id": "fashion",
+          "score": 0.6459091851649628
+        },
+        {
+          "id": "social_activities",
+          "score": 0.643924899727139
+        },
+        {
+          "id": "single_person",
+          "score": 0.6402905918008448
+        },
+        {
+          "id": "idcard",
+          "score": 0.639378661079449
+        },
+        {
+          "id": "kids",
+          "score": 0.6368773827284369
+        }
+      ],
+      "baseline": [
+        {
+          "id": "single_person",
+          "score": 0.6824486003399935
+        },
+        {
+          "id": "social_activities",
+          "score": 0.6709062711331861
+        },
+        {
+          "id": "kids",
+          "score": 0.6578869490455519
+        },
+        {
+          "id": "sports",
+          "score": 0.6559773270208454
+        },
+        {
+          "id": "fashion",
+          "score": 0.6515195797971086
+        }
+      ],
+      "maximum": [
+        {
+          "id": "single_person",
+          "score": 0.6824486003399935
+        },
+        {
+          "id": "social_activities",
+          "score": 0.6714639562984197
+        },
+        {
+          "id": "fashion",
+          "score": 0.6614148361972075
+        },
+        {
+          "id": "art",
+          "score": 0.6602927682074395
+        },
+        {
+          "id": "kids",
+          "score": 0.6578869490455519
+        }
+      ],
+      "centroid": [
+        {
+          "id": "single_person",
+          "score": 0.6821692357927005
+        },
+        {
+          "id": "social_activities",
+          "score": 0.6729628856604367
+        },
+        {
+          "id": "kids",
+          "score": 0.6689947864441381
+        },
+        {
+          "id": "sports",
+          "score": 0.6644484904031384
+        },
+        {
+          "id": "idcard",
+          "score": 0.6631637012244812
+        }
+      ],
+      "topTwo": [
+        {
+          "id": "single_person",
+          "score": 0.6768916866362137
+        },
+        {
+          "id": "social_activities",
+          "score": 0.6711851137158029
+        },
+        {
+          "id": "fashion",
+          "score": 0.6564672079971581
+        },
+        {
+          "id": "kids",
+          "score": 0.655138731404852
+        },
+        {
+          "id": "sports",
+          "score": 0.6538409327376544
+        }
+      ],
+      "imageMs": 221
+    },
+    {
+      "name": "cat",
+      "singleZh": [
+        {
+          "id": "pets",
+          "score": 0.7144143987305572
+        },
+        {
+          "id": "cartoon",
+          "score": 0.6843265965106873
+        },
+        {
+          "id": "plants",
+          "score": 0.6631605088157376
+        },
+        {
+          "id": "fashion",
+          "score": 0.6624043794835041
+        },
+        {
+          "id": "art",
+          "score": 0.6618965081232001
+        }
+      ],
+      "baseline": [
+        {
+          "id": "pets",
+          "score": 0.7439549631765245
+        },
+        {
+          "id": "plants",
+          "score": 0.6934591388000586
+        },
+        {
+          "id": "art",
+          "score": 0.6833537933370805
+        },
+        {
+          "id": "other",
+          "score": 0.6802378801617284
+        },
+        {
+          "id": "single_person",
+          "score": 0.6800981479528094
+        }
+      ],
+      "maximum": [
+        {
+          "id": "pets",
+          "score": 0.7671477624505061
+        },
+        {
+          "id": "plants",
+          "score": 0.7178453994307611
+        },
+        {
+          "id": "kids",
+          "score": 0.705992397583556
+        },
+        {
+          "id": "art",
+          "score": 0.6982810007987921
+        },
+        {
+          "id": "single_person",
+          "score": 0.6942201869041057
+        }
+      ],
+      "centroid": [
+        {
+          "id": "pets",
+          "score": 0.7644211474040817
+        },
+        {
+          "id": "plants",
+          "score": 0.7069804549935091
+        },
+        {
+          "id": "art",
+          "score": 0.7035160791480678
+        },
+        {
+          "id": "kids",
+          "score": 0.7013138384933346
+        },
+        {
+          "id": "single_person",
+          "score": 0.6884084125138635
+        }
+      ],
+      "topTwo": [
+        {
+          "id": "pets",
+          "score": 0.7555513628135153
+        },
+        {
+          "id": "plants",
+          "score": 0.7056522691154099
+        },
+        {
+          "id": "kids",
+          "score": 0.6924608685167652
+        },
+        {
+          "id": "art",
+          "score": 0.6908173970679363
+        },
+        {
+          "id": "single_person",
+          "score": 0.6871591674284576
+        }
+      ],
+      "imageMs": 216
+    },
+    {
+      "name": "food",
+      "singleZh": [
+        {
+          "id": "foods",
+          "score": 0.6290260236196091
+        },
+        {
+          "id": "pets",
+          "score": 0.6027673920697342
+        },
+        {
+          "id": "fashion",
+          "score": 0.5988808356075769
+        },
+        {
+          "id": "products",
+          "score": 0.5984288545967249
+        },
+        {
+          "id": "art",
+          "score": 0.5978053534356648
+        }
+      ],
+      "baseline": [
+        {
+          "id": "foods",
+          "score": 0.6610071311861804
+        },
+        {
+          "id": "single_person",
+          "score": 0.6308720748140428
+        },
+        {
+          "id": "screenshot",
+          "score": 0.6298836227160846
+        },
+        {
+          "id": "products",
+          "score": 0.6236147126332621
+        },
+        {
+          "id": "art",
+          "score": 0.622250694781687
+        }
+      ],
+      "maximum": [
+        {
+          "id": "foods",
+          "score": 0.6637054334343989
+        },
+        {
+          "id": "art",
+          "score": 0.6617134978463138
+        },
+        {
+          "id": "screenshot",
+          "score": 0.6440935918514179
+        },
+        {
+          "id": "products",
+          "score": 0.643540452639773
+        },
+        {
+          "id": "single_person",
+          "score": 0.6308720748140428
+        }
+      ],
+      "centroid": [
+        {
+          "id": "foods",
+          "score": 0.6727328722223623
+        },
+        {
+          "id": "art",
+          "score": 0.6525724330654675
+        },
+        {
+          "id": "screenshot",
+          "score": 0.6451733368269702
+        },
+        {
+          "id": "products",
+          "score": 0.6449409790837454
+        },
+        {
+          "id": "single_person",
+          "score": 0.633504238823894
+        }
+      ],
+      "topTwo": [
+        {
+          "id": "foods",
+          "score": 0.6627164105422866
+        },
+        {
+          "id": "art",
+          "score": 0.645727948714615
+        },
+        {
+          "id": "screenshot",
+          "score": 0.6420683472516018
+        },
+        {
+          "id": "products",
+          "score": 0.6355909259082229
+        },
+        {
+          "id": "single_person",
+          "score": 0.6266612860191457
+        }
+      ],
+      "imageMs": 214
+    },
+    {
+      "name": "group",
+      "singleZh": [
+        {
+          "id": "social_activities",
+          "score": 0.7047538990490123
+        },
+        {
+          "id": "fashion",
+          "score": 0.6916253464853309
+        },
+        {
+          "id": "qrcode",
+          "score": 0.6879468418089109
+        },
+        {
+          "id": "screenshot",
+          "score": 0.6851358046915912
+        },
+        {
+          "id": "pets",
+          "score": 0.6814951139809824
+        }
+      ],
+      "baseline": [
+        {
+          "id": "social_activities",
+          "score": 0.684378576285449
+        },
+        {
+          "id": "screenshot",
+          "score": 0.67100922565164
+        },
+        {
+          "id": "fashion",
+          "score": 0.638677585794104
+        },
+        {
+          "id": "foods",
+          "score": 0.6365870340281253
+        },
+        {
+          "id": "electronics",
+          "score": 0.633103785433036
+        }
+      ],
+      "maximum": [
+        {
+          "id": "social_activities",
+          "score": 0.7002127801877496
+        },
+        {
+          "id": "screenshot",
+          "score": 0.6776823389499438
+        },
+        {
+          "id": "products",
+          "score": 0.65989079283961
+        },
+        {
+          "id": "fashion",
+          "score": 0.638677585794104
+        },
+        {
+          "id": "foods",
+          "score": 0.6365870340281253
+        }
+      ],
+      "centroid": [
+        {
+          "id": "social_activities",
+          "score": 0.6922317858761319
+        },
+        {
+          "id": "screenshot",
+          "score": 0.679716168281965
+        },
+        {
+          "id": "products",
+          "score": 0.6506163080114618
+        },
+        {
+          "id": "electronics",
+          "score": 0.643913305934375
+        },
+        {
+          "id": "fashion",
+          "score": 0.643880494743555
+        }
+      ],
+      "topTwo": [
+        {
+          "id": "social_activities",
+          "score": 0.6922956782365992
+        },
+        {
+          "id": "screenshot",
+          "score": 0.6743457823007919
+        },
+        {
+          "id": "products",
+          "score": 0.6431918485213594
+        },
+        {
+          "id": "fashion",
+          "score": 0.6360465779965832
+        },
+        {
+          "id": "foods",
+          "score": 0.6358059083772982
+        }
+      ],
+      "imageMs": 210
+    }
+  ],
+  "categories": [
+    "single_person",
+    "social_activities",
+    "kids",
+    "pets",
+    "foods",
+    "travel_scenery",
+    "night_scene",
+    "architecture",
+    "plants",
+    "vehicles",
+    "sports",
+    "fashion",
+    "products",
+    "electronics",
+    "documents",
+    "idcard",
+    "art",
+    "cartoon",
+    "screenshot",
+    "qrcode",
+    "other"
+  ],
+  "referenceMs": 4125,
+  "production": [
+    {
+      "name": "user-rack",
+      "category": "electronics",
+      "accepted": true,
+      "margin": 0.01722854601016277,
+      "scoringVersion": "prototype-centroid-v1"
+    },
+    {
+      "name": "rack",
+      "category": "electronics",
+      "accepted": true,
+      "margin": 0.015360552405831451,
+      "scoringVersion": "prototype-centroid-v1"
+    },
+    {
+      "name": "trophy",
+      "category": "art",
+      "accepted": true,
+      "margin": 0.0362489823792258,
+      "scoringVersion": "prototype-centroid-v1"
+    },
+    {
+      "name": "portrait",
+      "category": "single_person",
+      "accepted": true,
+      "margin": 0.009206350132263785,
+      "scoringVersion": "prototype-centroid-v1"
+    },
+    {
+      "name": "cat",
+      "category": "pets",
+      "accepted": true,
+      "margin": 0.05744069241057259,
+      "scoringVersion": "prototype-centroid-v1"
+    },
+    {
+      "name": "food",
+      "category": "foods",
+      "accepted": true,
+      "margin": 0.020160439156894805,
+      "scoringVersion": "prototype-centroid-v1"
+    },
+    {
+      "name": "group",
+      "category": "social_activities",
+      "accepted": true,
+      "margin": 0.012515617594166861,
+      "scoringVersion": "prototype-centroid-v1"
+    }
+  ],
+  "done": true,
+  "elapsedMs": 10657
+}
