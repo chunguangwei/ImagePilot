@@ -1010,8 +1010,8 @@
     "huaweiInstallHintTitle": "Huawei Device Note",
     "huaweiInstallHintMessage": "If the system blocks the install (\"malicious install source\", a Huawei false positive):\n\nOption 1: Settings → System & updates → Pure Mode → turn off, then retry;\nOption 2: Open the system Files app → Download → tap imagepilot-update.apk to install.",
     "modelPicker": {
-      "removeLegacyLfm": "Remove old LFM files",
-      "removeLegacyLfmHint": "Remove only retired LFM model files (about 419 MB). Photos, captions and the new model are preserved.",
+      "removeLegacyLfm": "Remove retired LFM / SmolVLM files",
+      "removeLegacyLfmHint": "Remove only retired LFM and SmolVLM model files and partial downloads. Photos, categories and existing captions are preserved.",
       "active": "In use",
       "downloaded": "Downloaded",
       "notDownloaded": "Not downloaded",

@@ -1,5 +1,8 @@
 # ImagePilot - AI 智能照片分类管理工具
 
+> **1.5.92 最终方案：** 线上只提供 EmbeddingGemma 2（快速分类、不生成描述）和 Gemma4-E2B（多模态分类与描述）。LFM/SmolVLM 已下线，旧选择迁移至 EmbeddingGemma，缺少文件需主动下载；已有分类与描述保留。下文旧模型试验属于历史记录，不是当前可用功能。
+
+
 ## 1.5.92：SmolVLM 独立实验入口与双路下载
 
 原 LFM 标准入口替换为 SmolVLM-500M-Instruct 实验入口（两文件共约546 MB，需重新下载），一次推理输出类别和英文描述；EmbeddingGemma、E2B 保留。**原生六图分类仅2/6符合预期，不是精度升级，不建议据此大批量自动改类。** 中文分类名继续本地显示；中文规则理解有限。详情见 [实验与迁移记录](docs/features/SmolVlmTrial.md)。

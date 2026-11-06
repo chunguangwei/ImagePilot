@@ -36,7 +36,7 @@ import { logger } from '../../adapters/WebAdapters';
 import { presetIcon } from '../../ui/ios/presetIcons';
 import { useIosColors, ThemeContext } from '../../ui/ios/theme';
 import { SUPERRES_VARIANTS, ensureModel, isModelDownloaded, resolveSuperRes, deleteModel } from '../../services/enhance/modelSource';
-import { CLASSIFIER_TIERS, CLASSIFIER_TIER_ORDER, DEFAULT_CLASSIFIER_TIER } from '../../services/classify/classifierModelTiers';
+import { CLASSIFIER_TIERS, CLASSIFIER_TIER_ORDER, DEFAULT_CLASSIFIER_TIER, normalizeClassifierTier } from '../../services/classify/classifierModelTiers';
 import { CLIP_MODELS, CLIP_MODEL_ORDER, DEFAULT_CLIP_MODEL, getClipModel } from '../../services/classify/clipModels';
 import { VLM_MODELS, VLM_MODEL_ORDER, DEFAULT_VLM_MODEL, getVlmModel } from '../../services/classify/vlmModels';
 import { getDeviceTotalMemMB } from '../../services/classify/vlmShared';
@@ -259,8 +259,9 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
 
       // 分类模型档位（P1：basic 已内置 / scene 按需下载 / clip 未接入）
       const savedTier = savedSettings.classifierModelTier || DEFAULT_CLASSIFIER_TIER;
-      const savedCfg = CLASSIFIER_TIERS[savedTier];
-      const validTier = (savedCfg && savedCfg.readyForUse) ? savedTier : DEFAULT_CLASSIFIER_TIER;
+      const validTier = normalizeClassifierTier(savedTier);
+      if (savedTier !== validTier) await updateSetting('classifierModelTier', validTier);
+      setLegacyCaptionPresent(await hasLegacyCaptionModel());
       setClassifierTier(validTier);
       // CLIP 档所选模型变体
       const clipMid = CLIP_MODELS[savedSettings.classifierClipModel] ? savedSettings.classifierClipModel : DEFAULT_CLIP_MODEL;
@@ -1485,7 +1486,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
               cancelling: cancellingModel,
               progress: isVlm ? vlmDownloadProgress : classifierDownloadProgress,
               cleanupLabel: t('settings.modelPicker.removeLegacyLfm'),
-              onCleanup: tierKey === 'lfm' && legacyCaptionPresent ? () => Alert.alert(
+              onCleanup: tierKey === 'embeddinggemma2' && legacyCaptionPresent ? () => Alert.alert(
                 t('settings.modelPicker.removeLegacyLfm'), t('settings.modelPicker.removeLegacyLfmHint'),
                 [{text:t('common.cancel'),style:'cancel'},{text:t('common.delete'),style:'destructive',onPress:async()=>{
                   try {await deleteLegacyCaptionModel();setLegacyCaptionPresent(false);}

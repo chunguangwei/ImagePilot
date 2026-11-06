@@ -65,7 +65,7 @@ export async function deleteCaptionModel() {
   }
 }
 
-const LEGACY_FILES = ['LFM2.5-VL-450M-Q4_K_M.gguf', 'mmproj-LFM2.5-VL-450m-F16.gguf'];
+const LEGACY_FILES = ['LFM2.5-VL-450M-Q4_K_M.gguf', 'mmproj-LFM2.5-VL-450m-F16.gguf', ...CAPTION_FILES.map(f => f.filename)];
 export async function hasLegacyCaptionModel() {
   for (const name of LEGACY_FILES) for (const suffix of ['', '.part', '.tail']) {
     if (await RNFS.exists(modelLocalPath(name) + suffix)) return true;

@@ -48,9 +48,9 @@ export default function ClassifierModelPicker({ models, colors: c, busy = false 
   };
   return <View style={styles.container}>
     {models.filter(m => !m.legacy).map(card)}
-    <TouchableOpacity style={styles.disclosure} accessibilityRole="button" accessibilityState={{ expanded: legacyOpen }} onPress={() => setLegacyOpen(v => !v)}>
+    {models.some(m => m.legacy) && <TouchableOpacity style={styles.disclosure} accessibilityRole="button" accessibilityState={{ expanded: legacyOpen }} onPress={() => setLegacyOpen(v => !v)}>
       <Text style={{ color: accent, fontSize: 15 }}>{label('legacy')} {legacyOpen ? '⌃' : '⌄'}</Text>
-    </TouchableOpacity>
+    </TouchableOpacity>}
     {legacyOpen && models.filter(m => m.legacy).map(card)}
   </View>;
 }

@@ -30,11 +30,13 @@ test('corrupt final file is rejected and removed', async () => {
 test('abort prevents model downloads', async () => {
   await expect(downloadCaptionModel(null, { aborted: true })).rejects.toThrow('E_ABORTED'); expect(ensureLargeModel).not.toHaveBeenCalled();
 });
-test('legacy cleanup removes only old LFM files and preserves SmolVLM',async()=>{
+test('retired cleanup removes LFM and SmolVLM while preserving active models',async()=>{
  const {deleteLegacyCaptionModel}=require('../lfmCaptionModel');
  files.set('/models/LFM2.5-VL-450M-Q4_K_M.gguf',{size:1});
  files.set('/models/'+CAPTION_FILES[0].filename,{size:CAPTION_FILES[0].bytes});
  await deleteLegacyCaptionModel();
  expect(RNFS.unlink).toHaveBeenCalledWith('/models/LFM2.5-VL-450M-Q4_K_M.gguf');
- expect(RNFS.unlink).not.toHaveBeenCalledWith('/models/'+CAPTION_FILES[0].filename);
+ expect(RNFS.unlink).toHaveBeenCalledWith('/models/'+CAPTION_FILES[0].filename);
+ expect(RNFS.unlink).not.toHaveBeenCalledWith('/models/gemma-4-E2B-it.litertlm');
+ expect(RNFS.unlink).not.toHaveBeenCalledWith('/models/embeddinggemma-2-text-vision-440m.litertlm');
 });

@@ -95,24 +95,17 @@ describe('EmbeddingGemma 2 is an independent opt-in classifier', () => {
 });
 
 describe('readActiveTier', () => {
-  test('settings 缺 → 兜底 basic', async () => {
-    mockReadSettings.mockResolvedValue({});
-    expect(await readActiveTier()).toBe('basic');
+  test.each([undefined, 'lfm', 'smolvlm', 'basic', 'scene', 'clip', 'foobar'])('retired or absent selection %s migrates to EmbeddingGemma', async tier => {
+    mockReadSettings.mockResolvedValue({ classifierModelTier: tier });
+    expect(await readActiveTier()).toBe('embeddinggemma2');
   });
-
-  test('settings.classifierModelTier=scene → scene', async () => {
-    mockReadSettings.mockResolvedValue({ classifierModelTier: 'scene' });
-    expect(await readActiveTier()).toBe('scene');
+  test.each(['embeddinggemma2', 'vlm'])('keeps supported selection %s', async tier => {
+    mockReadSettings.mockResolvedValue({ classifierModelTier: tier });
+    expect(await readActiveTier()).toBe(tier);
   });
-
-  test('settings.classifierModelTier=foobar（未知 tier） → 兜底 basic', async () => {
-    mockReadSettings.mockResolvedValue({ classifierModelTier: 'foobar' });
-    expect(await readActiveTier()).toBe('basic');
-  });
-
-  test('readSettings throw → 兜底 basic（不向上抛）', async () => {
+  test('settings read failure defaults to EmbeddingGemma', async () => {
     mockReadSettings.mockRejectedValue(new Error('db down'));
-    expect(await readActiveTier()).toBe('basic');
+    expect(await readActiveTier()).toBe('embeddinggemma2');
   });
 });
 
@@ -255,37 +248,19 @@ describe('classifyImageByTier — clip 档', () => {
   });
 });
 
-describe('classifyImageByTier — tier 兜底', () => {
-  test('tier=null → 读 settings 决定（scene）', async () => {
-    mockReadSettings.mockResolvedValue({ classifierModelTier: 'scene' });
-    mockIsDownloaded.mockResolvedValue(true);
-    mockEnsureModel.mockResolvedValue('file:///places.onnx');
-    mockPlaces365.mockResolvedValue({
-      success: true,
-      topPrediction: { name: 'k', appCategory: 'documents' },
-      confidence: 0.7,
-      predictions: [],
-    });
-    const r = await classifyImageByTier('ph://1', null);
-    expect(r.engine).toBe('places365');
+describe('retired model routing', () => {
+  test.each(['lfm', 'smolvlm', 'nonexistent', null])('never invokes a retired caption model for %s', async tier => {
+    mockReadSettings.mockResolvedValue({ classifierModelTier: 'lfm' });
+    mockLargeComplete.mockResolvedValue(true);
+    mockEnsureLarge.mockResolvedValue('file:///embedding');
+    mockEmbeddingClassify.mockResolvedValue({ engine: 'embeddinggemma2', topPrediction: { appCategory: 'pets' } });
+    expect((await classifyImageByTier('photo', tier)).engine).toBe('embeddinggemma2');
+    expect(mockLfm).not.toHaveBeenCalled();
+    expect(mockMobileNet).not.toHaveBeenCalled();
   });
-
-  test('未知 tier → 走兜底（fallback engine-error 而不抛）', async () => {
-    mockIsDownloaded.mockResolvedValue(true);
-    mockMobileNet.mockResolvedValue({
-      success: true,
-      topPrediction: { class: 'x' },
-      confidence: 0.3,
-      predictions: [],
-    });
-    // 直接传 unknown engine 应当不抛错（虽然 tierCfg 兜底了 basic，但路径是 basic）
-    const r = await classifyImageByTier('ph://1', 'nonexistent');
-    expect(r.engine).toBe('imagenet'); // 兜底走 basic
+  test('retired selection with no EmbeddingGemma file requires download instead of running LFM', async () => {
+    mockLargeComplete.mockResolvedValue(false);
+    await expect(classifyImageByTier('photo', 'lfm')).rejects.toThrow('not downloaded');
+    expect(mockLfm).not.toHaveBeenCalled();
   });
 });
-
- test('LFM is routed independently with no embedding or basic fallback', async()=>{
- mockLfm.mockResolvedValue({engine:'lfm',topPrediction:{appCategory:'pets'},vlmLabel:'cat'});
- expect((await classifyImageByTier('photo','lfm')).engine).toBe('lfm');expect(mockLfm).toHaveBeenCalledWith('photo');expect(mockEmbeddingClassify).not.toHaveBeenCalled();expect(mockMobileNet).not.toHaveBeenCalled();
- mockLfm.mockRejectedValueOnce(new Error('LFM missing'));await expect(classifyImageByTier('photo','lfm')).rejects.toThrow('LFM missing');
- });

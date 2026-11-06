@@ -49,3 +49,8 @@ test('obsolete model cleanup remains available before replacement weights are do
  act(()=>button(tree,'details').props.onPress());
  act(()=>button(tree,'Remove old LFM files').props.onPress());expect(cleanup).toHaveBeenCalled();
 });
+
+test('no empty legacy disclosure when only supported models remain', () => {
+ const tree = mount([model({id:'embeddinggemma2'}),model({id:'vlm'})]);
+ expect(button(tree,'legacy')).toBeUndefined();
+});

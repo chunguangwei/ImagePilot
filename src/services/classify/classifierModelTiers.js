@@ -1,7 +1,5 @@
-/** Independent local choices: SmolVLM experimental, EmbeddingGemma fast classification,
- * and E2B detailed multimodal understanding. Legacy classifiers remain available.
- * Existing selections and bundled basic defaults are preserved; downloads are opt-in.
- */
+/** Only EmbeddingGemma and E2B are selectable. Historical ONNX definitions
+ * remain for internal compatibility; retired selections migrate without downloading. */
 
 const BASE = 'https://modelscope.cn/models/chunguangwee/ImagePilot-models/resolve/master'; // ModelScope 主源（端侧国内更稳）；GitHub Release 留作兜底（见下载器）
 
@@ -57,13 +55,6 @@ export const CLASSIFIER_TIERS = {
     weak: '比基础档稍慢；自定义类请用云端 AI 分类',
     classes: 20,
   },
-  lfm: {
-    key: 'lfm', label: 'SmolVLM · 测试方案', sublabel: '分类与描述',
-    sizeMB: 546, speed: '中等', bundled: false,
-    engine: 'lfm', readyForUse: true, classes: 0,
-    desc: '实验模型：图片分类和英文描述；实测分类准确率有限，请小批量对照。',
-    weak: '小模型可能误判细节，请核对分类和描述。',
-  },
   embeddinggemma2: {
     key: 'embeddinggemma2',
     label: 'EmbeddingGemma 2',
@@ -101,9 +92,13 @@ export const CLASSIFIER_TIERS = {
   },
 };
 
-export const CLASSIFIER_TIER_ORDER = ['lfm', 'embeddinggemma2', 'vlm', 'basic', 'scene', 'clip'];
+export const CLASSIFIER_TIER_ORDER = ['embeddinggemma2', 'vlm'];
 
-/** 默认档：basic（已打包，0 下载） */
-export const DEFAULT_CLASSIFIER_TIER = 'basic';
+/** Default choice requires an explicit user download when absent. */
+export const DEFAULT_CLASSIFIER_TIER = 'embeddinggemma2';
+
+export function normalizeClassifierTier(tier) {
+  return CLASSIFIER_TIER_ORDER.includes(tier) ? tier : DEFAULT_CLASSIFIER_TIER;
+}
 
 export default { CLASSIFIER_TIERS, CLASSIFIER_TIER_ORDER, DEFAULT_CLASSIFIER_TIER };

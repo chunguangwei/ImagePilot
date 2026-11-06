@@ -23,7 +23,7 @@
 
 import { logger } from '../../adapters/WebAdapters';
 import UnifiedDataService from '../UnifiedDataService';
-import { CLASSIFIER_TIERS, DEFAULT_CLASSIFIER_TIER } from './classifierModelTiers';
+import { CLASSIFIER_TIERS, DEFAULT_CLASSIFIER_TIER, normalizeClassifierTier } from './classifierModelTiers';
 import { getClipModel, DEFAULT_CLIP_MODEL } from './clipModels';
 import { getVlmModel, DEFAULT_VLM_MODEL, VLM_MODEL_ORDER } from './vlmModels';
 import { ensureClassifierModel, isClassifierModelDownloaded, ensureLargeModel, isLargeModelComplete } from './classifierModelSource';
@@ -48,7 +48,7 @@ export async function readActiveTier() {
   try {
     const s = await UnifiedDataService.readSettings();
     const t = s?.classifierModelTier || DEFAULT_CLASSIFIER_TIER;
-    return CLASSIFIER_TIERS[t] ? t : DEFAULT_CLASSIFIER_TIER;
+    return normalizeClassifierTier(t);
   } catch (_) {
     return DEFAULT_CLASSIFIER_TIER;
   }
@@ -81,7 +81,7 @@ export async function readActiveVlmModel() {
  * @param opts.imageClassifier  scanner 现有 ImageClassifierService 实例（避免重复加载 ONNX 模型）
  */
 export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
-  const activeTier = tier || (await readActiveTier());
+  const activeTier = tier === 'lfm' || tier === 'smolvlm' ? DEFAULT_CLASSIFIER_TIER : tier || (await readActiveTier());
   const tierCfg = CLASSIFIER_TIERS[activeTier] || CLASSIFIER_TIERS[DEFAULT_CLASSIFIER_TIER];
   const sharedClassifier = opts.imageClassifier;
 
@@ -99,10 +99,6 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
       };
     }
     return await runImageNet(imageUri, sharedClassifier);
-  }
-  if (tierCfg.engine === 'lfm') {
-    const { classifyWithLfm } = require('./LfmClassifier');
-    return classifyWithLfm(imageUri);
   }
   if (tierCfg.engine === 'embeddinggemma2') {
     // Never silently substitute another model during evaluation of this opt-in model.

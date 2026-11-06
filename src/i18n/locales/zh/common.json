@@ -1010,8 +1010,8 @@
     "huaweiInstallHintTitle": "华为设备安装提示",
     "huaweiInstallHintMessage": "若系统提示\"恶意安装来源，禁止安装\"（华为误报）：\n\n方法一：设置 → 系统和更新 → 纯净模式 → 关闭后重试；\n方法二：打开系统\"文件管理\" → 内部存储 → Download → 点按 imagepilot-update.apk 安装。",
     "modelPicker": {
-      "removeLegacyLfm": "删除旧 LFM 文件",
-      "removeLegacyLfmHint": "仅清理已停用的 LFM 模型文件（约419 MB），保留照片、描述和新模型。",
+      "removeLegacyLfm": "清理已下线的 LFM / SmolVLM 文件",
+      "removeLegacyLfmHint": "仅删除 LFM 和 SmolVLM 模型文件及未完成下载。保留照片、已有分类和描述。",
       "active": "使用中",
       "downloaded": "已下载",
       "notDownloaded": "未下载",
