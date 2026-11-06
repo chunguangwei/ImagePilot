@@ -604,7 +604,7 @@ class GalleryScannerService {
           if (naVideos && naVideos.length > 0) naImages = naImages.concat(naVideos);
         } catch (_) {}
       }
-      preTier = await readActiveTier();
+      preTier = clsOpts.tier || await readActiveTier();
       const lfmEnabled = preTier === 'lfm';
       const explicitImages = Array.isArray(imagesToClassify) && imagesToClassify.length > 0;
       // Recover previous interrupted work even when there are no NA images left.
@@ -634,7 +634,7 @@ class GalleryScannerService {
 
       // 初始化分类器（首次会从配置加载模型表 + ONNX runtime + 加载 mobilenetv3 模型；幂等）
       try {
-        if (['basic', 'scene', 'clip'].includes(await readActiveTier())) await this.imageClassifier.initialize();
+        if (['basic'].includes(preTier)) await this.imageClassifier.initialize();
         logger.info('✅ ImageClassifierService 初始化完成');
       } catch (e) {
         logger.error('❌ ImageClassifierService 初始化失败:', e);
@@ -685,7 +685,7 @@ class GalleryScannerService {
             }
             if (!imageUri) { failedCount++; continue; }
             // P1：按 tier 路由（basic→ImageNet / scene→Places365 / clip→未接入回退）
-            const r = await classifyImageByTier(imageUri, activeTier, { imageClassifier: this.imageClassifier, detailed: !!clsOpts.detailed });
+            const r = await classifyImageByTier(imageUri, activeTier, { imageClassifier: this.imageClassifier, detailed: !!clsOpts.detailed, strict: !!clsOpts.strict });
             const top = r?.topPrediction || null;
             const conf = (typeof r?.confidence === 'number') ? r.confidence : 0;
             let category;
@@ -968,21 +968,25 @@ class GalleryScannerService {
     // 因此 Android 端的"分类阶段"全部走 JS 路径：
     //   - forceLocal=true 或 active='local-onnx' → 设备端 MobileNetV3
     //   - active=云端 Provider                    → JS 端 wireLLMRouting（用户自配）
-    if (opts && opts.forceLocal === true) {
-      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify, { detailed: !!(opts && opts.detailed) });
+    if (opts && (opts.forceLocal === true || opts.tier)) {
+      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify, { detailed: !!(opts && opts.detailed), tier: opts.tier, strict: !!opts.strict });
     }
     let aiCfg = null;
     try {
-      const cfgSvc = (await import('./llm/adapters/UnifiedDataConfigService.js')).default;
+      const cfgSvc = require('./llm/adapters/UnifiedDataConfigService.js').default;
       aiCfg = await cfgSvc.getAIProviderConfig();
     } catch (e) {
       logger.warn('读取 aiProvider 配置失败，按 local-onnx 处理:', e?.message || e);
     }
+    if (opts.provider) {
+      if (!aiCfg?.providers?.[opts.provider]) throw new Error('Online model is not configured');
+      aiCfg = {...aiCfg, active:opts.provider, fallbackToLocal:false};
+    }
     const isCloud = !!(aiCfg && aiCfg.active && aiCfg.active !== 'local-onnx');
     if (!isCloud) {
-      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify, { detailed: !!(opts && opts.detailed) });
+      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify, { detailed: !!(opts && opts.detailed), tier: opts.tier, strict: !!opts.strict });
     }
-    return await this._classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg, { detailed: !!(opts && opts.detailed) });
+    return await this._classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg, { detailed: !!(opts && opts.detailed), tier: opts.tier, strict: !!opts.strict });
 
     // 检查原生模块是否可用
     /* eslint-disable no-unreachable */

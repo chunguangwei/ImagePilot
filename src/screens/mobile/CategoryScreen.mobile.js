@@ -1,3 +1,4 @@
+import {useReclassificationPicker} from '../../components/ReclassificationModelPicker';
 import { subscribeCacheRefresh } from '../../services/subscribeCacheRefresh';
 /**
  * ImagePilot - 移动端分类详情页（通用）
@@ -85,6 +86,7 @@ const TimelineLocationLine = React.memo(({ imagesForDate }) => {
 });
 
 const CategoryScreen = ({ route, navigation }) => {
+  const reclassification = useReclassificationPicker(navigation);
   const { t, i18n } = useTranslation('common');
   const c = useIosColors();
   const insets = useSafeAreaInsets();
@@ -1433,7 +1435,7 @@ const CategoryScreen = ({ route, navigation }) => {
    * 已配置在线大模型时可选「本地/云端」（与首页长按目录一致）；未配置直接本地。
    * 复用扫描服务的 aiImageClassifyByContent(time, imagesToClassify) 指定图模式。
    */
-  const runBatchAIClassify = async (imageIds, forceLocal) => {
+  const runBatchAIClassify = async (imageIds, modelOptions) => {
     try {
       const records = images.filter((img) => imageIds.includes(img.id));
       imageIds.forEach((id) => UnifiedDataService.setImageSelection(id, false));
@@ -1452,7 +1454,7 @@ const CategoryScreen = ({ route, navigation }) => {
         }
       };
       // 精细化仅在「用户主动对单张图 AI 分类」时启用（多图/长按目录一律快速短描述）
-      const result = await svc.aiImageClassifyByContent(new Date(), records, { forceLocal, detailed: imageIds.length === 1 });
+      const result = await svc.aiImageClassifyByContent(new Date(), records, { ...modelOptions, detailed: imageIds.length === 1 });
 
       progressStore.finishClassifyProgress();
       try { await UnifiedDataService.imageCache.refreshCache(); } catch (_) {}
@@ -1469,28 +1471,7 @@ const CategoryScreen = ({ route, navigation }) => {
   };
 
   const batchAIClassify = async (imageIds) => {
-    // 是否已配置在线大模型（active 非 local-onnx 即视为已配置）——与首页判定一致
-    let isLLMConfigured = false;
-    try {
-      const aiProviderConfigService = (await import('../../services/llm/adapters/UnifiedDataConfigService')).default;
-      const aiCfg = await aiProviderConfigService.getAIProviderConfig();
-      isLLMConfigured = !!(aiCfg && aiCfg.active && aiCfg.active !== 'local-onnx');
-    } catch (_) { isLLMConfigured = false; }
-
-    const buttons = [{ text: t('common.cancel'), style: 'cancel' }];
-    if (isLLMConfigured) {
-      buttons.push(
-        { text: t('home.aiClassifyUseLocal', { defaultValue: '离线分类' }), onPress: () => runBatchAIClassify(imageIds, true) },
-        { text: t('home.aiClassifyUseCloud', { defaultValue: '云端分类' }), onPress: () => runBatchAIClassify(imageIds, false) },
-      );
-    } else {
-      buttons.push({ text: t('common.confirm', { defaultValue: '确定' }), onPress: () => runBatchAIClassify(imageIds, true) });
-    }
-    Alert.alert(
-      t('category.confirmAIClassifyTitle', { defaultValue: 'AI 分类' }),
-      t('category.confirmAIClassifyMessage', { count: imageIds.length, defaultValue: `用设置中的分类模型对选中的 ${imageIds.length} 张重新分类（视频自动抽帧）。` }),
-      buttons
-    );
+    reclassification.open(imageIds.length, opts=>runBatchAIClassify(imageIds,opts));
   };
 
   /**
@@ -2206,6 +2187,7 @@ const CategoryScreen = ({ route, navigation }) => {
 
       {/* AI 分类全局进度胶囊：跨页面存活（store 驱动），不挡操作 */}
       <ClassifyProgressPill bottom={96} />
+      {reclassification.picker}
     </SafeAreaView>
   );
 };

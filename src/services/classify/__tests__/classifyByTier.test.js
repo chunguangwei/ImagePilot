@@ -264,3 +264,20 @@ describe('retired model routing', () => {
     expect(mockLfm).not.toHaveBeenCalled();
   });
 });
+test.each(['scene','clip'])('explicit %s choice never silently falls back after inference failure',async tier=>{
+ mockReadSettings.mockResolvedValue({});mockIsDownloaded.mockResolvedValue(true);mockEnsureModel.mockResolvedValue('file://model');
+ mockPlaces365.mockRejectedValue(new Error('engine failed'));mockClip.mockRejectedValue(new Error('engine failed'));
+ await expect(classifyImageByTier('photo',tier,{strict:true})).rejects.toThrow('engine failed');
+ expect(mockMobileNet).not.toHaveBeenCalled();
+});
+test('explicit missing E2B fails before trying any other model',async()=>{
+ mockReadSettings.mockResolvedValue({});mockLargeComplete.mockResolvedValue(false);
+ await expect(classifyImageByTier('photo','vlm',{strict:true})).rejects.toThrow('not downloaded');
+ expect(mockMobileNet).not.toHaveBeenCalled();
+});
+test('explicit basic inference errors stay retryable rather than becoming Other',async()=>{
+ mockIsDownloaded.mockResolvedValue(true);mockMobileNet.mockRejectedValue(new Error('native failed'));
+ await expect(classifyImageByTier('photo','basic',{strict:true})).rejects.toThrow('native failed');
+ mockMobileNet.mockResolvedValue({success:false,error:'bad input'});
+ await expect(classifyImageByTier('photo','basic',{strict:true})).rejects.toThrow('bad input');
+});

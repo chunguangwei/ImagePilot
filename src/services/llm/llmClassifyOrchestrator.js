@@ -27,7 +27,11 @@ import { logger } from '../../adapters/WebAdapters';
 
 let _llm = null;
 
-function getLLM(imageClassifier, platform) {
+function getLLM(imageClassifier, platform, taskConfig) {
+  if (taskConfig) return new LLMProviderService({
+    configService:{getAIProviderConfig:async()=>taskConfig}, keyStore,
+    localClassifier:null, platform,
+  });
   if (_llm) return _llm;
   const localClassifier = new LocalClassifierService({
     onnxRunner: createLocalOnnxRunner(imageClassifier),
@@ -180,7 +184,7 @@ function normalizeTags(raw) {
  * @returns {Promise<{success:boolean,total:number,success_count:number,fail_count:number,items:Array}>}
  */
 export async function classifyCloudBatchV2({ imageClassifier, platform, inputs, validResults, aiCfg, detailed = false }) {
-  const llm = getLLM(imageClassifier, platform);
+  const llm = getLLM(imageClassifier, platform, {...aiCfg, fallbackToLocal:false});
   const lang = (aiCfg && aiCfg.promptLang) || i18n.language || 'zh';
   const taxonomy = buildTaxonomy(aiCfg, lang);
   if (!taxonomy.length) {

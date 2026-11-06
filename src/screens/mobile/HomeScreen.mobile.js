@@ -1,3 +1,4 @@
+import {useReclassificationPicker} from '../../components/ReclassificationModelPicker';
 import { subscribeCacheRefresh } from '../../services/subscribeCacheRefresh';
 import { pendingLfm } from '../../services/classify/lfmScanner';
 import { readActiveTier } from '../../services/classify/classifyByTier';
@@ -223,6 +224,7 @@ const SECTION_TINTS = {
 let _launchUpdateChecked = false;
 
 const HomeScreen = ({ navigation }) => {
+  const reclassification = useReclassificationPicker(navigation);
   const { t, i18n } = useTranslation('common');
   const c = useIosColors();
   const insets = useSafeAreaInsets();
@@ -1262,51 +1264,7 @@ const HomeScreen = ({ navigation }) => {
       return;
     }
 
-    // 判断是否已配置在线大模型（active 非 local-onnx 即视为已配置）
-    let isLLMConfigured = false;
-    try {
-      const aiCfg = await aiProviderConfigService.getAIProviderConfig();
-      isLLMConfigured = !!(aiCfg && aiCfg.active && aiCfg.active !== 'local-onnx');
-    } catch (e) {
-      logger.debug('读取 AI 模型配置失败，按未配置处理:', e?.message || e);
-      isLLMConfigured = false;
-    }
-
-    if (isLLMConfigured) {
-      // 已配置云端：同时提供「云端」与「离线」两个执行按钮——
-      // 飞行模式/网差时，用户可直接走离线，不必先等云端 60s 超时再触发兜底。
-      Alert.alert(
-        t('home.aiClassifyConfirmTitle'),
-        t('home.aiClassifyConfirmMessage', { count: naCount }),
-        [
-          { text: t('common.cancel'), style: 'cancel', onPress: () => logger.debug('用户取消分类') },
-          {
-            text: t('home.aiClassifyUseLocal'),
-            style: 'default',
-            onPress: async () => { await executeAIClassify({ forceLocal: true, naCount, categoryId }); },
-          },
-          {
-            text: t('home.aiClassifyUseCloud'),
-            style: 'default',
-            onPress: async () => { await executeAIClassify({ forceLocal: false, naCount, categoryId }); },
-          },
-        ],
-      );
-    } else {
-      // 未配置云端 → 直接走离线
-      Alert.alert(
-        t('home.aiClassifyOfflineTitle'),
-        t('home.aiClassifyOfflineMessage', { count: naCount }),
-        [
-          { text: t('common.cancel'), style: 'cancel', onPress: () => logger.debug('用户取消分类') },
-          {
-            text: t('common.confirm'),
-            style: 'default',
-            onPress: async () => { await executeAIClassify({ forceLocal: true, naCount, categoryId }); },
-          },
-        ],
-      );
-    }
+    reclassification.open(naCount, modelOptions=>executeAIClassify({...modelOptions,naCount,categoryId}));
   };
 
   /**
@@ -1391,7 +1349,7 @@ const HomeScreen = ({ navigation }) => {
           return;
         }
       }
-      const classificationTask = galleryScannerService.aiImageClassifyByContent(new Date(), imagesToClassify, { forceLocal });
+      const classificationTask = galleryScannerService.aiImageClassifyByContent(new Date(), imagesToClassify, { forceLocal, tier:opts.tier, strict:opts.strict, provider:opts.provider });
       setCanStopTask(galleryScannerService.isScanning === true);
       const result = await classificationTask;
       setCanStopTask(false);
@@ -2778,6 +2736,7 @@ const HomeScreen = ({ navigation }) => {
       <ClassifyProgressPill bottom={150 + insets.bottom} />
 
 
+      {reclassification.picker}
     </SafeAreaView>
   );
 };

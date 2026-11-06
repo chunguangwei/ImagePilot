@@ -422,7 +422,7 @@ class GalleryScannerService {
           if (naVideos && naVideos.length > 0) naImages = naImages.concat(naVideos);
         } catch (_) {}
       }
-      const preTier = await readActiveTier();
+      const preTier = clsOpts.tier || await readActiveTier();
       const lfmEnabled = preTier === 'lfm';
       const explicitImages = Array.isArray(imagesToClassify) && imagesToClassify.length > 0;
       // Recover previous interrupted work even when there are no NA images left.
@@ -450,7 +450,7 @@ class GalleryScannerService {
       }
 
       try {
-        if (['basic', 'scene', 'clip'].includes(await readActiveTier())) await this.imageClassifier.initialize();
+        if (['basic'].includes(preTier)) await this.imageClassifier.initialize();
       } catch (e) {
         logger.error('❌ ImageClassifierService 初始化失败:', e);
         await this.sendProgressMessage('error', 0, naImages.length);
@@ -500,7 +500,7 @@ class GalleryScannerService {
             }
             if (!imageUri) { failedCount++; continue; }
             // P1: 按 tier 路由（basic→ImageNet / scene→Places365 / clip→未接入回退）
-            const r = await classifyImageByTier(imageUri, activeTier, { imageClassifier: this.imageClassifier, detailed: !!clsOpts.detailed });
+            const r = await classifyImageByTier(imageUri, activeTier, { imageClassifier: this.imageClassifier, detailed: !!clsOpts.detailed, strict: !!clsOpts.strict });
             const top = r?.topPrediction || null;
             const conf = (typeof r?.confidence === 'number') ? r.confidence : 0;
             let category;
@@ -745,21 +745,25 @@ class GalleryScannerService {
     if (this.isScanning) {
       throw new Error('已有扫描在进行中');
     }
-    if (opts && opts.forceLocal === true) {
-      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify, { detailed: !!(opts && opts.detailed) });
+    if (opts && (opts.forceLocal === true || opts.tier)) {
+      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify, { detailed: !!(opts && opts.detailed), tier: opts.tier, strict: !!opts.strict });
     }
     let aiCfg = null;
     try {
-      const cfgSvc = (await import('./llm/adapters/UnifiedDataConfigService.js')).default;
+      const cfgSvc = require('./llm/adapters/UnifiedDataConfigService.js').default;
       aiCfg = await cfgSvc.getAIProviderConfig();
     } catch (e) {
       logger.warn('读取 aiProvider 配置失败，按 local-onnx 处理:', e?.message || e);
     }
+    if (opts.provider) {
+      if (!aiCfg?.providers?.[opts.provider]) throw new Error('Online model is not configured');
+      aiCfg = {...aiCfg, active:opts.provider, fallbackToLocal:false};
+    }
     const isCloud = !!(aiCfg && aiCfg.active && aiCfg.active !== 'local-onnx');
     if (!isCloud) {
-      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify, { detailed: !!(opts && opts.detailed) });
+      return await this._classifyAllNAImagesByLocalOnnxJS(scanStartTime, imagesToClassify, { detailed: !!(opts && opts.detailed), tier: opts.tier, strict: !!opts.strict });
     }
-    return await this._classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg, { detailed: !!(opts && opts.detailed) });
+    return await this._classifyAllNAImagesByCloudJS(scanStartTime, imagesToClassify, aiCfg, { detailed: !!(opts && opts.detailed), tier: opts.tier, strict: !!opts.strict });
   }
 
   /**

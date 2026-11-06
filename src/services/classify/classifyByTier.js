@@ -84,6 +84,10 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
   const activeTier = tier === 'lfm' || tier === 'smolvlm' ? DEFAULT_CLASSIFIER_TIER : tier || (await readActiveTier());
   const tierCfg = CLASSIFIER_TIERS[activeTier] || CLASSIFIER_TIERS[DEFAULT_CLASSIFIER_TIER];
   const sharedClassifier = opts.imageClassifier;
+  if (opts.strict) {
+    const {isReclassificationModelReady} = require('./reclassificationAvailability');
+    if (!(await isReclassificationModelReady(activeTier))) throw new Error('Selected model is not downloaded');
+  }
 
   if (tierCfg.engine === 'imagenet') {
     // basic 现在也走 Release 按需下载（同 scene/clip 一致；APK/.ipa 不打包模型）
@@ -98,7 +102,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
         fallback: 'no-model',
       };
     }
-    return await runImageNet(imageUri, sharedClassifier);
+    return await runImageNet(imageUri, sharedClassifier, opts.strict);
   }
   if (tierCfg.engine === 'embeddinggemma2') {
     // Never silently substitute another model during evaluation of this opt-in model.
@@ -112,6 +116,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
   if (tierCfg.engine === 'places365') {
     const downloaded = await isClassifierModelDownloaded(tierCfg.filename);
     if (!downloaded) {
+      if (opts.strict) throw new Error('Selected model is not downloaded');
       logger.warn(`[classifyByTier] scene tier 模型未下载，回退 basic`);
       const r = await runImageNet(imageUri, sharedClassifier);
       return { ...r, fallback: 'no-model' };
@@ -124,6 +129,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
       }
       const r = await _places365Mod.classifyImageWithPlaces365(imageUri, modelPath);
       if (!r.success) {
+        if (opts.strict) throw new Error(r.error || 'Selected model inference failed');
         const fb = await runImageNet(imageUri, sharedClassifier);
         return { ...fb, fallback: 'engine-error' };
       }
@@ -137,6 +143,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
         predictions: r.predictions,
       };
     } catch (e) {
+      if (opts.strict) throw e;
       logger.warn(`[classifyByTier] places365 失败回退 basic: ${e?.message || e}`);
       const fb = await runImageNet(imageUri, sharedClassifier);
       return { ...fb, fallback: 'engine-error' };
@@ -147,6 +154,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
     const clipModel = await readActiveClipModel();
     const downloaded = await isClassifierModelDownloaded(clipModel.filename);
     if (!downloaded) {
+      if (opts.strict) throw new Error('Selected model is not downloaded');
       logger.warn(`[classifyByTier] clip 模型(${clipModel.id})未下载，回退 basic`);
       const r = await runImageNet(imageUri, sharedClassifier);
       return { ...r, fallback: 'no-model' };
@@ -160,6 +168,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
       // 分类一律落真实分类；被删内置分类的隐藏由展示层统一映射到「待分类」（可逆）。
       const r = await _mobileClipMod.classifyImageWithMobileCLIP(imageUri, modelPath, clipModel);
       if (!r.success) {
+        if (opts.strict) throw new Error(r.error || 'Selected model inference failed');
         const fb = await runImageNet(imageUri, sharedClassifier);
         return { ...fb, fallback: 'engine-error' };
       }
@@ -173,6 +182,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
         predictions: r.predictions,
       };
     } catch (e) {
+      if (opts.strict) throw e;
       logger.warn(`[classifyByTier] clip 失败回退 basic: ${e?.message || e}`);
       const fb = await runImageNet(imageUri, sharedClassifier);
       return { ...fb, fallback: 'engine-error' };
@@ -193,6 +203,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
     };
     let vlmModel = await readActiveVlmModel();
     if (!(await isReady(vlmModel))) {
+      if (opts.strict) throw new Error('Selected model is not downloaded');
       let alt = null;
       for (const id of VLM_MODEL_ORDER) {
         const cand = getVlmModel(id);
@@ -221,6 +232,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
       }
       const r = await _vlmMod.classifyImageWithVLM(imageUri, { model: modelUri, mmproj: mmprojUri }, vlmModel, { detailed: !!opts.detailed });
       if (!r.success) {
+        if (opts.strict) throw new Error(r.error || 'Selected model inference failed');
         const fb = await runImageNet(imageUri, sharedClassifier);
         return { ...fb, fallback: 'engine-error' };
       }
@@ -235,6 +247,7 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
         vlmLabel: r.vlmLabel || null,   // 归不进已有类时模型自拟的标签（落 other + 打标签）
       };
     } catch (e) {
+      if (opts.strict) throw e;
       logger.warn(`[classifyByTier] vlm 失败回退 basic: ${e?.message || e}`);
       const fb = await runImageNet(imageUri, sharedClassifier);
       return { ...fb, fallback: 'engine-error' };
@@ -244,17 +257,19 @@ export async function classifyImageByTier(imageUri, tier = null, opts = {}) {
   return { ...fb, fallback: 'engine-error' };
 }
 
-async function runImageNet(imageUri, sharedClassifier) {
+async function runImageNet(imageUri, sharedClassifier, strict = false) {
   const ic = getImageClassifier(sharedClassifier);
   let r;
   try {
     r = await ic.classifyImageWithMobileNetV3(imageUri);
   } catch (e) {
+    if (strict) throw e;
     // 下载失败 / 模型损坏 / 推理崩 — 统一空结果，上层 scanner 会落 unclassified
     logger.warn(`[classifyByTier] basic 推理失败: ${e?.message || e}`);
     return { engine: 'imagenet', topPrediction: null, confidence: 0, predictions: [], fallback: 'engine-error' };
   }
   if (!r || !r.success) {
+    if (strict) throw new Error(r?.error || 'Selected model inference failed');
     return { engine: 'imagenet', topPrediction: null, confidence: 0, predictions: [] };
   }
   // 给 top1 求 appCategory（沿用既有映射）

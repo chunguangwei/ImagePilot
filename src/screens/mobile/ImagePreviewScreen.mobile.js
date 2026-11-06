@@ -1,3 +1,4 @@
+import {useReclassificationPicker} from '../../components/ReclassificationModelPicker';
 /**
  * ImagePilot - 移动端图片预览页
  * 
@@ -84,6 +85,7 @@ const MAX_SCALE = 4;
 const clampScale = (v) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, v));
 
 const ImagePreviewScreen = ({ route, navigation }) => {
+  const reclassification = useReclassificationPicker(navigation);
   const { t, i18n } = useTranslation('common');
   const cTheme = useIosColors();
   // 主题感知样式：跟随 light/dark 切换；createStyles(cTheme) 由 useMemo 缓存
@@ -1942,6 +1944,22 @@ const ImagePreviewScreen = ({ route, navigation }) => {
             </Text>
           </View>
 
+          <TouchableOpacity accessibilityRole="button" style={{padding:16}} onPress={()=>{
+            const image=currentImage;closeCategoryModal();
+            reclassification.open(1,async modelOptions=>{
+              const progress=require('../../services/classifyProgressStore');
+              try{
+                progress.startClassifyProgress(1);
+                const Scanner=require('../../services/GalleryScannerService').default;
+                const scanner=new Scanner();await scanner.initialize();
+                const result=await scanner.aiImageClassifyByContent(new Date(),[image],{...modelOptions,detailed:true});
+                progress.finishClassifyProgress();
+                const saved=UnifiedDataService.imageCache.getCache().allImages.find(row=>row.id===image.id);
+                if(saved){setCurrentImage(prev=>prev?.id===image.id?{...prev,...saved}:prev);setAllImagesState(prev=>prev.map(row=>row.id===image.id?{...row,...saved}:row));}
+                if(result?.failedCount || result?.uncertainCount)Alert.alert(t('common.tip'),t('home.aiClassificationReviewSummary',{failed:result.failedCount||0,uncertain:result.uncertainCount||0}));
+              }catch(error){progress.clearClassifyProgress();Alert.alert(t('common.tip'),String(error.message||error));}
+            });
+          }}><Text style={{color:cTheme.accent||'#007AFF',fontSize:17}}>{currentLang==='en'?'Reclassify with AI…':'选择模型重新 AI 分类…'}</Text></TouchableOpacity>
           <ScrollView style={styles.categoryList}>
             {categories.map((cat) => {
               const categoryName = configService.getCategoryDisplayName(cat.id, language) ||
@@ -2168,6 +2186,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
       {toastMessage ? (
         <Toast message={toastMessage} onDone={() => setToastMessage(null)} placement="screenCenter" />
       ) : null}
+      {reclassification.picker}
     </SafeAreaView>
   );
 };

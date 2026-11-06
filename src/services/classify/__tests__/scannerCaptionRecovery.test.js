@@ -1,3 +1,4 @@
+jest.mock('../../llm/adapters/UnifiedDataConfigService',()=>({default:{getAIProviderConfig:async()=>({active:'openai',providers:{openai:{model:'default'},kimi:{model:'chosen'}}})},__esModule:true}));
 jest.mock('react-native', () => ({ NativeModules: {}, Platform: { OS: 'android' } }));
 jest.mock('../../../adapters/WebAdapters', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() }, getUri: image => image.uri }));
 jest.mock('../../UnifiedDataService', () => ({ readSettings: jest.fn(async () => ({ embeddingCaption: { enabled: true } })), readImagesByCategory: jest.fn(async () => []), readAllImages: jest.fn(async () => []), migrateUnclassifiedVideos: jest.fn(), batchUpdateClassification: jest.fn(async () => ({ success: true, updatedCount: 1 })), imageCache: { buildCache: jest.fn(), refreshCache: jest.fn() } }));
@@ -29,6 +30,16 @@ for (const platform of ['android', 'ios']) {
         return {generated,failed:0,stopped:options.shouldStop()};
       });
       scanner = new Scanner(); scanner.sendProgressMessage = jest.fn();
+    });
+    test('task model override reaches inference without reading or changing the default tier',async()=>{
+      await scanner._classifyAllNAImagesByLocalOnnxJS(null,[row('task')],{tier:'scene',strict:true});
+      expect(readActiveTier).not.toHaveBeenCalled();
+      expect(classifyImageByTier).toHaveBeenCalledWith('file://task','scene',expect.objectContaining({strict:true}));
+    });
+    test('selected online provider is passed as a task snapshot',async()=>{
+      scanner._classifyAllNAImagesByCloudJS=jest.fn(async()=>({success:true}));
+      await scanner.aiImageClassifyByContent(null,[row('task')],{provider:'kimi',forceLocal:false});
+      expect(scanner._classifyAllNAImagesByCloudJS.mock.calls[0][2]).toMatchObject({active:'kimi',fallbackToLocal:false});
     });
     test('registers a multi-photo pending queue in one write before inference',async()=>{
       await scanner._classifyAllNAImagesByLocalOnnxJS(null,[row('a'),row('b')]);
