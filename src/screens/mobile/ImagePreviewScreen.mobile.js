@@ -140,6 +140,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(currentIndex);
   const [currentImage, setCurrentImage] = useState(initialImage); // 当前图片完整信息
   const [allImagesState, setAllImagesState] = useState(allImages); // 可变的图片列表
+  const [showModelDetails, setShowModelDetails] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   // 底部操作栏实测高度：信息面板(infoPanel)的 bottom 跟随它，避免「分类」等最后一行被操作栏
   // 遮挡（操作栏含图标+标签+padding 实际 80~95px，不同机型/字号会变，写死必踩坑）。
@@ -959,14 +960,13 @@ const ImagePreviewScreen = ({ route, navigation }) => {
       });
 
       // 使用专门的分类更新接口
-      await UnifiedDataService.updateImagesCategory([currentImage.id], newCategory, 'manual');
-
-      // 更新本地状态
-      setCurrentImage(prev => ({
-        ...prev,
-        category: newCategory,
-        confidence: 'manual'
-      }));
+      const result = await UnifiedDataService.updateImagesCategory([currentImage.id], newCategory, 'manual');
+      if (!result?.success || result.processed !== 1) throw new Error('Category update failed');
+      // Use the persisted category, including NA_video routing, and update the swipe list too.
+      const savedImage = UnifiedDataService.imageCache.getCache().allImages.find(image => image.id === currentImage.id);
+      if (!savedImage) throw new Error('Updated photo unavailable');
+      setCurrentImage(prev => ({ ...prev, ...savedImage }));
+      setAllImagesState(prev => prev.map(image => image.id === savedImage.id ? { ...image, ...savedImage } : image));
 
       logger.debug('分类修改成功');
       Haptics.notification('success');
@@ -975,7 +975,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
       closeCategoryModal();
       
       // 重新加载图片列表（如果是从分类页进入的）
-      if (finalFilterType === 'category' && finalFilterValue !== newCategory) {
+      if (finalFilterType === 'category' && finalFilterValue !== savedImage.category) {
         logger.debug('分类已改变，重新加载图片列表');
         await reloadImageListWithIndexAdjustment('修改分类');
       }
@@ -1305,12 +1305,40 @@ const ImagePreviewScreen = ({ route, navigation }) => {
       <View style={[styles.infoPanel, { bottom: actionsBarHeight }]}>
         <View style={styles.infoPanelHeader}>
           <Text style={styles.infoPanelTitle}>{t('imagePreview.fileInfo')}</Text>
-          <TouchableOpacity onPress={() => setShowInfo(false)}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.close')} style={{ minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' }} onPress={() => setShowInfo(false)}>
             <Text style={styles.infoPanelClose}>✕</Text>
         </TouchableOpacity>
       </View>
 
         <ScrollView style={styles.infoContent} contentContainerStyle={styles.infoContentContainer}>
+          {/* 分类信息优先显示 */}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>{t('imagePreview.category')}:</Text>
+            <Text style={styles.infoValue}>
+              {getCategoryDisplayName(currentImage.category)}
+                {currentImage.confidence === 'manual' ? ` (${t('imagePreview.manual')})` :
+                 currentImage.confidence ? ` (${(currentImage.confidence * 100).toFixed(1)}%)` : ''}
+              </Text>
+            </View>
+          {/* AI 描述信息 - 可人工编辑（改完立即可被搜索命中）；无描述也显示"添加"入口 */}
+          {(() => {
+            const realMsg = (currentImage.message && currentImage.message !== t('imagePreview.classificationComplete'))
+              ? currentImage.message : '';
+            return (
+              <TouchableOpacity
+                style={styles.infoRow}
+                activeOpacity={0.6}
+                onPress={() => { setDescDraft(realMsg); setDescEditorVisible(true); }}
+              >
+                <Text style={styles.infoLabel}>✨ {t('imagePreview.aiDescription') || 'AI 描述'}:</Text>
+                <Text style={[styles.infoValue, !realMsg && { color: cTheme.tertiaryLabel }]}>
+                  {realMsg || (t('imagePreview.addDescription') || '点此添加描述（可被搜索）')}
+                  <Text style={{ color: cTheme.tertiaryLabel }}>  <VIcon name="create-outline" size={13} color={cTheme.tertiaryLabel} /></Text>
+                </Text>
+              </TouchableOpacity>
+            );
+          })()}
+
           {/* 基本信息 */}
             <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{t('imagePreview.takenTime')}:</Text>
@@ -1549,27 +1577,15 @@ const ImagePreviewScreen = ({ route, navigation }) => {
             );
           })()}
 
-          {/* AI 描述信息 - 可人工编辑（改完立即可被搜索命中）；无描述也显示"添加"入口 */}
-          {(() => {
-            const realMsg = (currentImage.message && currentImage.message !== t('imagePreview.classificationComplete'))
-              ? currentImage.message : '';
-            return (
-              <TouchableOpacity
-                style={styles.infoRow}
-                activeOpacity={0.6}
-                onPress={() => { setDescDraft(realMsg); setDescEditorVisible(true); }}
-              >
-                <Text style={styles.infoLabel}>✨ {t('imagePreview.aiDescription') || 'AI 描述'}:</Text>
-                <Text style={[styles.infoValue, !realMsg && { color: cTheme.tertiaryLabel }]}>
-                  {realMsg || (t('imagePreview.addDescription') || '点此添加描述（可被搜索）')}
-                  <Text style={{ color: cTheme.tertiaryLabel }}>  <VIcon name="create-outline" size={13} color={cTheme.tertiaryLabel} /></Text>
-                </Text>
-              </TouchableOpacity>
-            );
-          })()}
-
           {currentImage.mobileNetV3Detections?.lfm && <View style={styles.detectionSection}>
             <Text style={styles.detectionTitle}>{t('imagePreview.lfmResult')}</Text>
+            {currentImage.mobileNetV3Detections.lfm.timing && <Text style={styles.detectionText}>
+              {t('imagePreview.lfmTiming', {
+                setup: (currentImage.mobileNetV3Detections.lfm.timing.setupMs / 1000).toFixed(1),
+                image: (currentImage.mobileNetV3Detections.lfm.timing.preprocessingMs / 1000).toFixed(1),
+                inference: (currentImage.mobileNetV3Detections.lfm.timing.inferenceMs / 1000).toFixed(1),
+              })}
+            </Text>}
             {currentImage.mobileNetV3Detections.lfm.state !== 'complete' && <Text style={styles.detectionText}>
               {t(`imagePreview.classification_${currentImage.mobileNetV3Detections.lfm.state}`)}
               {currentImage.mobileNetV3Detections.lfm.error ? `: ${currentImage.mobileNetV3Detections.lfm.error}` : ''}
@@ -1592,6 +1608,8 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   {result.classification.error ? `: ${result.classification.error}` : ''}
                 </Text>}
                 {!result.accepted && <Text style={styles.detectionText}>{t('imagePreview.embeddingUncertain')}</Text>}
+                <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: showModelDetails }} onPress={() => setShowModelDetails(v => !v)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: cTheme.accent, fontSize: 15 }}>{t(showModelDetails ? 'imagePreview.hideModelDetails' : 'imagePreview.modelDetails')}</Text></TouchableOpacity>
+                {showModelDetails && <>
                 {result.categoryDescription ? (
                   <Text style={styles.detectionText}>{t('imagePreview.categoryMeaning')}: {result.categoryDescription}</Text>
                 ) : null}
@@ -1601,6 +1619,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   </Text>
                 ))}
                 <Text style={styles.detectionText}>{t('imagePreview.similarityNotProbability')}</Text>
+                </>}
               </View>
             );
           })()}
@@ -1695,15 +1714,6 @@ const ImagePreviewScreen = ({ route, navigation }) => {
               </>
           ) : null}
 
-          {/* 分类信息 - 放在最后 */}
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>{t('imagePreview.category')}:</Text>
-            <Text style={styles.infoValue}>
-              {getCategoryDisplayName(currentImage.category)}
-                {currentImage.confidence === 'manual' ? ` (${t('imagePreview.manual')})` : 
-                 currentImage.confidence ? ` (${(currentImage.confidence * 100).toFixed(1)}%)` : ''}
-              </Text>
-            </View>
         </ScrollView>
           </View>
     );

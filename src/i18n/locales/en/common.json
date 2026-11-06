@@ -38,7 +38,8 @@
     "language": "Language",
     "chinese": "中文",
     "english": "English",
-    "tip": "Tip"
+    "tip": "Tip",
+    "saving": "Saving…"
   },
   "privacy": {
     "title": "Privacy Policy",
@@ -260,7 +261,8 @@
     "aiClassifyPartialFail": "{{count}} item(s) failed to classify (kept as-is). Try again later.",
     "aiClassifyError": "AI classification failed",
     "aiClassifyRunning": "Classifying {{done}}/{{total}}",
-    "aiClassifyDone": "Classification done ({{total}})"
+    "aiClassifyDone": "Classification done ({{total}})",
+    "changeCategoryTimedOut": "The change is not yet confirmed. Saved results will sync automatically; check again shortly."
   },
   "search": {
     "title": "Search",
@@ -479,7 +481,12 @@
     "slideshowBtn": "▶ Play",
     "randomBrowse": "Surprise Me",
     "randomBrowseSub": "{{count}} random · tap again for a new batch",
-    "holidaysTitle": "Holidays"
+    "holidaysTitle": "Holidays",
+    "stopTask": "Stop classification",
+    "scanNow": "Scan photos",
+    "classifyPending": "Classify {{count}} items",
+    "aiClassificationUncertain": "Finished. {{count}} uncertain photos kept their previous category or remain unclassified.",
+    "aiClassificationReviewSummary": "Finished: {{failed}} failed, {{uncertain}} uncertain. Unresolved photos kept their previous category or remain unclassified."
   },
   "imagePreview": {
     "classification_pending": "Classification: pending; resume from Home",
@@ -500,7 +507,7 @@
     "captionStage_image": "Image preparation",
     "captionStage_inference": "Caption inference",
     "captionStage_save": "Caption persistence",
-    "embeddingUncertain": "Candidates tied or no positive match was found. Assigned to Other.",
+    "embeddingUncertain": "Candidates are too close or no positive match was found. The existing category was kept; unclassified photos can be labeled manually.",
     "categoryMeaning": "Category meaning (not an image caption)",
     "similarityScore": "Similarity",
     "similarityNotProbability": "Similarity ranks category matches; it is not a probability of correctness.",
@@ -628,7 +635,10 @@
     "findSimilarAsk": "Find similar by…",
     "similarByColor": "Color (composition/tone)",
     "similarByVector": "AI (content semantics)",
-    "lfmResult": "LFM · Classification and short caption"
+    "lfmResult": "LFM · Classification and short caption",
+    "modelDetails": "Show match details",
+    "hideModelDetails": "Hide match details",
+    "lfmTiming": "Model setup {{setup}}s · Image preparation {{image}}s · Inference {{inference}}s (setup counted on first successful photo only)"
   },
   "enhanceResult": {
     "defaultPresetName": "Photo Enhancement",
@@ -891,7 +901,7 @@
     "screenshots": "Screenshots",
     "customCategories": {
       "title": "Custom categories",
-      "desc": "Define your own classification rules; the cloud model groups images by them"
+      "desc": "Set names and rules for local or online models that support custom categories."
     },
     "backupRestore": {
       "title": "Backup & restore categories",
@@ -996,7 +1006,35 @@
       "upToDate": "Index is already up to date"
     },
     "huaweiInstallHintTitle": "Huawei Device Note",
-    "huaweiInstallHintMessage": "If the system blocks the install (\"malicious install source\", a Huawei false positive):\n\nOption 1: Settings → System & updates → Pure Mode → turn off, then retry;\nOption 2: Open the system Files app → Download → tap imagepilot-update.apk to install."
+    "huaweiInstallHintMessage": "If the system blocks the install (\"malicious install source\", a Huawei false positive):\n\nOption 1: Settings → System & updates → Pure Mode → turn off, then retry;\nOption 2: Open the system Files app → Download → tap imagepilot-update.apk to install.",
+    "modelPicker": {
+      "active": "In use",
+      "downloaded": "Downloaded",
+      "notDownloaded": "Not downloaded",
+      "downloading": "Downloading",
+      "checking": "Verifying files",
+      "cancelling": "Cancelling…",
+      "cancel": "Cancel download",
+      "use": "Use this model",
+      "downloadUse": "Download and use",
+      "details": "Details & management",
+      "hideDetails": "Hide details",
+      "redownload": "Download again",
+      "delete": "Delete model",
+      "legacy": "Other traditional models",
+      "large": "Detailed classification",
+      "summary": {
+        "lfm": "Everyday sorting with short photo descriptions.",
+        "embeddinggemma2": "Fast image classification without descriptions.",
+        "vlm": "Richer image understanding; slower and uses more memory.",
+        "basic": "Recognize common objects, animals and food.",
+        "scene": "Identify scenes such as kitchens and beaches.",
+        "clip": "Classify common scenes and moods."
+      },
+      "unavailable": "Unavailable on this device",
+      "retry": "Retry this model"
+    },
+    "similaritySection": "Similar photos & search"
   },
   "directoryPicker": {
     "selectScanDirectory": "Select Scan Directory",
@@ -1039,15 +1077,16 @@
     "deleteMessage": "Delete custom category \"{{cid}}\"?\nPhotos in this category will return to \"Unclassified\" and will not be lost.",
     "deleteFailedTitle": "Delete Failed",
     "builtinTitle": "Built-in categories",
-    "builtinTip": "Delete default categories you don't use (they'll no longer show on Home or in lists). Their photos return to \"Unclassified\" and are not lost; you can restore them anytime, or recreate them as custom above.",
-    "builtinDeletedHint": "Deleted · photos moved to Unclassified",
-    "deleteBuiltinTitle": "Delete built-in category",
-    "deleteBuiltinMessage": "Delete \"{{name}}\"?\nPhotos in this category return to \"Unclassified\" and won't be lost. You can restore it anytime.",
+    "builtinTip": "Hide or restore built-in categories without deleting photos. Descriptions also guide models that support custom rules.",
+    "builtinDeletedHint": "Hidden; can be restored",
+    "deleteBuiltinTitle": "Hide built-in category",
+    "deleteBuiltinMessage": "Photos in “{{name}}” will appear under Unclassified. No photos are deleted. Restoring the category shows them in their original category again.",
     "restore": "Restore",
     "restoreAllBtn": "Restore all ({{count}})",
     "restoreAllTitle": "Restore default categories",
-    "restoreAllMessage": "Restore all deleted built-in categories? Photos already moved to Unclassified won't be auto-reassigned.",
-    "restoreAllConfirm": "Restore"
+    "restoreAllMessage": "Show all built-in categories again, including photos already assigned to them.",
+    "restoreAllConfirm": "Restore",
+    "hide": "Hide"
   },
   "aiModelConfig": {
     "title": "AI model settings",

@@ -1,5 +1,11 @@
 # ImagePilot - AI 智能照片分类管理工具
 
+## 1.5.91：模型匹配与实时刷新
+
+本地模型独立卡片、完整名称和明确状态；EmbeddingGemma 使用多描述融合，接近并列时保留原分类或待分类。修复 AI / 手动分类、安卓外部删除照片后的目录与统计刷新。LFM 减少批量任务登记开销并显示分段耗时。已有模型文件和模型选择保留。
+
+[匹配优化与样本验证](docs/features/EmbeddingPrototypeMatching.md) · [刷新修复](docs/features/ClassificationRefreshFix.md) · [UI 审查](docs/features/MobileUiReview.md)。Android 更新通过 GitHub Release 分发；iOS build 18 仅用于真机测试，暂不上 App Store。下方版本章节为历史记录。
+
 ## 1.5.90：三个独立本地模型入口
 
 LFM 标准方案一次完成分类与简短描述；EmbeddingGemma 仅做快速图片分类；E2B 保留更精细的本地多模态能力。LFM 不再挂在 EmbeddingGemma 下。1.5.90 保留已下载文件和当前模型选择；需要分类与描述时请主动选择 LFM 标准方案。[方案与迁移说明](docs/features/IndependentLocalModels.md)。下方旧版本章节保留历史行为。

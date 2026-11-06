@@ -13,7 +13,7 @@ import initialSettings from '../../../public/initialSettings.json';
  * 入口：设置页「🏷️ 自定义分类」。
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, Icon } from '../../adapters/WebAdapters';
@@ -32,6 +32,8 @@ export default function CustomCategoriesScreen({ navigation }) {
   const { t, i18n } = useTranslation('common');
   const isEn = String(i18n?.language || '').startsWith('en');
   const [list, setList] = useState([]);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   // 新增表单
   const [id, setId] = useState('');
@@ -70,16 +72,31 @@ export default function CustomCategoriesScreen({ navigation }) {
   }, []);
 
   // 持久化「已删除的内置分类」列表（写设置 + 注入 ConfigService），并重算分类统计 + 通知首页刷新。
-  const persistHidden = async (next) => {
-    setHidden(next);
+  // Do not clear forms or announce success until durable storage succeeds.
+  const saveChange = async (write, commit) => {
+    if (savingRef.current) return false;
+    savingRef.current = true;
+    setSaving(true);
     try {
-      await configService.setHiddenBuiltinCategories(next);
-      // 隐藏/恢复后，库里属于隐藏分类的图在统计/展示上归到「待分类」；这里立即重算，首页无需重扫即更新。
-      try { UnifiedDataService.refreshCategoryVisibility(); } catch (_) {}
+      await write();
+      commit();
+      return true;
     } catch (e) {
+      Haptics.notification('error');
       Alert.alert(t('customCategories.saveFailedTitle'), e?.message || String(e));
+      return false;
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
+  const persistHidden = next => saveChange(
+    () => configService.setHiddenBuiltinCategories(next),
+    () => {
+      setHidden(next);
+      try { UnifiedDataService.refreshCategoryVisibility(); } catch (_) {}
+    },
+  );
 
   // 查看内置分类含义：弹出该类说明，供用户照着写自定义分类「规则」。
   const onViewBuiltin = (cid, cname) => {
@@ -97,11 +114,11 @@ export default function CustomCategoriesScreen({ navigation }) {
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
-          text: t('customCategories.delete'),
+          text: t('customCategories.hide'),
           style: 'destructive',
           onPress: async () => {
             try {
-              await persistHidden(Array.from(new Set([...hidden, cid])));
+              if (!await persistHidden(Array.from(new Set([...hidden, cid])))) return;
               Haptics.notification('warning');
             } catch (e) {
               Haptics.notification('error');
@@ -115,7 +132,7 @@ export default function CustomCategoriesScreen({ navigation }) {
 
   // 恢复单个内置分类（仅重新显示并允许 AI 归入；已转待分类的图不会自动回到该分类）
   const onRestoreBuiltin = async (cid) => {
-    await persistHidden(hidden.filter((x) => x !== cid));
+    if (!await persistHidden(hidden.filter((x) => x !== cid))) return;
     Haptics.notification('success');
   };
 
@@ -129,20 +146,15 @@ export default function CustomCategoriesScreen({ navigation }) {
         { text: t('common.cancel'), style: 'cancel' },
         {
           text: t('customCategories.restoreAllConfirm'),
-          onPress: async () => { await persistHidden([]); Haptics.notification('success'); },
+          onPress: async () => { if (await persistHidden([])) Haptics.notification('success'); },
         },
       ]
     );
   };
 
-  const persist = async (next) => {
-    setList(next);
-    try {
-      await configService.setCustomCategories(next);
-    } catch (e) {
-      Alert.alert(t('customCategories.saveFailedTitle'), e?.message || String(e));
-    }
-  };
+  const persist = next => saveChange(
+    () => configService.setCustomCategories(next), () => setList(next),
+  );
 
   const onAdd = async () => {
     const cid = id.trim();
@@ -159,7 +171,7 @@ export default function CustomCategoriesScreen({ navigation }) {
       Alert.alert(t('customCategories.idDuplicateTitle'), t('customCategories.idDuplicateMessage'));
       return;
     }
-    await persist([...list, { id: cid, name: cname, rule: rule.trim(), iconKey }]);
+    if (!await persist([...list, { id: cid, name: cname, rule: rule.trim(), iconKey }])) return;
     setId(''); setName(''); setRule(''); setIconKey(CUSTOM_ICON_PRESETS[0].key);
     Haptics.notification('success');
   };
@@ -184,7 +196,7 @@ export default function CustomCategoriesScreen({ navigation }) {
     const next = list.map((c) =>
       c.id === editing.id ? { ...c, name: cname, rule: editing.rule.trim(), iconKey: editing.iconKey } : c
     );
-    await persist(next);
+    if (!await persist(next)) return;
     setEditing(null);
   };
 
@@ -207,7 +219,7 @@ export default function CustomCategoriesScreen({ navigation }) {
                 // 'manual' 表示是用户操作（与"改分类"一致），不会被后续 AI 再分类覆盖
                 await UnifiedDataService.updateImagesCategory(ids, 'NA', 'manual');
               }
-              await persist(list.filter((c) => c.id !== cid));
+              if (!await persist(list.filter((c) => c.id !== cid))) return;
               Haptics.notification('warning');
             } catch (e) {
               Haptics.notification('error');
@@ -226,6 +238,10 @@ export default function CustomCategoriesScreen({ navigation }) {
         const selected = selectedKey === p.key;
         return (
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={isEn ? p.en : p.zh}
+            accessibilityState={{ selected, disabled: saving }}
+            disabled={saving}
             key={p.key}
             style={[styles.iconCell, { backgroundColor: p.color, opacity: selected ? 1 : 0.5 }, selected && styles.iconCellSelected]}
             onPress={() => onSelect(p.key)}
@@ -241,7 +257,7 @@ export default function CustomCategoriesScreen({ navigation }) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.groupedBg }]}>
       <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.separator, borderBottomWidth: 0.5 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.label }]}>{t('customCategories.screenTitle')}</Text>
@@ -256,15 +272,15 @@ export default function CustomCategoriesScreen({ navigation }) {
         {/* 新增表单 */}
         <View style={[styles.card, { backgroundColor: theme.card }]}>
           <Text style={[styles.cardTitle, { color: theme.label }]}>{t('customCategories.addCardTitle')}</Text>
-          <TextInput style={[styles.input, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder={t('customCategories.idPlaceholder')} placeholderTextColor={theme.tertiaryLabel} value={id} onChangeText={setId} autoCapitalize="none" />
-          <TextInput style={[styles.input, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder={t('customCategories.namePlaceholder')} placeholderTextColor={theme.tertiaryLabel} value={name} onChangeText={setName} />
-          <TextInput style={[styles.input, styles.multiline, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder={t('customCategories.rulePlaceholder')} placeholderTextColor={theme.tertiaryLabel} value={rule} onChangeText={setRule} multiline />
+          <TextInput editable={!saving} style={[styles.input, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder={t('customCategories.idPlaceholder')} placeholderTextColor={theme.tertiaryLabel} value={id} onChangeText={setId} autoCapitalize="none" />
+          <TextInput editable={!saving} style={[styles.input, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder={t('customCategories.namePlaceholder')} placeholderTextColor={theme.tertiaryLabel} value={name} onChangeText={setName} />
+          <TextInput editable={!saving} style={[styles.input, styles.multiline, { backgroundColor: theme.groupedBg, color: theme.label, borderColor: theme.separator }]} placeholder={t('customCategories.rulePlaceholder')} placeholderTextColor={theme.tertiaryLabel} value={rule} onChangeText={setRule} multiline />
 
           <Text style={[styles.iconPickerLabel, { color: theme.secondaryLabel }]}>{t('customCategories.iconPickerLabel')}</Text>
           <IconGrid selectedKey={iconKey} onSelect={setIconKey} />
 
-          <TouchableOpacity style={styles.addBtn} onPress={onAdd}>
-            <Text style={styles.addBtnText}>{t('customCategories.addBtn')}</Text>
+          <TouchableOpacity accessibilityRole="button" disabled={saving} style={styles.addBtn} onPress={onAdd}>
+            <Text style={styles.addBtnText}>{saving ? t('common.saving') : t('customCategories.addBtn')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -282,15 +298,15 @@ export default function CustomCategoriesScreen({ navigation }) {
                 <View style={[styles.itemIconWrap, { backgroundColor: meta.color }]}>
                   <Icon name={meta.iconName} size={18} color="#FFFFFF" />
                 </View>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, minWidth: 100 }}>
                   <Text style={[styles.itemName, { color: theme.label }]}>{c.name} <Text style={[styles.itemId, { color: theme.tertiaryLabel }]}>({c.id})</Text></Text>
                   {!!c.rule && <Text style={[styles.itemRule, { color: theme.secondaryLabel }]}>{c.rule}</Text>}
                 </View>
-                <TouchableOpacity onPress={() => onOpenEdit(c)} style={styles.actionBtn} activeOpacity={0.6}>
+                <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={() => onOpenEdit(c)} style={styles.actionBtn} activeOpacity={0.6}>
                   <Icon name="edit" size={18} color="#007AFF" />
                   <Text style={styles.edit}>{t('customCategories.edit')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => onDelete(c.id)} style={styles.actionBtn} activeOpacity={0.6}>
+                <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={() => onDelete(c.id)} style={styles.actionBtn} activeOpacity={0.6}>
                   <Icon name="delete-outline" size={18} color="#FF3B30" />
                   <Text style={styles.del}>{t('customCategories.delete')}</Text>
                 </TouchableOpacity>
@@ -303,7 +319,7 @@ export default function CustomCategoriesScreen({ navigation }) {
         <View style={styles.builtinHeaderRow}>
           <Text style={[styles.cardTitle, { color: theme.label, marginBottom: 0 }]}>{t('customCategories.builtinTitle')}</Text>
           {hidden.length > 0 && (
-            <TouchableOpacity onPress={onRestoreAllBuiltins} activeOpacity={0.6}>
+            <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={onRestoreAllBuiltins} activeOpacity={0.6}>
               <Text style={styles.restoreAll}>{t('customCategories.restoreAllBtn', { count: hidden.length })}</Text>
             </TouchableOpacity>
           )}
@@ -319,25 +335,25 @@ export default function CustomCategoriesScreen({ navigation }) {
               <View style={[styles.itemIconWrap, { backgroundColor: meta.color }]}>
                 <Icon name={meta.iconName} size={18} color="#FFFFFF" />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 100 }}>
                 <Text style={[styles.itemName, { color: theme.label }, isHidden && { textDecorationLine: 'line-through' }]}>{b.name}</Text>
                 {isHidden && <Text style={[styles.itemRule, { color: theme.tertiaryLabel }]}>{t('customCategories.builtinDeletedHint')}</Text>}
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 {/* 查看：弹出该内置分类的含义说明，供照着写自定义规则 */}
-                <TouchableOpacity onPress={() => onViewBuiltin(b.id, b.name)} style={styles.actionBtn} activeOpacity={0.6}>
+                <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={() => onViewBuiltin(b.id, b.name)} style={styles.actionBtn} activeOpacity={0.6}>
                   <Icon name="info-outline" size={18} color="#007AFF" />
                   <Text style={styles.edit}>{t('customCategories.view', { defaultValue: '查看' })}</Text>
                 </TouchableOpacity>
                 {isHidden ? (
-                  <TouchableOpacity onPress={() => onRestoreBuiltin(b.id)} style={styles.actionBtn} activeOpacity={0.6}>
+                  <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={() => onRestoreBuiltin(b.id)} style={styles.actionBtn} activeOpacity={0.6}>
                     <Icon name="restore" size={18} color="#007AFF" />
                     <Text style={styles.edit}>{t('customCategories.restore')}</Text>
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity onPress={() => onDeleteBuiltin(b.id, b.name)} style={styles.actionBtn} activeOpacity={0.6}>
-                    <Icon name="delete-outline" size={18} color="#FF3B30" />
-                    <Text style={styles.del}>{t('customCategories.delete')}</Text>
+                  <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={() => onDeleteBuiltin(b.id, b.name)} style={styles.actionBtn} activeOpacity={0.6}>
+                    <Icon name="visibility-off" size={18} color="#FF3B30" />
+                    <Text style={styles.del}>{t('customCategories.hide')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -354,6 +370,7 @@ export default function CustomCategoriesScreen({ navigation }) {
       {!!editing && (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 999 }]}>
           <TouchableOpacity
+            disabled={saving}
             activeOpacity={1}
             style={StyleSheet.absoluteFill}
             onPress={() => setEditing(null)}
@@ -392,11 +409,11 @@ export default function CustomCategoriesScreen({ navigation }) {
               />
             </ScrollView>
             <View style={styles.modalFooter}>
-              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnGhost]} onPress={() => setEditing(null)}>
+              <TouchableOpacity accessibilityRole="button" disabled={saving} style={[styles.modalBtn, styles.modalBtnGhost]} onPress={() => setEditing(null)}>
                 <Text style={styles.modalBtnGhostText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={onSaveEdit}>
-                <Text style={styles.modalBtnPrimaryText}>{t('common.save')}</Text>
+              <TouchableOpacity accessibilityRole="button" disabled={saving} style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={onSaveEdit}>
+                <Text style={styles.modalBtnPrimaryText}>{saving ? t('common.saving') : t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -410,7 +427,7 @@ export default function CustomCategoriesScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F2F2F7' },
   header: { height: 56, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
-  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  backButton: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center' },
   backIcon: { fontSize: 32, color: '#007AFF', fontWeight: 'bold' },
   headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', color: '#000000', textAlign: 'center' },
   headerRight: { width: 40 },
@@ -424,12 +441,12 @@ const styles = StyleSheet.create({
   addBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 17 },
   empty: { color: '#8E8E93', marginTop: 12, fontSize: 15 },
 
-  item: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 10 },
+  item: { flexWrap: 'wrap', gap: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 10 },
   itemIconWrap: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   itemName: { fontSize: 15, fontWeight: '500', color: '#000000' },
   itemId: { fontSize: 12, color: '#8E8E93' },
   itemRule: { fontSize: 13, color: '#6C6C70', marginTop: 4, lineHeight: 18 },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 6, marginLeft: 4 },
+  actionBtn: { minHeight: 48, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 6, marginLeft: 4 },
   edit: { color: '#007AFF', marginLeft: 4, fontSize: 14 },
   del: { color: '#FF3B30', marginLeft: 4, fontSize: 14 },
   builtinHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
@@ -439,7 +456,7 @@ const styles = StyleSheet.create({
   iconPickerLabel: { fontSize: 13, color: '#6C6C70', marginTop: 4, marginBottom: 8 },
   iconGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 14 },
   iconCell: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 48, height: 48, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
     marginRight: 10, marginBottom: 10,
   },

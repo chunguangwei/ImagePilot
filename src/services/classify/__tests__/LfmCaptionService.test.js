@@ -83,3 +83,20 @@ test('short subject caption skips OCR details and bounds generation', async () =
   expect(request.messages[0].content[0].text).toContain('15');
   expect(request.messages[0].content[0].text).toContain('不转录');
 });
+test('reports setup and per-photo timing without changing caption content', async()=>{
+ const onTiming=jest.fn();const o=opts();await runCaptionPass(images,{...o,onTiming});
+ expect(onTiming).toHaveBeenCalledTimes(2);
+ expect(onTiming.mock.calls[0][1]).toEqual(expect.objectContaining({setupMs:expect.any(Number),preprocessingMs:expect.any(Number),inferenceMs:expect.any(Number)}));
+ expect(onTiming.mock.calls[1][1].setupMs).toBe(0);
+ expect(o.save).toHaveBeenCalledWith(images[0],'图片中有一只猫');
+});
+test('setup timing survives a failed first image and is attached to the first successful photo',async()=>{
+ let now=0;const clock=jest.spyOn(Date,'now').mockImplementation(()=>now+=10);
+ try {
+   mockContext.completion.mockRejectedValueOnce(new Error('bad photo')).mockResolvedValueOnce({text:'一只猫'});
+   const onTiming=jest.fn();const r=await runCaptionPass(images,{...opts(),onTiming});
+   expect(r.generated).toBe(1);
+   expect(onTiming.mock.calls[0][0]).toBe(images[1]);
+   expect(onTiming.mock.calls[0][1].setupMs).toBeGreaterThan(0);
+ } finally {clock.mockRestore();}
+});

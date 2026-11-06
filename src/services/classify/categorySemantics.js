@@ -40,6 +40,31 @@ export function categoryText(category, lang = 'zh') {
   return description ? `${name}: ${description}` : name;
 }
 
+// Two complementary visual appearances per builtin; never applied to user-authored rules.
+const visualExamples = {
+  social_activities: ['Adults posing together for a group photograph at a workplace event.', 'Friends or family gathered together at a party, meal or celebration.'],
+  single_person: ['A selfie or close-up portrait focused on one person and their face.', 'A full-body or half-body portrait of one person posing as the main subject.'],
+  kids: ['A real young child playing, with the child as the main subject.', 'A close-up portrait of a real baby or toddler.'],
+  pets: ['A photograph focused on a pet cat resting or playing.', 'A photograph focused on a pet dog or another domestic animal.'],
+  foods: ['A close-up food photograph of a prepared meal or dishes on a table.', 'A food photograph of a dessert, snack, fruit or drink.'],
+  travel_scenery: ['A landscape photograph of mountains, a lake, a forest or countryside.', 'A scenic travel photograph of a beach, coastline or park.'],
+  screenshot: ['A digital screenshot showing a chat conversation, app or phone interface.', 'A computer screenshot showing a web page, game or software window.'],
+  idcard: ['A close-up photograph of an identity card or passport document.', 'A formal front-facing ID portrait against a plain background.'],
+  qrcode: ['A square black-and-white QR code filling most of an image.', 'A close-up image primarily displaying a scannable QR code.'],
+  electronics: ['A photograph focused on a network equipment cabinet containing servers, switches, routers and cables.', 'A close-up photograph of a computer, mobile phone, camera or electronic circuit board.'],
+  night_scene: ['A city street or buildings illuminated by lights at night.', 'A nighttime landscape showing the dark sky and distant lights.'],
+  architecture: ['A photograph focused on a building facade, bridge or architectural structure.', 'An interior photograph focused on a room and its architectural space.'],
+  plants: ['A close-up photograph focused on flowers, leaves or a potted plant.', 'A photograph focused on trees, shrubs or growing vegetation.'],
+  vehicles: ['A photograph focused on a car, motorcycle or bicycle.', 'A photograph focused on a train, boat or airplane.'],
+  sports: ['A person actively running, swimming, cycling or exercising.', 'People playing a ball game or participating in a sporting event.'],
+  fashion: ['A fashion photograph focused on an outfit and the clothing being modeled.', 'A close-up photograph of shoes, hats, jewelry or fashion accessories.'],
+  products: ['A studio product photograph of merchandise against a simple background.', 'A photograph displaying product packaging or an item for sale.'],
+  documents: ['A close-up photograph of a printed document, form or page of text.', 'A photograph of an invoice, receipt, ticket or paper record.'],
+  art: ['A close-up photograph of a trophy, medal or award displayed on a base.', 'A photograph focused on a painting, sculpture, calligraphy or handmade artwork.'],
+  cartoon: ['An illustration of a drawn cartoon character or comic panel.', 'A digital meme, cartoon sticker or illustrated emoji image.'],
+  other: ['A photograph of miscellaneous objects outside the listed specific subjects.', 'An image with content that does not match a specific available category.'],
+};
+
 // Every reference includes a visual meaning; bare labels can override the actual category definition.
 // User-authored rules/descriptions remain the sole reference, so a broad label cannot bypass them.
 export function categoryEmbeddingTexts(category, lang = 'zh') {
@@ -49,8 +74,5 @@ export function categoryEmbeddingTexts(category, lang = 'zh') {
   if (!descriptions[category.id] || !category.en || (typeof category.rule === 'string' && category.rule.trim()) || hasDescription) {
     return [categoryText(category, lang)];
   }
-  const references = [categoryText(category, 'en')];
-  // Network equipment is part of Electronics, distinct from consumer device examples.
-  if (category.id === 'electronics') references.push('Electronics: A photograph focused on a network equipment cabinet containing servers, switches, routers and cables.');
-  return references;
+  return [categoryText(category, 'en'), ...(visualExamples[category.id] || []).map(text => `${category.en}: ${text}`)];
 }

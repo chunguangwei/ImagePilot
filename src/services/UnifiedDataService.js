@@ -1718,6 +1718,8 @@ class UnifiedDataService {
         return { success: true, processed: 0 };
       }
 
+      await this.imageCache.buildCache();
+
       // 移回「待分类」时按介质路由：图片→NA、视频→NA_video（两边都防：传 NA 或 NA_video 均矫正）。
       if (newCategory === 'NA' || newCategory === 'NA_video') {
         try {
@@ -1752,16 +1754,17 @@ class UnifiedDataService {
 
       // 批量更新缓存（同步操作，但内含 6 个 rebuild* fn）
       const t2 = Date.now();
-      const cacheUpdates = imageIds.map(imageId => ({
-        imageId,
-        newCategory,
-        additionalData: { confidence: newConfidence }
-      }));
-      const cacheResult = this.imageCache.batchUpdateImageClassification(cacheUpdates);
-      logger.debug(`[updateImagesCategory] cache update done in ${Date.now() - t2}ms`);
-      if (!cacheResult.success && cacheResult.errors) {
-        logger.warn('批量更新缓存部分失败:', cacheResult.errors);
+      const complete = result.success !== false && errors.length === 0 && processed === imageIds.length;
+      if (complete) {
+        const cacheResult = this.imageCache.batchUpdateImageClassification(imageIds.map(imageId => ({
+          imageId, newCategory, additionalData: { confidence: newConfidence },
+        })));
+        if (!cacheResult.success) await this.imageCache.refreshCache();
+      } else if (processed > 0) {
+        await this.imageCache.refreshCache();
       }
+      if (!complete && errors.length === 0) errors.push({ error: 'Not all requested photos were updated' });
+      logger.debug(`[updateImagesCategory] cache update done in ${Date.now() - t2}ms`);
 
       logger.debug(`[updateImagesCategory] total ${Date.now() - t0}ms, ${processed} 张成功`);
 
@@ -3048,12 +3051,28 @@ class UnifiedDataService {
     try {
       const result = await this.imageStorageService.batchUpdateClassification(classificationDataArray);
       
-      // 根据参数决定是否立即更新缓存
-      if (updateCache && result.success) {
-        // 更新缓存
+      // Publish only durable results. buildCache() alone is a no-op for a warm cache.
+      if (updateCache && result?.updatedCount > 0) {
         await this.imageCache.buildCache();
-        // 通知监听器
-        this.cacheListeners.forEach(listener => listener(this.imageCache.cache));
+        const rows = this.imageCache.getCache().allImages;
+        const byId = new Map(rows.map(row => [row.id, row]));
+        const complete = result.success && !result.failedCount
+          && result.updatedCount === classificationDataArray.length
+          && classificationDataArray.every(patch => patch.id && byId.has(patch.id)
+            && (patch.category === undefined ? !!byId.get(patch.id).category : typeof patch.category === 'string' && !!patch.category.trim()));
+        if (complete) {
+          this.imageCache.batchUpdateImageClassification(classificationDataArray.map(patch => {
+            const current = byId.get(patch.id);
+            const category = typeof patch.category === 'string' && patch.category.trim() ? patch.category : current.category || 'NA';
+            // Match storage semantics: absent fields preserve values; explicit null clears them.
+            const fields = ['confidence', 'idCardDetections', 'generalDetections', 'mobileNetV3Detections', 'message', 'background_color', ...(Platform.OS === 'web' ? [] : ['duration'])];
+            const additionalData = Object.fromEntries(fields.filter(key => patch[key] !== undefined).map(key => [key, patch[key]]));
+            return { imageId: patch.id, newCategory: category, additionalData };
+          }));
+        } else {
+          // Partial/URI-only writes need the DB's actual results, not guessed successful IDs.
+          await this.imageCache.refreshCache();
+        }
       }
       
       return result;

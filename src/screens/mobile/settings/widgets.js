@@ -35,6 +35,7 @@ try { WIonicons = require('react-native-vector-icons/Ionicons').default; } catch
 export function ActionButton({ styles, c, icon, title, description, onPress, danger = false, descColor }) {
   return (
     <TouchableOpacity
+      accessibilityRole="button"
       style={[styles.actionButton, { backgroundColor: c.card }]}
       onPress={onPress}
       activeOpacity={0.6}
@@ -44,7 +45,7 @@ export function ActionButton({ styles, c, icon, title, description, onPress, dan
           <Text style={[styles.actionButtonText, { color: c.label }, danger && styles.dangerText]}>
             {WIonicons ? <WIonicons name={icon} size={17} color={danger ? c.danger : c.accent} /> : null} {title}
           </Text>
-          <Text style={[styles.actionButtonDescription, { color: descColor || c.tertiaryLabel }]}>{description}</Text>
+          <Text style={[styles.actionButtonDescription, { color: descColor || c.readableSecondary || c.secondaryLabel }]}>{description}</Text>
         </View>
         {!danger ? <Text style={[styles.actionChevron, { color: c.chevron }]}>›</Text> : null}
       </View>

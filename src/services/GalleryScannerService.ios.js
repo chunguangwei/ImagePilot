@@ -459,6 +459,7 @@ class GalleryScannerService {
 
       let processedCount = 0;
       let failedCount = 0;
+      let uncertainCount = 0;
       // VLM（多模态大模型）秒级/张，太慢：用 BATCH=1，让进度条与落库都「一张一张」推进，
       // 用户能实时看到百分比走动、结果逐张出现；基础/CLIP 等快引擎保持 20 批量以省 IO。
       const BATCH = (preTier === 'vlm' || preTier === 'embeddinggemma2') ? 1 : 20;
@@ -507,7 +508,10 @@ class GalleryScannerService {
             // places365 引擎的 appCategory 直接来自 PLACES365_CLASSES 表。
             // 两端都低于阈值时落 other（仅 basic 需要阈值，places365 准度更高，
             // 但保留同阈值兼容）。
-            if (top && (r.classificationAccepted === true || conf >= MOBILENET_MAP_THRESHOLD)) {
+            if (r?.engine === 'embeddinggemma2' && r.classificationAccepted !== true) {
+              // Do not overwrite an existing label or force an uncertain photo into Other.
+              category = image.category || (isVideo ? 'NA_video' : 'NA');
+            } else if (top && (r.classificationAccepted === true || conf >= MOBILENET_MAP_THRESHOLD)) {
               category = top.appCategory || 'other';
             } else {
               if (top && conf < MOBILENET_MAP_THRESHOLD) {
@@ -541,10 +545,15 @@ class GalleryScannerService {
         }
         if (classificationDataArray.length > 0) {
           try {
-            const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, false);
+            const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, true);
             if (updateResult && updateResult.success) {
-              processedCount += updateResult.updatedCount;
-              this.imagesClassified += updateResult.updatedCount;
+              const updated = Math.min(classificationDataArray.length, Math.max(0, Number(updateResult.updatedCount) || 0));
+              processedCount += updated;
+              failedCount += classificationDataArray.length - updated;
+              const uncertain = updated === classificationDataArray.length && !updateResult.failedCount
+                ? classificationDataArray.filter(row => row.mobileNetV3Detections?.embedding?.accepted === false).length : 0;
+              uncertainCount += uncertain;
+              this.imagesClassified += Math.max(0, updated - uncertain);
             } else {
               failedCount += classificationDataArray.length;
             }
@@ -571,7 +580,7 @@ class GalleryScannerService {
         logger.warn('[iOS] 分类后刷新 GlobalImageCache 失败:', e?.message || e);
       }
       await this.sendProgressMessage('completed', processedCount, naImages.length, this.imagesClassified, naImages.length);
-      return { success: true, processedCount, failedCount, stopped: stoppedByUser || !!this._stopRequested };
+      return { success: true, processedCount, failedCount, uncertainCount, stopped: stoppedByUser || !!this._stopRequested };
     } catch (error) {
       logger.error('❌ [iOS] 离线分类失败:', error);
       throw error;
@@ -699,7 +708,7 @@ class GalleryScannerService {
         }
         if (classificationDataArray.length > 0) {
           try {
-            const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, false);
+            const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, true);
             if (updateResult && updateResult.success) {
               processedCount += updateResult.updatedCount;
               this.imagesClassified += updateResult.updatedCount;

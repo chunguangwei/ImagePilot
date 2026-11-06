@@ -89,7 +89,7 @@ test('uses the official classification query prefix for every category', async (
   expect(texts.every(text => text.startsWith('task: classification | query: '))).toBe(true);
 });
 
-test('builtin classification uses the full visual meaning without changing score thresholds', async () => {
+test('builtin classification combines full visual meanings rather than bare labels', async () => {
   getCategoryList.mockReturnValue([{ id: 'single_person', zh: '单人照片', en: 'Single Person' }, { id: 'fashion', zh: '服饰穿搭', en: 'Fashion' }]);
   embed.mockImplementation(async (_path, text) => {
     if (!text || text.includes('A portrait photograph with one person as the main subject')) return [0, 1];
@@ -99,7 +99,7 @@ test('builtin classification uses the full visual meaning without changing score
   const r = await classifyWithEmbeddingGemma('portrait', 'model');
   expect(r.topPrediction.appCategory).toBe('single_person');
   expect(r.categoryDescription).toContain('一个人');
-  expect(r.similarity).toBe(1);
+  expect(r.similarity).toBeGreaterThan(0.8);
 });
 test('explicit rules cannot be bypassed by a broad builtin visual label', async () => {
   getCategoryList.mockReturnValue([{ id: 'single_person', zh: '单人照片', en: 'Single Person', rule: '仅限室内自拍' }]);
@@ -125,4 +125,16 @@ test('joint embedding failure falls back to the image without discarding its cla
   expect(r.topPrediction.appCategory).toBe('pets');
   expect(r.classificationMode).toBe('image');
   expect(r.fusionError).toContain('joint unsupported');
+});
+test('near-tied positive similarities are uncertain rather than a forced winner',async()=>{
+ embed.mockImplementation(async(_p,text)=>!text?[1,0]:text.includes('食物')?[0.676,Math.sqrt(1-0.676**2)]:[0.673,Math.sqrt(1-0.673**2)]);
+ const r=await classifyWithEmbeddingGemma('near-tie','model');
+ expect(r.classificationAccepted).toBe(false);expect(r.topPrediction).toBeNull();expect(r.rejectionReason).toBe('ambiguous');
+});
+test('a single overly broad prototype cannot override the category consensus',async()=>{
+ getCategoryList.mockReturnValue([{id:'foods',zh:'美食',en:'Food Records'},{id:'pets',zh:'宠物',en:'Pets'}]);
+ let foods=0;
+ embed.mockImplementation(async(_p,text)=>!text?[1,0]:text.includes('Food Records')?(foods++===0?[1,0]:[0,1]):[0.8,0.6]);
+ const r=await classifyWithEmbeddingGemma('photo','model');
+ expect(r.topPrediction.appCategory).toBe('pets');
 });

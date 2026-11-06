@@ -14,8 +14,9 @@ export async function runScannerLfm(scanner, images, platform) {
   scanner.totalImagesToBeClassified = images.length;
   let processedCount = 0;
   let result;
+  const timings = new Map();
   const save = async (image, patch) => {
-    const r = await UnifiedDataService.batchUpdateClassification([{ id: image.id, uri: image.uri, ...patch }], false);
+    const r = await UnifiedDataService.batchUpdateClassification([{ id: image.id, uri: image.uri, ...patch }], true);
     if (r?.success === false || r?.updatedCount === 0 || r?.failedCount > 0) throw new Error('LFM result save failed');
     Object.assign(image, patch);
     return r;
@@ -23,11 +24,17 @@ export async function runScannerLfm(scanner, images, platform) {
   const state = (image, value) => ({ ...image.mobileNetV3Detections, lfm: { model: 'lfm2.5-vl-450m', ...value } });
   try {
     // Queue the explicit selection too: a stopped reclassification must not vanish from recovery.
-    for (const image of images) {
-      await save(image, { mobileNetV3Detections: state(image, { state: 'pending' }) });
+    const pending = images.map(image => ({ id: image.id, uri: image.uri,
+      mobileNetV3Detections: state(image, { state: 'pending' }),
+    }));
+    if (pending.length) {
+      const queued = await UnifiedDataService.batchUpdateClassification(pending, true);
+      if (queued?.success === false || queued?.updatedCount === 0 || queued?.failedCount > 0) throw new Error('LFM queue save failed');
+      images.forEach((image, index) => { image.mobileNetV3Detections = pending[index].mobileNetV3Detections; });
     }
     result = await runLfmClassification(images, {
       shouldStop: () => !!scanner._stopRequested,
+      onTiming: (image, timing) => timings.set(image.id, timing),
       resolveImage: async image => {
         if (String(image.mimeType || '').startsWith('video/')) {
           const frame = platform === 'ios'
@@ -40,7 +47,7 @@ export async function runScannerLfm(scanner, images, platform) {
       save: async (image, classification) => {
         const preserve = !!String(image.message || '').trim();
         // Remove obsolete embedding evidence so the preview never presents old similarity as new LFM evidence.
-        const detections = { lfm: { model: 'lfm2.5-vl-450m', state: 'complete', description: classification.vlmLabel } };
+        const detections = { lfm: { model: 'lfm2.5-vl-450m', state: 'complete', description: classification.vlmLabel, ...(timings.has(image.id) ? { timing: timings.get(image.id) } : {}) } };
         const r = await save(image, {
           category: classification.topPrediction.appCategory,
           confidence: null, idCardDetections: [], generalDetections: [],

@@ -30,6 +30,26 @@ for (const platform of ['android', 'ios']) {
       });
       scanner = new Scanner(); scanner.sendProgressMessage = jest.fn();
     });
+    test('registers a multi-photo pending queue in one write before inference',async()=>{
+      await scanner._classifyAllNAImagesByLocalOnnxJS(null,[row('a'),row('b')]);
+      const pendingCalls=data.batchUpdateClassification.mock.calls.filter(([patches])=>patches.every(p=>p.mobileNetV3Detections?.lfm?.state==='pending'));
+      expect(pendingCalls).toHaveLength(1);
+      expect(pendingCalls[0][0].map(p=>p.id)).toEqual(['a','b']);
+    });
+    test('an uncertain result that fails to save is counted as failure, not retained uncertainty',async()=>{
+      readActiveTier.mockResolvedValue('embeddinggemma2');
+      classifyImageByTier.mockResolvedValueOnce({success:true,engine:'embeddinggemma2',classificationAccepted:false,topPrediction:null,predictions:[]});
+      data.batchUpdateClassification.mockResolvedValueOnce({success:true,updatedCount:0,failedCount:1});
+      const r=await scanner._classifyAllNAImagesByLocalOnnxJS(null,[{id:'missing',uri:'file://x',category:'NA'}]);
+      expect(r.uncertainCount).toBe(0);expect(r.failedCount).toBe(1);expect(scanner.imagesClassified).toBe(0);
+    });
+    test('uncertain embedding results preserve pending or existing category and report uncertainty',async()=>{
+      readActiveTier.mockResolvedValue('embeddinggemma2');
+      classifyImageByTier.mockResolvedValueOnce({success:true,engine:'embeddinggemma2',classificationAccepted:false,topPrediction:null,predictions:[],similarity:0.67,margin:0.003});
+      const r=await scanner._classifyAllNAImagesByLocalOnnxJS(null,[{id:'uncertain',uri:'file://x',category:'NA'}]);
+      const saved=data.batchUpdateClassification.mock.calls.at(-1)[0][0];
+      expect(saved.category).toBe('NA');expect(r.uncertainCount).toBe(1);expect(scanner.imagesClassified).toBe(0);
+    });
     test('independent LFM resumes interrupted classified photos with zero NA images', async () => {
       data.readAllImages.mockResolvedValue([row('interrupted')]);
       const r=await scanner._classifyAllNAImagesByLocalOnnxJS(null, null);

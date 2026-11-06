@@ -5,6 +5,9 @@ import { getCategoryList, currentLang, prepareImageFile, cleanupTmp } from './vl
 // Keep native requests and disposal ordered, including simultaneous single-photo requests.
 let pending = Promise.resolve();
 let categoryCache = null;
+// Conservative ambiguity band, not a calibrated accuracy/probability threshold.
+export const EMBEDDING_MIN_MARGIN = 0.005;
+export const EMBEDDING_SCORING_VERSION = 'prototype-centroid-v1';
 function serial(work) {
   const result = pending.then(work);
   pending = result.catch(() => {});
@@ -43,18 +46,17 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
         for (const references of texts) {
           const encoded = [];
           for (const text of references) encoded.push(normalize(await native.embed(modelPath, text, '')));
-          vectors.push(encoded);
+          // Equal-weight normalized prototypes avoid one generic reference winning by itself.
+          vectors.push(normalize(encoded[0].map((_, index) => encoded.reduce((sum, reference) => sum + reference[index], 0))));
         }
         // Publish only a fully encoded cache; failed encodes must be retried.
         categoryCache = { key, vectors };
       }
       const vector = normalize(await native.embed(modelPath, '', imagePath));
       const rank = vector => categories.map((category, index) => {
-        const scores = categoryCache.vectors[index].map(reference => {
-          if (reference.length !== vector.length) throw new Error('Embedding dimension mismatch');
-          return Math.max(-1, Math.min(1, vector.reduce((sum, v, i) => sum + v * reference[i], 0)));
-        });
-        const similarity = Math.max(...scores);
+        const reference = categoryCache.vectors[index];
+        if (reference.length !== vector.length) throw new Error('Embedding dimension mismatch');
+        const similarity = Math.max(-1, Math.min(1, vector.reduce((sum, v, i) => sum + v * reference[i], 0)));
         return { name: category.id, appCategory: category.id, similarity };
       }).sort((a, b) => b.similarity - a.similarity);
       const imagePredictions = rank(vector);
@@ -74,8 +76,8 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
       }
       const top = predictions[0];
       const margin = predictions.length > 1 ? top.similarity - predictions[1].similarity : null;
-      // Reject a non-match or numerical tie; do not invent an uncalibrated probability threshold.
-      const accepted = top.similarity > 0 && (margin === null || margin > 1e-6);
+      const rejectionReason = top.similarity <= 0 ? 'non-positive' : margin !== null && margin < EMBEDDING_MIN_MARGIN ? 'ambiguous' : null;
+      const accepted = rejectionReason === null;
       const selected = categories.find((c) => c.id === top.appCategory);
       return {
         classificationMode, imageOnlyCategory: imagePredictions[0]?.appCategory, fusionError,
@@ -83,7 +85,8 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
         topPrediction: accepted ? top : null, predictions: predictions.slice(0, 5),
         // This is cosine similarity, not a calibrated probability. Do not apply ImageNet's threshold.
         confidence: Math.max(0, top.similarity), similarity: top.similarity,
-        classificationAccepted: accepted, margin,
+        classificationAccepted: accepted, margin, rejectionReason,
+        minimumMargin: EMBEDDING_MIN_MARGIN, scoringVersion: EMBEDDING_SCORING_VERSION,
         categoryDescription: accepted ? categoryDescription(selected, lang) : '',
         processingTime: Date.now() - started,
       };

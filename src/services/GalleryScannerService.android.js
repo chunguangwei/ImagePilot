@@ -243,6 +243,10 @@ class GalleryScannerService {
       // 🔥 如果没有新增照片，直接结束扫描，不执行后续流程
       if (!hasNewImages) {
         logger.info('✅ 没有新增照片，直接结束扫描');
+        // Native scanning may have deleted records even when no photos were added.
+        // The completed progress path awaits cache refresh before notifying the UI.
+        if (this.onProgress) await this.sendProgressMessage('completed', 0, 0, 0, 0);
+        else await UnifiedDataService.imageCache.refreshCache();
         // 清理扫描状态
         this._cleanupScanState();
         // 通知等待的 Promise 扫描已完成（无新照片）
@@ -638,6 +642,7 @@ class GalleryScannerService {
 
       let processedCount = 0;
       let failedCount = 0;
+      let uncertainCount = 0;
       // VLM（多模态大模型）秒级/张：用 BATCH=1，让进度条与落库都「一张一张」推进，
       // 用户能实时看到百分比走动、结果逐张出现；基础/CLIP 等快引擎保持 20 批量以省 IO。
       const BATCH = (preTier === 'vlm' || preTier === 'embeddinggemma2') ? 1 : 20;
@@ -682,7 +687,10 @@ class GalleryScannerService {
             const top = r?.topPrediction || null;
             const conf = (typeof r?.confidence === 'number') ? r.confidence : 0;
             let category;
-            if (top && (r.classificationAccepted === true || conf >= MOBILENET_MAP_THRESHOLD)) {
+            if (r?.engine === 'embeddinggemma2' && r.classificationAccepted !== true) {
+              // Do not overwrite an existing label or force an uncertain photo into Other.
+              category = image.category || (isVideo ? 'NA_video' : 'NA');
+            } else if (top && (r.classificationAccepted === true || conf >= MOBILENET_MAP_THRESHOLD)) {
               category = top.appCategory || 'other';
             } else {
               if (top && conf < MOBILENET_MAP_THRESHOLD) {
@@ -715,10 +723,15 @@ class GalleryScannerService {
         }
         if (classificationDataArray.length > 0) {
           try {
-            const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, false);
+            const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, true);
             if (updateResult && updateResult.success) {
-              processedCount += updateResult.updatedCount;
-              this.imagesClassified += updateResult.updatedCount;
+              const updated = Math.min(classificationDataArray.length, Math.max(0, Number(updateResult.updatedCount) || 0));
+              processedCount += updated;
+              failedCount += classificationDataArray.length - updated;
+              const uncertain = updated === classificationDataArray.length && !updateResult.failedCount
+                ? classificationDataArray.filter(row => row.mobileNetV3Detections?.embedding?.accepted === false).length : 0;
+              uncertainCount += uncertain;
+              this.imagesClassified += Math.max(0, updated - uncertain);
             } else {
               failedCount += classificationDataArray.length;
             }
@@ -757,7 +770,7 @@ class GalleryScannerService {
         logger.warn('[Android] 分类后刷新 GlobalImageCache 失败:', e?.message || e);
       }
       await this.sendProgressMessage('completed', processedCount, naImages.length, this.imagesClassified, naImages.length);
-      return { success: true, processedCount, failedCount, stopped: stoppedByUser || !!this._stopRequested };
+      return { success: true, processedCount, failedCount, uncertainCount, stopped: stoppedByUser || !!this._stopRequested };
     } catch (error) {
       logger.error('❌ JS 离线分类失败:', error);
       throw error;
@@ -905,7 +918,7 @@ class GalleryScannerService {
         }
         if (classificationDataArray.length > 0) {
           try {
-            const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, false);
+            const updateResult = await UnifiedDataService.batchUpdateClassification(classificationDataArray, true);
             if (updateResult && updateResult.success) {
               processedCount += updateResult.updatedCount;
               this.imagesClassified += updateResult.updatedCount;

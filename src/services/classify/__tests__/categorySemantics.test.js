@@ -36,3 +36,12 @@ test('builtin references always carry a visual meaning instead of a bare categor
   expect(refs.some(text => text === 'A photo of Food Records.')).toBe(false);
   expect(refs.every(text => text.includes('food') || text.includes('Food') && text.includes('dishes'))).toBe(true);
 });
+test('builtin prototypes cover alternate appearances while explicit rules remain authoritative', () => {
+ const {categoryEmbeddingTexts}=require('../categorySemantics');
+ const person=categoryEmbeddingTexts({id:'single_person',zh:'单人照片',en:'Single Person'});
+ expect(person.length).toBeGreaterThanOrEqual(3);
+ expect(person.some(text=>text.includes('selfie'))).toBe(true);
+ expect(person.some(text=>text.includes('full-body'))).toBe(true);
+ const custom=categoryEmbeddingTexts({id:'single_person',zh:'单人照片',en:'Single Person',rule:'仅限室内自拍'});
+ expect(custom).toHaveLength(1);expect(custom[0]).toContain('仅限室内自拍');
+});

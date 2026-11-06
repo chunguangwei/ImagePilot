@@ -1,3 +1,4 @@
+import { subscribeCacheRefresh } from '../../services/subscribeCacheRefresh';
 import { pendingLfm } from '../../services/classify/lfmScanner';
 import { readActiveTier } from '../../services/classify/classifyByTier';
 /**
@@ -305,6 +306,8 @@ const HomeScreen = ({ navigation }) => {
   const [showAllRecent, setShowAllRecent] = useState(false); // 最新发现照片：折叠(12)/展开(全部)
   
   // 扫描状态
+  const [canStopTask, setCanStopTask] = useState(false);
+  const [stopRequested, setStopRequested] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isSimilarityDetecting, setIsSimilarityDetecting] = useState(false); // 相似度检测状态
   
@@ -647,6 +650,11 @@ const HomeScreen = ({ navigation }) => {
   
   // 更新 loadAllData 的引用
   loadAllDataRef.current = loadAllData;
+  useFocusEffect(useCallback(() => subscribeCacheRefresh(
+    UnifiedDataService, () => loadAllDataRef.current?.(), 250,
+    error => logger.error('刷新分类缓存视图失败:', error),
+  ), []));
+
 
   /**
    * 防抖版本的 loadAllData（避免频繁刷新）
@@ -1370,13 +1378,15 @@ const HomeScreen = ({ navigation }) => {
       }
       
       const galleryScannerService = new GalleryScannerService();
-      scanServiceRef.current = galleryScannerService;   // 暴露给「停止」按钮
+      scanServiceRef.current = galleryScannerService;
+      setStopRequested(false);   // 暴露给「停止」按钮
 
       // 初始化服务
       await galleryScannerService.initialize();
 
       // 🔥 先设置进度回调（必须在调用aiImageClassifyByContent之前设置）
       galleryScannerService.onProgress = (progress) => {
+        setCanStopTask(galleryScannerService.isScanning === true);
         if (progress) {
           const message = progress.simpleMessage || progress.message || t('home.aiClassificationInProgress');
           setGlobalMessage(message);
@@ -1406,7 +1416,10 @@ const HomeScreen = ({ navigation }) => {
           return;
         }
       }
-      const result = await galleryScannerService.aiImageClassifyByContent(new Date(), imagesToClassify, { forceLocal });
+      const classificationTask = galleryScannerService.aiImageClassifyByContent(new Date(), imagesToClassify, { forceLocal });
+      setCanStopTask(galleryScannerService.isScanning === true);
+      const result = await classificationTask;
+      setCanStopTask(false);
 
       logger.debug('✅ AI分类完成');
       setGlobalMessage(result?.stopped
@@ -1415,7 +1428,9 @@ const HomeScreen = ({ navigation }) => {
           ? t('home.aiFusionIncomplete', { count: result.fusionFailed })
         : result?.captionsFailed > 0
           ? t('home.aiCaptionIncomplete', { count: result.captionsFailed })
-          : t('home.aiClassificationComplete'));
+          : result?.uncertainCount > 0 || result?.failedCount > 0
+          ? t('home.aiClassificationReviewSummary', { failed: result.failedCount || 0, uncertain: result.uncertainCount || 0 })
+        : t('home.aiClassificationComplete'));
 
       // 分类完成后，清除防抖定时器并立即刷新数据（避免与进度回调中的刷新重复）
       if (loadDataDebounceTimerRef.current) {
@@ -1453,6 +1468,8 @@ const HomeScreen = ({ navigation }) => {
       await WakeLockService.release();
       setIsScanning(false);
       scanServiceRef.current = null;
+      setCanStopTask(false);
+      setStopRequested(false);
       // 🔥 清除全局变量
       if (typeof window !== 'undefined') {
         window.isScanning = false;
@@ -1466,8 +1483,9 @@ const HomeScreen = ({ navigation }) => {
    */
   const handleStopScan = () => {
     try {
-      if (scanServiceRef.current && typeof scanServiceRef.current.requestStop === 'function') {
+      if (scanServiceRef.current?.isScanning && typeof scanServiceRef.current.requestStop === 'function') {
         scanServiceRef.current.requestStop();
+        setStopRequested(true);
         setGlobalMessage(t('home.scanStopping', { defaultValue: '正在停止，已分类的会保留…' }));
       }
     } catch (e) {
@@ -1553,8 +1571,9 @@ const HomeScreen = ({ navigation }) => {
       logger.debug('✅ 扫描完成');
       setGlobalMessage(t('home.scanCompleteRefreshing'));
       
-      // 扫描完成后刷新数据
-      await onRefresh();
+      // Completion must reload durable state even while the scan UI is still busy.
+      await GlobalImageCache.refreshCache();
+      await loadAllDataRef.current?.();
 
       // 加载最近扫描信息
       await loadLastScanTime();
@@ -1878,7 +1897,8 @@ const HomeScreen = ({ navigation }) => {
       ? categories.filter(cat => cat.count > 0)
       : categories;
     
-    const hasUnclassifiedPhotos = categories.some(cat => cat.id === 'NA' && cat.count > 0);
+    const unclassifiedCount = categories.filter(cat => ['NA', 'NA_video'].includes(cat.id)).reduce((sum, cat) => sum + (cat.count || 0), 0);
+    const hasUnclassifiedPhotos = unclassifiedCount > 0;
     const filteredColors = BACKGROUND_COLORS.filter((color) => (colorCounts[color] || 0) > 0)
       .sort((a, b) => (colorCounts[b] || 0) - (colorCounts[a] || 0));
     const hasContent = filteredCategories.length > 0 || filteredColors.length > 0;
@@ -1892,7 +1912,7 @@ const HomeScreen = ({ navigation }) => {
               <Text style={[styles.sectionTitle, dynSectionTitle, styles.sectionTitleInline]}>{t('home.byContent')}</Text>
             </View>
             {hasUnclassifiedPhotos && (
-              <Text style={styles.sectionHint}>{t('home.longPressUnclassifiedHint')}</Text>
+              <TouchableOpacity accessibilityRole="button" disabled={isScanning} style={{ minHeight: 48, justifyContent: 'center', opacity: isScanning ? 0.5 : 1 }} onPress={() => handleAIClassifyNA()}><Text style={{ color: c.accent, fontSize: 15 }}>{t('home.classifyPending', { count: unclassifiedCount })}</Text></TouchableOpacity>
             )}
           </View>
           <TouchableOpacity 
@@ -2615,6 +2635,10 @@ const HomeScreen = ({ navigation }) => {
       <TouchableOpacity
         style={[styles.fab, { bottom: 16 + insets.bottom + 49 }]}
         onPress={isScanning ? handleStopScan : handleScan}
+        accessibilityRole="button"
+        accessibilityLabel={t(isScanning ? (stopRequested ? 'home.scanStopping' : canStopTask ? 'home.stopTask' : 'home.scanningShort') : 'home.scanNow')}
+        accessibilityState={{ disabled: isScanning && (!canStopTask || stopRequested), busy: isScanning }}
+        disabled={isScanning && (!canStopTask || stopRequested)}
         activeOpacity={0.8}
       >
         {isScanning ? (
@@ -2622,9 +2646,9 @@ const HomeScreen = ({ navigation }) => {
           // 剩余待分类图下次扫描自动续（见 GalleryScannerService.requestStop）。
           <View style={{ alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator color="#FFFFFF" size="small" />
-            <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }} pointerEvents="none">
+            {canStopTask && !stopRequested && <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }} pointerEvents="none">
               {HomeIonicons ? <HomeIonicons name="stop" size={13} color="#FFFFFF" /> : <Text style={{ color: '#FFFFFF', fontSize: 11 }}>■</Text>}
-            </View>
+            </View>}
           </View>
         ) : HomeIonicons ? (
           <HomeIonicons name="sync" size={28} color="#FFFFFF" />
@@ -2692,7 +2716,11 @@ const HomeScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* 扫描消息条已收进 header 状态小按钮（信息量太大占一整行）；点 header 转圈/ⓘ 可看完整消息 */}
+      {/* 任务进行时直接显示进度；完成后可从页头查看最后结果。 */}
+
+      {isScanning && <View accessibilityLiveRegion="polite" style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: c.card }}>
+        <Text style={{ color: c.label, fontSize: 14 }}>{globalMessage || t('home.scanningShort')}</Text>
+      </View>}
 
       {/* 主内容区 */}
       <ScrollView
@@ -2992,7 +3020,8 @@ const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
     paddingVertical: 4,
     backgroundColor: c.fillTertiary,
     borderRadius: 12,
-    minHeight: 24, // 确保最小高度一致
+    minHeight: 48,
+    justifyContent: 'center',
   },
   toggleButtonNoShrink: {
     flexShrink: 0, // 防止按钮被压缩，空间不足时换行
@@ -3002,7 +3031,7 @@ const createStyles = (c, winW = SCREEN_WIDTH) => StyleSheet.create({
     opacity: 0.5,
   },
   toggleButtonText: {
-    fontSize: 11,
+    fontSize: 13,
     color: c.secondaryLabel,
     fontWeight: '500',
   },

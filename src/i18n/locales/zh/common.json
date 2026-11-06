@@ -38,7 +38,8 @@
     "language": "语言",
     "chinese": "中文",
     "english": "English",
-    "tip": "提示"
+    "tip": "提示",
+    "saving": "正在保存…"
   },
   "privacy": {
     "title": "隐私政策",
@@ -260,7 +261,8 @@
     "aiClassifyPartialFail": "{{count}} 张分类失败（保持原分类），可稍后重试。",
     "aiClassifyError": "AI 分类失败",
     "aiClassifyRunning": "AI 分类中 {{done}}/{{total}}",
-    "aiClassifyDone": "AI 分类完成（{{total}} 张）"
+    "aiClassifyDone": "AI 分类完成（{{total}} 张）",
+    "changeCategoryTimedOut": "修改结果暂未确认。已保存的结果会自动同步，请稍后查看。"
   },
   "search": {
     "title": "搜索",
@@ -479,7 +481,12 @@
     "slideshowBtn": "▶ 放映",
     "randomBrowse": "随便看看",
     "randomBrowseSub": "随机 {{count}} 张 · 回去再点一次换一批",
-    "holidaysTitle": "节日回忆"
+    "holidaysTitle": "节日回忆",
+    "stopTask": "停止分类",
+    "scanNow": "扫描照片",
+    "classifyPending": "开始分类 · {{count}} 项",
+    "aiClassificationUncertain": "处理完成，{{count}} 张结果不确定，已保留原分类或待分类状态",
+    "aiClassificationReviewSummary": "处理完成：{{failed}} 张失败，{{uncertain}} 张不确定。未确定的结果保留原分类或待分类状态。"
   },
   "imagePreview": {
     "classification_pending": "分类：等待处理，可从首页继续",
@@ -500,7 +507,7 @@
     "captionStage_image": "读取图片",
     "captionStage_inference": "生成描述",
     "captionStage_save": "保存描述",
-    "embeddingUncertain": "候选类别并列或没有有效匹配，本次归入其它。",
+    "embeddingUncertain": "候选过于接近或没有有效匹配，本次未改变分类；待分类照片可手动选择类别。",
     "categoryMeaning": "类别说明（非图片描述）",
     "similarityScore": "相似度",
     "similarityNotProbability": "相似度用于比较候选类别，不代表识别正确的概率。",
@@ -628,7 +635,10 @@
     "findSimilarAsk": "按哪种相似度找？",
     "similarByColor": "颜色相似（构图/色调）",
     "similarByVector": "AI 相似（内容语义）",
-    "lfmResult": "LFM · 分类与简短描述"
+    "lfmResult": "LFM · 分类与简短描述",
+    "modelDetails": "查看匹配详情",
+    "hideModelDetails": "收起匹配详情",
+    "lfmTiming": "模型准备 {{setup}} 秒 · 图片处理 {{image}} 秒 · 推理 {{inference}} 秒（准备仅首张成功计入）"
   },
   "enhanceResult": {
     "defaultPresetName": "照片创玩",
@@ -891,7 +901,7 @@
     "screenshots": "截图",
     "customCategories": {
       "title": "自定义分类",
-      "desc": "定义你自己的分类规则，云端大模型按规则把图片归入"
+      "desc": "设置分类名称和规则，供支持自定义分类的本地或在线模型使用。"
     },
     "backupRestore": {
       "title": "分类备份与还原",
@@ -996,7 +1006,35 @@
       "upToDate": "索引已是最新，无需补全"
     },
     "huaweiInstallHintTitle": "华为设备安装提示",
-    "huaweiInstallHintMessage": "若系统提示\"恶意安装来源，禁止安装\"（华为误报）：\n\n方法一：设置 → 系统和更新 → 纯净模式 → 关闭后重试；\n方法二：打开系统\"文件管理\" → 内部存储 → Download → 点按 imagepilot-update.apk 安装。"
+    "huaweiInstallHintMessage": "若系统提示\"恶意安装来源，禁止安装\"（华为误报）：\n\n方法一：设置 → 系统和更新 → 纯净模式 → 关闭后重试；\n方法二：打开系统\"文件管理\" → 内部存储 → Download → 点按 imagepilot-update.apk 安装。",
+    "modelPicker": {
+      "active": "使用中",
+      "downloaded": "已下载",
+      "notDownloaded": "未下载",
+      "downloading": "下载中",
+      "checking": "正在校验文件",
+      "cancelling": "正在取消…",
+      "cancel": "取消下载",
+      "use": "使用此模型",
+      "downloadUse": "下载并使用",
+      "details": "详情与管理",
+      "hideDetails": "收起详情",
+      "redownload": "重新下载",
+      "delete": "删除模型",
+      "legacy": "其他传统模型",
+      "large": "精细分类",
+      "summary": {
+        "lfm": "日常整理：分类并生成简短描述。",
+        "embeddinggemma2": "快速整理：仅图片分类，不生成描述。",
+        "vlm": "深入理解图片，耗时和内存占用更高。",
+        "basic": "识别常见物品、动物和食物。",
+        "scene": "识别厨房、海滩等拍摄场景。",
+        "clip": "按常见场景与氛围分类。"
+      },
+      "unavailable": "本机暂不可用",
+      "retry": "重试此模型"
+    },
+    "similaritySection": "相似照片与搜索"
   },
   "directoryPicker": {
     "selectScanDirectory": "选择扫描目录",
@@ -1039,15 +1077,16 @@
     "deleteMessage": "删除自定义分类「{{cid}}」？\n该分类下的照片会回到「待分类」，不会丢失。",
     "deleteFailedTitle": "删除失败",
     "builtinTitle": "内置分类",
-    "builtinTip": "用不到的默认分类可以删除（首页和各列表不再显示）。删除时，该分类下的照片会回到「待分类」，不会丢失；需要时可随时恢复，或在上方自定义里重建。",
-    "builtinDeletedHint": "已删除 · 照片已回到待分类",
-    "deleteBuiltinTitle": "删除内置分类",
-    "deleteBuiltinMessage": "删除「{{name}}」？\n该分类下的照片会回到「待分类」，不会丢失。之后可随时恢复。",
+    "builtinTip": "内置分类可隐藏或恢复；隐藏不会删除照片。分类说明也用于支持自定义规则的模型。",
+    "builtinDeletedHint": "已隐藏，可恢复显示",
+    "deleteBuiltinTitle": "隐藏内置分类",
+    "deleteBuiltinMessage": "隐藏「{{name}}」后，该分类的照片会显示在待分类中；照片不会删除。恢复显示后会回到原分类。",
     "restore": "恢复",
     "restoreAllBtn": "全部恢复（{{count}}）",
     "restoreAllTitle": "恢复默认分类",
-    "restoreAllMessage": "恢复全部已删除的内置分类？已回到待分类的照片不会自动归回原分类。",
-    "restoreAllConfirm": "恢复"
+    "restoreAllMessage": "恢复全部内置分类的显示，原有照片将重新显示在所属分类。",
+    "restoreAllConfirm": "恢复",
+    "hide": "隐藏"
   },
   "aiModelConfig": {
     "title": "AI 模型设置",

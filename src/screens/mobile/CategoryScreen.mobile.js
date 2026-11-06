@@ -1,3 +1,4 @@
+import { subscribeCacheRefresh } from '../../services/subscribeCacheRefresh';
 /**
  * ImagePilot - 移动端分类详情页（通用）
  * 
@@ -474,7 +475,8 @@ const CategoryScreen = ({ route, navigation }) => {
               try {
                 let processed = 0;
                 for (const imageId of selectedImageIds) {
-                  await UnifiedDataService.updateImagesCategory([imageId], newCategory);
+                  const result = await UnifiedDataService.updateImagesCategory([imageId], newCategory);
+                  if (!result?.success || result.processed !== 1) throw new Error(t('category.changeCategoryError'));
                   processed++;
                 }
                 
@@ -601,6 +603,13 @@ const CategoryScreen = ({ route, navigation }) => {
 
 
 
+  const reloadFromCacheRef = useRef(null);
+  reloadFromCacheRef.current = () => loadImages(false, true);
+  useFocusEffect(useCallback(() => subscribeCacheRefresh(
+    UnifiedDataService, () => reloadFromCacheRef.current?.(), 250,
+    error => logger.error('刷新分类目录失败:', error),
+  ), []));
+
   // 页面获得焦点时刷新数据（用于 Tab 切换和从其他页面返回）
   useFocusEffect(
     useCallback(() => {
@@ -715,11 +724,11 @@ const CategoryScreen = ({ route, navigation }) => {
   /**
    * 加载图片列表
    */
-  const loadImages = async (isRefresh = false) => {
+  const loadImages = async (isRefresh = false, silent = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
-      } else {
+      } else if (!silent) {
         setLoading(true);
       }
 
@@ -1193,23 +1202,7 @@ const CategoryScreen = ({ route, navigation }) => {
       logger.debug(`[batchChangeCategory] start ids=${imageIds.length} -> ${newCategory}`);
       const categoryName = UnifiedDataService.getCategoryDisplayName(newCategory);
 
-      // 1. 先更新UI（立即响应用户操作）
-      stage = 'optimistic-ui';
-      imageIds.forEach(id => {
-        UnifiedDataService.setImageSelection(id, false);
-      });
-      setImages(prevImages => {
-        const newImages = prevImages.filter(img => !imageIds.includes(img.id));
-        if (newImages.length > 0) {
-          const grouped = groupImagesByDate(newImages);
-          setGroupedImages(grouped);
-        } else {
-          setGroupedImages({});
-        }
-        return newImages;
-      });
-      setSelectionMode(false);
-
+      // Keep rows until storage confirms the move; non-category folders may retain them.
       // 2. 显示进度提示
       stage = 'show-modal';
       setShowUpdateProgress(true);
@@ -1225,20 +1218,23 @@ const CategoryScreen = ({ route, navigation }) => {
       ]);
       logger.debug(`[batchChangeCategory] step 3 done: processed=${result?.processed} errors=${result?.errors?.length || 0}`);
 
-      // 3.5 重建缓存计数：增量更新对「待分类视频」等场景偶发不生效（DB 已对、计数滞后），
-      // refreshCache 从 DB 重算 categoryCounts，首页聚焦重载即显示正确数量。
-      try { await UnifiedDataService.imageCache.refreshCache(); } catch (_) {}
+      if (result.success) {
+        imageIds.forEach(id => UnifiedDataService.setImageSelection(id, false));
+        setSelectionMode(false);
+      }
+      await loadImages(false, true);
 
       // 4. 更新失败数量（如果有）
       stage = 'update-progress-final';
       setUpdateProgress({ filesProcessed: result.processed, filesFailed: result.errors?.length || 0, total: imageIds.length });
       if (!result.success) {
         logger.warn('⚠️ 批量更新分类部分失败:', result.errors);
+        Alert.alert(t('settings.operationFailed'), t('category.changeCategoryError'));
       }
     } catch (error) {
       if (error?.message === 'TIMEOUT_30S') {
         logger.error(`❌ [batchChangeCategory] 超时 30s（stage=${stage}）— DB 通常已落库，UI 缓存可能滞后`);
-        Alert.alert(t('settings.operationFailed') || '操作失败', '修改超时；分类大概率已写入，请下拉刷新页面或重启 app 验证');
+        Alert.alert(t('settings.operationFailed') || '操作失败', t('category.changeCategoryTimedOut'));
       } else {
         logger.error(`❌ 批量修改分类失败（stage=${stage}）:`, error);
         Alert.alert(t('settings.operationFailed'), error?.message || String(error));
@@ -1462,8 +1458,8 @@ const CategoryScreen = ({ route, navigation }) => {
       try { await UnifiedDataService.imageCache.refreshCache(); } catch (_) {}
       await loadImages();   // 分好类的图离开当前视图（如在待分类视图）
       const failed = (result && result.failedCount) || 0;
-      if (failed > 0) {
-        Alert.alert(t('common.tip'), t('category.aiClassifyPartialFail', { count: failed, defaultValue: `${failed} 张分类失败（保持原分类），可稍后重试。` }));
+      if (failed > 0 || result?.uncertainCount > 0) {
+        Alert.alert(t('common.tip'), t('home.aiClassificationReviewSummary', { failed, uncertain: result?.uncertainCount || 0 }));
       }
     } catch (error) {
       logger.error('❌ 批量AI分类失败:', error);

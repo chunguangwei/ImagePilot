@@ -34,6 +34,11 @@ export const lightColors = {
   secondaryLabel: '#3C3C4399', // 60% on light
   tertiaryLabel: '#8E8E93',
 
+  // Readable text/actions for compact model cards (normal-size text contrast).
+  readableSecondary: '#636366',
+  readableAccent: '#0063CC',
+  primaryButton: '#0063CC',
+
   // 强调
   accent: '#007AFF',
   accentSoft: '#EAF2FF',
@@ -63,6 +68,9 @@ export const darkColors = {
   secondaryLabel: '#EBEBF599', // 60% on dark
   tertiaryLabel: '#EBEBF54D', // 30% on dark (更柔和；之前 8E8E93 在 dark 太亮)
 
+  readableSecondary: '#AEAEB2',
+  readableAccent: '#64AAFF',
+  primaryButton: '#0063CC',
   accent: '#0A84FF', // iOS dark accent 比浅色蓝稍亮
   accentSoft: 'rgba(10, 132, 255, 0.20)',  // 比 22 略深，dark 上更清晰
   danger: '#FF453A',

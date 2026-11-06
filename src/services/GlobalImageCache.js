@@ -442,6 +442,9 @@ class GlobalImageCache {
       
       logger.debug(`✅ 批量更新图片分类完成: ${processed} 张成功`);
       
+      const updatedById = new Map(this.cache.allImages.map(image => [image.id, image]));
+      this.cache.recentImages = this.cache.recentImages.map(image => updatedById.get(image.id) || image);
+
       // 通知监听器
       this.notifyListeners();
       
