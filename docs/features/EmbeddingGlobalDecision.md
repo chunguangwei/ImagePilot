@@ -33,3 +33,5 @@
 本变更未打包发布，线上仍为1.5.94。
 
 自定义场景与排除说明见 [自定义分类匹配](CustomCategoryMatching.md)。本次完整回归241项/32套通过。
+
+1.5.96补充：显示名改为Gemma 2，算法subtype-consensus-v3保留最强参考冲突拦截。完成推理但不确定统一归Other，失败不改类，见[处理策略](UncertainCategoryPolicy.md)。上述七图结果是1.5.95内置判别验证，不代表1.5.96 Android识别准确率。
