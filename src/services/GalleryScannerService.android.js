@@ -632,7 +632,7 @@ class GalleryScannerService {
 
       // 初始化分类器（首次会从配置加载模型表 + ONNX runtime + 加载 mobilenetv3 模型；幂等）
       try {
-        if ((await readActiveTier()) !== 'embeddinggemma2') await this.imageClassifier.initialize();
+        if (['basic', 'scene', 'clip'].includes(await readActiveTier())) await this.imageClassifier.initialize();
         logger.info('✅ ImageClassifierService 初始化完成');
       } catch (e) {
         logger.error('❌ ImageClassifierService 初始化失败:', e);

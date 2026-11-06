@@ -3,12 +3,11 @@
 > **1.5.92 最终方案：** 线上只提供 EmbeddingGemma 2（快速分类、不生成描述）和 Gemma4-E2B（多模态分类与描述）。LFM/SmolVLM 已下线，旧选择迁移至 EmbeddingGemma，缺少文件需主动下载；已有分类与描述保留。下文旧模型试验属于历史记录，不是当前可用功能。
 
 
-## 1.5.92：SmolVLM 独立实验入口与双路下载
+## 1.5.92：双模型分类与国内外下载
 
-原 LFM 标准入口替换为 SmolVLM-500M-Instruct 实验入口（两文件共约546 MB，需重新下载），一次推理输出类别和英文描述；EmbeddingGemma、E2B 保留。**原生六图分类仅2/6符合预期，不是精度升级，不建议据此大批量自动改类。** 中文分类名继续本地显示；中文规则理解有限。详情见 [实验与迁移记录](docs/features/SmolVlmTrial.md)。
+仅保留 EmbeddingGemma 2 快速分类（不生成描述）与 Gemma4-E2B 多模态分类。LFM/SmolVLM 实测未达要求，停止提供下载及使用入口；原有选择迁移到 EmbeddingGemma，缺少模型时需主动下载。已有照片、分类与描述保留，模型详情可清理下线文件。
 
-全部产品模型支持国内外两路下载和失败切换；安卓更新增加第三方 GitHub 加速路线、附件哈希核验及超时处理。修复 Android 11+ 单张/批量删除未统一请求系统确认。相关文档：[双路下载验证](docs/features/DualDownloadSources.md)。iOS build 19 仅真机测试，不提交 App Store。下方旧版本为历史记录。
-
+模型支持国内外两路下载和失败切换；安卓更新增加第三方 GitHub 加速路线、附件哈希核验及超时处理。Android 11+ 删除照片请求系统确认。见 [下载验证](docs/features/DualDownloadSources.md)。iOS build21 仅真机测试，不提交 App Store。以下版本章节为历史记录。
 
 ## 1.5.91：模型匹配与实时刷新
 

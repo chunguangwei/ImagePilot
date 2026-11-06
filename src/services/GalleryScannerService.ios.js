@@ -450,7 +450,7 @@ class GalleryScannerService {
       }
 
       try {
-        if ((await readActiveTier()) !== 'embeddinggemma2') await this.imageClassifier.initialize();
+        if (['basic', 'scene', 'clip'].includes(await readActiveTier())) await this.imageClassifier.initialize();
       } catch (e) {
         logger.error('❌ ImageClassifierService 初始化失败:', e);
         await this.sendProgressMessage('error', 0, naImages.length);
