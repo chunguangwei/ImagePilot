@@ -1622,7 +1622,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   {t(`imagePreview.classification_${result.classification.state === 'complete' ? result.classification.mode : result.classification.state}`)}
                   {result.classification.error ? `: ${result.classification.error}` : ''}
                 </Text>}
-                {!result.accepted && <Text style={styles.detectionText}>{t(['prototype-disagreement', 'weak-prototype-support', 'strongest-prototype-disagreement'].includes(result.rejectionReason) ? 'imagePreview.embeddingEvidenceConflict' : 'imagePreview.embeddingUncertain')}</Text>}
+                {!result.accepted && <Text style={styles.detectionText}>{t(['prototype-disagreement', 'weak-prototype-support', 'strongest-prototype-disagreement', 'category-view-disagreement'].includes(result.rejectionReason) ? 'imagePreview.embeddingEvidenceConflict' : 'imagePreview.embeddingUncertain')}</Text>}
                 <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: showModelDetails }} onPress={() => setShowModelDetails(v => !v)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: cTheme.accent, fontSize: 15 }}>{t(showModelDetails ? 'imagePreview.hideModelDetails' : 'imagePreview.modelDetails')}</Text></TouchableOpacity>
                 {showModelDetails && <>
                 {result.categoryDescription ? (

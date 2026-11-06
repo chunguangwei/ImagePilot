@@ -1,0 +1,303 @@
+{
+  "platform": "ios-simulator",
+  "candidateCategories": 21,
+  "subtypeTextCalls": 116,
+  "productionTextCalls": 179,
+  "strategy": "subtype-consensus-v1",
+  "samples": [
+    {
+      "name": "user-rack",
+      "expected": "electronics",
+      "previous": {
+        "category": "electronics",
+        "top": "electronics",
+        "accepted": true,
+        "margin": 0.01722854601016277,
+        "reason": null
+      },
+      "subtypeOnly": {
+        "category": "electronics",
+        "margin": 0.01715644651726289,
+        "rejectionReason": null
+      },
+      "combined": {
+        "category": "electronics",
+        "top": "electronics",
+        "accepted": true,
+        "margin": 0.01715644651726289,
+        "reason": null,
+        "method": "subtype",
+        "processingTime": 8181
+      },
+      "topGroups": [
+        {
+          "category": "electronics",
+          "score": 0.690922987783771,
+          "group": "network"
+        },
+        {
+          "category": "architecture",
+          "score": 0.6737665412665081,
+          "group": "interior"
+        },
+        {
+          "category": "products",
+          "score": 0.6678545467240037,
+          "group": "packaging"
+        }
+      ]
+    },
+    {
+      "name": "rack",
+      "expected": "electronics",
+      "previous": {
+        "category": "electronics",
+        "top": "electronics",
+        "accepted": true,
+        "margin": 0.015360552405831451,
+        "reason": null
+      },
+      "subtypeOnly": {
+        "category": "electronics",
+        "margin": 0.01637758988300042,
+        "rejectionReason": null
+      },
+      "combined": {
+        "category": "electronics",
+        "top": "electronics",
+        "accepted": true,
+        "margin": 0.01637758988300042,
+        "reason": null,
+        "method": "subtype",
+        "processingTime": 217
+      },
+      "topGroups": [
+        {
+          "category": "electronics",
+          "score": 0.6814129256922973,
+          "group": "network"
+        },
+        {
+          "category": "architecture",
+          "score": 0.6650353358092969,
+          "group": "interior"
+        },
+        {
+          "category": "products",
+          "score": 0.6599452729859954,
+          "group": "packaging"
+        }
+      ]
+    },
+    {
+      "name": "trophy",
+      "expected": "art",
+      "previous": {
+        "category": "art",
+        "top": "art",
+        "accepted": true,
+        "margin": 0.0362489823792258,
+        "reason": null
+      },
+      "subtypeOnly": {
+        "category": "art",
+        "margin": 0.04935783074025624,
+        "rejectionReason": null
+      },
+      "combined": {
+        "category": "art",
+        "top": "art",
+        "accepted": true,
+        "margin": 0.04935783074025624,
+        "reason": null,
+        "method": "subtype",
+        "processingTime": 218
+      },
+      "topGroups": [
+        {
+          "category": "art",
+          "score": 0.7114766496442733,
+          "group": "award"
+        },
+        {
+          "category": "foods",
+          "score": 0.662118818904017,
+          "group": "drink"
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6599009441843615,
+          "group": "meme"
+        }
+      ]
+    },
+    {
+      "name": "portrait",
+      "expected": "single_person",
+      "previous": {
+        "category": "single_person",
+        "top": "single_person",
+        "accepted": true,
+        "margin": 0.009206350132263785,
+        "reason": null
+      },
+      "subtypeOnly": {
+        "category": "single_person",
+        "margin": 0.0019691935478528544,
+        "rejectionReason": "ambiguous"
+      },
+      "combined": {
+        "category": "single_person",
+        "top": "single_person",
+        "accepted": true,
+        "margin": 0.009206350132263785,
+        "reason": null,
+        "method": "category-fallback",
+        "processingTime": 219
+      },
+      "topGroups": [
+        {
+          "category": "single_person",
+          "score": 0.6750696801283184,
+          "group": "portrait"
+        },
+        {
+          "category": "social_activities",
+          "score": 0.6731004865804655,
+          "group": "group-photo"
+        },
+        {
+          "category": "art",
+          "score": 0.6730967720768253,
+          "group": "award"
+        }
+      ]
+    },
+    {
+      "name": "cat",
+      "expected": "pets",
+      "previous": {
+        "category": "pets",
+        "top": "pets",
+        "accepted": true,
+        "margin": 0.05744069241057259,
+        "reason": null
+      },
+      "subtypeOnly": {
+        "category": "pets",
+        "margin": 0.05877828162875143,
+        "rejectionReason": null
+      },
+      "combined": {
+        "category": "pets",
+        "top": "pets",
+        "accepted": true,
+        "margin": 0.05877828162875143,
+        "reason": null,
+        "method": "subtype",
+        "processingTime": 216
+      },
+      "topGroups": [
+        {
+          "category": "pets",
+          "score": 0.766690729635971,
+          "group": "cat"
+        },
+        {
+          "category": "plants",
+          "score": 0.7079124480072195,
+          "group": "leaves"
+        },
+        {
+          "category": "art",
+          "score": 0.6936663534240571,
+          "group": "painting"
+        }
+      ]
+    },
+    {
+      "name": "food",
+      "expected": "foods",
+      "previous": {
+        "category": "foods",
+        "top": "foods",
+        "accepted": true,
+        "margin": 0.020160439156894805,
+        "reason": null
+      },
+      "subtypeOnly": {
+        "category": "foods",
+        "margin": 0.05202175948533949,
+        "rejectionReason": null
+      },
+      "combined": {
+        "category": "foods",
+        "top": "foods",
+        "accepted": true,
+        "margin": 0.05202175948533949,
+        "reason": null,
+        "method": "subtype",
+        "processingTime": 218
+      },
+      "topGroups": [
+        {
+          "category": "foods",
+          "score": 0.7106115517553172,
+          "group": "drink"
+        },
+        {
+          "category": "art",
+          "score": 0.6585897922699777,
+          "group": "award"
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6460289002679669,
+          "group": "computer"
+        }
+      ]
+    },
+    {
+      "name": "group",
+      "expected": "social_activities",
+      "previous": {
+        "category": "social_activities",
+        "top": "social_activities",
+        "accepted": true,
+        "margin": 0.012515617594166861,
+        "reason": null
+      },
+      "subtypeOnly": {
+        "category": "social_activities",
+        "margin": 0.0046249390927475265,
+        "rejectionReason": "ambiguous"
+      },
+      "combined": {
+        "category": "social_activities",
+        "top": "social_activities",
+        "accepted": true,
+        "margin": 0.012515617594166861,
+        "reason": null,
+        "method": "category-fallback",
+        "processingTime": 213
+      },
+      "topGroups": [
+        {
+          "category": "social_activities",
+          "score": 0.6779809897528002,
+          "group": "group-photo"
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6733560506600527,
+          "group": "phone"
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6449680617123824,
+          "group": "meme"
+        }
+      ]
+    }
+  ]
+}

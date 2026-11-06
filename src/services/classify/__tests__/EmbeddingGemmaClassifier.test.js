@@ -131,13 +131,14 @@ test('near-tied positive similarities are uncertain rather than a forced winner'
  const r=await classifyWithEmbeddingGemma('near-tie','model');
  expect(r.classificationAccepted).toBe(false);expect(r.topPrediction).toBeNull();expect(r.rejectionReason).toBe('ambiguous');
 });
-test('a single overly broad prototype cannot override the category consensus',async()=>{
+test('a single overly broad reference cannot override consistent subtype evidence',async()=>{
  getCategoryList.mockReturnValue([{id:'foods',zh:'美食',en:'Food Records'},{id:'pets',zh:'宠物',en:'Pets'}]);
  let foods=0;
  embed.mockImplementation(async(_p,text)=>!text?[1,0]:text.includes('Food Records')?(foods++===0?[1,0]:[0,1]):[0.8,0.6]);
  const r=await classifyWithEmbeddingGemma('photo','model');
- expect(r.topPrediction).toBeNull();
- expect(r.rejectionReason).toBe('strongest-prototype-disagreement');
+ expect(r.topPrediction.appCategory).toBe('pets');
+ expect(r.rejectionReason).toBeNull();
+ expect(r.diagnostics.legacyRejectionReason).toBe('strongest-prototype-disagreement');
  expect(r.diagnostics.strongestCategory).toBe('foods');
 });
 
@@ -150,4 +151,15 @@ test('diagnostics retain all actually encoded references without photo or model 
  expect(embed).toHaveBeenCalledTimes(3);
  const {embeddingRecordFields}=require('../embeddingRecordFields');
  expect(embeddingRecordFields(r).mobileNetV3Detections.embedding.diagnostics).toEqual(r.diagnostics);
+});
+
+test('subtype references are cached and no extra image inference is added',async()=>{
+ getCategoryList.mockReturnValue([{id:'electronics',en:'Electronics',zh:'电子产品'}]);
+ embed.mockResolvedValue([1,0]);
+ const first=await classifyWithEmbeddingGemma('photo','model');
+ const count=embed.mock.calls.length;
+ await classifyWithEmbeddingGemma('photo2','model');
+ expect(embed).toHaveBeenCalledTimes(count+1);
+ expect(embed.mock.calls.filter(([,text,image])=>image&&!text)).toHaveLength(2);
+ expect(first.diagnostics.categories[0].groups.length).toBeGreaterThan(1);
 });

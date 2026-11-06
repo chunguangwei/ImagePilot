@@ -1,7 +1,8 @@
 import { BUILD_VERSION } from '../../config/BuildInfo';
+import { rankGroupedEvidence, selectGroupedDecision } from './embeddingGroups';
 import { rankEmbeddingEvidence, embeddingDecision } from './embeddingRanking';
 import { NativeModules, Platform } from 'react-native';
-import { categoryDescription, categoryEmbeddingTexts } from './categorySemantics';
+import { categoryDescription, categoryEmbeddingTexts, categoryEmbeddingGroups } from './categorySemantics';
 import { getCategoryList, currentLang, prepareImageFile, cleanupTmp } from './vlmShared';
 
 // Keep native requests and disposal ordered, including simultaneous single-photo requests.
@@ -9,7 +10,7 @@ let pending = Promise.resolve();
 let categoryCache = null;
 // Conservative ambiguity band, not a calibrated accuracy/probability threshold.
 export const EMBEDDING_MIN_MARGIN = 0.005;
-export const EMBEDDING_SCORING_VERSION = 'prototype-consensus-v3';
+export const EMBEDDING_SCORING_VERSION = 'subtype-consensus-v1';
 function serial(work) {
   const result = pending.then(work);
   pending = result.catch(() => {});
@@ -39,27 +40,49 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
     const categories = getCategoryList();
     if (!categories.length) throw new Error('No categories available');
     const texts = categories.map((c) => categoryEmbeddingTexts(c, lang).map(text => `task: classification | query: ${text}`));
-    const key = JSON.stringify([modelPath, categories.map((c) => c.id), texts]);
+    const groups = categories.map(c => categoryEmbeddingGroups(c, lang).map(g => ({...g,
+      texts:g.texts.map(text => `task: classification | query: ${text}`)})));
+    const key = JSON.stringify([modelPath, categories.map((c) => c.id), texts, groups]);
     let imagePath;
     try {
       imagePath = await prepareImageFile(imageUri);
       if (!categoryCache || categoryCache.key !== key) {
+        const encodedTexts = new Map();
+        const encode = async text => {
+          if (!encodedTexts.has(text)) encodedTexts.set(text, normalize(await native.embed(modelPath, text, '')));
+          return encodedTexts.get(text);
+        };
         const vectors = [];
         const prototypes = [];
         for (const references of texts) {
           const encoded = [];
-          for (const text of references) encoded.push(normalize(await native.embed(modelPath, text, '')));
+          for (const text of references) encoded.push(await encode(text));
           prototypes.push(encoded);
           // Equal-weight normalized prototypes avoid one generic reference winning by itself.
           vectors.push(normalize(encoded[0].map((_, index) => encoded.reduce((sum, reference) => sum + reference[index], 0))));
         }
         // Publish only a fully encoded cache; failed encodes must be retried.
-        categoryCache = { key, vectors, prototypes };
+        const encodedGroups = [];
+        for (const categoryGroups of groups) {
+          const encoded = [];
+          for (const group of categoryGroups) {
+            const references = [];
+            for (const text of group.texts) references.push(await encode(text));
+            encoded.push({id:group.id,vectors:references});
+          }
+          encodedGroups.push(encoded);
+        }
+        categoryCache = { key, vectors, prototypes, groups:encodedGroups };
       }
       const vector = normalize(await native.embed(modelPath, '', imagePath));
-      const rank = vector => rankEmbeddingEvidence(vector, categories, categoryCache.vectors, categoryCache.prototypes);
-      const imagePredictions = rank(vector);
-      let predictions = imagePredictions;
+      const rank = vector => {
+        const legacy = rankEmbeddingEvidence(vector, categories, categoryCache.vectors, categoryCache.prototypes);
+        const legacyDecision = embeddingDecision(legacy, EMBEDDING_MIN_MARGIN);
+        const grouped = rankGroupedEvidence(vector, categories, categoryCache.groups);
+        return {legacy,legacyDecision,grouped,...selectGroupedDecision(legacy,legacyDecision,grouped,EMBEDDING_MIN_MARGIN)};
+      };
+      const imageAnalysis = rank(vector);
+      let analysis = imageAnalysis;
       let classificationMode = 'image';
       let fusionError;
       const caption = typeof options.caption === 'string' ? options.caption.trim() : '';
@@ -67,18 +90,19 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
         try {
           // Native multimodal input retains the original pixels; no text-only replacement or invented weights.
           const joint = normalize(await native.embed(modelPath, caption, imagePath));
-          predictions = rank(joint);
+          analysis = rank(joint);
           classificationMode = 'image-caption';
         } catch (error) {
           fusionError = String(error?.message || error).slice(0, 300);
         }
       }
+      const {predictions, margin, rejectionReason} = analysis;
+      const {supportMargin,supportCategory,strongestCategory,strongestMargin} = analysis.legacyDecision;
       const top = predictions[0];
-      const { margin, supportMargin, supportCategory, strongestCategory, strongestMargin, rejectionReason } = embeddingDecision(predictions, EMBEDDING_MIN_MARGIN);
       const accepted = rejectionReason === null;
       const selected = categories.find((c) => c.id === top.appCategory);
       return {
-        classificationMode, imageOnlyCategory: imagePredictions[0]?.appCategory, fusionError,
+        classificationMode, imageOnlyCategory: imageAnalysis.predictions[0]?.appCategory, fusionError,
         success: true, engine: 'embeddinggemma2', model: 'embeddinggemma-2-text-vision-440m',
         topPrediction: accepted ? top : null, predictions: predictions.slice(0, 5),
         // This is cosine similarity, not a calibrated probability. Do not apply ImageNet's threshold.
@@ -86,9 +110,19 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
         classificationAccepted: accepted, margin, rejectionReason,
         diagnostics: { appVersion: BUILD_VERSION, platform: Platform.OS, language: lang, inputMaxEdge: 768,
           scoringVersion: EMBEDDING_SCORING_VERSION, supportMargin, supportCategory, strongestCategory, strongestMargin,
-          categories: predictions.map(p => ({ id: p.appCategory, similarity: p.similarity,
-            supportSimilarity: p.supportSimilarity, references: texts[categories.findIndex(c => c.id === p.appCategory)]
-              .map((text, i) => ({ text, similarity: p.referenceScores[i] })) })) },
+          decisionMethod: analysis.method, groupedMargin: analysis.grouped.length > 1 ? analysis.grouped[0].similarity-analysis.grouped[1].similarity : null,
+          legacyCategory: analysis.legacy[0].appCategory, legacyRejectionReason: analysis.legacyDecision.rejectionReason,
+          categories: predictions.map(p => {
+            const index=categories.findIndex(c=>c.id===p.appCategory);
+            const legacy=analysis.legacy.find(c=>c.appCategory===p.appCategory);
+            const grouped=analysis.grouped.find(c=>c.appCategory===p.appCategory);
+            return {id:p.appCategory,similarity:p.similarity,legacySimilarity:legacy.similarity,
+              groupedSimilarity:grouped.similarity,matchedGroup:grouped.matchedGroup,
+              supportSimilarity:legacy.supportSimilarity,
+              references:texts[index].map((text,i)=>({text,similarity:legacy.referenceScores[i]})),
+              groups:grouped.groups.map(g=>({id:g.id,similarity:g.similarity,
+                references:groups[index].find(x=>x.id===g.id).texts.map((text,i)=>({text,similarity:g.referenceScores[i]}))}))};
+          }) },
         minimumMargin: EMBEDDING_MIN_MARGIN, scoringVersion: EMBEDDING_SCORING_VERSION,
         categoryDescription: accepted ? categoryDescription(selected, lang) : '',
         processingTime: Date.now() - started,

@@ -76,3 +76,14 @@ export function categoryEmbeddingTexts(category, lang = 'zh') {
   }
   return [categoryText(category, 'en'), ...(visualExamples[category.id] || []).map(text => `${category.en}: ${text}`)];
 }
+
+// Group paraphrases describe one visual subtype; user-authored rules remain the sole group.
+export function categoryEmbeddingGroups(category, lang = 'zh') {
+  const refs = categoryEmbeddingTexts(category, lang);
+  const subtypes = require('./embeddingSubtypes').EMBEDDING_SUBTYPES[category.id];
+  if (refs.length === 1 || !subtypes) return [{ id: 'rule', texts: [categoryText(category, lang)] }];
+  return subtypes.map(([id, first, second]) => ({ id, texts: [
+    `${category.en}: A photograph focused on ${first}.`,
+    `${category.en}: The main subject of the photograph is ${second}.`,
+  ] }));
+}
