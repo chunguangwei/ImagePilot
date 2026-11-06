@@ -290,7 +290,7 @@
     "vectorBuildBtn": "Build AI Vector Index",
     "vectorBuilding": "Indexing {{done}}/{{total}}…",
     "vectorPartialIndex": "Vector index {{indexed}}/{{total}} — tap to complete coverage",
-    "vectorModelMissing": "Download the recognition model first: Settings → Classifier Model → AI smart recognition",
+    "vectorModelMissing": "Download the search model: Settings → Similar photos & search → AI vector index",
     "dimsTip": "Searchable: AI description · category · city · date · format · resolution · orientation · camera params · folder · size",
     "semanticEmptyTip": "Describe the scene you want, e.g.:",
     "semanticEx1": "sunset at the beach",
@@ -307,6 +307,7 @@
     "batchCategorized": "{{count}} item(s) moved to the selected category"
   },
   "home": {
+    "scanDatabaseRetry": "Photo library records could not be updated. Wait for the current task to finish, then refresh again.",
     "title": "Home",
     "ready": "Ready",
     "clipUpsell": {
@@ -993,8 +994,10 @@
       "presetsDesc": "Preset enhancement profiles, with custom prompts"
     },
     "vectorIndex": {
+      "modelReady": "Search model ready. You can complete the vector index. Your classifier is unchanged.",
+      "downloadModel": "Download search model · {{size}} MB",
       "title": "AI Vector Index",
-      "needModel": "Download the \"AI smart recognition\" model first (in Classifier Model above)",
+      "needModel": "AI similarity search requires a separate MobileCLIP model. Downloading it does not change your classifier.",
       "stats": "Indexed {{indexed}}/{{total}} ({{percent}}%). Used by AI Similar / AI Search; new photos auto-indexed after scans, or complete/rebuild here.",
       "loading": "Loading index status…",
       "complete": "Complete Index",

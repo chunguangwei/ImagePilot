@@ -290,7 +290,7 @@
     "vectorBuildBtn": "建立 AI 向量索引",
     "vectorBuilding": "建索引中 {{done}}/{{total}}…",
     "vectorPartialIndex": "向量索引 {{indexed}}/{{total}}，点此补全（覆盖更多图）",
-    "vectorModelMissing": "需先下载识别模型：设置 → 分类模型 → AI 智能识别",
+    "vectorModelMissing": "需先下载搜索模型：设置 → 相似照片与搜索 → AI 向量索引",
     "dimsTip": "支持：AI 描述 · 分类 · 城市 · 时间 · 格式 · 分辨率 · 方向 · 拍摄参数 · 目录 · 大小",
     "semanticEmptyTip": "像说话一样描述想找的画面，试试：",
     "semanticEx1": "海边日落",
@@ -307,6 +307,7 @@
     "batchCategorized": "已将 {{count}} 项移入所选分类"
   },
   "home": {
+    "scanDatabaseRetry": "相册记录更新未完成。请等待当前任务结束后，再点击刷新重试。",
     "title": "首页",
     "ready": "图片分类应用已就绪",
     "clipUpsell": {
@@ -993,8 +994,10 @@
       "presetsDesc": "AI 修图的预设方案，可自定义提示词"
     },
     "vectorIndex": {
+      "modelReady": "搜索模型已就绪，可补全向量索引。分类模型保持不变。",
+      "downloadModel": "下载搜索模型 · {{size}} MB",
       "title": "AI 向量索引",
-      "needModel": "需先下载「AI 智能识别」模型（上方分类模型处）后可用",
+      "needModel": "AI 相似搜索需要独立的 MobileCLIP 模型；下载后不改变分类模型。",
       "stats": "已索引 {{indexed}}/{{total}}（{{percent}}%）。供「AI 相似/AI 搜图」使用；扫描后自动补新图，也可在此手动补全或重建。",
       "loading": "读取索引状态…",
       "complete": "补全索引",

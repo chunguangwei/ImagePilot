@@ -169,7 +169,10 @@ public class GalleryScanService {
         
         // 删除已删除的图片
         if (!deletedUris.isEmpty()) {
-            imageDataService.removeImagesByUris(deletedUris);
+            Map<String, Object> deletion = imageDataService.removeImagesByUris(deletedUris);
+            if (!Boolean.TRUE.equals(deletion.get("success"))) {
+                throw new IllegalStateException("Database cleanup failed: " + deletion.get("error"));
+            }
         }
         
         // 计算总数量：新增照片数量

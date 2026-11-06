@@ -180,7 +180,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
         if (ready) setVecStats(await svc.getIndexStats());
       } catch (_) { /* 不可用则不显示操作区 */ }
     })();
-  }, []);
+  }, [classifierDownloaded.clip]);
 
   /** 补全（增量）或重建（清空后全量）向量索引，带进度 */
   const runVecIndex = async (rebuild = false) => {
@@ -1201,7 +1201,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
         // 承诺即切：下载完成后落 setting；文件就绪且设置保存成功后才更新选中状态
         if (await updateSetting('classifierModelTier', tierKey)) setClassifierTier(tierKey);
       } else {
-        Alert.alert(t('settings.classifierModel.downloadComplete'), t('settings.classifierModel.ready', { label: t('settings.classifierModel.tierLabel.' + tier.key, { defaultValue: tier.label }) }));
+        Alert.alert(t('settings.classifierModel.downloadComplete'), tierKey === 'clip' ? t('settings.vectorIndex.modelReady') : t('settings.classifierModel.ready', { label: t('settings.classifierModel.tierLabel.' + tier.key, { defaultValue: tier.label }) }));
       }
     } catch (e) {
       if (isAbortError(e)) {
@@ -1292,27 +1292,13 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
     if (!route?.params?.autoUpgradeClip) return;
     if (autoUpgradeHandledRef.current) return;
     autoUpgradeHandledRef.current = true;
-    // 展开分类模型区，让用户看到进度条/档位
-    setClassifierExpanded(true);
-    // 清掉参数，避免返回/重渲染时重复触发
+    // Historical deep links now download only the search dependency, never change classification.
     try { navigation?.setParams?.({ autoUpgradeClip: undefined }); } catch (_) {}
     (async () => {
-      try {
-        // 已在下载中 → 不重复
-        if (classifierDownloadingKey) return;
-        // clip 已下载 → 直接切到该档即可，无需再下
-        if (classifierDownloaded.clip) {
-          if (await updateSetting('classifierModelTier', 'clip')) setClassifierTier('clip');
-          return;
-        }
-        // 未下载 → 触发下载，完成后自动切档（与手动点击 clip 档完全一致）
-        classifierPrevTierRef.current = classifierTier;
-        setClassifierTier('clip');
-        await downloadClassifierModel('clip', { switchAfter: true });
-      } catch (_) {
-        // downloadClassifierModel 内部已处理 Alert / 回滚
-      }
-    })();
+      const svc = require('../../services/ClipVectorIndexService').default;
+      if (await svc.isReady()) { setVecReady(true); return; }
+      if (!classifierDownloadingKey) await downloadClassifierModel('clip', { switchAfter: false });
+    })().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, route?.params?.autoUpgradeClip, classifierDownloaded.clip, classifierDownloadingKey]);
 
@@ -1461,7 +1447,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
             <Text style={styles.actionButtonText}>
               {SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color={c.accent} /> : null} {t('settings.classifierModel.title')}
             </Text>
-            {SetIonicons ? <SetIonicons name={classifierExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={c.subtext || '#9aa0a6'} /> : <Text style={{ color: c.subtext || '#9aa0a6' }}>{classifierExpanded ? '⌃' : '⌄'}</Text>}
+            {SetIonicons ? <SetIonicons name={classifierExpanded ? 'chevron-down' : 'chevron-forward'} size={18} color={c.subtext || '#9aa0a6'} /> : <Text style={{ color: c.subtext || '#9aa0a6' }}>{classifierExpanded ? '⌄' : '›'}</Text>}
           </View>
           <Text style={styles.actionButtonDescription}>
             {classifierExpanded ? t('settings.classifierModel.desc') : t('settings.classifierModel.current', { name: activeTierLabel, defaultValue: `当前：${activeTierLabel}` })}
@@ -1741,7 +1727,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
               <Text style={styles.switchLabelCompact}>{SetIonicons ? <SetIonicons name="albums-outline" size={15} color={c.accent} /> : null} {t('settings.vectorIndex.title', { defaultValue: 'AI 向量索引' })}</Text>
               <Text style={styles.switchDescriptionCompact}>
                 {!vecReady
-                  ? t('settings.vectorIndex.needModel', { defaultValue: '需先下载「AI 智能识别」模型（上方分类模型处）后可用' })
+                  ? t('settings.vectorIndex.needModel', { defaultValue: 'AI 相似搜索需要独立的 MobileCLIP 模型；下载后不改变分类模型。' })
                   : vecStats
                     ? t('settings.vectorIndex.stats', {
                         indexed: vecStats.indexed, total: vecStats.total,
@@ -1750,6 +1736,15 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                       })
                     : t('settings.vectorIndex.loading', { defaultValue: '读取索引状态…' })}
               </Text>
+              {!vecReady && <View style={styles.quickDirectoryRow}>
+                <TouchableOpacity style={styles.quickDirectoryButton}
+                  disabled={!!vlmDownloadingId || (!!classifierDownloadingKey && classifierDownloadingKey !== 'clip')}
+                  onPress={() => classifierDownloadingKey === 'clip' ? cancelClassifierDownload() : downloadClassifierModel('clip', { switchAfter: false }).catch(() => {})}>
+                  <Text style={styles.quickDirectoryButtonText}>{classifierDownloadingKey === 'clip'
+                    ? `${t('common.cancel')} · ${Math.round(classifierDownloadProgress * 100)}%`
+                    : t('settings.vectorIndex.downloadModel', { size: getClipModel(clipModelId).sizeMB })}</Text>
+                </TouchableOpacity>
+              </View>}
               {vecReady && (
                 <View style={styles.quickDirectoryRow}>
                   <TouchableOpacity

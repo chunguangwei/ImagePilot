@@ -581,50 +581,55 @@ public class ImageDataService {
      * @return 删除结果 { success: boolean, deletedCount: int }
      */
     public Map<String, Object> removeImagesByUris(List<String> uris) {
-        if (uris == null || uris.isEmpty()) {
-            Map<String, Object> result = new HashMap<>();
-            result.put("success", true);
-            result.put("deletedCount", 0);
-            return result;
-        }
-        
-        SQLiteDatabase db = dbHelper.getDatabase();
-        int deletedCount = 0;
-        
-        try {
-            db.beginTransaction();
-            
-            for (String uri : uris) {
-                if (uri == null || uri.isEmpty()) {
-                    continue;
-                }
-                
-                String id = generateStableId(uri);
-                int rowsAffected = db.delete("images", "id = ?", new String[]{id});
-                if (rowsAffected > 0) {
-                    deletedCount++;
-                }
-            }
-            
-            db.setTransactionSuccessful();
-            
-        } catch (Exception e) {
-            Log.e(TAG, "批量删除失败", e);
-            Map<String, Object> result = new HashMap<>();
-            result.put("success", false);
-            result.put("deletedCount", 0);
-            result.put("error", e.getMessage());
-            return result;
-        } finally {
-            db.endTransaction();
-        }
-        
         Map<String, Object> result = new HashMap<>();
-        result.put("success", true);
-        result.put("deletedCount", deletedCount);
+        result.put("deletedCount", 0);
+        if (uris == null || uris.isEmpty()) {
+            result.put("success", true);
+            return result;
+        }
+        SQLiteDatabase db = dbHelper.getDatabase();
+        Exception failure = null;
+        for (int attempt = 0; attempt < 3; attempt++) {
+            int deletedCount = 0;
+            boolean transactionStarted = false;
+            try {
+                try {
+                    db.beginTransaction();
+                    transactionStarted = true;
+                    for (String uri : uris) {
+                        if (uri == null || uri.isEmpty()) continue;
+                        deletedCount += db.delete("images", "id = ?", new String[]{generateStableId(uri)});
+                    }
+                    db.setTransactionSuccessful();
+                } finally {
+                    // beginTransaction can fail before this thread owns any transaction.
+                    // End exactly once; only report success after commit also succeeds.
+                    if (transactionStarted) db.endTransaction();
+                }
+                result.put("success", true);
+                result.put("deletedCount", deletedCount);
+                return result;
+            } catch (android.database.sqlite.SQLiteDatabaseLockedException e) {
+                failure = e;
+                if (attempt < 2) {
+                    try { Thread.sleep(200L * (attempt + 1)); }
+                    catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        failure = interrupted;
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                failure = e;
+                break;
+            }
+        }
+        Log.e(TAG, "批量删除失败", failure);
+        result.put("success", false);
+        result.put("error", failure != null ? failure.getMessage() : "Database cleanup failed");
         return result;
     }
-    
+
     // ==================== 读取操作 ====================
     
     /**

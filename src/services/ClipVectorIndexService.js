@@ -17,10 +17,10 @@ import i18n from '../i18n';
 function modelMissingMessage() {
   try {
     return i18n.t('common:search.vectorModelMissing', {
-      defaultValue: '需先下载识别模型：设置 → 分类模型 → AI 智能识别',
+      defaultValue: '需先下载识别模型：设置 → 相似照片与搜索 → AI 向量索引',
     });
   } catch (_) {
-    return '需先下载识别模型：设置 → 分类模型 → AI 智能识别';
+    return '需先下载识别模型：设置 → 相似照片与搜索 → AI 向量索引';
   }
 }
 
