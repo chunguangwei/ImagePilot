@@ -26,3 +26,11 @@
 使用 v1.5.89 测试版方案，以更广泛的实际照片比较纯图/联合分类的正确率、描述内容、整体耗时和温升。不能仅因为联合相似度更高就认为分类更准确。
 
 模型组合输入依据：[Google 官方多模态嵌入说明](https://ai.google.dev/gemma/docs/embeddinggemma/multimodal-embeddinggemma-with-sentence-transformers)。官方支持组合输入不构成此应用方案准确率提升的证据。
+
+## 1.5.89 发布构建记录
+
+- Android 构建源码：`7e1e4f32a0ccacfa8a6ea04ef5a23b93418a1b06`；GitHub Actions 运行 `42152590533` 成功。
+- APK：`ImagePilot-android-arm-1.5.89.apk`，382601808 字节；versionCode `11060251`，高于 1.5.88 的 `11060106`。
+- SHA-256：`071692d026cc97e4140a56c87f84a1688e09b36c98e26ea6ca9c408b147b00cb`。
+- APK v2/v3 签名验证通过，证书与 1.5.88 一致。安装包校验不代替安卓真机功能测试。
+- iOS：1.5.89 build 16，开发签名 Release 构建并安装到 iPhone 13，未提交 App Store。
