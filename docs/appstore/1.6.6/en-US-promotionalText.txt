@@ -1,0 +1,1 @@
+Classify photos on-device with Gemma 2, customize category rules, find similar photos and select with a drag. Existing classifications stay in place when you update.

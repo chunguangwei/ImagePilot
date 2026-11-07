@@ -1,0 +1,21 @@
+ImagePilot is a local-first photo and video organizer. Browse your library by content and file information, find similar photos, and keep your collection organized.
+
+CHOOSE YOUR AI MODEL
+Use on-device AI classification with options including Gemma 2 fast classification. Gemma 2 classifies image content; it does not generate image descriptions. Some local models require an initial download; image recognition then runs on your device. You can also configure an online model provider. Images processed with an online service are sent to that provider. Model capabilities and speed vary.
+
+MAKE CATEGORIES YOUR OWN
+Use built-in categories for people, pets, food, scenery, buildings, plants, documents, and more, or create custom categories. Edit built-in rules, add visual scenarios and exclusions, and restore defaults. Natural-language rules work with supported models, not fixed-label models. Editing a rule does not automatically change existing classifications; choose reclassification to apply it.
+
+BROWSE AND ORGANIZE
+Browse by content, city, color, and file information. Find similar photos and select consecutive items with a long press and drag. Collect items in the staging box for review before confirming deletion or archiving.
+
+MANAGE PHOTOS AND VIDEOS
+Classify videos as well as photos. Videos initially classified as Other can be retried with additional frames. View matching details and export text diagnostics when reporting a problem.
+
+MEMORIES, REPORTS AND EDITING
+Revisit moments and memories, create Showtime reels and album reports, and use photo-editing tools and filters.
+
+MANAGE YOUR DATA
+Back up and restore your classification index. Local-model inference runs on your device. When you choose your configured online service, the relevant images are transmitted for processing by that service. Model downloads and online features require a network connection.
+
+AI classification may be incorrect. You can adjust category rules or change a classification manually.

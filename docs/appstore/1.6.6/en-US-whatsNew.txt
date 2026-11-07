@@ -1,0 +1,16 @@
+• Fixed the photo list jumping to the top and drag selection being interrupted after a long press.
+• Improved range selection and edge scrolling, with fewer layout shifts and thumbnail redraws.
+
+This update brings more flexible on-device AI classification and a clearer photo-organizing experience.
+
+• Gemma 2 fast classification: a new local model option processes photos on your device after the model download, without uploading photos for classification.
+• Improved category matching: choose the highest-scoring eligible category and use Other when matching is insufficient. Refined scenery, people, plants, products and other built-in rules to reduce background distractions.
+• Editable category rules: customize built-in rules, create categories, add scenarios and exclusions, or restore built-in defaults. Improved how custom scenarios work with the original rule.
+• Refined Sports & Fitness rules: removed default swimming matches to improve classification of lakes, rivers and rapids.
+• Easier troubleshooting: inspect matching details and export complete diagnostics as a TXT file.
+• Improved video classification: videos initially assigned to Other can be retried using frames from additional positions.
+• Easier library management: long-press and drag to select consecutive items, plus improved compatibility for classification-index and rule backups.
+• Clearer settings: reorganized feature groups, consistent icons and expand/collapse arrows, explicit Edit buttons for editing presets, and improved touch targets and accessibility labels. Photo access, similarity thresholds and the AI search index are expanded by default on iOS.
+• Existing classifications are preserved. Updating the app or editing rules does not automatically reclassify your photos; reclassify them when you want to apply the new rules.
+
+AI results may be incorrect and can be adjusted manually.

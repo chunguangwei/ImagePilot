@@ -16,6 +16,7 @@ import {
   View,
   Text,
   FlatList,
+  RefreshControl,
   TouchableOpacity,
   Image,
   StyleSheet,
@@ -58,6 +59,57 @@ const GRID_PADDING = 8;        // timelineContainer 左右 padding
 const GRID_GAP = 2;            // 单元格之间 + 行之间 gap
 const TIMELINE_ITEM_SIZE =
   (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
+
+// Unchanged thumbnails keep their native image views during range updates.
+const TimelinePhoto = React.memo(function TimelinePhoto({
+  image,imageUri,selected,selectionMode,isHighlighted,isImageInStagingBox,
+  gridItemSize,styles,cellRef,onLayout,onPressImage,onLongPressImage,stagedLabel,
+}) {
+  return (
+                  <TouchableOpacity
+                    ref={cellRef}
+                    onLayout={onLayout}
+                    accessibilityRole="button"
+                    accessibilityState={{selected:selected}}
+                    style={[
+                      styles.timelineItem,
+                      { width: gridItemSize, height: gridItemSize },  // 响应式：折叠屏宽度变化实时重算
+                      selected && styles.timelineItemSelected,
+                      isHighlighted && styles.timelineItemHighlighted
+                    ]}
+                    onPress={() => onPressImage(image)}
+                    onLongPress={event => onLongPressImage(image.id,event)}
+                  >
+                    <Image
+                      source={{ uri: imageUri }}
+                      style={styles.timelineImage}
+                      resizeMode="cover"
+                    />
+                    {String(image.mimeType || '').startsWith('video/') && (
+                      <View style={[styles.videoBadge, formatDuration(image.duration) ? styles.videoBadgeWide : null]} pointerEvents="none">
+                        <VIcon name="play" size={10} emoji="▶" />
+                        {formatDuration(image.duration) ? <Text style={styles.videoBadgeIcon}> {formatDuration(image.duration)}</Text> : null}
+                      </View>
+                    )}
+                    {selectionMode && (
+                      <View style={[
+                        styles.timelineSelectionOverlay,
+                        selected && styles.timelineSelectionOverlaySelected
+                      ]}>
+                        <Text style={styles.timelineSelectionText}>
+                          {selected ? '✓' : ''}
+                        </Text>
+                    </View>
+                    )}
+                    {/* 已暂存标签（只在非暂存箱分类中显示） */}
+                    {isImageInStagingBox && (
+                      <View style={styles.stagingBoxBadge}>
+                        <Text style={styles.stagingBoxBadgeText}>{stagedLabel}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+  );
+});
 
 /** 时间轴某日下的照片相关地点（异步解析 location_id 为显示名） */
 const TimelineLocationLine = React.memo(({ imagesForDate }) => {
@@ -162,11 +214,13 @@ const CategoryScreen = ({ route, navigation }) => {
   const flatListRef = useRef(null);
   const hasProcessedReturnedImageIdRef = useRef(false); // 用于防止重复处理 returnedImageId
   const selectionModeRef=useRef(false);selectionModeRef.current=selectionMode;
-  const visualIds=Object.values(groupedImages).flat().filter(Boolean).map(image=>image.id);
+  const visualIds=React.useMemo(()=>Object.values(groupedImages).flat().filter(Boolean).map(image=>image.id),[groupedImages]);
+  const [selectionBarHeight,setSelectionBarHeight]=useState(80+insets.bottom);
   const rangeSelection=usePhotoRangeSelection({ids:visualIds,
     isSelected:id=>UnifiedDataService.isImageSelected(id),
-    setSelected:(id,value)=>UnifiedDataService.setImageSelection(id,value),
-    onChange:count=>{setSelectionMode(true);setSelectedCount(count);},listRef:flatListRef});
+    setSelected:(id,value)=>GlobalImageCache.setImageSelectionBatch([id],value),
+    onChange:count=>{GlobalImageCache.notifySelectionListeners();setSelectionMode(true);setSelectedCount(count);},listRef:flatListRef,
+    onRefresh:()=>onRefresh(),bottomInset:selectionMode?selectionBarHeight:0});
   const resetSelectionRef=useRef(null);
   resetSelectionRef.current=()=>{
     rangeSelection.reset();
@@ -1639,6 +1693,37 @@ const CategoryScreen = ({ route, navigation }) => {
 
 
 
+  const imageHandlers=useRef(null);
+  imageHandlers.current={
+    press:image=>{
+                      if(rangeSelection.shouldIgnorePress())return;
+                      if (selectionMode) {
+                        toggleImageSelection(image.id);
+                      } else {
+                        // 视频也进预览页（海报帧 + 居中▶播放键）：这样视频能查看信息/改分类/编辑描述，
+                        // 点▶才进系统播放器——与系统相册一致。
+                        // 注意：不需要在这里更新高亮，因为返回时会通过 returnedImageId 自动设置高亮
+                        const allImages = Object.values(groupedImages).flat();
+                        const currentIndex = allImages.findIndex(img => img.id === image.id);
+                        navigation.navigate('ImagePreview', {
+                          image: image,
+                          allImages: allImages,
+                          currentIndex: currentIndex,
+                          filterType,
+                          filterValue,
+                          fromScreen: pageType,
+                        });
+                      }
+    },
+    longPress:(id,event)=>{
+                      Haptics.impact('light');
+                      setSelectionMode(true);
+                      rangeSelection.start(id,event);
+    },
+  };
+  const onPressImage=useCallback(image=>imageHandlers.current.press(image),[]);
+  const onLongPressImage=useCallback((id,event)=>imageHandlers.current.longPress(id,event),[]);
+
   // ==================== 渲染函数 ====================
 
   /**
@@ -1654,7 +1739,7 @@ const CategoryScreen = ({ route, navigation }) => {
         <TouchableOpacity onPress={handleCancelPress}>
           <Text style={styles.selectionCancel}>{t('category.cancelSelection')}</Text>
           </TouchableOpacity>
-          <Text style={styles.selectionCount}>
+          <Text style={styles.selectionCount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
           {t('category.selectedCount', { selected: selectedCount, total: images.length })}
           </Text>
         <TouchableOpacity onPress={toggleSelectAll}>
@@ -1678,7 +1763,7 @@ const CategoryScreen = ({ route, navigation }) => {
     const actions = screenConfig.actionButtons;
 
     return (
-      <View style={[styles.actionBar, { paddingBottom: 8 + insets.bottom }]}>
+      <View onLayout={event=>setSelectionBarHeight(event.nativeEvent.layout.height)} style={[styles.actionBar, { paddingBottom: 8 + insets.bottom }]}>
         {actions.map(action => {
           const tint = action.danger ? c.danger : c.accent;
           const iconName = ACTION_ICONS[action.iconKey] || null;
@@ -1862,20 +1947,13 @@ const CategoryScreen = ({ route, navigation }) => {
               >
                 <View style={styles.timelineHeaderContent}>
                   <View style={styles.timelineHeaderLeft}>
-                    <Text style={styles.timelineDate}>{dateKey}</Text>
+                    <Text style={styles.timelineDate} numberOfLines={1}>{dateKey}</Text>
                     <TimelineLocationLine imagesForDate={imagesForDate} />
                   </View>
-                  <Text style={styles.timelineCount}>
+                  <Text style={styles.timelineCount} numberOfLines={1}>
                     ({t('category.photosCount', { count: imagesForDate.length })}{someSelected && ` · ${t('category.selectedCount', { selected: selectedCountInGroup, total: imagesForDate.length })}`})
                   </Text>
                 </View>
-                {someSelected && selectionMode && (
-                  <View style={styles.timelineSelectionIndicator}>
-                    <Text style={styles.timelineSelectionIndicatorText}>
-                      {selectedCountInGroup === imagesForDate.length ? t('category.allSelected') : t('category.partiallySelected')}
-                    </Text>
-                  </View>
-                )}
               </TouchableOpacity>
             <View style={styles.timelineGrid}>
               {groupedImages[dateKey].map((image, index) => {
@@ -1899,80 +1977,23 @@ const CategoryScreen = ({ route, navigation }) => {
                 const isImageInStagingBox = !isStaging && stagingBoxImageIds.has(image.id);
                 
                 return (
-                  <TouchableOpacity
-                    key={image.id}
-                    ref={rangeSelection.cellRef(image.id)}
-                    accessibilityRole="button"
-                    accessibilityState={{selected:UnifiedDataService.isImageSelected(image.id)}}
-                    style={[
-                      styles.timelineItem,
-                      { width: gridItemSize, height: gridItemSize },  // 响应式：折叠屏宽度变化实时重算
-                      UnifiedDataService.isImageSelected(image.id) && styles.timelineItemSelected,
-                      isHighlighted && styles.timelineItemHighlighted
-                    ]}
-                    onPress={() => {
-                      if(rangeSelection.shouldIgnorePress())return;
-                      if (selectionMode) {
-                        toggleImageSelection(image.id);
-                      } else {
-                        // 视频也进预览页（海报帧 + 居中▶播放键）：这样视频能查看信息/改分类/编辑描述，
-                        // 点▶才进系统播放器——与系统相册一致。
-                        // 注意：不需要在这里更新高亮，因为返回时会通过 returnedImageId 自动设置高亮
-                        const allImages = Object.values(groupedImages).flat();
-                        const currentIndex = allImages.findIndex(img => img.id === image.id);
-                        navigation.navigate('ImagePreview', {
-                          image: image,
-                          allImages: allImages,
-                          currentIndex: currentIndex,
-                          filterType,
-                          filterValue,
-                          fromScreen: pageType,
-                        });
-                      }
-                    }}
-                    onLongPress={event => {
-                      Haptics.impact('light');
-                      setSelectionMode(true);
-                      rangeSelection.start(image.id,event);
-                    }}
-                  >
-                    <Image
-                      source={{ uri: imageUri }}
-                      style={styles.timelineImage}
-                      resizeMode="cover"
-                    />
-                    {String(image.mimeType || '').startsWith('video/') && (
-                      <View style={[styles.videoBadge, formatDuration(image.duration) ? styles.videoBadgeWide : null]} pointerEvents="none">
-                        <VIcon name="play" size={10} emoji="▶" />
-                        {formatDuration(image.duration) ? <Text style={styles.videoBadgeIcon}> {formatDuration(image.duration)}</Text> : null}
-                      </View>
-                    )}
-                    {selectionMode && (
-                      <View style={[
-                        styles.timelineSelectionOverlay,
-                        UnifiedDataService.isImageSelected(image.id) && styles.timelineSelectionOverlaySelected
-                      ]}>
-                        <Text style={styles.timelineSelectionText}>
-                          {UnifiedDataService.isImageSelected(image.id) ? '✓' : ''}
-                        </Text>
-                    </View>
-                    )}
-                    {/* 已暂存标签（只在非暂存箱分类中显示） */}
-                    {isImageInStagingBox && (
-                      <View style={styles.stagingBoxBadge}>
-                        <Text style={styles.stagingBoxBadgeText}>{t('category.staged')}</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
+                  <TimelinePhoto key={image.id} image={image} imageUri={imageUri}
+                    selected={UnifiedDataService.isImageSelected(image.id)}
+                    selectionMode={selectionMode} isHighlighted={isHighlighted}
+                    isImageInStagingBox={isImageInStagingBox} gridItemSize={gridItemSize}
+                    styles={styles} cellRef={rangeSelection.cellRef(image.id)}
+                    onLayout={rangeSelection.cellLayout(image.id)}
+                    onPressImage={onPressImage} onLongPressImage={onLongPressImage}
+                    stagedLabel={t('category.staged')} />
                 );
               })}
               </View>
             </View>
           );
         }}
-        contentContainerStyle={styles.timelineContainer}
+        contentContainerStyle={[styles.timelineContainer,{paddingBottom:selectionBarHeight+GRID_PADDING}]}
         refreshing={refreshing}
-        onRefresh={rangeSelection.active?undefined:onRefresh}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={rangeSelection.listProps.onRefresh} enabled={!rangeSelection.active} />}
         ListEmptyComponent={renderEmpty}
       />
       </View>
@@ -2086,6 +2107,7 @@ const CategoryScreen = ({ route, navigation }) => {
     <SafeAreaView style={[styles.container, { backgroundColor: c.groupedBg }]}>
       {/* 顶部导航栏 */}
       <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.separator, borderBottomWidth: 0.5 }]}>
+        {selectionMode ? renderTopBar() : (<>
         <TouchableOpacity onPress={() => {
           if (navigation.canGoBack()) {
             navigation.goBack();
@@ -2110,16 +2132,13 @@ const CategoryScreen = ({ route, navigation }) => {
           }}
         >
           <Text style={[styles.headerRightText, { color: c.accent }]} numberOfLines={1}>
-            {selectionMode ? t('category.done') : t('category.select')}
+            {t('category.select')}
           </Text>
         </TouchableOpacity>
+        </>)}
           </View>
 
-      {/* 选择模式操作栏 */}
-      {renderTopBar()}
-
       {/* 时间轴视图 */}
-      {selectionMode&&<Text style={{color:c.secondaryLabel,fontSize:12,paddingHorizontal:16,paddingBottom:8}}>{String(i18n.language).startsWith('en')?'Long press and drag to select a range; hold near an edge to scroll.':'长按照片后滑动连续多选，停在上下边缘可继续滚动'}</Text>}
       {renderTimeline()}
 
       {/* 底部操作栏 */}
@@ -2253,6 +2272,7 @@ const createStyles = (c) => StyleSheet.create({
 
   // 选择栏
   selectionBar: {
+    flex: 1,
     height: 44,
     backgroundColor: c.card,
     flexDirection: 'row',
@@ -2279,6 +2299,10 @@ const createStyles = (c) => StyleSheet.create({
   // 多选工具栏（底部 paddingBottom 由调用处加 safe-area insets）
   // —— 风格对齐 iOS Photos：纯图标+文字，无边框、无背景色块，整体跟 app 其它栏一致。
   actionBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     backgroundColor: c.card,
     paddingTop: 10,
