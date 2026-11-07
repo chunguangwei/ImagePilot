@@ -1,5 +1,5 @@
 // Complete visual descriptions. Each pair describes the same subtype; digital images are not called photographs.
-export const EMBEDDING_RULES_VERSION = 'primary-subject-v2';
+export const EMBEDDING_RULES_VERSION = 'primary-subject-v3';
 export const EMBEDDING_SUBTYPES = {
   "social_activities": [
     [
@@ -250,11 +250,6 @@ export const EMBEDDING_SUBTYPES = {
       "ball-game",
       "Players actively playing a ball sport on a court or field.",
       "Athletes competing with a ball during a sports match."
-    ],
-    [
-      "swimming",
-      "A person swimming, with their head and arms visible in the water.",
-      "A swimmer performing a swimming stroke, with visible limbs and splashing water."
     ],
     [
       "cycling",

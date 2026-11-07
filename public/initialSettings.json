@@ -3775,10 +3775,9 @@
     },
     "bathing cap, swimming cap": {
       "id": 433,
-      "chinese": "游泳",
+      "chinese": "泳帽",
       "english": "bathing cap, swimming cap",
-      "category": "sports",
-      "subcategory": "ball_sports"
+      "category": "fashion"
     },
     "bath towel": {
       "id": 434,
