@@ -4,9 +4,9 @@
 
 - 版本 1.6.4 / build 37，包含设置页分组与图标优化及此前分类修复。
 - 原 App 包名 `com.chunguangwei.imagepilot`，团队 `CCTFP9X3SW`，保持不变。
-- 归档、安装验证及签名导出结果记录在 [发布记录](../../releases/v1.6.4.md)。
-- 上一轮分发导出报告 `No Accounts`、缺少原团队的 `iOS Distribution` 私钥；本轮不得将开发归档宣称为商店发行包。
-- 未上传 App Store Connect，未创建/修改线上商店版本，未提交审核。
+- build 37 已归档并覆盖安装启动，严格签名校验通过。归档位于 `dist/releases/1.6.4/ImagePilot-1.6.4-b37.xcarchive`。完整验证及签名导出结果记录在 [发布记录](../../releases/v1.6.4.md)。
+- 用户登录 Xcode 后，正式 App Store 分发导出成功，原团队 Apple Distribution 签名核验通过。最终 IPA 位于 `dist/releases/1.6.4/ImagePilot-1.6.4-b37-AppStore.ipa`。
+- 2026-11-07 19:34:57 已上传 App Store Connect，上传工具确认 Apple 开始处理。随后处理完成，已创建 1.6.4、关联 build 37 并保存中英文介绍、宣传文本、更新说明和审核说明。2026-11-07 提交成功，状态“正在等待审核”，尚未上架。CLiteRTLM、Hermes dSYM 缺失警告详见发布记录。
 
 ## 已准备文案
 
@@ -20,9 +20,9 @@
 
 文案已检查副标题≤30、宣传文本≤170、描述与更新说明≤4000字符。字段规则见 [Apple 平台版本信息](https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information)。
 
-## 签名恢复后的继续步骤
+## 重新导出与后续步骤
 
-在 Xcode → Settings → Accounts 登录有原团队分发权限的账号，确保能使用该团队的发行签名。无需在聊天中提供密码、证书私钥。
+本机原团队分发签名已恢复，build 37 已提交审核。不要重复上传同一 build。
 
 从仓库根目录执行：
 
@@ -34,6 +34,6 @@ xcodebuild -exportArchive \
   -allowProvisioningUpdates
 ```
 
-该配置只导出，不上传。导出成功后核对版本、团队、分发签名、隐私清单和包内规则，再通过 Xcode Organizer 上传，等待 Apple 处理后关联版本、填写文案并提交审核。当前未核对线上 App Store Connect 版本状态。参见 [Apple 上传构建说明](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds)。
+该配置只导出，不上传。导出成功后核对版本、团队、分发签名、隐私清单和包内规则，再通过 Xcode Organizer 上传，等待 Apple 处理后关联版本、填写文案并提交审核。当前线上状态已核对为“正在等待审核”。参见 [Apple 上传构建说明](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds)。
 
 本版增加设置页分组、统一展开控件和矢量小图标优化。最终构建与上传状态见 docs/releases/v1.6.4.md，旧版归档校验值不可用于本版。
