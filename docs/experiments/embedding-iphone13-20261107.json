@@ -1,0 +1,136 @@
+{
+  "device": "iPhone 13",
+  "tokens": 70,
+  "input": "UIKit aspect-fit 768 JPEG90, native LiteRT C API; not a full application UI classification run",
+  "cases": [
+    {
+      "tokens": 70,
+      "mode": "classification",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "ms": 1073.1788873672485,
+      "rawTop": [
+        {
+          "category": "single_person",
+          "score": 0.649697596171901
+        },
+        {
+          "category": "plants",
+          "score": 0.6463365287262176
+        },
+        {
+          "category": "products",
+          "score": 0.6349037104736395
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "architecture",
+          "score": 0.6743358077569276
+        },
+        {
+          "category": "plants",
+          "score": 0.6719382297705652
+        },
+        {
+          "category": "electronics",
+          "score": 0.6693001160782798
+        }
+      ],
+      "selected": "architecture",
+      "accepted": false,
+      "reason": "category-view-disagreement",
+      "margin": 0.0023975779863624203,
+      "legacyTop": "electronics"
+    },
+    {
+      "tokens": 70,
+      "mode": "classification",
+      "image": "user-trophy",
+      "expected": "art",
+      "source": "screenshot crop",
+      "ms": 728.2540798187256,
+      "rawTop": [
+        {
+          "category": "art",
+          "score": 0.681960613277591
+        },
+        {
+          "category": "social_activities",
+          "score": 0.646729893715158
+        },
+        {
+          "category": "sports",
+          "score": 0.6464894280450452
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "art",
+          "score": 0.718306952754421
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6650811800739889
+        },
+        {
+          "category": "foods",
+          "score": 0.6589157849696552
+        }
+      ],
+      "selected": "art",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.05322577268043216,
+      "legacyTop": "art"
+    },
+    {
+      "tokens": 70,
+      "mode": "classification",
+      "image": "user-group",
+      "expected": "social_activities",
+      "source": "screenshot crop",
+      "ms": 714.7200107574463,
+      "rawTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6863895355260857
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6414947342077526
+        },
+        {
+          "category": "electronics",
+          "score": 0.6307097839344784
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6800104280303196
+        },
+        {
+          "category": "screenshot",
+          "score": 0.649892508065628
+        },
+        {
+          "category": "electronics",
+          "score": 0.6405738864770171
+        }
+      ],
+      "selected": "social_activities",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.030117919964691597,
+      "legacyTop": "social_activities"
+    }
+  ],
+  "fixedByteCheck": {
+    "image": "user-rack",
+    "cosineVsSimulator": 0.9999998506731926,
+    "note": "Identical prepared JPEG reproduces simulator vector; device-resized JPEG differs.",
+    "devicePreprocessedVsSimulatorCosine": 0.9747331899660979
+  }
+}
