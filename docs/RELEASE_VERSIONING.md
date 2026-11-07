@@ -9,7 +9,7 @@
 | 范围 | 版本 | 状态 |
 | --- | --- | --- |
 | Android | `1.6.5` | 使用现有正式签名；GitHub Release 非 prerelease 并设为 latest |
-| iOS | `1.6.5` / build `38` | App Store IPA 已导出；上传等待账号认证，旧 1.6.4 仍待审核 |
+| iOS | `1.6.5` / build `38` | 已替换旧 1.6.4 并提交审核；当前等待审核，通过后自动发布 |
 | PC | `1.5.82` | 本次不构建、不升级桌面版本 |
 
 本次只发布移动端，更新根目录 package/package-lock、Android versionName、iOS marketing/build 和 BuildInfo。分支 `codex/embeddinggemma2-android-preview`，手动 workflow 选择 android。iOS 构建与安装结果以最终发布记录为准，不能将开发签名包当作通用 Ad Hoc / TestFlight 安装包。

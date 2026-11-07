@@ -1,1 +1,1 @@
-Make photo categories your own with editable rules, local AI models and drag selection. Existing classifications stay in place when you update.
+Classify photos on-device with Gemma 2, customize category rules, find similar photos and select with a drag. Existing classifications stay in place when you update.

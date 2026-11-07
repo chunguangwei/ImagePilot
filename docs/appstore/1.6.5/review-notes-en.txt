@@ -12,3 +12,5 @@ Optional online classification requires the user to configure a provider and exp
 This update retains existing category identifiers. Editing rules does not automatically replace saved photo classifications. AI predictions are fallible and can be corrected manually.
 
 This update replaces arrows beside editing presets with Edit buttons and expands Library & search by default on iOS. Existing classifications and rules are preserved.
+
+Gemma 2 fast classification is available under the local classification model settings. It performs semantic image classification, not caption generation. Download its model first if needed. This release also includes editable built-in category rules, text diagnostic export, video-frame retries, drag selection and the reorganized settings interface. Rule exclusions are semantic matching hints, not guaranteed logical filters.
