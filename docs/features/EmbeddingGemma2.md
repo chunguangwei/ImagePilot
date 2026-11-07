@@ -1,5 +1,12 @@
 # EmbeddingGemma 2 图文分类
 
+## 1.5.100：双端启用 140 视觉 token
+
+经用户确认，Android / iOS 的 Gemma 2 默认图像输入使用 140 视觉 token；不再仅对不确定图片考虑增加细节，因为已有误判也可能被接受。保持模型文件、768 最长边、JPEG 输入、CPU 两线程、分类提示词和评分规则不变，无需重新下载模型。导出的分类诊断记录 `visionTokensPerImage: 140`。
+
+原图重分类后新配置生效。已有样本对照不代表安卓整体精度保证；模拟器图像编码对照约为原先 1.9 倍耗时，不能直接套用为手机整批分类耗时。详见[实验记录](../experiments/embedding-official-usage-ab-20261107.md)。
+
+
 ## 1.5.99：安卓 JPEG 输入保真（2026-11-07）
 
 Gemma 2 保留 70 视觉 token、768 最长边与现有分类规则。安卓直接读取共享预处理生成的 JPEG 字节，不再经过 Bitmap 解码和 PNG 重编码；与 iOS 的文件字节输入方式对齐。模型文件无需重新下载。E2B 的独立图像路径不变。
@@ -44,7 +51,7 @@ Android 测试版本为 **1.5.83-beta.1**，iOS 已接入同一能力，但本�
 - 已验证下载地址可返回 HTTP 206 和 LITERTLM 文件头，尚未完成整个模型的真机下载及推理。
 - `classifierModelTiers.js` 定义下载档，`EmbeddingGemmaClassifier.js` 串行处理向量分类、类别缓存及释放。
 - 类别输入包含名称、内置或配置中的完整语义描述；自定义规则优先。E2B 共用类别含义。使用 `task: classification | query: ...` 前缀。余弦相似度选择候选类别；非正向匹配或数值并列（差值不超过 1e-6）归入其它。此检查只排除无效/并列结果，不代表结果已达到可靠性门限。相似度不是准确率或校准概率。
-- Android `GemmaModule` 与 iOS `LiteRTLMModule` 使用 LiteRT-LM 0.18.0，CPU 两线程、视觉 token 预算 70；与 E2B 切换时释放上一引擎。
+- Android `GemmaModule` 与 iOS `LiteRTLMModule` 使用 LiteRT-LM 0.18.0，CPU 两线程、视觉 token 预算 140；与 E2B 切换时释放上一引擎。
 - iOS XCFramework 恢复方法见 [运行时说明](../../ios/LiteRTLM/README.md)。
 
 ## 测试与限制

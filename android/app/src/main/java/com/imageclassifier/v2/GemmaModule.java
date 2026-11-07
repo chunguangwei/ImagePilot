@@ -267,7 +267,7 @@ public class GemmaModule extends ReactContextBaseJavaModule {
           Class<?> configClass = Class.forName(P + "EmbeddingEngineConfig");
           Object config = configClass.getConstructor(String.class, backendClass, backendClass,
               backendClass, String.class, Integer.class, Integer.class, Integer.class)
-              .newInstance(mp, cpu, cpu, null, null, null, null, Integer.valueOf(70));
+              .newInstance(mp, cpu, cpu, null, null, null, null, Integer.valueOf(140));
           Object candidate = Class.forName(P + "EmbeddingEngine").getConstructor(configClass).newInstance(config);
           candidate.getClass().getMethod("initialize").invoke(candidate);
           embeddingEngine = candidate;

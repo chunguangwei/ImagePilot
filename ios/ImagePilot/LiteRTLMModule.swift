@@ -79,7 +79,7 @@ actor LiteRTLMRunner {
       await releaseEngine()
       let e = EmbeddingEngine(config: EmbeddingEngineConfig(
         modelPath: modelPath, backend: .cpu(threadCount: 2),
-        visionBackend: .cpu(threadCount: 2), visionTokensPerImage: 70
+        visionBackend: .cpu(threadCount: 2), visionTokensPerImage: 140
       ))
       try await e.initialize()
       embeddingEngine = e

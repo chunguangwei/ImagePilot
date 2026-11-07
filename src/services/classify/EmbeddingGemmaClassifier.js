@@ -112,7 +112,7 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
         // This is cosine similarity, not a calibrated probability. Do not apply ImageNet's threshold.
         confidence: Math.max(0, top.similarity), similarity: top.similarity,
         classificationAccepted: accepted, margin, rejectionReason,
-        diagnostics: { appVersion: BUILD_VERSION, platform: Platform.OS, language: lang, inputMaxEdge: 768,
+        diagnostics: { appVersion: BUILD_VERSION, platform: Platform.OS, language: lang, inputMaxEdge: 768, visionTokensPerImage: 140,
           scoringVersion: EMBEDDING_SCORING_VERSION, supportMargin, supportCategory, strongestCategory, strongestMargin,
           decisionMethod: analysis.method, groupedMargin: analysis.grouped.length > 1 ? analysis.grouped[0].similarity-analysis.grouped[1].similarity : null,
           legacyCategory: analysis.legacy[0].appCategory, legacyRejectionReason: analysis.legacyDecision.rejectionReason,

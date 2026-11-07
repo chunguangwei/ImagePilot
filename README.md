@@ -1,13 +1,13 @@
 # ImagePilot - AI 智能照片分类管理工具
 
-> **当前 1.5.99：** 默认分类提供 Gemma 2（快速分类、不生成描述）和 Gemma4-E2B（多模态分类与描述）；主动重分类还可选择物体识别、场景识别、MobileCLIP及已配置的在线模型。LFM/SmolVLM 已下线，旧选择迁移至 EmbeddingGemma，缺少文件需主动下载；已有分类与描述保留。下文旧模型试验属于历史记录，不是当前可用功能。
+> **当前 1.5.100：** 默认分类提供 Gemma 2（快速分类、不生成描述）和 Gemma4-E2B（多模态分类与描述）；主动重分类还可选择物体识别、场景识别、MobileCLIP及已配置的在线模型。LFM/SmolVLM 已下线，旧选择迁移至 EmbeddingGemma，缺少文件需主动下载；已有分类与描述保留。下文旧模型试验属于历史记录，不是当前可用功能。
 
 
-## 1.5.99：Gemma 2 图片输入优化
+## 1.5.100：Gemma 2 增加视觉细节
 
-安卓 Gemma 2 直接使用预处理后的 JPEG，移除额外 PNG 转换；保持 70 视觉 token，无需重下模型。更新后请主动重新分类旧照片。iPhone 13 原生实测中奖杯、合影正确，机柜仍可能归为不确定，不能宣称分类问题全部解决。iOS 1.5.99 build28仅开发真机测试。
+Android / iOS 的 Gemma 2 均启用 140 视觉 token，保留 JPEG 字节输入与现有分类规则，无需重新下载模型。旧照片需要主动重新 AI 分类。机柜样本在已有模拟器对照中改善，但尚不保证安卓真机准确率；图像推理开销预计增加，手机实际耗时与发热待验证。iOS build29用于开发真机测试，不提交 App Store。
 
-[发布记录](docs/releases/v1.5.99.md) · [用户照片与真机对照](docs/experiments/embedding-official-usage-ab-20261107.md)
+[发布记录](docs/releases/v1.5.100.md) · [对照实验](docs/experiments/embedding-official-usage-ab-20261107.md)
 
 ## 1.5.98：待分类与选图交互优化
 

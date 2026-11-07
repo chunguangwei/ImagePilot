@@ -1,0 +1,97 @@
+{
+  "purpose": "Recheck Android 1.5.99 network-rack failure; experiment only, production unchanged",
+  "runtime": "vendored iOS arm64 simulator C API, CPU 2 threads",
+  "input": "Exact saved JPEG produced by iPhone preprocessing, read as bytes without resize or re-encoding",
+  "inputSha256": "16ae3bad939b7e2ee437736b4769c23beab4f131250c63f8bc51b009bacfd8a1",
+  "modelSha256": "92dcbea108899e5d6e30d919b0744f90d9967e80c67a4ab5503ac16d54f62eb0",
+  "textEvidence": "Reuse previously computed simulator text vectors at corresponding token settings; current production ranking functions; 21 builtin categories, no custom youth category",
+  "limitations": [
+    "Not Android runtime verification",
+    "Single image; no overall accuracy claim",
+    "Single-run timing includes variable runtime overhead, not a speed comparison"
+  ],
+  "results": [
+    {
+      "tokens": 70,
+      "mode": "classification",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "ms": 754.0010213851929,
+      "rawTop": [
+        {
+          "category": "single_person",
+          "score": 0.649697596171901
+        },
+        {
+          "category": "plants",
+          "score": 0.6463365287262176
+        },
+        {
+          "category": "products",
+          "score": 0.6349037104736395
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "architecture",
+          "score": 0.6743358077569276
+        },
+        {
+          "category": "plants",
+          "score": 0.6719382297705652
+        },
+        {
+          "category": "electronics",
+          "score": 0.6693001160782798
+        }
+      ],
+      "selected": "architecture",
+      "accepted": false,
+      "reason": "category-view-disagreement",
+      "margin": 0.0023975779863624203,
+      "legacyTop": "electronics"
+    },
+    {
+      "tokens": 140,
+      "mode": "classification",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "ms": 555.0559759140015,
+      "rawTop": [
+        {
+          "category": "electronics",
+          "score": 0.66183727020859
+        },
+        {
+          "category": "single_person",
+          "score": 0.6530819372206068
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6507253247119898
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "electronics",
+          "score": 0.7237450450037776
+        },
+        {
+          "category": "architecture",
+          "score": 0.6770438018092744
+        },
+        {
+          "category": "single_person",
+          "score": 0.6709782400290858
+        }
+      ],
+      "selected": "electronics",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.046701243194503195,
+      "legacyTop": "electronics"
+    }
+  ]
+}
