@@ -513,6 +513,7 @@
     "captionStage_image": "读取图片",
     "captionStage_inference": "生成描述",
     "captionStage_save": "保存描述",
+    "embeddingLowScoreOther": "所有可用类别的匹配分数较低，已归入“其他”。可手动调整，或选择其他模型重新分类。",
     "embeddingAssignedOther": "本次 AI 无法可靠确定类别，已归入“其他”。可手动调整分类，或选择 E2B / 在线模型重新分类。",
     "embeddingUncertain": "候选过于接近或没有有效匹配，本次未改变分类；待分类照片可手动选择类别。",
     "categoryMeaning": "类别说明（非图片描述）",

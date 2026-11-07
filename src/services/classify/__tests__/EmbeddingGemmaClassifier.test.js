@@ -60,11 +60,11 @@ test('descriptive category text is encoded and saved as category explanation, no
   expect(embed.mock.calls.some(([, text]) => text.includes('餐桌上的食物和饮料'))).toBe(true);
 });
 
-test('tied candidates do not force a category based on list order', async () => {
+test('tied candidates choose a stable highest-score category', async () => {
   embed.mockResolvedValue([1, 0]);
   const result = await classifyWithEmbeddingGemma('photo', 'model');
-  expect(result.classificationAccepted).toBe(false);
-  expect(result.topPrediction).toBeNull();
+  expect(result.classificationAccepted).toBe(true);
+  expect(result.topPrediction.appCategory).toBe('food');
   expect(result.predictions).toHaveLength(2);
 });
 
@@ -92,7 +92,7 @@ test('uses the official classification query prefix for every category', async (
 test('builtin classification combines full visual meanings rather than bare labels', async () => {
   getCategoryList.mockReturnValue([{ id: 'single_person', zh: '单人照片', en: 'Single Person' }, { id: 'fashion', zh: '服饰穿搭', en: 'Fashion' }]);
   embed.mockImplementation(async (_path, text) => {
-    if (!text || text.includes('A portrait photograph with one person as the main subject')) return [0, 1];
+    if (!text || text.includes('Single Person:')) return [0, 1];
     if (text.includes('单人照片')) return [1, 0];
     return [0.6, 0.8];
   });
@@ -126,19 +126,19 @@ test('joint embedding failure falls back to the image without discarding its cla
   expect(r.classificationMode).toBe('image');
   expect(r.fusionError).toContain('joint unsupported');
 });
-test('near-tied positive similarities are uncertain rather than a forced winner',async()=>{
+test('near-tied positive similarities select the highest score',async()=>{
  embed.mockImplementation(async(_p,text)=>!text?[1,0]:text.includes('食物')?[0.676,Math.sqrt(1-0.676**2)]:[0.673,Math.sqrt(1-0.673**2)]);
  const r=await classifyWithEmbeddingGemma('near-tie','model');
- expect(r.classificationAccepted).toBe(false);expect(r.topPrediction).toBeNull();expect(r.rejectionReason).toBe('ambiguous');
+ expect(r.classificationAccepted).toBe(true);expect(r.topPrediction.appCategory).toBe('food');expect(r.rejectionReason).toBeNull();
 });
-test('a conflicting strongest reference remains uncertain instead of promoting either parent',async()=>{
+test('legacy reference disagreement is diagnostic only and cannot veto the highest category',async()=>{
  getCategoryList.mockReturnValue([{id:'foods',zh:'美食',en:'Food Records'},{id:'pets',zh:'宠物',en:'Pets'}]);
  let foods=0;
  embed.mockImplementation(async(_p,text)=>!text?[1,0]:text.includes('Food Records')?(foods++===0?[1,0]:[0,1]):[0.8,0.6]);
  const r=await classifyWithEmbeddingGemma('photo','model');
- expect(r.topPrediction).toBeNull();
- expect(r.classificationAccepted).toBe(false);
- expect(r.rejectionReason).toBe('strongest-prototype-disagreement');
+ expect(r.topPrediction.appCategory).toBe('pets');
+ expect(r.classificationAccepted).toBe(true);
+ expect(r.rejectionReason).toBeNull();
  expect(r.diagnostics.legacyRejectionReason).toBe('strongest-prototype-disagreement');
  expect(r.diagnostics.strongestCategory).toBe('foods');
 });
@@ -175,7 +175,25 @@ test('optional details invalidate the cache and exclusion conflict cannot write 
  const second=await classifyWithEmbeddingGemma('photo','model');
  expect(embed.mock.calls.length).toBeGreaterThan(count+1);
  expect(second.classificationAccepted).toBe(false);
- expect(second.rejectionReason).toBe('exclusion-conflict');
+ expect(second.rejectionReason).toBe('no-eligible-category');
  expect(second.topPrediction).toBeNull();
  expect(second.diagnostics.categories.find(c=>c.id==='work').groups.find(g=>g.exclude).references[0].text).toContain('盆栽');
+});
+
+test('low similarities persist Other with the absolute threshold in diagnostics',async()=>{
+ embed.mockImplementation(async(_p,text)=>text?[.49,Math.sqrt(1-.49**2)]:[1,0]);
+ const r=await classifyWithEmbeddingGemma('low','model');
+ expect(r.classificationAccepted).toBe(false);expect(r.rejectionReason).toBe('low-similarity');
+ expect(r.minimumSimilarity).toBe(.5);expect(r.diagnostics.minimumSimilarity).toBe(.5);
+ const fields=require('../embeddingRecordFields').embeddingRecordFields(r);
+ expect(fields.category).toBe('other');expect(fields.mobileNetV3Detections.embedding.minimumSimilarity).toBe(.5);
+});
+
+test('Other cannot compete and exclusions continue to the next specific category',async()=>{
+ getCategoryList.mockReturnValue([{id:'custom',zh:'自定义',rule:'机器',exclusions:'盆栽'},{id:'backup',zh:'备用'},{id:'other',zh:'其他'}]);
+ embed.mockImplementation(async(_p,text)=>{const score=!text?1:text.includes('Other Images')?.99:text.includes('盆栽')?.95:text.includes('机器')?.9:.7;return [score,Math.sqrt(1-score**2)];});
+ const r=await classifyWithEmbeddingGemma('photo','model');
+ expect(r.classificationAccepted).toBe(true);expect(r.topPrediction.appCategory).toBe('backup');
+ expect(r.predictions.map(p=>p.appCategory)).toEqual(['backup']);
+ expect(r.diagnostics.categories).toHaveLength(3);expect(r.diagnostics.excludedCategories).toEqual(['custom']);
 });

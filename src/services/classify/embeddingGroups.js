@@ -54,3 +54,24 @@ function checkExclusion(decision, groupedPredictions, minimumMargin) {
   }
   return decision;
 }
+
+// 1.6+: choose the highest eligible category. Legacy consensus is diagnostic only.
+// Other is a fallback, not a visual class that can outscore a specific subject.
+export function selectHighestDecision(predictions, minimumSimilarity) {
+  if (!Number.isFinite(minimumSimilarity)) throw new Error('Invalid minimum similarity');
+  for (const p of predictions) {
+    if (!Number.isFinite(p.similarity) || (p.exclusionSimilarity != null && !Number.isFinite(p.exclusionSimilarity))) {
+      throw new Error('Invalid category similarity');
+    }
+  }
+  const ranked = [...predictions].sort((a,b) => b.similarity-a.similarity || (a.appCategory < b.appCategory ? -1 : a.appCategory > b.appCategory ? 1 : 0));
+  const eligible = ranked.filter(p => p.appCategory !== 'other'
+    && (p.exclusionSimilarity == null || p.similarity > p.exclusionSimilarity));
+  const candidate = eligible[0] || null;
+  return {
+    candidate, predictions: ranked, method: 'highest-score',
+    margin: eligible.length > 1 ? eligible[0].similarity-eligible[1].similarity : null,
+    rejectionReason: !candidate ? 'no-eligible-category' : candidate.similarity < minimumSimilarity ? 'low-similarity' : null,
+    excludedCategories: ranked.filter(p => p.appCategory !== 'other' && p.exclusionSimilarity != null && p.similarity <= p.exclusionSimilarity).map(p=>p.appCategory),
+  };
+}

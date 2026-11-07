@@ -13,6 +13,7 @@ export function embeddingRecordFields(result, captionEnabled = false, image = {}
         similarity: result.similarity,
         margin: result.margin,
         minimumMargin: result.minimumMargin,
+        minimumSimilarity: result.minimumSimilarity,
         scoringVersion: result.scoringVersion,
         diagnostics: result.diagnostics,
         rejectionReason: result.rejectionReason,

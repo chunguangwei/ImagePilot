@@ -1,5 +1,5 @@
 import { BUILD_VERSION } from '../../config/BuildInfo';
-import { rankGroupedEvidence, selectGroupedDecision } from './embeddingGroups';
+import { rankGroupedEvidence, selectHighestDecision } from './embeddingGroups';
 import { rankEmbeddingEvidence, embeddingDecision } from './embeddingRanking';
 import { NativeModules, Platform } from 'react-native';
 import { categoryDescription, categoryEmbeddingTexts, categoryEmbeddingGroups, normalizeCustomMatching } from './categorySemantics';
@@ -8,9 +8,11 @@ import { getCategoryList, currentLang, prepareImageFile, cleanupTmp } from './vl
 // Keep native requests and disposal ordered, including simultaneous single-photo requests.
 let pending = Promise.resolve();
 let categoryCache = null;
-// Conservative ambiguity band, not a calibrated accuracy/probability threshold.
+// Historical comparison diagnostics only; this margin no longer gates acceptance.
 export const EMBEDDING_MIN_MARGIN = 0.005;
-export const EMBEDDING_SCORING_VERSION = 'subtype-consensus-v3';
+// Operational low-match floor, not a calibrated accuracy probability.
+export const EMBEDDING_MIN_SIMILARITY = 0.50;
+export const EMBEDDING_SCORING_VERSION = 'highest-score-v1';
 function serial(work) {
   const result = pending.then(work);
   pending = result.catch(() => {});
@@ -83,7 +85,7 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
         const legacy = rankEmbeddingEvidence(vector, categories, categoryCache.vectors, categoryCache.prototypes);
         const legacyDecision = embeddingDecision(legacy, EMBEDDING_MIN_MARGIN);
         const grouped = rankGroupedEvidence(vector, categories, categoryCache.groups);
-        return {legacy,legacyDecision,grouped,...selectGroupedDecision(legacy,legacyDecision,grouped,EMBEDDING_MIN_MARGIN)};
+        return {legacy,legacyDecision,grouped,...selectHighestDecision(grouped,EMBEDDING_MIN_SIMILARITY)};
       };
       const imageAnalysis = rank(vector);
       let analysis = imageAnalysis;
@@ -102,18 +104,18 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
       }
       const {predictions, margin, rejectionReason} = analysis;
       const {supportMargin,supportCategory,strongestCategory,strongestMargin} = analysis.legacyDecision;
-      const top = predictions[0];
+      const top = analysis.candidate;
       const accepted = rejectionReason === null;
-      const selected = categories.find((c) => c.id === top.appCategory);
+      const selected = categories.find((c) => c.id === top?.appCategory);
       return {
-        classificationMode, imageOnlyCategory: imageAnalysis.predictions[0]?.appCategory, fusionError,
+        classificationMode, imageOnlyCategory: imageAnalysis.rejectionReason === null ? imageAnalysis.candidate?.appCategory : 'other', fusionError,
         success: true, engine: 'embeddinggemma2', model: 'embeddinggemma-2-text-vision-440m',
-        topPrediction: accepted ? top : null, predictions: predictions.slice(0, 5),
+        topPrediction: accepted ? top : null, predictions: predictions.filter(p => p.appCategory !== 'other' && !analysis.excludedCategories.includes(p.appCategory)).slice(0, 5),
         // This is cosine similarity, not a calibrated probability. Do not apply ImageNet's threshold.
-        confidence: Math.max(0, top.similarity), similarity: top.similarity,
+        confidence: Math.max(0, top?.similarity ?? 0), similarity: top?.similarity ?? 0,
         classificationAccepted: accepted, margin, rejectionReason,
         diagnostics: { appVersion: BUILD_VERSION, platform: Platform.OS, language: lang, inputMaxEdge: 768, visionTokensPerImage: 140,
-          scoringVersion: EMBEDDING_SCORING_VERSION, supportMargin, supportCategory, strongestCategory, strongestMargin,
+          scoringVersion: EMBEDDING_SCORING_VERSION, minimumSimilarity: EMBEDDING_MIN_SIMILARITY, excludedCategories: analysis.excludedCategories, supportMargin, supportCategory, strongestCategory, strongestMargin,
           decisionMethod: analysis.method, groupedMargin: analysis.grouped.length > 1 ? analysis.grouped[0].similarity-analysis.grouped[1].similarity : null,
           legacyCategory: analysis.legacy[0].appCategory, legacyRejectionReason: analysis.legacyDecision.rejectionReason,
           categories: predictions.map(p => {
@@ -127,7 +129,7 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
               groups:grouped.groups.map(g=>({id:g.id,exclude:g.exclude,similarity:g.similarity,
                 references:groups[index].find(x=>x.id===g.id).texts.map((text,i)=>({text,similarity:g.referenceScores[i]}))}))};
           }) },
-        minimumMargin: EMBEDDING_MIN_MARGIN, scoringVersion: EMBEDDING_SCORING_VERSION,
+        minimumMargin: null, minimumSimilarity: EMBEDDING_MIN_SIMILARITY, scoringVersion: EMBEDDING_SCORING_VERSION,
         categoryDescription: accepted ? categoryDescription(selected, lang) : '',
         processingTime: Date.now() - started,
       };

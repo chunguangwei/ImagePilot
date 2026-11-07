@@ -1624,7 +1624,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   {t(`imagePreview.classification_${result.classification.state === 'complete' ? result.classification.mode : result.classification.state}`)}
                   {result.classification.error ? `: ${result.classification.error}` : ''}
                 </Text>}
-                {!result.accepted && <Text style={styles.detectionText}>{t(result.fallbackCategory === 'other' ? 'imagePreview.embeddingAssignedOther' : ['prototype-disagreement', 'weak-prototype-support', 'strongest-prototype-disagreement', 'category-view-disagreement', 'exclusion-conflict'].includes(result.rejectionReason) ? 'imagePreview.embeddingEvidenceConflict' : 'imagePreview.embeddingUncertain')}</Text>}
+                {!result.accepted && <Text style={styles.detectionText}>{t(result.fallbackCategory === 'other' ? (result.rejectionReason === 'low-similarity' ? 'imagePreview.embeddingLowScoreOther' : 'imagePreview.embeddingAssignedOther') : ['prototype-disagreement', 'weak-prototype-support', 'strongest-prototype-disagreement', 'category-view-disagreement', 'exclusion-conflict'].includes(result.rejectionReason) ? 'imagePreview.embeddingEvidenceConflict' : 'imagePreview.embeddingUncertain')}</Text>}
                 <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: showModelDetails }} onPress={() => setShowModelDetails(v => !v)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: cTheme.accent, fontSize: 15 }}>{t(showModelDetails ? 'imagePreview.hideModelDetails' : 'imagePreview.modelDetails')}</Text></TouchableOpacity>
                 {showModelDetails && <>
                 {result.categoryDescription ? (
@@ -1642,7 +1642,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                     try {
                       await Share.share({ title: t('imagePreview.embeddingDiagnostics'), message: JSON.stringify({
                         model: result.model, scoringVersion: result.scoringVersion, accepted: result.accepted,
-                        rejectionReason: result.rejectionReason, fallbackCategory: result.fallbackCategory, minimumMargin: result.minimumMargin,
+                        rejectionReason: result.rejectionReason, fallbackCategory: result.fallbackCategory, minimumMargin: result.minimumMargin, minimumSimilarity: result.minimumSimilarity,
                         ...result.diagnostics,
                       }, null, 2) });
                     } catch (error) { Alert.alert(t('common.tip'), String(error?.message || error)); }

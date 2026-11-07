@@ -513,6 +513,7 @@
     "captionStage_image": "Image preparation",
     "captionStage_inference": "Caption inference",
     "captionStage_save": "Caption persistence",
+    "embeddingLowScoreOther": "All eligible categories scored below the matching threshold, so this image was assigned Other. You can change it manually or use another model.",
     "embeddingAssignedOther": "This AI run could not reliably determine a category and assigned Other. You can change it manually or reclassify with E2B or an online model.",
     "embeddingUncertain": "Candidates are too close or no positive match was found. The existing category was kept; unclassified photos can be labeled manually.",
     "categoryMeaning": "Category meaning (not an image caption)",
