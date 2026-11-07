@@ -1,7 +1,7 @@
 # App Store 1.6.6 / build 39
 
-已归档并在 iPhone 13 覆盖安装启动；签名与设备版本核对通过。归档位于 dist/releases/1.6.6/ImagePilot-1.6.6-b39.xcarchive。
+2026-11-07 23:01（Asia/Shanghai）已正式提交审核，App Store Connect 确认“已提交 1 个项目”及“1.6.6 正在等待审核”。已替换旧 1.6.5 待审项；审核通过后自动向所有用户发布，保留已有评分。当前线上版本仍为 1.5.82，不能将等待审核写成已上架。
 
-命令行导出连续两次返回 No Accounts / No signing certificate。已打开 Xcode Organizer 新归档，等待用户完成与上一版相同的手动上传；1.6.5 待审版本暂不撤回。
+正式 IPA 的版本、原 bundle ID com.chunguangwei.imagepilot、团队 CCTFP9X3SW、App Store 分发描述文件与严格签名均已验证。归档与 IPA 保存于 dist/releases/1.6.6。初次命令行导出因账号凭据失败，用户重新登录后签名导出及上传成功；第三方 CLiteRTLM/hermes 缺失 dSYM 警告未阻止上传。
 
-中英文说明在 1.6.5 完整说明基础上增加长按多选跳位修复和滚动流畅度优化。上传后再关联构建 39、更新文案并提交审核。
+中文和英文的推广文本、描述、新增内容已保存并重新加载逐字核对；审核备注已包括长按拖选验证路径。完整说明保留 Gemma 2 快速分类、自定义与内置规则编辑、文本诊断、视频分类及设置界面更新内容，并增加本次多选与滚动修复。
