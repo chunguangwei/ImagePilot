@@ -1,0 +1,62 @@
+{
+  "platform": "iphone-production-pipeline",
+  "done": true,
+  "scope": "Isolated signed app running production classifier and native bridge; lake/trophy/group are screenshot crops, swimmer is licensed public fixture. Not a complete gallery UI or Android device test.",
+  "samples": [
+    {
+      "name": "user-rack",
+      "expected": "electronics",
+      "category": "electronics",
+      "similarity": 0.740245243836507,
+      "processingTime": 25238,
+      "appVersion": "1.6.1",
+      "rulesVersion": "visual-subject-v1",
+      "scoringVersion": "highest-score-v1",
+      "visionTokensPerImage": 140
+    },
+    {
+      "name": "user-trophy",
+      "expected": "art",
+      "category": "art",
+      "similarity": 0.7033693308633008,
+      "processingTime": 2031,
+      "appVersion": "1.6.1",
+      "rulesVersion": "visual-subject-v1",
+      "scoringVersion": "highest-score-v1",
+      "visionTokensPerImage": 140
+    },
+    {
+      "name": "user-group",
+      "expected": "social_activities",
+      "category": "social_activities",
+      "similarity": 0.6757341133659494,
+      "processingTime": 1991,
+      "appVersion": "1.6.1",
+      "rulesVersion": "visual-subject-v1",
+      "scoringVersion": "highest-score-v1",
+      "visionTokensPerImage": 140
+    },
+    {
+      "name": "user-lake",
+      "expected": "travel_scenery",
+      "category": "travel_scenery",
+      "similarity": 0.7433214049528007,
+      "processingTime": 2012,
+      "appVersion": "1.6.1",
+      "rulesVersion": "visual-subject-v1",
+      "scoringVersion": "highest-score-v1",
+      "visionTokensPerImage": 140
+    },
+    {
+      "name": "swimmer",
+      "expected": "sports",
+      "category": "sports",
+      "similarity": 0.7702186880121848,
+      "processingTime": 2033,
+      "appVersion": "1.6.1",
+      "rulesVersion": "visual-subject-v1",
+      "scoringVersion": "highest-score-v1",
+      "visionTokensPerImage": 140
+    }
+  ]
+}

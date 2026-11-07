@@ -939,5 +939,93 @@
     "author": "Ejk2627",
     "license": "CC BY-SA 4.0",
     "processing": "decoded and JPEG resized by local test pipeline"
-  }
+  },
+  "baselineSameImageVectors": [
+    {
+      "id": "user-lake",
+      "top": [
+        {
+          "category": "plants",
+          "score": 0.7014971751083192
+        },
+        {
+          "category": "travel_scenery",
+          "score": 0.6955027394442915
+        },
+        {
+          "category": "night_scene",
+          "score": 0.6872212065966345
+        }
+      ]
+    },
+    {
+      "id": "user-rack",
+      "top": [
+        {
+          "category": "electronics",
+          "score": 0.7135891780798388
+        },
+        {
+          "category": "architecture",
+          "score": 0.6702813765876027
+        },
+        {
+          "category": "products",
+          "score": 0.6680803483113694
+        }
+      ]
+    },
+    {
+      "id": "user-trophy",
+      "top": [
+        {
+          "category": "art",
+          "score": 0.704907165599397
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6586903294190245
+        },
+        {
+          "category": "foods",
+          "score": 0.6557430114586014
+        }
+      ]
+    },
+    {
+      "id": "user-group",
+      "top": [
+        {
+          "category": "social_activities",
+          "score": 0.6779478520419606
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6521676468772076
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6395120425486187
+        }
+      ]
+    },
+    {
+      "id": "swimmer",
+      "top": [
+        {
+          "category": "sports",
+          "score": 0.7442722422605635
+        },
+        {
+          "category": "kids",
+          "score": 0.6462747985346711
+        },
+        {
+          "category": "architecture",
+          "score": 0.6360212411712189
+        }
+      ]
+    }
+  ],
+  "baselineNote": "Same simulator image vectors with 1.6.0 rules: lake crop -> plants. User Android original log -> sports. These are different image inputs; do not interpret as identical before/after reproduction."
 }
