@@ -1,0 +1,35 @@
+{
+  "device": "iPhone 13",
+  "version": "1.6.0",
+  "tokens": 140,
+  "scoringVersion": "highest-score-v1",
+  "minimumSimilarity": 0.5,
+  "entry": "Production classifyWithEmbeddingGemma + RN image preprocessing + Swift module in isolated signed app",
+  "done": true,
+  "samples": [
+    {
+      "name": "user-rack",
+      "expected": "electronics",
+      "category": "electronics",
+      "similarity": 0.7236520901909715,
+      "margin": 0.04667038172007165,
+      "processingTimeMs": 24150
+    },
+    {
+      "name": "user-trophy",
+      "expected": "art",
+      "category": "art",
+      "similarity": 0.7070571491514528,
+      "margin": 0.04652313512234274,
+      "processingTimeMs": 2000
+    },
+    {
+      "name": "user-group",
+      "expected": "social_activities",
+      "category": "social_activities",
+      "similarity": 0.6641997889934136,
+      "margin": 0.031941266316180106,
+      "processingTimeMs": 1988
+    }
+  ]
+}
