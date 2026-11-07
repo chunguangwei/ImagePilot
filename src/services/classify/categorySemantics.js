@@ -16,7 +16,7 @@ const descriptions = {
   vehicles: ['以汽车、摩托车、自行车、火车、船或飞机为主体的照片', 'A photograph focused on a car, motorcycle, bicycle, train, boat or airplane.'],
   sports: ['以正在跑步、打球、骑行或健身的人及其运动动作为主体的照片', 'A photograph focused on people actively performing sports or fitness movements, such as running, playing ball, cycling or exercising.'],
   fashion: ['重点展示服装搭配、鞋帽、配饰或穿搭造型的照片', 'A photograph focused on clothing outfits, shoes, hats, accessories or fashion styling.'],
-  products: ['展示商品、包装或待售物品外观的产品照片', 'A product photograph showing merchandise, packaging or an item for sale.'],
+  products: ['以商品为主体的产品照片、包装、商品详情图或介绍产品功能的宣传图', 'A product photograph, packaging image or promotional graphic presenting merchandise and its features.'],
   documents: ['以纸质或电子文档、表格、发票、收据、票据上的文字为主体的图片', 'An image primarily showing text in a document, form, invoice, receipt or ticket.'],
   art: ['以绘画、雕塑、书法、手工艺术、装饰艺术、奖杯或奖牌为主体的图片', 'A photograph of a painting, sculpture, calligraphy, craft, decorative artwork, trophy or award.'],
   cartoon: ['以卡通角色、漫画、表情包或插画为主要内容的图片', 'An image primarily showing cartoon characters, comics, memes or illustrations.'],
@@ -77,11 +77,13 @@ export function categoryEmbeddingTexts(category, lang = 'zh') {
   return [categoryText(category, 'en'), ...(visualExamples[category.id] || []).map(text => `${category.en}: ${text}`)];
 }
 
-// Group paraphrases describe one visual subtype; user-authored rules remain the sole group.
+// Keep the original rule as independent evidence when a user adds scenarios.
+// Each scenario is an alternative within that rule, not a standalone replacement.
 export function categoryEmbeddingGroups(category, lang = 'zh') {
   const {scenarios} = normalizeCustomMatching(category);
+  const ruleText = categoryText(category, lang);
   if (scenarios.length) return scenarios.map((scenario, index) => ({
-    id: `scenario-${index}`, texts: [`${categoryText(category, lang)} / ${lang === 'en' ? 'Visual scenario within this rule' : '规则内的具体场景'}: ${scenario}`],
+    id: `scenario-${index}`, texts: [ruleText, `${ruleText} / ${lang === 'en' ? 'Visual scenario within this rule' : '规则内的具体场景'}: ${scenario}`],
   }));
   const refs = categoryEmbeddingTexts(category, lang);
   const subtypes = require('./embeddingSubtypes').EMBEDDING_SUBTYPES[category.id];

@@ -1,5 +1,5 @@
 // Complete visual descriptions. Each pair describes the same subtype; digital images are not called photographs.
-export const EMBEDDING_RULES_VERSION = 'primary-subject-v3';
+export const EMBEDDING_RULES_VERSION = 'rule-scenario-v4';
 export const EMBEDDING_SUBTYPES = {
   "social_activities": [
     [
@@ -270,6 +270,11 @@ export const EMBEDDING_SUBTYPES = {
     ]
   ],
   "products": [
+    [
+      "product-detail",
+      "A promotional image showing an electronic product and explaining its features.",
+      "A product detail page with product images, specifications and promotional text."
+    ],
     [
       "merchandise",
       "A product display with merchandise arranged for sale.",

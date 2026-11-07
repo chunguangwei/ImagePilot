@@ -1,5 +1,6 @@
 This update makes classification rules easier to customize and improves photo-library organization.
 
+• Improve joint matching of custom rules and scenarios, and recognize product detail and promotional graphics.
 • Edit built-in category rules, add visual scenarios and exclusions, or restore defaults. Custom categories are preserved.
 • Refine the distinction between a main subject and its background. Swimming descriptions have been removed from the default Sports & Fitness rules.
 • Choose a model when reclassifying photos. Download supported local models or select an online service you have configured.

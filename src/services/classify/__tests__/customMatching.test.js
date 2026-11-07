@@ -9,9 +9,9 @@ test('alternative scenarios retain the original rule in every reference',()=>{
  const c={id:'work',zh:'工作',rule:'公司内设备',scenarios:['网络机柜','打印机']};
  const groups=categoryEmbeddingGroups(c);
  expect(groups).toHaveLength(2);
- groups.forEach(g=>{expect(g.texts).toHaveLength(1);expect(g.texts[0]).toContain(c.rule);});
- expect(groups[0].texts[0]).toContain('网络机柜');
- expect(groups[1].texts[0]).toContain('打印机');
+ groups.forEach(g=>{expect(g.texts).toHaveLength(2);expect(g.texts[0]).toBe('工作: '+c.rule);expect(g.texts[1]).toContain(c.rule);});
+ expect(groups[0].texts[1]).toContain('网络机柜');
+ expect(groups[1].texts[1]).toContain('打印机');
 });
 test('normalization deduplicates only explicit lines without rewriting the rule',()=>{
  expect(normalizeCustomMatching({scenarios:'机柜\n\n打印机\n机柜',exclusions:'  盆栽  '})).toEqual({scenarios:['机柜','打印机'],exclusions:'盆栽'});
@@ -38,4 +38,17 @@ test.each([false,true])('fallback checks exclusions on its actual winner regardl
  const grouped=[{appCategory:'builtin',similarity:0.8},{appCategory:'custom',similarity:0.8,exclusionSimilarity:0.9}];
  if(reverse)grouped.reverse();
  expect(selectGroupedDecision(legacy,{rejectionReason:null,margin:0.2},grouped,0.005).rejectionReason).toBe('exclusion-conflict');
+});
+
+test('a broad scenario cannot win on its own when independent original-rule evidence is weaker',()=>{
+ const {rankGroupedEvidence,selectHighestDecision}=require('../embeddingGroups');
+ const category={id:'custom',zh:'自定义',rule:'人物为主体',scenarios:['一个人物']};
+ const groups=categoryEmbeddingGroups(category);
+ const vector=score=>[score,Math.sqrt(1-score*score)];
+ const encoded=groups.map(g=>({...g,vectors:g.texts.map(text=>vector(text.includes('规则内的具体场景')?.68:.65))}));
+ const ranked=rankGroupedEvidence([1,0],[category,{id:'alternative'}],[encoded,[{id:'scene',vectors:[vector(.675),vector(.675)]}]]);
+ expect(selectHighestDecision(ranked,.5).candidate.appCategory).toBe('alternative');
+ expect(groups[0].texts).toContain('自定义: 人物为主体');
+ const strong=groups.map(g=>({...g,vectors:g.texts.map(()=>vector(.8))}));
+ expect(selectHighestDecision(rankGroupedEvidence([1,0],[category,{id:'alternative'}],[strong,[{id:'scene',vectors:[vector(.675)]}]]),.5).candidate.appCategory).toBe('custom');
 });
