@@ -1,0 +1,76 @@
+{
+  "platform": "iphone-production-pipeline",
+  "done": true,
+  "samples": [
+    {
+      "name": "user-rack",
+      "expected": "electronics",
+      "actual": "electronics",
+      "similarity": 0.740245243836507,
+      "diagnostics": {
+        "appVersion": "1.6.2",
+        "platform": "ios",
+        "visionTokensPerImage": 140,
+        "rulesVersion": "primary-subject-v2",
+        "scoringVersion": "highest-score-v1",
+        "minimumSimilarity": 0.5
+      }
+    },
+    {
+      "name": "user-trophy",
+      "expected": "art",
+      "actual": "art",
+      "similarity": 0.7033693308633008,
+      "diagnostics": {
+        "appVersion": "1.6.2",
+        "platform": "ios",
+        "visionTokensPerImage": 140,
+        "rulesVersion": "primary-subject-v2",
+        "scoringVersion": "highest-score-v1",
+        "minimumSimilarity": 0.5
+      }
+    },
+    {
+      "name": "user-group",
+      "expected": "social_activities",
+      "actual": "social_activities",
+      "similarity": 0.6757341133659494,
+      "diagnostics": {
+        "appVersion": "1.6.2",
+        "platform": "ios",
+        "visionTokensPerImage": 140,
+        "rulesVersion": "primary-subject-v2",
+        "scoringVersion": "highest-score-v1",
+        "minimumSimilarity": 0.5
+      }
+    },
+    {
+      "name": "user-lake",
+      "expected": "travel_scenery",
+      "actual": "travel_scenery",
+      "similarity": 0.7422225975213224,
+      "diagnostics": {
+        "appVersion": "1.6.2",
+        "platform": "ios",
+        "visionTokensPerImage": 140,
+        "rulesVersion": "primary-subject-v2",
+        "scoringVersion": "highest-score-v1",
+        "minimumSimilarity": 0.5
+      }
+    },
+    {
+      "name": "swimmer",
+      "expected": "sports",
+      "actual": "sports",
+      "similarity": 0.7702186880121848,
+      "diagnostics": {
+        "appVersion": "1.6.2",
+        "platform": "ios",
+        "visionTokensPerImage": 140,
+        "rulesVersion": "primary-subject-v2",
+        "scoringVersion": "highest-score-v1",
+        "minimumSimilarity": 0.5
+      }
+    }
+  ]
+}
