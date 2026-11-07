@@ -1017,7 +1017,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
     if (tone === 'success') return c.success;
     if (tone === 'warning') return c.warning;
     if (tone === 'danger')  return c.danger;
-    return c.tertiaryLabel;
+    return c.readableSecondary;
   };
 
   // iOS 相册权限入口的点击行为：
@@ -1521,7 +1521,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
             <TextInput
               style={styles.srInput}
               placeholder="https://.../model.onnx"
-              placeholderTextColor={c.tertiaryLabel}
+              placeholderTextColor={c.readableSecondary}
               value={srCustomUrl}
               onChangeText={setSrCustomUrl}
               autoCapitalize="none"
@@ -2476,16 +2476,16 @@ const createStyles = (c) => StyleSheet.create({
   classifierTierRight: { marginLeft: 10, minWidth: 60, alignItems: 'flex-end' },
   classifierTierRightInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   classifierTierTitle: { fontSize: 15, fontWeight: '600', color: c.label },
-  classifierTierSublabel: { fontSize: 13, fontWeight: '400', color: c.tertiaryLabel },
+  classifierTierSublabel: { fontSize: 13, fontWeight: '400', color: c.readableSecondary },
   classifierTierMeta: { fontSize: 12, color: c.secondaryLabel, marginTop: 2, fontVariant: ['tabular-nums'] },
-  classifierTierDesc: { fontSize: 12, color: c.tertiaryLabel, marginTop: 4, lineHeight: 16 },
+  classifierTierDesc: { fontSize: 12, color: c.readableSecondary, marginTop: 4, lineHeight: 16 },
   classifierTierFooter: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 10, marginTop: -4 },
   classifierFooterBtn: { paddingVertical: 2, paddingHorizontal: 2 },
   classifierFooterBtnText: { fontSize: 12, color: c.accent, fontWeight: '500' },
-  classifierFooterSep: { fontSize: 12, color: c.tertiaryLabel },
+  classifierFooterSep: { fontSize: 12, color: c.readableSecondary },
   classifierTierSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: c.separator, marginLeft: 14 },
   classifierDlText: { fontSize: 12, color: c.accent, fontVariant: ['tabular-nums'] },
-  classifierDlSizeHint: { fontSize: 12, color: c.tertiaryLabel },
+  classifierDlSizeHint: { fontSize: 12, color: c.readableSecondary },
   classifierDlBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.accent, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
   classifierDlBtnText: { fontSize: 12.5, color: '#fff', fontWeight: '600' },
   clipModelSelector: { paddingHorizontal: 14, paddingTop: 2, paddingBottom: 10 },
@@ -2493,11 +2493,11 @@ const createStyles = (c) => StyleSheet.create({
   clipModelChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   clipModelChip: { borderWidth: StyleSheet.hairlineWidth, borderColor: c.separator, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, marginRight: 8, marginBottom: 6 },
   clipModelChipText: { fontSize: 13, fontWeight: '600', color: c.label },
-  clipModelChipSub: { fontSize: 10.5, color: c.tertiaryLabel, marginTop: 1 },
+  clipModelChipSub: { fontSize: 10.5, color: c.readableSecondary, marginTop: 1 },
   srCustomRow: { marginTop: 4, marginBottom: 4 },
   srInput: { borderWidth: StyleSheet.hairlineWidth, borderColor: c.separator, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 13, color: c.label, backgroundColor: c.groupedBg },
   srStatusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
-  srStatusText: { fontSize: 13, color: c.tertiaryLabel },
+  srStatusText: { fontSize: 13, color: c.readableSecondary },
   srDownloadBtn: { backgroundColor: c.accent, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
   srDownloadBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
   dangerText: {
@@ -2539,13 +2539,13 @@ const createStyles = (c) => StyleSheet.create({
   },
   subSectionDescription: {
     fontSize: 14,
-    color: c.tertiaryLabel,
+    color: c.readableSecondary,
     marginBottom: 12,
   },
   // AI增强预设样式
   sectionDescription: {
     fontSize: 14,
-    color: c.tertiaryLabel,
+    color: c.readableSecondary,
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
@@ -2578,7 +2578,7 @@ const createStyles = (c) => StyleSheet.create({
   },
   presetPrompt: {
     fontSize: 13,
-    color: c.tertiaryLabel,
+    color: c.readableSecondary,
     lineHeight: 18,
   },
   presetRight: {
@@ -2619,7 +2619,7 @@ const createStyles = (c) => StyleSheet.create({
   },
   modalCloseButtonText: {
     fontSize: 24,
-    color: c.tertiaryLabel,
+    color: c.readableSecondary,
     lineHeight: 24,
   },
   modalBody: {
@@ -2646,7 +2646,7 @@ const createStyles = (c) => StyleSheet.create({
   },
   presetDescriptionSmall: {
     fontSize: 13,
-    color: c.tertiaryLabel,
+    color: c.readableSecondary,
   },
   modalField: {
     marginBottom: 0,
@@ -2709,7 +2709,7 @@ const createStyles = (c) => StyleSheet.create({
   modalCancelButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: c.tertiaryLabel,
+    color: c.readableSecondary,
   },
   modalSaveButton: {
     paddingHorizontal: 20,
@@ -2731,7 +2731,7 @@ const createStyles = (c) => StyleSheet.create({
   },
   quickDirectoryTitle: {
     fontSize: 13,
-    color: c.tertiaryLabel,
+    color: c.readableSecondary,
     marginBottom: 8,
     fontWeight: '500',
   },
@@ -2821,7 +2821,7 @@ const createStyles = (c) => StyleSheet.create({
   },
   switchDescriptionCompact: {
     fontSize: 13,
-    color: c.tertiaryLabel,
+    color: c.readableSecondary,
     lineHeight: 18,
     marginTop: 4,
   },
@@ -2879,7 +2879,7 @@ const createStyles = (c) => StyleSheet.create({
   },
   languageButtonTextInline: {
     fontSize: 14,
-    color: c.tertiaryLabel,
+    color: c.readableSecondary,
   },
   languageButtonTextInlineActive: {
     color: c.accent,

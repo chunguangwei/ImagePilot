@@ -1,6 +1,6 @@
 {
   "version": "1.6.4",
-  "build": "35",
+  "build": "36",
   "bundleId": "com.chunguangwei.imagepilot",
   "localizations": {
     "zh-Hans": {
