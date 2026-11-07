@@ -1,0 +1,78 @@
+{
+  "device": "iPhone 13",
+  "version": "1.5.100",
+  "tokens": 140,
+  "entry": "classifyWithEmbeddingGemma with production prepareImageFile and native Swift module, isolated RN app",
+  "done": true,
+  "samples": [
+    {
+      "name": "user-rack",
+      "expected": "electronics",
+      "accepted": true,
+      "category": "electronics",
+      "reason": null,
+      "margin": 0.04667038172007165,
+      "processingTimeMs": 24459,
+      "top3": [
+        {
+          "category": "electronics",
+          "similarity": 0.7236520901909715
+        },
+        {
+          "category": "architecture",
+          "similarity": 0.6769817084708999
+        },
+        {
+          "category": "single_person",
+          "similarity": 0.6716313619214902
+        }
+      ]
+    },
+    {
+      "name": "user-trophy",
+      "expected": "art",
+      "accepted": true,
+      "category": "art",
+      "reason": null,
+      "margin": 0.04652313512234274,
+      "processingTimeMs": 2010,
+      "top3": [
+        {
+          "category": "art",
+          "similarity": 0.7070571491514528
+        },
+        {
+          "category": "plants",
+          "similarity": 0.66053401402911
+        },
+        {
+          "category": "foods",
+          "similarity": 0.6567788635707381
+        }
+      ]
+    },
+    {
+      "name": "user-group",
+      "expected": "social_activities",
+      "accepted": true,
+      "category": "social_activities",
+      "reason": null,
+      "margin": 0.031941266316180106,
+      "processingTimeMs": 1983,
+      "top3": [
+        {
+          "category": "social_activities",
+          "similarity": 0.6641997889934136
+        },
+        {
+          "category": "cartoon",
+          "similarity": 0.6322585226772335
+        },
+        {
+          "category": "screenshot",
+          "similarity": 0.6286483439391853
+        }
+      ]
+    }
+  ]
+}
