@@ -1,0 +1,1508 @@
+{
+  "date": "2026-11-07",
+  "runtime": "vendored iOS arm64 simulator LiteRT-LM C API; CPU 2 threads",
+  "modelSHA256": "92dcbea108899e5d6e30d919b0744f90d9967e80c67a4ab5503ac16d54f62eb0",
+  "inputMaxEdge": 768,
+  "minimumMargin": 0.005,
+  "notes": [
+    "Three user samples only; rack is original, trophy and group are screenshot photo crops.",
+    "PNG ms fields in case records are inherited JPEG timings; exclude them from timing comparisons.",
+    "Production ranking functions reused, but not a full RN app or Android end-to-end test."
+  ],
+  "cases": [
+    {
+      "tokens": 70,
+      "mode": "plain",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "ms": 265.94603061676025,
+      "rawTop": [
+        {
+          "category": "other",
+          "score": 0.6337823300921661
+        },
+        {
+          "category": "electronics",
+          "score": 0.6224390872639651
+        },
+        {
+          "category": "architecture",
+          "score": 0.6115085116045386
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "electronics",
+          "score": 0.6759137662742559
+        },
+        {
+          "category": "architecture",
+          "score": 0.652179749964437
+        },
+        {
+          "category": "products",
+          "score": 0.6371516991282
+        }
+      ],
+      "selected": "electronics",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.023734016309818973,
+      "legacyTop": "electronics",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 70,
+      "mode": "plain",
+      "image": "user-trophy",
+      "expected": "art",
+      "source": "screenshot crop",
+      "ms": 205.3380012512207,
+      "rawTop": [
+        {
+          "category": "art",
+          "score": 0.6538820057506002
+        },
+        {
+          "category": "other",
+          "score": 0.6021885583541915
+        },
+        {
+          "category": "products",
+          "score": 0.5898758185109572
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "art",
+          "score": 0.6931725452637895
+        },
+        {
+          "category": "cartoon",
+          "score": 0.5993575102449672
+        },
+        {
+          "category": "products",
+          "score": 0.5902620322895781
+        }
+      ],
+      "selected": "art",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.09381503501882227,
+      "legacyTop": "art",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 70,
+      "mode": "plain",
+      "image": "user-group",
+      "expected": "social_activities",
+      "source": "screenshot crop",
+      "ms": 197.32797145843506,
+      "rawTop": [
+        {
+          "category": "social_activities",
+          "score": 0.662768256283537
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6146679117240823
+        },
+        {
+          "category": "electronics",
+          "score": 0.6146208429620894
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6457624888628393
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6165281195179875
+        },
+        {
+          "category": "products",
+          "score": 0.6087476192340444
+        }
+      ],
+      "selected": "social_activities",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.029234369344851796,
+      "legacyTop": "social_activities",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 70,
+      "mode": "classification",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "ms": 265.94603061676025,
+      "rawTop": [
+        {
+          "category": "single_person",
+          "score": 0.6573088673870502
+        },
+        {
+          "category": "plants",
+          "score": 0.6456940179791062
+        },
+        {
+          "category": "electronics",
+          "score": 0.6424886677017059
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "electronics",
+          "score": 0.690922987783771
+        },
+        {
+          "category": "architecture",
+          "score": 0.6737665412665081
+        },
+        {
+          "category": "products",
+          "score": 0.6678545467240037
+        }
+      ],
+      "selected": "electronics",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.01715644651726289,
+      "legacyTop": "electronics",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 70,
+      "mode": "classification",
+      "image": "user-trophy",
+      "expected": "art",
+      "source": "screenshot crop",
+      "ms": 205.3380012512207,
+      "rawTop": [
+        {
+          "category": "art",
+          "score": 0.681960613277591
+        },
+        {
+          "category": "social_activities",
+          "score": 0.646729893715158
+        },
+        {
+          "category": "sports",
+          "score": 0.6464894280450452
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "art",
+          "score": 0.718306952754421
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6650811800739889
+        },
+        {
+          "category": "foods",
+          "score": 0.6589157849696552
+        }
+      ],
+      "selected": "art",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.05322577268043216,
+      "legacyTop": "art",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 70,
+      "mode": "classification",
+      "image": "user-group",
+      "expected": "social_activities",
+      "source": "screenshot crop",
+      "ms": 197.32797145843506,
+      "rawTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6863895355260857
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6414947342077526
+        },
+        {
+          "category": "electronics",
+          "score": 0.6307097839344784
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6800104280303196
+        },
+        {
+          "category": "screenshot",
+          "score": 0.649892508065628
+        },
+        {
+          "category": "electronics",
+          "score": 0.6405738864770171
+        }
+      ],
+      "selected": "social_activities",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.030117919964691597,
+      "legacyTop": "social_activities",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 70,
+      "mode": "clustering",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "ms": 265.94603061676025,
+      "rawTop": [
+        {
+          "category": "products",
+          "score": 0.6982464117750314
+        },
+        {
+          "category": "single_person",
+          "score": 0.6936398441194701
+        },
+        {
+          "category": "electronics",
+          "score": 0.693466859870184
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "electronics",
+          "score": 0.7264791769328487
+        },
+        {
+          "category": "products",
+          "score": 0.7067433651205428
+        },
+        {
+          "category": "architecture",
+          "score": 0.7031476458030215
+        }
+      ],
+      "selected": "electronics",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.01973581181230588,
+      "legacyTop": "electronics",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 70,
+      "mode": "clustering",
+      "image": "user-trophy",
+      "expected": "art",
+      "source": "screenshot crop",
+      "ms": 205.3380012512207,
+      "rawTop": [
+        {
+          "category": "art",
+          "score": 0.7096032994068163
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6801435394923248
+        },
+        {
+          "category": "sports",
+          "score": 0.6777073381228281
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "art",
+          "score": 0.7318389786057466
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6999878225803446
+        },
+        {
+          "category": "foods",
+          "score": 0.6837422533020122
+        }
+      ],
+      "selected": "art",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.031851156025402005,
+      "legacyTop": "art",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 70,
+      "mode": "clustering",
+      "image": "user-group",
+      "expected": "social_activities",
+      "source": "screenshot crop",
+      "ms": 197.32797145843506,
+      "rawTop": [
+        {
+          "category": "social_activities",
+          "score": 0.697535427433901
+        },
+        {
+          "category": "sports",
+          "score": 0.6676819646635296
+        },
+        {
+          "category": "electronics",
+          "score": 0.6657334416628737
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6901936427329718
+        },
+        {
+          "category": "screenshot",
+          "score": 0.671971894787315
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6670103088550114
+        }
+      ],
+      "selected": "social_activities",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.018221747945656785,
+      "legacyTop": "social_activities",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 140,
+      "mode": "plain",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "ms": 505.53297996520996,
+      "rawTop": [
+        {
+          "category": "electronics",
+          "score": 0.6383828563060527
+        },
+        {
+          "category": "other",
+          "score": 0.6236943587198953
+        },
+        {
+          "category": "products",
+          "score": 0.6043894545993399
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "electronics",
+          "score": 0.6950126613448614
+        },
+        {
+          "category": "architecture",
+          "score": 0.6378606320097163
+        },
+        {
+          "category": "products",
+          "score": 0.6348179582584015
+        }
+      ],
+      "selected": "electronics",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.05715202933514507,
+      "legacyTop": "electronics",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 140,
+      "mode": "plain",
+      "image": "user-trophy",
+      "expected": "art",
+      "source": "screenshot crop",
+      "ms": 392.3609256744385,
+      "rawTop": [
+        {
+          "category": "art",
+          "score": 0.6490671369237981
+        },
+        {
+          "category": "other",
+          "score": 0.5976317068638227
+        },
+        {
+          "category": "products",
+          "score": 0.5918709041835705
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "art",
+          "score": 0.6856783537670423
+        },
+        {
+          "category": "cartoon",
+          "score": 0.5984834910673654
+        },
+        {
+          "category": "products",
+          "score": 0.5959624991291681
+        }
+      ],
+      "selected": "art",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.08719486269967691,
+      "legacyTop": "art",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 140,
+      "mode": "plain",
+      "image": "user-group",
+      "expected": "social_activities",
+      "source": "screenshot crop",
+      "ms": 380.7399272918701,
+      "rawTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6333313150188346
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6105196989877596
+        },
+        {
+          "category": "electronics",
+          "score": 0.5995819088397009
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6202488760768087
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6054059334506201
+        },
+        {
+          "category": "electronics",
+          "score": 0.5804243394442737
+        }
+      ],
+      "selected": "social_activities",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.014842942626188571,
+      "legacyTop": "social_activities",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 140,
+      "mode": "classification",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "ms": 505.53297996520996,
+      "rawTop": [
+        {
+          "category": "electronics",
+          "score": 0.6563872516780519
+        },
+        {
+          "category": "single_person",
+          "score": 0.6493213552981777
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6458861362895912
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "electronics",
+          "score": 0.7135891780798388
+        },
+        {
+          "category": "architecture",
+          "score": 0.6702813765876027
+        },
+        {
+          "category": "products",
+          "score": 0.6680803483113694
+        }
+      ],
+      "selected": "electronics",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.04330780149223612,
+      "legacyTop": "electronics",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 140,
+      "mode": "classification",
+      "image": "user-trophy",
+      "expected": "art",
+      "source": "screenshot crop",
+      "ms": 392.3609256744385,
+      "rawTop": [
+        {
+          "category": "art",
+          "score": 0.6694511305861772
+        },
+        {
+          "category": "products",
+          "score": 0.6395581720665781
+        },
+        {
+          "category": "social_activities",
+          "score": 0.6384958069180425
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "art",
+          "score": 0.704907165599397
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6586903294190245
+        },
+        {
+          "category": "foods",
+          "score": 0.6557430114586014
+        }
+      ],
+      "selected": "art",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.046216836180372534,
+      "legacyTop": "art",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 140,
+      "mode": "classification",
+      "image": "user-group",
+      "expected": "social_activities",
+      "source": "screenshot crop",
+      "ms": 380.7399272918701,
+      "rawTop": [
+        {
+          "category": "social_activities",
+          "score": 0.679677006876518
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6418883252635187
+        },
+        {
+          "category": "sports",
+          "score": 0.6328244641505997
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6779478520419606
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6521676468772076
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6395120425486187
+        }
+      ],
+      "selected": "social_activities",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.02578020516475299,
+      "legacyTop": "social_activities",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 140,
+      "mode": "clustering",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "ms": 505.53297996520996,
+      "rawTop": [
+        {
+          "category": "electronics",
+          "score": 0.6966549052847115
+        },
+        {
+          "category": "products",
+          "score": 0.6887164256456525
+        },
+        {
+          "category": "other",
+          "score": 0.6802900069483059
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "electronics",
+          "score": 0.741831741638555
+        },
+        {
+          "category": "products",
+          "score": 0.6982241811279981
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6917791925898651
+        }
+      ],
+      "selected": "electronics",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.04360756051055692,
+      "legacyTop": "electronics",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 140,
+      "mode": "clustering",
+      "image": "user-trophy",
+      "expected": "art",
+      "source": "screenshot crop",
+      "ms": 392.3609256744385,
+      "rawTop": [
+        {
+          "category": "art",
+          "score": 0.6938856683854326
+        },
+        {
+          "category": "products",
+          "score": 0.6727595458638779
+        },
+        {
+          "category": "sports",
+          "score": 0.6661651114599343
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "art",
+          "score": 0.7171475905129587
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6894851905091612
+        },
+        {
+          "category": "foods",
+          "score": 0.675792318661828
+        }
+      ],
+      "selected": "art",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.027662400003797494,
+      "legacyTop": "art",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 140,
+      "mode": "clustering",
+      "image": "user-group",
+      "expected": "social_activities",
+      "source": "screenshot crop",
+      "ms": 380.7399272918701,
+      "rawTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6904845605585733
+        },
+        {
+          "category": "sports",
+          "score": 0.6658088949570026
+        },
+        {
+          "category": "qrcode",
+          "score": 0.660193142975497
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6902383253061057
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6714209832973039
+        },
+        {
+          "category": "sports",
+          "score": 0.6642335005927175
+        }
+      ],
+      "selected": "social_activities",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.018817342008801807,
+      "legacyTop": "social_activities",
+      "format": "JPEG"
+    },
+    {
+      "tokens": 70,
+      "mode": "plain",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "rawTop": [
+        {
+          "category": "other",
+          "score": 0.63864059483731
+        },
+        {
+          "category": "plants",
+          "score": 0.6361234570831436
+        },
+        {
+          "category": "electronics",
+          "score": 0.6311083226048593
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "electronics",
+          "score": 0.6696932006413616
+        },
+        {
+          "category": "architecture",
+          "score": 0.6615224276500942
+        },
+        {
+          "category": "plants",
+          "score": 0.6527434975715463
+        }
+      ],
+      "selected": "electronics",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.00817077299126745,
+      "legacyTop": "electronics",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 70,
+      "mode": "plain",
+      "image": "user-trophy",
+      "expected": "art",
+      "source": "screenshot crop",
+      "rawTop": [
+        {
+          "category": "art",
+          "score": 0.6399297097461328
+        },
+        {
+          "category": "other",
+          "score": 0.5987667481005611
+        },
+        {
+          "category": "products",
+          "score": 0.5889244065931211
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "art",
+          "score": 0.6753066154794354
+        },
+        {
+          "category": "cartoon",
+          "score": 0.5865204886723356
+        },
+        {
+          "category": "products",
+          "score": 0.5859064133625694
+        }
+      ],
+      "selected": "art",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.08878612680709974,
+      "legacyTop": "art",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 70,
+      "mode": "plain",
+      "image": "user-group",
+      "expected": "social_activities",
+      "source": "screenshot crop",
+      "rawTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6544653937695427
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6134599980755312
+        },
+        {
+          "category": "electronics",
+          "score": 0.6128779449655957
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6409177047057554
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6171495048233306
+        },
+        {
+          "category": "products",
+          "score": 0.6018401934893012
+        }
+      ],
+      "selected": "social_activities",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.023768199882424734,
+      "legacyTop": "social_activities",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 70,
+      "mode": "classification",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "rawTop": [
+        {
+          "category": "plants",
+          "score": 0.6696128175777554
+        },
+        {
+          "category": "single_person",
+          "score": 0.6614614004911016
+        },
+        {
+          "category": "products",
+          "score": 0.6518904052323679
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "electronics",
+          "score": 0.6888028267793653
+        },
+        {
+          "category": "plants",
+          "score": 0.6869623562354588
+        },
+        {
+          "category": "architecture",
+          "score": 0.6838270668717712
+        }
+      ],
+      "selected": "electronics",
+      "accepted": false,
+      "reason": "ambiguous",
+      "margin": 0.0018404705439065694,
+      "legacyTop": "electronics",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 70,
+      "mode": "classification",
+      "image": "user-trophy",
+      "expected": "art",
+      "source": "screenshot crop",
+      "rawTop": [
+        {
+          "category": "art",
+          "score": 0.6694262797139383
+        },
+        {
+          "category": "social_activities",
+          "score": 0.637507810646174
+        },
+        {
+          "category": "products",
+          "score": 0.6366247960261134
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "art",
+          "score": 0.7052554302832901
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6568005570191388
+        },
+        {
+          "category": "foods",
+          "score": 0.6523508866286172
+        }
+      ],
+      "selected": "art",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.04845487326415132,
+      "legacyTop": "art",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 70,
+      "mode": "classification",
+      "image": "user-group",
+      "expected": "social_activities",
+      "source": "screenshot crop",
+      "rawTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6846946943965645
+        },
+        {
+          "category": "screenshot",
+          "score": 0.643556862176885
+        },
+        {
+          "category": "electronics",
+          "score": 0.6350835180602636
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6817118875867997
+        },
+        {
+          "category": "screenshot",
+          "score": 0.65238869838615
+        },
+        {
+          "category": "electronics",
+          "score": 0.6448392223058937
+        }
+      ],
+      "selected": "social_activities",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.02932318920064969,
+      "legacyTop": "social_activities",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 70,
+      "mode": "clustering",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "rawTop": [
+        {
+          "category": "plants",
+          "score": 0.7071403031752646
+        },
+        {
+          "category": "products",
+          "score": 0.6994088144762627
+        },
+        {
+          "category": "other",
+          "score": 0.6930863478915331
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "electronics",
+          "score": 0.72140215641203
+        },
+        {
+          "category": "plants",
+          "score": 0.7159069639035054
+        },
+        {
+          "category": "products",
+          "score": 0.7086971910385906
+        }
+      ],
+      "selected": "electronics",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.005495192508524593,
+      "legacyTop": "electronics",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 70,
+      "mode": "clustering",
+      "image": "user-trophy",
+      "expected": "art",
+      "source": "screenshot crop",
+      "rawTop": [
+        {
+          "category": "art",
+          "score": 0.6997429423153089
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6748866004157116
+        },
+        {
+          "category": "products",
+          "score": 0.6733432754633722
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "art",
+          "score": 0.7215773039059509
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6938874517557578
+        },
+        {
+          "category": "foods",
+          "score": 0.6783411671493906
+        }
+      ],
+      "selected": "art",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.02768985215019304,
+      "legacyTop": "art",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 70,
+      "mode": "clustering",
+      "image": "user-group",
+      "expected": "social_activities",
+      "source": "screenshot crop",
+      "rawTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6953204452266515
+        },
+        {
+          "category": "electronics",
+          "score": 0.6682816314339113
+        },
+        {
+          "category": "sports",
+          "score": 0.6677738746364414
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6903435904683488
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6736868788686725
+        },
+        {
+          "category": "sports",
+          "score": 0.666377243790741
+        }
+      ],
+      "selected": "social_activities",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.0166567115996763,
+      "legacyTop": "social_activities",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 140,
+      "mode": "plain",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "rawTop": [
+        {
+          "category": "electronics",
+          "score": 0.6341290550596586
+        },
+        {
+          "category": "other",
+          "score": 0.6224552826940367
+        },
+        {
+          "category": "architecture",
+          "score": 0.6040285676328413
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "electronics",
+          "score": 0.6881618729721999
+        },
+        {
+          "category": "architecture",
+          "score": 0.6393700446189905
+        },
+        {
+          "category": "products",
+          "score": 0.6312876928186693
+        }
+      ],
+      "selected": "electronics",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.04879182835320939,
+      "legacyTop": "electronics",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 140,
+      "mode": "plain",
+      "image": "user-trophy",
+      "expected": "art",
+      "source": "screenshot crop",
+      "rawTop": [
+        {
+          "category": "art",
+          "score": 0.6497617190143745
+        },
+        {
+          "category": "other",
+          "score": 0.5967393950150509
+        },
+        {
+          "category": "products",
+          "score": 0.5858557790151961
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "art",
+          "score": 0.6899904090226954
+        },
+        {
+          "category": "products",
+          "score": 0.5929682373859568
+        },
+        {
+          "category": "cartoon",
+          "score": 0.5904766239704815
+        }
+      ],
+      "selected": "art",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.09702217163673854,
+      "legacyTop": "art",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 140,
+      "mode": "plain",
+      "image": "user-group",
+      "expected": "social_activities",
+      "source": "screenshot crop",
+      "rawTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6354970553493371
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6167748991191431
+        },
+        {
+          "category": "electronics",
+          "score": 0.5996027867231085
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6232253647814545
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6106381335209027
+        },
+        {
+          "category": "electronics",
+          "score": 0.5835768033515905
+        }
+      ],
+      "selected": "social_activities",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.012587231260551834,
+      "legacyTop": "social_activities",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 140,
+      "mode": "classification",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "rawTop": [
+        {
+          "category": "electronics",
+          "score": 0.6495159237211536
+        },
+        {
+          "category": "single_person",
+          "score": 0.6483952052014171
+        },
+        {
+          "category": "documents",
+          "score": 0.643178728232001
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "electronics",
+          "score": 0.7051771166391275
+        },
+        {
+          "category": "architecture",
+          "score": 0.6679912250156577
+        },
+        {
+          "category": "products",
+          "score": 0.6630129985939126
+        }
+      ],
+      "selected": "electronics",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.03718589162346986,
+      "legacyTop": "electronics",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 140,
+      "mode": "classification",
+      "image": "user-trophy",
+      "expected": "art",
+      "source": "screenshot crop",
+      "rawTop": [
+        {
+          "category": "art",
+          "score": 0.665790400043255
+        },
+        {
+          "category": "sports",
+          "score": 0.6328123542708715
+        },
+        {
+          "category": "products",
+          "score": 0.6326695062481428
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "art",
+          "score": 0.7050135950501437
+        },
+        {
+          "category": "foods",
+          "score": 0.6552343720939697
+        },
+        {
+          "category": "products",
+          "score": 0.6479497169008555
+        }
+      ],
+      "selected": "art",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.049779222956173985,
+      "legacyTop": "art",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 140,
+      "mode": "classification",
+      "image": "user-group",
+      "expected": "social_activities",
+      "source": "screenshot crop",
+      "rawTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6790761077495221
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6479282152180617
+        },
+        {
+          "category": "documents",
+          "score": 0.6349360936593477
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6769436444386452
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6550145414889461
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6387150059125591
+        }
+      ],
+      "selected": "social_activities",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.021929102949699075,
+      "legacyTop": "social_activities",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 140,
+      "mode": "clustering",
+      "image": "user-rack",
+      "expected": "electronics",
+      "source": "original",
+      "rawTop": [
+        {
+          "category": "electronics",
+          "score": 0.6923525804430922
+        },
+        {
+          "category": "products",
+          "score": 0.6857091483401677
+        },
+        {
+          "category": "documents",
+          "score": 0.6788942929821737
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "electronics",
+          "score": 0.7338899195822967
+        },
+        {
+          "category": "products",
+          "score": 0.6956491194864171
+        },
+        {
+          "category": "architecture",
+          "score": 0.6908625085735841
+        }
+      ],
+      "selected": "electronics",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.0382408000958796,
+      "legacyTop": "electronics",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 140,
+      "mode": "clustering",
+      "image": "user-trophy",
+      "expected": "art",
+      "source": "screenshot crop",
+      "rawTop": [
+        {
+          "category": "art",
+          "score": 0.6925885498297931
+        },
+        {
+          "category": "sports",
+          "score": 0.6692258147350887
+        },
+        {
+          "category": "products",
+          "score": 0.6681520255424772
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "art",
+          "score": 0.7182308085354374
+        },
+        {
+          "category": "cartoon",
+          "score": 0.6817311712842185
+        },
+        {
+          "category": "foods",
+          "score": 0.6763429890247368
+        }
+      ],
+      "selected": "art",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.036499637251218964,
+      "legacyTop": "art",
+      "format": "JPEG decoded then PNG"
+    },
+    {
+      "tokens": 140,
+      "mode": "clustering",
+      "image": "user-group",
+      "expected": "social_activities",
+      "source": "screenshot crop",
+      "rawTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6911731859813955
+        },
+        {
+          "category": "sports",
+          "score": 0.6628667116240252
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6622200327833235
+        }
+      ],
+      "groupedTop": [
+        {
+          "category": "social_activities",
+          "score": 0.6901535359508455
+        },
+        {
+          "category": "screenshot",
+          "score": 0.6735510762402888
+        },
+        {
+          "category": "sports",
+          "score": 0.6631623321380875
+        }
+      ],
+      "selected": "social_activities",
+      "accepted": true,
+      "reason": null,
+      "margin": 0.01660245971055674,
+      "legacyTop": "social_activities",
+      "format": "JPEG decoded then PNG"
+    }
+  ]
+}

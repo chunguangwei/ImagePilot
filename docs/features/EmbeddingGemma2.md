@@ -1,5 +1,11 @@
 # EmbeddingGemma 2 图文分类
 
+## 1.5.99：安卓 JPEG 输入保真（2026-11-07）
+
+Gemma 2 保留 70 视觉 token、768 最长边与现有分类规则。安卓直接读取共享预处理生成的 JPEG 字节，不再经过 Bitmap 解码和 PNG 重编码；与 iOS 的文件字节输入方式对齐。模型文件无需重新下载。E2B 的独立图像路径不变。
+
+用户机柜原图、奖杯和合影截图照片区域的本地原生对照，以及模拟器与安卓真机的验证边界，见[试验报告](../experiments/embedding-official-usage-ab-20261107.md)。本次只实施 JPEG 输入优化，不启用 140-token 补判，也不改变提示前缀。安卓字节保真回归：`JAVA_HOME=... python3 scripts/test/native-embedding-input.py`；真机分类仍需复测。
+
 ## 1.5.90：三个独立本地模型入口
 
 LFM 标准方案一次完成分类与简短描述；EmbeddingGemma 仅做快速图片分类；E2B 保留更精细的本地多模态能力。LFM 不再挂在 EmbeddingGemma 下。1.5.90 保留已下载文件和当前模型选择；需要分类与描述时请主动选择 LFM 标准方案。[方案与迁移说明](IndependentLocalModels.md)。下方旧版本章节保留历史行为。

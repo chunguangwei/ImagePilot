@@ -13,6 +13,7 @@ import com.facebook.react.bridge.ReactMethod;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -212,7 +213,7 @@ public class GemmaModule extends ReactContextBaseJavaModule {
     engineBackend = null;
   }
 
-  /** 图片文件 → PNG 字节（LiteRT-LM 视觉编码器对 PNG 最稳，对齐译人）。 */
+  /** E2B conversation input; kept separate from embedding image preprocessing. */
   private static byte[] imageFileToPng(String imagePath) throws Exception {
     String path = imagePath.startsWith("file://") ? imagePath.substring(7) : imagePath;
     Bitmap bmp = BitmapFactory.decodeFile(path);
@@ -221,6 +222,18 @@ public class GemmaModule extends ReactContextBaseJavaModule {
     bmp.compress(Bitmap.CompressFormat.PNG, 100, baos);
     bmp.recycle();
     return baos.toByteArray();
+  }
+
+  /** Preserve the prepared JPEG bytes for Gemma 2; do not decode/re-encode as PNG. */
+  private static byte[] readEmbeddingImage(String imagePath) throws Exception {
+    String path = imagePath.startsWith("file://") ? imagePath.substring(7) : imagePath;
+    try (FileInputStream input = new FileInputStream(path);
+         ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+      byte[] buffer = new byte[8192];
+      int count;
+      while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+      return output.toByteArray();
+    }
   }
 
   /** 从响应 Message 取文本：取 Content.Text 拼接，兜底 toString()。 */
@@ -266,7 +279,7 @@ public class GemmaModule extends ReactContextBaseJavaModule {
         }
         if (imagePath != null && !imagePath.isEmpty()) {
           inputs.add(Class.forName(P + "InputData$Image").getConstructor(byte[].class)
-              .newInstance((Object) imageFileToPng(imagePath)));
+              .newInstance((Object) readEmbeddingImage(imagePath)));
         }
         if (inputs.isEmpty()) throw new IllegalArgumentException("Embedding input is empty");
         Object response = embeddingEngine.getClass().getMethod("computeEmbedding", List.class)
