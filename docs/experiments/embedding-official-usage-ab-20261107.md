@@ -39,9 +39,9 @@
 
 完整 36 条对照结果见 [JSON](embedding-official-usage-ab-20261107.json)。本机原始向量、原生探针、输入清单、重复试验与运行日志保存在 `/tmp/imagepilot-doc-ab/`，未将用户照片提交进仓库。
 
-## 后续实施（待发布）
+## 后续实施（1.5.99）
 
-用户确认保留 70 token 后，仅修改安卓 embedding 桥接：直接读取共享预处理后的 JPEG 字节，移除 PNG 重编码。iOS 已直接读取文件。原生字节保真测试在旧实现下失败、新实现下通过；分类相关 3 组 / 40 项 Jest 测试通过；安卓 `:app:compileDebugJavaWithJavac --offline` 编译通过。未改评分、提示前缀或模型权重，未启用 140 token，尚未发布或验证安卓真机分类。
+用户确认保留 70 token 后，仅修改安卓 embedding 桥接：直接读取共享预处理后的 JPEG 字节，移除 PNG 重编码。iOS 已直接读取文件。原生字节保真测试在旧实现下失败、新实现下通过；分类相关 3 组 / 40 项 Jest 测试通过；安卓 `:app:compileDebugJavaWithJavac --offline` 编译通过。未改评分、提示前缀或模型权重，未启用 140 token，该阶段尚未发布；安卓真机分类仍待用户复测。
 
 ## iPhone 13 真机验证（1.5.99 发布前）
 
@@ -60,3 +60,5 @@
 通过隔离签名应用运行 `classifyWithEmbeddingGemma`，使用正式 `prepareImageFile`（RN ImageResizer）与 Swift 原生模块，70 token：机柜拒判（category-view-disagreement，分差0.0023976），奖杯为艺术绘画（0.0534460），合影为社交活动（0.0384939）。首次机柜约24.7秒包含全部类别文本准备，后两张约1.04/0.91秒。三个样本均完成，无推理错误。测试脚本 `scripts/embedding-iphone-release-smoke.js` 不进入正式入口；这是分类函数调用链测试，不是相册手动交互和落库全流程测试。
 
 结果见[生产链路实测 JSON](embedding-iphone13-production-20261107.json)。
+
+1.5.99 已发布至 GitHub，正式 iOS build28 已安装；完整产物及下载校验见[发布记录](../releases/v1.5.99.md)。
