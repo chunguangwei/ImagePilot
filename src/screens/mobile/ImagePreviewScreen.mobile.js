@@ -63,6 +63,7 @@ import { presetIcon, ACTION_ICONS } from '../../ui/ios/presetIcons';
 import { SafeAreaView, Alert } from '../../adapters/WebAdapters';
 import Toast from '../../components/shared/Toast';
 import UnifiedDataService from '../../services/UnifiedDataService';
+import { exportClassificationDiagnostic } from '../../services/classificationDiagnosticExport';
 import { EMBEDDING_SCORING_VERSION } from '../../services/classify/EmbeddingGemmaClassifier';
 import WeChatAuthService from '../../services/WeChatAuthService';
 import configService from '../../services/ConfigService';
@@ -1640,11 +1641,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   <Text style={styles.detectionText}>{t('imagePreview.embeddingDiagnosticsHint')}</Text>
                   <TouchableOpacity accessibilityRole="button" style={{ minHeight: 48, justifyContent: 'center' }} onPress={async () => {
                     try {
-                      await Share.share({ title: t('imagePreview.embeddingDiagnostics'), message: JSON.stringify({
-                        model: result.model, scoringVersion: result.scoringVersion, accepted: result.accepted,
-                        rejectionReason: result.rejectionReason, fallbackCategory: result.fallbackCategory, minimumMargin: result.minimumMargin, minimumSimilarity: result.minimumSimilarity,
-                        ...result.diagnostics,
-                      }, null, 2) });
+                      await exportClassificationDiagnostic(result, t('imagePreview.embeddingDiagnostics'));
                     } catch (error) { Alert.alert(t('common.tip'), String(error?.message || error)); }
                   }}><Text style={{ color: cTheme.accent, fontSize: 15 }}>{t('imagePreview.embeddingDiagnostics')}</Text></TouchableOpacity>
                 </>}

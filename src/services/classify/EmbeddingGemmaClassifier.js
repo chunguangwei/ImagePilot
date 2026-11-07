@@ -1,3 +1,4 @@
+import { EMBEDDING_RULES_VERSION } from './embeddingSubtypes';
 import { BUILD_VERSION } from '../../config/BuildInfo';
 import { rankGroupedEvidence, selectHighestDecision } from './embeddingGroups';
 import { rankEmbeddingEvidence, embeddingDecision } from './embeddingRanking';
@@ -115,7 +116,7 @@ export function classifyWithEmbeddingGemma(imageUri, modelPath, options = {}) {
         confidence: Math.max(0, top?.similarity ?? 0), similarity: top?.similarity ?? 0,
         classificationAccepted: accepted, margin, rejectionReason,
         diagnostics: { appVersion: BUILD_VERSION, platform: Platform.OS, language: lang, inputMaxEdge: 768, visionTokensPerImage: 140,
-          scoringVersion: EMBEDDING_SCORING_VERSION, minimumSimilarity: EMBEDDING_MIN_SIMILARITY, excludedCategories: analysis.excludedCategories, supportMargin, supportCategory, strongestCategory, strongestMargin,
+          rulesVersion: EMBEDDING_RULES_VERSION, scoringVersion: EMBEDDING_SCORING_VERSION, minimumSimilarity: EMBEDDING_MIN_SIMILARITY, excludedCategories: analysis.excludedCategories, supportMargin, supportCategory, strongestCategory, strongestMargin,
           decisionMethod: analysis.method, groupedMargin: analysis.grouped.length > 1 ? analysis.grouped[0].similarity-analysis.grouped[1].similarity : null,
           legacyCategory: analysis.legacy[0].appCategory, legacyRejectionReason: analysis.legacyDecision.rejectionReason,
           categories: predictions.map(p => {

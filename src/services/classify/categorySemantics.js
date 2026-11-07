@@ -5,16 +5,16 @@ const descriptions = {
   kids: ['以真实婴儿、幼儿或儿童为主要拍摄对象的照片，记录孩子的面容、玩耍或日常生活', 'A photograph whose main subject is a real baby, toddler or child, showing children playing or in everyday life.'],
   pets: ['以猫、狗或其他宠物动物为主要拍摄对象的照片', 'A photograph of a cat, dog or another pet animal as the main subject.'],
   foods: ['展示食物、菜肴、甜点、饮料或餐桌美食的照片', 'A photograph showing food, prepared dishes, desserts, drinks or a meal on a table.'],
-  travel_scenery: ['旅行途中拍摄的山川、海滨、湖泊、公园等自然风景', 'A photograph of natural scenery, mountains, beaches, lakes or parks during travel.'],
+  travel_scenery: ['以整体环境为主体的山川、海滨、湖泊、河流、公园或乡村风景，不要求在旅行途中拍摄', 'A landscape photograph showing natural scenery, mountains, rivers, lakes, coasts, parks or countryside.'],
   screenshot: ['手机或电脑屏幕截取的应用界面、聊天记录、网页或游戏画面', 'A screenshot of a phone or computer app, chat conversation, web page or game interface.'],
   idcard: ['身份证件、护照等证件的照片，或正式证件用途的正面人像照', 'A photograph of an identity document or passport, or a formal front-facing identification portrait.'],
   qrcode: ['以可扫描的二维码为主要内容的图片', 'An image primarily showing a scannable QR code.'],
   electronics: ['以手机、电脑、相机、电路板等电子设备为主体的照片', 'A photograph focused on electronic devices such as phones, computers, cameras or circuit boards.'],
   night_scene: ['夜晚拍摄的城市灯光、街道、夜空或夜间风景照片', 'A photograph of city lights, streets, the night sky or scenery at night.'],
   architecture: ['以建筑外观、室内空间、桥梁或建筑结构为主体的照片', 'A photograph focused on buildings, interior spaces, bridges or architectural structures.'],
-  plants: ['以花朵、树木、叶片、盆栽等植物为主体的照片', 'A photograph focused on flowers, trees, leaves, houseplants or other vegetation.'],
+  plants: ['以花朵、单株树木、叶片或盆栽等植物细节为主体的照片，整体湖泊、公园等环境景观属于风景', 'A photograph focused on individual flowers, trees, leaves or potted plants and their botanical details.'],
   vehicles: ['以汽车、摩托车、自行车、火车、船或飞机为主体的照片', 'A photograph focused on a car, motorcycle, bicycle, train, boat or airplane.'],
-  sports: ['记录跑步、球类、游泳、骑行或健身等运动活动的照片', 'A photograph of sports or fitness activities such as running, ball games, swimming, cycling or exercise.'],
+  sports: ['以正在跑步、打球、游泳、骑行或健身的人及其运动动作为主体的照片', 'A photograph focused on people actively performing sports or fitness movements, such as running, playing ball, swimming, cycling or exercising.'],
   fashion: ['重点展示服装搭配、鞋帽、配饰或穿搭造型的照片', 'A photograph focused on clothing outfits, shoes, hats, accessories or fashion styling.'],
   products: ['展示商品、包装或待售物品外观的产品照片', 'A product photograph showing merchandise, packaging or an item for sale.'],
   documents: ['以纸质或电子文档、表格、发票、收据、票据上的文字为主体的图片', 'An image primarily showing text in a document, form, invoice, receipt or ticket.'],
@@ -47,14 +47,14 @@ const visualExamples = {
   kids: ['A real young child playing, with the child as the main subject.', 'A close-up portrait of a real baby or toddler.'],
   pets: ['A photograph focused on a pet cat resting or playing.', 'A photograph focused on a pet dog or another domestic animal.'],
   foods: ['A close-up food photograph of a prepared meal or dishes on a table.', 'A food photograph of a dessert, snack, fruit or drink.'],
-  travel_scenery: ['A landscape photograph of mountains, a lake, a forest or countryside.', 'A scenic travel photograph of a beach, coastline or park.'],
+  travel_scenery: ['A landscape photograph of mountains, a lake, a forest or countryside.', 'A scenic photograph of a beach, river, lake or public park.'],
   screenshot: ['A digital screenshot showing a chat conversation, app or phone interface.', 'A computer screenshot showing a web page, game or software window.'],
   idcard: ['A close-up photograph of an identity card or passport document.', 'A formal front-facing ID portrait against a plain background.'],
   qrcode: ['A square black-and-white QR code filling most of an image.', 'A close-up image primarily displaying a scannable QR code.'],
   electronics: ['A photograph focused on a network equipment cabinet containing servers, switches, routers and cables.', 'A close-up photograph of a computer, mobile phone, camera or electronic circuit board.'],
   night_scene: ['A city street or buildings illuminated by lights at night.', 'A nighttime landscape showing the dark sky and distant lights.'],
   architecture: ['A photograph focused on a building facade, bridge or architectural structure.', 'An interior photograph focused on a room and its architectural space.'],
-  plants: ['A close-up photograph focused on flowers, leaves or a potted plant.', 'A photograph focused on trees, shrubs or growing vegetation.'],
+  plants: ['A close-up photograph focused on flowers, leaves or a potted plant.', 'A detailed photograph focused on an individual tree or shrub.'],
   vehicles: ['A photograph focused on a car, motorcycle or bicycle.', 'A photograph focused on a train, boat or airplane.'],
   sports: ['A person actively running, swimming, cycling or exercising.', 'People playing a ball game or participating in a sporting event.'],
   fashion: ['A fashion photograph focused on an outfit and the clothing being modeled.', 'A close-up photograph of shoes, hats, jewelry or fashion accessories.'],
@@ -87,8 +87,8 @@ export function categoryEmbeddingGroups(category, lang = 'zh') {
   const subtypes = require('./embeddingSubtypes').EMBEDDING_SUBTYPES[category.id];
   if (refs.length === 1 || !subtypes) return [{ id: 'rule', texts: [categoryText(category, lang)] }];
   return subtypes.map(([id, first, second]) => ({ id, texts: [
-    `${category.en}: A photograph focused on ${first}.`,
-    `${category.en}: The main subject of the photograph is ${second}.`,
+    `${category.en}: ${first}`,
+    `${category.en}: ${second}`,
   ] }));
 }
 
