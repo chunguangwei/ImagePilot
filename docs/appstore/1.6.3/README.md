@@ -1,10 +1,12 @@
-# App Store 更新准备：1.6.3 / build 33
+# App Store 更新准备：1.6.3 / build 34
+
+> 用户追加反馈已纳入：商品宣传图误分人物、自定义规则与场景共同评分。旧 build 33 归档已经过时，移至 dist/releases/1.6.3/superseded-build33，不用于提交；build 34 已重新归档并覆盖安装启动。
 
 ## 当前状态
 
-- 已生成归档：`/tmp/ImagePilot-1.6.3-b33.xcarchive`；持久副本及 ZIP 位于仓库 `dist/releases/1.6.3/`（已忽略，不提交 Git）。
+- 已生成归档：`/tmp/ImagePilot-1.6.3-b34.xcarchive`；持久副本及 ZIP 位于仓库 `dist/releases/1.6.3/`（已忽略，不提交 Git）。
 - 原 App 包名：`com.chunguangwei.imagepilot`；团队：`CCTFP9X3SW`，与已知商店标签 ios-appstore-1.5.74-b6 一致。
-- 开发签名 1.6.3 build 33 已覆盖安装并启动于 iPhone 13。
+- 开发签名 1.6.3 build 34 已覆盖安装并启动于 iPhone 13；带用户自定义规则的六图生产分类回归通过。
 - **商店分发导出尚未成功**：Xcode 返回 `No Accounts` 和缺少团队对应的 `iOS Distribution` 证书私钥。开发签名归档不能冒充已导出的 App Store IPA。
 - 未上传 App Store Connect，未创建/修改线上商店版本，未提交审核。
 
@@ -28,7 +30,7 @@
 
 ```sh
 xcodebuild -exportArchive \
-  -archivePath /tmp/ImagePilot-1.6.3-b33.xcarchive \
+  -archivePath /tmp/ImagePilot-1.6.3-b34.xcarchive \
   -exportPath /tmp/ImagePilot-1.6.3-AppStore \
   -exportOptionsPlist ios/ExportOptions-AppStore.plist \
   -allowProvisioningUpdates

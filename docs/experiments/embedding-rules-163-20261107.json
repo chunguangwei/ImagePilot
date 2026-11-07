@@ -1,15 +1,702 @@
 {
   "version": "1.6.3",
-  "rulesVersion": "primary-subject-v3",
+  "rulesVersion": "rule-scenario-v4",
   "platform": "iOS simulator",
   "visionTokensPerImage": 140,
+  "customRule": {
+    "id": "youth",
+    "name": "青年",
+    "rule": "青年为主体的照片",
+    "scenarios": [
+      "一个青年或一个少年"
+    ],
+    "exclusions": "一群人拍照"
+  },
   "limitations": [
-    "Rapids, lake, trophy and group are screenshot crops, not the Android original images.",
-    "Swimming removed per user request; this is not an evaluation of all categories."
+    "All samples except rack use screenshot crops, not the Android original images.",
+    "Six samples do not establish all-category accuracy."
   ],
   "results": [
     {
+      "id": "user-badge-poster",
+      "selected": "products",
+      "excluded": [],
+      "top": [
+        {
+          "appCategory": "products",
+          "similarity": 0.6901793233145306,
+          "matchedGroup": "product-detail",
+          "groups": [
+            {
+              "id": "product-detail",
+              "exclude": false,
+              "referenceScores": [
+                0.7131416141476462,
+                0.6672170324814151
+              ],
+              "similarity": 0.6901793233145306
+            },
+            {
+              "id": "packaging",
+              "exclude": false,
+              "referenceScores": [
+                0.6398116929454641,
+                0.6325149350217061
+              ],
+              "similarity": 0.6361633139835852
+            },
+            {
+              "id": "merchandise",
+              "exclude": false,
+              "referenceScores": [
+                0.6303396380630416,
+                0.637556987759033
+              ],
+              "similarity": 0.6339483129110373
+            }
+          ]
+        },
+        {
+          "appCategory": "screenshot",
+          "similarity": 0.6785696891027876,
+          "matchedGroup": "phone",
+          "groups": [
+            {
+              "id": "phone",
+              "exclude": false,
+              "referenceScores": [
+                0.6706459151798342,
+                0.686493463025741
+              ],
+              "similarity": 0.6785696891027876
+            },
+            {
+              "id": "computer",
+              "exclude": false,
+              "referenceScores": [
+                0.660839998756176,
+                0.6609164782183011
+              ],
+              "similarity": 0.6608782384872386
+            }
+          ]
+        },
+        {
+          "appCategory": "qrcode",
+          "similarity": 0.6695466693325567,
+          "matchedGroup": "code",
+          "groups": [
+            {
+              "id": "code",
+              "exclude": false,
+              "referenceScores": [
+                0.662867010143303,
+                0.6762263285218105
+              ],
+              "similarity": 0.6695466693325567
+            }
+          ]
+        },
+        {
+          "appCategory": "youth",
+          "similarity": 0.6655200018696339,
+          "matchedGroup": "scenario-0",
+          "exclusionSimilarity": 0.6578398297838802,
+          "groups": [
+            {
+              "id": "scenario-0",
+              "exclude": false,
+              "referenceScores": [
+                0.6515263479001674,
+                0.6795136558391003
+              ],
+              "similarity": 0.6655200018696339
+            },
+            {
+              "id": "exclusion",
+              "exclude": true,
+              "referenceScores": [
+                0.6578398297838802
+              ],
+              "similarity": 0.6578398297838802
+            }
+          ]
+        },
+        {
+          "appCategory": "idcard",
+          "similarity": 0.6604602630648662,
+          "matchedGroup": "document",
+          "groups": [
+            {
+              "id": "document",
+              "exclude": false,
+              "referenceScores": [
+                0.664252915345849,
+                0.6566676107838832
+              ],
+              "similarity": 0.6604602630648662
+            },
+            {
+              "id": "id-portrait",
+              "exclude": false,
+              "referenceScores": [
+                0.6396005121099447,
+                0.6552916120527003
+              ],
+              "similarity": 0.6474460620813225
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "user-rack",
+      "selected": "electronics",
+      "excluded": [
+        "youth"
+      ],
+      "top": [
+        {
+          "appCategory": "electronics",
+          "similarity": 0.7322191500411956,
+          "matchedGroup": "network",
+          "groups": [
+            {
+              "id": "network",
+              "exclude": false,
+              "referenceScores": [
+                0.7383961685383347,
+                0.7260421315440565
+              ],
+              "similarity": 0.7322191500411956
+            },
+            {
+              "id": "phone",
+              "exclude": false,
+              "referenceScores": [
+                0.6606061071848398,
+                0.677431618139626
+              ],
+              "similarity": 0.6690188626622329
+            },
+            {
+              "id": "computer",
+              "exclude": false,
+              "referenceScores": [
+                0.6453575001501899,
+                0.6567555751263794
+              ],
+              "similarity": 0.6510565376382846
+            },
+            {
+              "id": "camera",
+              "exclude": false,
+              "referenceScores": [
+                0.6502550546891386,
+                0.6444916163757579
+              ],
+              "similarity": 0.6473733355324482
+            },
+            {
+              "id": "circuit",
+              "exclude": false,
+              "referenceScores": [
+                0.6493750252073953,
+                0.6370672856862252
+              ],
+              "similarity": 0.6432211554468102
+            }
+          ]
+        },
+        {
+          "appCategory": "architecture",
+          "similarity": 0.6664685784612085,
+          "matchedGroup": "interior",
+          "groups": [
+            {
+              "id": "interior",
+              "exclude": false,
+              "referenceScores": [
+                0.6563148180095472,
+                0.6766223389128698
+              ],
+              "similarity": 0.6664685784612085
+            },
+            {
+              "id": "building",
+              "exclude": false,
+              "referenceScores": [
+                0.6362022458481745,
+                0.6384298123121579
+              ],
+              "similarity": 0.6373160290801663
+            },
+            {
+              "id": "bridge",
+              "exclude": false,
+              "referenceScores": [
+                0.6259225818203819,
+                0.6133057646180873
+              ],
+              "similarity": 0.6196141732192346
+            }
+          ]
+        },
+        {
+          "appCategory": "products",
+          "similarity": 0.6579559456468311,
+          "matchedGroup": "packaging",
+          "groups": [
+            {
+              "id": "packaging",
+              "exclude": false,
+              "referenceScores": [
+                0.6585651151439071,
+                0.6573467761497551
+              ],
+              "similarity": 0.6579559456468311
+            },
+            {
+              "id": "merchandise",
+              "exclude": false,
+              "referenceScores": [
+                0.664866810612125,
+                0.6494572809850161
+              ],
+              "similarity": 0.6571620457985705
+            },
+            {
+              "id": "product-detail",
+              "exclude": false,
+              "referenceScores": [
+                0.6390149941890443,
+                0.6313000338084852
+              ],
+              "similarity": 0.6351575139987647
+            }
+          ]
+        },
+        {
+          "appCategory": "screenshot",
+          "similarity": 0.6560528176985104,
+          "matchedGroup": "computer",
+          "groups": [
+            {
+              "id": "computer",
+              "exclude": false,
+              "referenceScores": [
+                0.6539752186724375,
+                0.6581304167245834
+              ],
+              "similarity": 0.6560528176985104
+            },
+            {
+              "id": "phone",
+              "exclude": false,
+              "referenceScores": [
+                0.6496980521128544,
+                0.6573303979071476
+              ],
+              "similarity": 0.653514225010001
+            }
+          ]
+        },
+        {
+          "appCategory": "plants",
+          "similarity": 0.6508725200776817,
+          "matchedGroup": "potted",
+          "groups": [
+            {
+              "id": "potted",
+              "exclude": false,
+              "referenceScores": [
+                0.6479352740573934,
+                0.6538097660979699
+              ],
+              "similarity": 0.6508725200776817
+            },
+            {
+              "id": "leaves",
+              "exclude": false,
+              "referenceScores": [
+                0.630258168843805,
+                0.6504164693696629
+              ],
+              "similarity": 0.640337319106734
+            },
+            {
+              "id": "tree",
+              "exclude": false,
+              "referenceScores": [
+                0.6519465683111884,
+                0.6281411811530883
+              ],
+              "similarity": 0.6400438747321383
+            },
+            {
+              "id": "flower",
+              "exclude": false,
+              "referenceScores": [
+                0.6301752362669688,
+                0.6390588687740761
+              ],
+              "similarity": 0.6346170525205225
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "user-trophy",
+      "selected": "art",
+      "excluded": [],
+      "top": [
+        {
+          "appCategory": "art",
+          "similarity": 0.7017336167167751,
+          "matchedGroup": "award",
+          "groups": [
+            {
+              "id": "award",
+              "exclude": false,
+              "referenceScores": [
+                0.6999554642581641,
+                0.703511769175386
+              ],
+              "similarity": 0.7017336167167751
+            },
+            {
+              "id": "sculpture",
+              "exclude": false,
+              "referenceScores": [
+                0.628539357903502,
+                0.6592286535959666
+              ],
+              "similarity": 0.6438840057497344
+            },
+            {
+              "id": "painting",
+              "exclude": false,
+              "referenceScores": [
+                0.6235668133286468,
+                0.6428148061772169
+              ],
+              "similarity": 0.6331908097529318
+            }
+          ]
+        },
+        {
+          "appCategory": "youth",
+          "similarity": 0.6692399085107781,
+          "matchedGroup": "scenario-0",
+          "exclusionSimilarity": 0.6426106830283447,
+          "groups": [
+            {
+              "id": "scenario-0",
+              "exclude": false,
+              "referenceScores": [
+                0.6654413521852688,
+                0.6730384648362875
+              ],
+              "similarity": 0.6692399085107781
+            },
+            {
+              "id": "exclusion",
+              "exclude": true,
+              "referenceScores": [
+                0.6426106830283447
+              ],
+              "similarity": 0.6426106830283447
+            }
+          ]
+        },
+        {
+          "appCategory": "electronics",
+          "similarity": 0.6474967473762816,
+          "matchedGroup": "camera",
+          "groups": [
+            {
+              "id": "camera",
+              "exclude": false,
+              "referenceScores": [
+                0.6466031631102578,
+                0.6483903316423054
+              ],
+              "similarity": 0.6474967473762816
+            },
+            {
+              "id": "circuit",
+              "exclude": false,
+              "referenceScores": [
+                0.6308518110221056,
+                0.6256243626471236
+              ],
+              "similarity": 0.6282380868346147
+            },
+            {
+              "id": "computer",
+              "exclude": false,
+              "referenceScores": [
+                0.6325584508854433,
+                0.6180603691204724
+              ],
+              "similarity": 0.6253094100029578
+            },
+            {
+              "id": "phone",
+              "exclude": false,
+              "referenceScores": [
+                0.621585987747726,
+                0.6172806033296889
+              ],
+              "similarity": 0.6194332955387074
+            },
+            {
+              "id": "network",
+              "exclude": false,
+              "referenceScores": [
+                0.6142470956917776,
+                0.60832845708312
+              ],
+              "similarity": 0.6112877763874488
+            }
+          ]
+        },
+        {
+          "appCategory": "plants",
+          "similarity": 0.6472374339731463,
+          "matchedGroup": "potted",
+          "groups": [
+            {
+              "id": "potted",
+              "exclude": false,
+              "referenceScores": [
+                0.6494557178441928,
+                0.6450191501020998
+              ],
+              "similarity": 0.6472374339731463
+            },
+            {
+              "id": "tree",
+              "exclude": false,
+              "referenceScores": [
+                0.6314733865185406,
+                0.6225802264648118
+              ],
+              "similarity": 0.6270268064916762
+            },
+            {
+              "id": "flower",
+              "exclude": false,
+              "referenceScores": [
+                0.6283123686649349,
+                0.6079423757602125
+              ],
+              "similarity": 0.6181273722125737
+            },
+            {
+              "id": "leaves",
+              "exclude": false,
+              "referenceScores": [
+                0.6199247450049241,
+                0.6111406727627621
+              ],
+              "similarity": 0.6155327088838431
+            }
+          ]
+        },
+        {
+          "appCategory": "foods",
+          "similarity": 0.6461868027737668,
+          "matchedGroup": "drink",
+          "groups": [
+            {
+              "id": "drink",
+              "exclude": false,
+              "referenceScores": [
+                0.6505727670526228,
+                0.6418008384949109
+              ],
+              "similarity": 0.6461868027737668
+            },
+            {
+              "id": "dessert",
+              "exclude": false,
+              "referenceScores": [
+                0.6408083380224032,
+                0.6348315772585843
+              ],
+              "similarity": 0.6378199576404937
+            },
+            {
+              "id": "fruit",
+              "exclude": false,
+              "referenceScores": [
+                0.6203997266782526,
+                0.6295899362322601
+              ],
+              "similarity": 0.6249948314552564
+            },
+            {
+              "id": "meal",
+              "exclude": false,
+              "referenceScores": [
+                0.6127227504346817,
+                0.6156038754441636
+              ],
+              "similarity": 0.6141633129394226
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "user-group",
+      "selected": "social_activities",
+      "excluded": [
+        "youth"
+      ],
+      "top": [
+        {
+          "appCategory": "youth",
+          "similarity": 0.7021519524469644,
+          "matchedGroup": "scenario-0",
+          "exclusionSimilarity": 0.7187880365959166,
+          "groups": [
+            {
+              "id": "exclusion",
+              "exclude": true,
+              "referenceScores": [
+                0.7187880365959166
+              ],
+              "similarity": 0.7187880365959166
+            },
+            {
+              "id": "scenario-0",
+              "exclude": false,
+              "referenceScores": [
+                0.7118926225936337,
+                0.692411282300295
+              ],
+              "similarity": 0.7021519524469644
+            }
+          ]
+        },
+        {
+          "appCategory": "social_activities",
+          "similarity": 0.6807914051202548,
+          "matchedGroup": "group-photo",
+          "groups": [
+            {
+              "id": "group-photo",
+              "exclude": false,
+              "referenceScores": [
+                0.6823476963331944,
+                0.6792351139073153
+              ],
+              "similarity": 0.6807914051202548
+            },
+            {
+              "id": "gathering",
+              "exclude": false,
+              "referenceScores": [
+                0.6577558705302122,
+                0.6720090347453841
+              ],
+              "similarity": 0.6648824526377981
+            },
+            {
+              "id": "meeting",
+              "exclude": false,
+              "referenceScores": [
+                0.6624266051792205,
+                0.6611214945148701
+              ],
+              "similarity": 0.6617740498470452
+            }
+          ]
+        },
+        {
+          "appCategory": "screenshot",
+          "similarity": 0.6462527488652379,
+          "matchedGroup": "phone",
+          "groups": [
+            {
+              "id": "phone",
+              "exclude": false,
+              "referenceScores": [
+                0.6481790428056492,
+                0.6443264549248265
+              ],
+              "similarity": 0.6462527488652379
+            },
+            {
+              "id": "computer",
+              "exclude": false,
+              "referenceScores": [
+                0.6446010430163048,
+                0.6364785214463582
+              ],
+              "similarity": 0.6405397822313315
+            }
+          ]
+        },
+        {
+          "appCategory": "products",
+          "similarity": 0.6375802880403572,
+          "matchedGroup": "product-detail",
+          "groups": [
+            {
+              "id": "product-detail",
+              "exclude": false,
+              "referenceScores": [
+                0.6469914714965237,
+                0.6281691045841907
+              ],
+              "similarity": 0.6375802880403572
+            },
+            {
+              "id": "merchandise",
+              "exclude": false,
+              "referenceScores": [
+                0.6528171186191267,
+                0.6141649653622268
+              ],
+              "similarity": 0.6334910419906767
+            },
+            {
+              "id": "packaging",
+              "exclude": false,
+              "referenceScores": [
+                0.5914837336142541,
+                0.6091302888820411
+              ],
+              "similarity": 0.6003070112481477
+            }
+          ]
+        },
+        {
+          "appCategory": "qrcode",
+          "similarity": 0.6366788115529417,
+          "matchedGroup": "code",
+          "groups": [
+            {
+              "id": "code",
+              "exclude": false,
+              "referenceScores": [
+                0.6383645604718391,
+                0.6349930626340443
+              ],
+              "similarity": 0.6366788115529417
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "user-lake",
+      "selected": "travel_scenery",
+      "excluded": [],
       "top": [
         {
           "appCategory": "travel_scenery",
@@ -193,550 +880,11 @@
       ]
     },
     {
-      "id": "user-rack",
-      "top": [
-        {
-          "appCategory": "electronics",
-          "similarity": 0.7322191500411956,
-          "matchedGroup": "network",
-          "groups": [
-            {
-              "id": "network",
-              "exclude": false,
-              "referenceScores": [
-                0.7383961685383347,
-                0.7260421315440565
-              ],
-              "similarity": 0.7322191500411956
-            },
-            {
-              "id": "phone",
-              "exclude": false,
-              "referenceScores": [
-                0.6606061071848398,
-                0.677431618139626
-              ],
-              "similarity": 0.6690188626622329
-            },
-            {
-              "id": "computer",
-              "exclude": false,
-              "referenceScores": [
-                0.6453575001501899,
-                0.6567555751263794
-              ],
-              "similarity": 0.6510565376382846
-            },
-            {
-              "id": "camera",
-              "exclude": false,
-              "referenceScores": [
-                0.6502550546891386,
-                0.6444916163757579
-              ],
-              "similarity": 0.6473733355324482
-            },
-            {
-              "id": "circuit",
-              "exclude": false,
-              "referenceScores": [
-                0.6493750252073953,
-                0.6370672856862252
-              ],
-              "similarity": 0.6432211554468102
-            }
-          ]
-        },
-        {
-          "appCategory": "architecture",
-          "similarity": 0.6664685784612085,
-          "matchedGroup": "interior",
-          "groups": [
-            {
-              "id": "interior",
-              "exclude": false,
-              "referenceScores": [
-                0.6563148180095472,
-                0.6766223389128698
-              ],
-              "similarity": 0.6664685784612085
-            },
-            {
-              "id": "building",
-              "exclude": false,
-              "referenceScores": [
-                0.6362022458481745,
-                0.6384298123121579
-              ],
-              "similarity": 0.6373160290801663
-            },
-            {
-              "id": "bridge",
-              "exclude": false,
-              "referenceScores": [
-                0.6259225818203819,
-                0.6133057646180873
-              ],
-              "similarity": 0.6196141732192346
-            }
-          ]
-        },
-        {
-          "appCategory": "products",
-          "similarity": 0.6579559456468311,
-          "matchedGroup": "packaging",
-          "groups": [
-            {
-              "id": "packaging",
-              "exclude": false,
-              "referenceScores": [
-                0.6585651151439071,
-                0.6573467761497551
-              ],
-              "similarity": 0.6579559456468311
-            },
-            {
-              "id": "merchandise",
-              "exclude": false,
-              "referenceScores": [
-                0.664866810612125,
-                0.6494572809850161
-              ],
-              "similarity": 0.6571620457985705
-            }
-          ]
-        },
-        {
-          "appCategory": "screenshot",
-          "similarity": 0.6560528176985104,
-          "matchedGroup": "computer",
-          "groups": [
-            {
-              "id": "computer",
-              "exclude": false,
-              "referenceScores": [
-                0.6539752186724375,
-                0.6581304167245834
-              ],
-              "similarity": 0.6560528176985104
-            },
-            {
-              "id": "phone",
-              "exclude": false,
-              "referenceScores": [
-                0.6496980521128544,
-                0.6573303979071476
-              ],
-              "similarity": 0.653514225010001
-            }
-          ]
-        },
-        {
-          "appCategory": "plants",
-          "similarity": 0.6508725200776817,
-          "matchedGroup": "potted",
-          "groups": [
-            {
-              "id": "potted",
-              "exclude": false,
-              "referenceScores": [
-                0.6479352740573934,
-                0.6538097660979699
-              ],
-              "similarity": 0.6508725200776817
-            },
-            {
-              "id": "leaves",
-              "exclude": false,
-              "referenceScores": [
-                0.630258168843805,
-                0.6504164693696629
-              ],
-              "similarity": 0.640337319106734
-            },
-            {
-              "id": "tree",
-              "exclude": false,
-              "referenceScores": [
-                0.6519465683111884,
-                0.6281411811530883
-              ],
-              "similarity": 0.6400438747321383
-            },
-            {
-              "id": "flower",
-              "exclude": false,
-              "referenceScores": [
-                0.6301752362669688,
-                0.6390588687740761
-              ],
-              "similarity": 0.6346170525205225
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "user-trophy",
-      "top": [
-        {
-          "appCategory": "art",
-          "similarity": 0.7017336167167751,
-          "matchedGroup": "award",
-          "groups": [
-            {
-              "id": "award",
-              "exclude": false,
-              "referenceScores": [
-                0.6999554642581641,
-                0.703511769175386
-              ],
-              "similarity": 0.7017336167167751
-            },
-            {
-              "id": "sculpture",
-              "exclude": false,
-              "referenceScores": [
-                0.628539357903502,
-                0.6592286535959666
-              ],
-              "similarity": 0.6438840057497344
-            },
-            {
-              "id": "painting",
-              "exclude": false,
-              "referenceScores": [
-                0.6235668133286468,
-                0.6428148061772169
-              ],
-              "similarity": 0.6331908097529318
-            }
-          ]
-        },
-        {
-          "appCategory": "electronics",
-          "similarity": 0.6474967473762816,
-          "matchedGroup": "camera",
-          "groups": [
-            {
-              "id": "camera",
-              "exclude": false,
-              "referenceScores": [
-                0.6466031631102578,
-                0.6483903316423054
-              ],
-              "similarity": 0.6474967473762816
-            },
-            {
-              "id": "circuit",
-              "exclude": false,
-              "referenceScores": [
-                0.6308518110221056,
-                0.6256243626471236
-              ],
-              "similarity": 0.6282380868346147
-            },
-            {
-              "id": "computer",
-              "exclude": false,
-              "referenceScores": [
-                0.6325584508854433,
-                0.6180603691204724
-              ],
-              "similarity": 0.6253094100029578
-            },
-            {
-              "id": "phone",
-              "exclude": false,
-              "referenceScores": [
-                0.621585987747726,
-                0.6172806033296889
-              ],
-              "similarity": 0.6194332955387074
-            },
-            {
-              "id": "network",
-              "exclude": false,
-              "referenceScores": [
-                0.6142470956917776,
-                0.60832845708312
-              ],
-              "similarity": 0.6112877763874488
-            }
-          ]
-        },
-        {
-          "appCategory": "plants",
-          "similarity": 0.6472374339731463,
-          "matchedGroup": "potted",
-          "groups": [
-            {
-              "id": "potted",
-              "exclude": false,
-              "referenceScores": [
-                0.6494557178441928,
-                0.6450191501020998
-              ],
-              "similarity": 0.6472374339731463
-            },
-            {
-              "id": "tree",
-              "exclude": false,
-              "referenceScores": [
-                0.6314733865185406,
-                0.6225802264648118
-              ],
-              "similarity": 0.6270268064916762
-            },
-            {
-              "id": "flower",
-              "exclude": false,
-              "referenceScores": [
-                0.6283123686649349,
-                0.6079423757602125
-              ],
-              "similarity": 0.6181273722125737
-            },
-            {
-              "id": "leaves",
-              "exclude": false,
-              "referenceScores": [
-                0.6199247450049241,
-                0.6111406727627621
-              ],
-              "similarity": 0.6155327088838431
-            }
-          ]
-        },
-        {
-          "appCategory": "foods",
-          "similarity": 0.6461868027737668,
-          "matchedGroup": "drink",
-          "groups": [
-            {
-              "id": "drink",
-              "exclude": false,
-              "referenceScores": [
-                0.6505727670526228,
-                0.6418008384949109
-              ],
-              "similarity": 0.6461868027737668
-            },
-            {
-              "id": "dessert",
-              "exclude": false,
-              "referenceScores": [
-                0.6408083380224032,
-                0.6348315772585843
-              ],
-              "similarity": 0.6378199576404937
-            },
-            {
-              "id": "fruit",
-              "exclude": false,
-              "referenceScores": [
-                0.6203997266782526,
-                0.6295899362322601
-              ],
-              "similarity": 0.6249948314552564
-            },
-            {
-              "id": "meal",
-              "exclude": false,
-              "referenceScores": [
-                0.6127227504346817,
-                0.6156038754441636
-              ],
-              "similarity": 0.6141633129394226
-            }
-          ]
-        },
-        {
-          "appCategory": "products",
-          "similarity": 0.6412196073743214,
-          "matchedGroup": "merchandise",
-          "groups": [
-            {
-              "id": "merchandise",
-              "exclude": false,
-              "referenceScores": [
-                0.6447421549457802,
-                0.6376970598028625
-              ],
-              "similarity": 0.6412196073743214
-            },
-            {
-              "id": "packaging",
-              "exclude": false,
-              "referenceScores": [
-                0.633898811362536,
-                0.6384120134473814
-              ],
-              "similarity": 0.6361554124049587
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "user-group",
-      "top": [
-        {
-          "appCategory": "social_activities",
-          "similarity": 0.6807914051202548,
-          "matchedGroup": "group-photo",
-          "groups": [
-            {
-              "id": "group-photo",
-              "exclude": false,
-              "referenceScores": [
-                0.6823476963331944,
-                0.6792351139073153
-              ],
-              "similarity": 0.6807914051202548
-            },
-            {
-              "id": "gathering",
-              "exclude": false,
-              "referenceScores": [
-                0.6577558705302122,
-                0.6720090347453841
-              ],
-              "similarity": 0.6648824526377981
-            },
-            {
-              "id": "meeting",
-              "exclude": false,
-              "referenceScores": [
-                0.6624266051792205,
-                0.6611214945148701
-              ],
-              "similarity": 0.6617740498470452
-            }
-          ]
-        },
-        {
-          "appCategory": "screenshot",
-          "similarity": 0.6462527488652379,
-          "matchedGroup": "phone",
-          "groups": [
-            {
-              "id": "phone",
-              "exclude": false,
-              "referenceScores": [
-                0.6481790428056492,
-                0.6443264549248265
-              ],
-              "similarity": 0.6462527488652379
-            },
-            {
-              "id": "computer",
-              "exclude": false,
-              "referenceScores": [
-                0.6446010430163048,
-                0.6364785214463582
-              ],
-              "similarity": 0.6405397822313315
-            }
-          ]
-        },
-        {
-          "appCategory": "qrcode",
-          "similarity": 0.6366788115529417,
-          "matchedGroup": "code",
-          "groups": [
-            {
-              "id": "code",
-              "exclude": false,
-              "referenceScores": [
-                0.6383645604718391,
-                0.6349930626340443
-              ],
-              "similarity": 0.6366788115529417
-            }
-          ]
-        },
-        {
-          "appCategory": "products",
-          "similarity": 0.6334910419906767,
-          "matchedGroup": "merchandise",
-          "groups": [
-            {
-              "id": "merchandise",
-              "exclude": false,
-              "referenceScores": [
-                0.6528171186191267,
-                0.6141649653622268
-              ],
-              "similarity": 0.6334910419906767
-            },
-            {
-              "id": "packaging",
-              "exclude": false,
-              "referenceScores": [
-                0.5914837336142541,
-                0.6091302888820411
-              ],
-              "similarity": 0.6003070112481477
-            }
-          ]
-        },
-        {
-          "appCategory": "electronics",
-          "similarity": 0.6300895429388889,
-          "matchedGroup": "phone",
-          "groups": [
-            {
-              "id": "phone",
-              "exclude": false,
-              "referenceScores": [
-                0.6278950664588057,
-                0.6322840194189719
-              ],
-              "similarity": 0.6300895429388889
-            },
-            {
-              "id": "network",
-              "exclude": false,
-              "referenceScores": [
-                0.620654827887936,
-                0.6296180902251464
-              ],
-              "similarity": 0.6251364590565411
-            },
-            {
-              "id": "computer",
-              "exclude": false,
-              "referenceScores": [
-                0.6260381094433968,
-                0.6195685641511596
-              ],
-              "similarity": 0.6228033367972782
-            },
-            {
-              "id": "circuit",
-              "exclude": false,
-              "referenceScores": [
-                0.6172465197466219,
-                0.605023975752982
-              ],
-              "similarity": 0.611135247749802
-            },
-            {
-              "id": "camera",
-              "exclude": false,
-              "referenceScores": [
-                0.6081976255488746,
-                0.5925693641471843
-              ],
-              "similarity": 0.6003834948480294
-            }
-          ]
-        }
-      ]
-    },
-    {
       "id": "user-rapids",
+      "selected": "travel_scenery",
+      "excluded": [
+        "youth"
+      ],
       "top": [
         {
           "appCategory": "travel_scenery",

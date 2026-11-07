@@ -1,6 +1,16 @@
 {
   "platform": "iphone-production-pipeline",
+  "build": 34,
   "done": true,
+  "customRule": {
+    "id": "youth",
+    "name": "青年",
+    "rule": "青年为主体的照片",
+    "scenarios": [
+      "一个青年或一个少年"
+    ],
+    "exclusions": "一群人拍照"
+  },
   "samples": [
     {
       "name": "user-rack",
@@ -11,9 +21,12 @@
         "appVersion": "1.6.3",
         "platform": "ios",
         "visionTokensPerImage": 140,
-        "rulesVersion": "primary-subject-v3",
+        "rulesVersion": "rule-scenario-v4",
         "scoringVersion": "highest-score-v1",
-        "minimumSimilarity": 0.5
+        "minimumSimilarity": 0.5,
+        "excludedCategories": [
+          "youth"
+        ]
       }
     },
     {
@@ -25,9 +38,10 @@
         "appVersion": "1.6.3",
         "platform": "ios",
         "visionTokensPerImage": 140,
-        "rulesVersion": "primary-subject-v3",
+        "rulesVersion": "rule-scenario-v4",
         "scoringVersion": "highest-score-v1",
-        "minimumSimilarity": 0.5
+        "minimumSimilarity": 0.5,
+        "excludedCategories": []
       }
     },
     {
@@ -39,9 +53,12 @@
         "appVersion": "1.6.3",
         "platform": "ios",
         "visionTokensPerImage": 140,
-        "rulesVersion": "primary-subject-v3",
+        "rulesVersion": "rule-scenario-v4",
         "scoringVersion": "highest-score-v1",
-        "minimumSimilarity": 0.5
+        "minimumSimilarity": 0.5,
+        "excludedCategories": [
+          "youth"
+        ]
       }
     },
     {
@@ -53,9 +70,10 @@
         "appVersion": "1.6.3",
         "platform": "ios",
         "visionTokensPerImage": 140,
-        "rulesVersion": "primary-subject-v3",
+        "rulesVersion": "rule-scenario-v4",
         "scoringVersion": "highest-score-v1",
-        "minimumSimilarity": 0.5
+        "minimumSimilarity": 0.5,
+        "excludedCategories": []
       }
     },
     {
@@ -67,9 +85,27 @@
         "appVersion": "1.6.3",
         "platform": "ios",
         "visionTokensPerImage": 140,
-        "rulesVersion": "primary-subject-v3",
+        "rulesVersion": "rule-scenario-v4",
         "scoringVersion": "highest-score-v1",
-        "minimumSimilarity": 0.5
+        "minimumSimilarity": 0.5,
+        "excludedCategories": [
+          "youth"
+        ]
+      }
+    },
+    {
+      "name": "user-badge-poster",
+      "expected": "products",
+      "actual": "products",
+      "similarity": 0.6923398389013253,
+      "diagnostics": {
+        "appVersion": "1.6.3",
+        "platform": "ios",
+        "visionTokensPerImage": 140,
+        "rulesVersion": "rule-scenario-v4",
+        "scoringVersion": "highest-score-v1",
+        "minimumSimilarity": 0.5,
+        "excludedCategories": []
       }
     }
   ]

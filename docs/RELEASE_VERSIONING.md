@@ -9,7 +9,7 @@
 | 范围 | 版本 | 状态 |
 | --- | --- | --- |
 | Android | `1.6.3` | 使用现有正式签名；GitHub Release 非 prerelease 并设为 latest |
-| iOS | `1.6.3` / build `33` | 开发签名真机测试；App Store 更新归档与资料另行准备 |
+| iOS | `1.6.3` / build `34` | 开发签名真机测试；App Store 更新归档与资料另行准备 |
 | PC | `1.5.82` | 本次不构建、不升级桌面版本 |
 
 本次只发布移动端，更新根目录 package/package-lock、Android versionName、iOS marketing/build 和 BuildInfo。分支 `codex/embeddinggemma2-android-preview`，手动 workflow 选择 android。iOS 构建与安装结果以最终发布记录为准，不能将开发签名包当作通用 Ad Hoc / TestFlight 安装包。
@@ -17,7 +17,7 @@
 ## 二、下一版号段规则
 
 - Android 下次版本名须高于 1.6.3，才能被应用内 `releases/latest` 更新检测识别。不得覆盖同版本 APK 代替递增版本。
-- iOS 下次重新打包 build 至少为 34；需要提交 App Store 时使用正确分发签名并单独完成审核流程。
+- iOS 下次重新打包 build 至少为 35；需要提交 App Store 时使用正确分发签名并单独完成审核流程。
 - Android versionCode 为构建时间生成，发布前核实大于上一版本；签名证书须与 1.5.90 一致。
 - 若未来发布桌面端，另同步桌面 package 版本；本次不能把未构建的桌面端声明为 1.5.98。
 
