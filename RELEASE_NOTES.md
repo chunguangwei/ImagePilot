@@ -5,4 +5,4 @@
 - 优化编辑按钮触控区域和读屏名称，保留原有开关及功能。
 - 已有照片分类和自定义规则保持不变。
 
-Android 仅通过 GitHub 发布；iOS 使用新版构建重新提交 App Store。
+Android 仅通过 GitHub 发布；iOS 1.6.5（38）已归档并完成真机启动验证，正式 App Store IPA 已导出，上传等待恢复 App Store Connect 账号访问。

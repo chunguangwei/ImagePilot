@@ -2,6 +2,7 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import ClassifierModelPicker from '../ClassifierModelPicker';
 jest.mock('react-native', () => ({ View: 'View', Text: 'Text', TouchableOpacity: 'Button', ActivityIndicator: 'Spinner', StyleSheet: { create: v => v } }));
+jest.mock('../shared/VIcon', () => 'Icon');
 jest.mock('react-i18next', () => ({ useTranslation: () => ({ t: key => key.split('.').pop() }) }));
 const model = (extra = {}) => ({ id: 'lfm', title: 'LFM', summary: 'Sort and describe', description: 'Detailed limitations', sizeMB: 419, ready: true, onSelect: jest.fn(), onDelete: jest.fn(), ...extra });
 const mount = (models, busy = false) => renderer.create(<ClassifierModelPicker models={models} colors={{}} busy={busy} />);
@@ -53,4 +54,28 @@ test('obsolete model cleanup remains available before replacement weights are do
 test('no empty legacy disclosure when only supported models remain', () => {
  const tree = mount([model({id:'embeddinggemma2'}),model({id:'vlm'})]);
  expect(button(tree,'legacy')).toBeUndefined();
+});
+
+test('model and legacy disclosures keep visible content, arrow and accessibility state in sync', () => {
+ const tree = mount([model(), model({ id: 'old', legacy: true, title: 'Legacy', description: 'Legacy details' })]);
+ const check = (label, open) => {
+  const row = button(tree, label);
+  expect(row.props.accessibilityState.expanded).toBe(open);
+  expect(row.findByType('Icon').props.name).toBe(open ? 'chevron-up' : 'chevron-down');
+  return row;
+ };
+ check('details', false); check('legacy', false);
+ expect(content(tree)).not.toContain('Detailed limitations');
+ act(() => check('details', false).props.onPress());
+ check('hideDetails', true);
+ expect(content(tree)).toContain('Detailed limitations');
+ act(() => check('legacy', false).props.onPress());
+ check('legacy', true);
+ expect(content(tree)).toContain('Legacy');
+ act(() => check('hideDetails', true).props.onPress());
+ expect(content(tree)).not.toContain('Detailed limitations');
+ check('legacy', true);
+ act(() => check('legacy', true).props.onPress());
+ check('legacy', false);
+ expect(content(tree)).not.toContain('Legacy');
 });
