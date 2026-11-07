@@ -1923,7 +1923,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                       onValueChange={() => togglePresetEnabled(presetId)}
                       trackColor={{ false: c.separator, true: c.success }}
                     />
-                    <TouchableOpacity onPress={() => openEditPreset(presetId)} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${t('common.edit')} ${displayName}`} onPress={() => openEditPreset(presetId)} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
                       <VIcon name="chevron-forward" size={18} color={c.readableSecondary} />
                     </TouchableOpacity>
                   </View>

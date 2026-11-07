@@ -39,7 +39,11 @@
     "chinese": "中文",
     "english": "English",
     "tip": "Tip",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "play": "Play",
+    "pause": "Pause",
+    "previousPhoto": "Previous photo",
+    "nextPhoto": "Next photo"
   },
   "privacy": {
     "title": "Privacy Policy",

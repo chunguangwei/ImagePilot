@@ -2102,6 +2102,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                 {String(item?.mimeType || '').startsWith('video/') && (
                   <TouchableOpacity
                     style={styles.videoPlayOverlay}
+                    accessibilityRole="button" accessibilityLabel={t('common.play')}
                     activeOpacity={0.8}
                     onPress={() => playVideoRecord(item)}
                   >

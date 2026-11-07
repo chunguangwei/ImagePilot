@@ -1,8 +1,8 @@
-# App Store 更新准备：1.6.4 / build 36
+# App Store 更新准备：1.6.4 / build 37
 
 ## 当前状态
 
-- 版本 1.6.4 / build 36，包含设置页分组与图标优化及此前分类修复。
+- 版本 1.6.4 / build 37，包含设置页分组与图标优化及此前分类修复。
 - 原 App 包名 `com.chunguangwei.imagepilot`，团队 `CCTFP9X3SW`，保持不变。
 - 归档、安装验证及签名导出结果记录在 [发布记录](../../releases/v1.6.4.md)。
 - 上一轮分发导出报告 `No Accounts`、缺少原团队的 `iOS Distribution` 私钥；本轮不得将开发归档宣称为商店发行包。
@@ -28,7 +28,7 @@
 
 ```sh
 xcodebuild -exportArchive \
-  -archivePath /tmp/ImagePilot-1.6.4-b36.xcarchive \
+  -archivePath /tmp/ImagePilot-1.6.4-b37.xcarchive \
   -exportPath /tmp/ImagePilot-1.6.4-AppStore \
   -exportOptionsPlist ios/ExportOptions-AppStore.plist \
   -allowProvisioningUpdates

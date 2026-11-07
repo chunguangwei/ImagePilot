@@ -209,7 +209,7 @@ export default function SlideshowScreen({ navigation, route }) {
         <>
           {/* 顶部：关闭 + 进度 */}
           <View style={styles.topBar}>
-            <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.close')} onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <VIcon name="close" size={24} emoji="✕" />
             </TouchableOpacity>
             <Text style={styles.counter}>{index + 1} / {images.length}</Text>
@@ -222,13 +222,13 @@ export default function SlideshowScreen({ navigation, route }) {
           </View>
           {/* 底部：上一张 / 播放暂停 / 下一张 */}
           <View style={styles.bottomBar}>
-            <TouchableOpacity onPress={() => goTo(index - 1)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.previousPhoto')} onPress={() => goTo(index - 1)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <VIcon name="play-skip-back" size={26} emoji="⏮" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setPaused((p) => !p)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t(paused ? 'common.play' : 'common.pause')} onPress={() => setPaused((p) => !p)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <VIcon name={paused ? 'play-circle' : 'pause-circle'} size={46} emoji={paused ? '▶' : '⏸'} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => goTo(index + 1)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.nextPhoto')} onPress={() => goTo(index + 1)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <VIcon name="play-skip-forward" size={26} emoji="⏭" />
             </TouchableOpacity>
           </View>

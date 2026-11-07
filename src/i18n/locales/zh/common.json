@@ -39,7 +39,11 @@
     "chinese": "中文",
     "english": "English",
     "tip": "提示",
-    "saving": "正在保存…"
+    "saving": "正在保存…",
+    "play": "播放",
+    "pause": "暂停",
+    "previousPhoto": "上一张",
+    "nextPhoto": "下一张"
   },
   "privacy": {
     "title": "隐私政策",
