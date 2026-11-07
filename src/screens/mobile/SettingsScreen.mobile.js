@@ -1663,7 +1663,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
 
         </SettingsGroup>
         <SettingsGroup colors={c} title={t('settings.ui.libraryTitle')} icon="images-outline"
-          subtitle={t('settings.ui.librarySummary')}>
+          subtitle={t('settings.ui.librarySummary')} defaultExpanded={Platform.OS === 'ios'}>
           {/* iOS 专属：相册权限层级显示
               · limited → 弹原生 Limited Library Picker（增删可见照片）
               · 其它    → 跳系统设置（Linking.openSettings） */}
@@ -1901,9 +1901,10 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
 
               return (
                 <View key={presetId} style={styles.presetItem}>
-                  {/* 左侧 + 中间 整块点击进编辑（不含 Switch / chevron，省得误触） */}
+                  {/* 名称与说明可编辑，启用开关独立操作 */}
                   <TouchableOpacity
                     style={styles.presetLeft}
+                    accessibilityRole="button" accessibilityLabel={`${t('common.edit')} ${displayName}`}
                     activeOpacity={0.6}
                     onPress={() => openEditPreset(presetId)}
                   >
@@ -1919,12 +1920,13 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                   </TouchableOpacity>
                   <View style={styles.presetRight}>
                     <Switch
+                      accessibilityLabel={displayName}
                       value={preset.enabled}
                       onValueChange={() => togglePresetEnabled(presetId)}
                       trackColor={{ false: c.separator, true: c.success }}
                     />
-                    <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${t('common.edit')} ${displayName}`} onPress={() => openEditPreset(presetId)} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
-                      <VIcon name="chevron-forward" size={18} color={c.readableSecondary} />
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${t('common.edit')} ${displayName}`} onPress={() => openEditPreset(presetId)} style={styles.presetEditButton}>
+                      <Text style={styles.presetEditText}>{t('common.edit')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -2582,8 +2584,19 @@ const createStyles = (c) => StyleSheet.create({
     lineHeight: 18,
   },
   presetRight: {
-    flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+  },
+  presetEditButton: {
+    minWidth: 48,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  presetEditText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: c.readableAccent,
   },
   // 模态框样式
   modalOverlay: {

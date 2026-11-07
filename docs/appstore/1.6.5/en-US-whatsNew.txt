@@ -1,0 +1,4 @@
+• Replaced extra arrows in photo-editing presets with clearly labeled Edit buttons.
+• Library & search now opens expanded on iOS, showing photo access, similarity and AI search index settings.
+• Improved touch targets and accessibility labels.
+• Existing classifications and custom rules are preserved.

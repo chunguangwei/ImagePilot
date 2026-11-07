@@ -1,0 +1,14 @@
+ImagePilot is a local-first photo and video organizer. No app account is required to test local classification.
+
+Suggested test path:
+1. Grant Photo Library access and open the unclassified photo category.
+2. Choose the default local model. If a download is required, download it in AI Model Settings first; inference then runs on-device.
+3. Open Settings > Categories & rules to edit a built-in rule, add a scenario or exclusion, or restore the default. Saving rules does not automatically reclassify existing photos.
+4. Open a category, select photos and choose AI reclassification to use the updated rules. Available models depend on downloads and configured services.
+5. Open a photo's information panel to inspect matching details and export classification diagnostics as a text file.
+
+Optional online classification requires the user to configure a provider and explicitly choose it. The relevant images are sent to that provider for processing. Local-model inference does not send photos to an online model. Model downloads require internet access.
+
+This update retains existing category identifiers. Editing rules does not automatically replace saved photo classifications. AI predictions are fallible and can be corrected manually.
+
+This update replaces arrows beside editing presets with Edit buttons and expands Library & search by default on iOS. Existing classifications and rules are preserved.
