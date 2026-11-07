@@ -1,3 +1,4 @@
+import {normalizeBuiltinCategoryRules} from './classify/builtinCategoryRules';
 /**
  * BackupService — 分类索引备份/还原
  *
@@ -70,9 +71,11 @@ export async function exportBackup() {
 
   // 自定义分类定义也带上 —— 还原端能直接拿到 id/name/rule/iconKey
   let customCategories = [];
+  let builtinCategoryRules = {};
   try {
     const cfg = await configService.getAIProviderConfig();
     customCategories = Array.isArray(cfg.customCategories) ? cfg.customCategories : [];
+    builtinCategoryRules = normalizeBuiltinCategoryRules(cfg.builtinCategoryRules);
   } catch (_) { /* 拿不到就空数组，不影响图分类还原 */ }
 
   const payload = {
@@ -81,6 +84,7 @@ export async function exportBackup() {
     app: 'ImagePilot',
     matchKey: 'fileName|size|takenAt',
     customCategories,
+    builtinCategoryRules,
     items,
   };
 
@@ -143,6 +147,8 @@ export async function readBackup(path) {
  * @returns {Promise<{ customAdded:number, matched:number, applied:number, skipped:number }>}
  */
 export async function applyBackup(payload) {
+  // Optional extension: old backups omit it; existing local rules always win.
+  await configService.mergeBuiltinCategoryRules(payload.builtinCategoryRules);
   let customAdded = 0;
   if (Array.isArray(payload.customCategories) && payload.customCategories.length > 0) {
     try {

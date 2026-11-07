@@ -910,8 +910,8 @@
     "camera": "Camera",
     "screenshots": "Screenshots",
     "customCategories": {
-      "title": "Custom categories",
-      "desc": "Set names and rules for local or online models that support custom categories."
+      "title": "Categories & rules",
+      "desc": "Edit builtin rules and manage custom categories. Existing photo assignments are preserved."
     },
     "backupRestore": {
       "title": "Backup & restore categories",
@@ -1059,7 +1059,7 @@
     "cannotReadDirectory": "Cannot read directory contents"
   },
   "customCategories": {
-    "screenTitle": "Custom Categories",
+    "screenTitle": "Categories & rules",
     "tip": "Once configured, the LLM (cloud or on-device multimodal) uses your rules to assign images to custom categories during classification. The id is in English (used by the model) and cannot be changed after creation.",
     "view": "View",
     "builtinNoDesc": "This category is recognized automatically by the model; no rule needed.",
@@ -1091,7 +1091,7 @@
     "deleteMessage": "Delete custom category \"{{cid}}\"?\nPhotos in this category will return to \"Unclassified\" and will not be lost.",
     "deleteFailedTitle": "Delete Failed",
     "builtinTitle": "Built-in categories",
-    "builtinTip": "Hide or restore built-in categories without deleting photos. Descriptions also guide models that support custom rules.",
+    "builtinTip": "Edit the matching rule or restore its default. Hiding a category affects visibility, not its saved photo assignments.",
     "builtinDeletedHint": "Hidden; can be restored",
     "deleteBuiltinTitle": "Hide built-in category",
     "deleteBuiltinMessage": "Photos in “{{name}}” will appear under Unclassified. No photos are deleted. Restoring the category shows them in their original category again.",
@@ -1100,7 +1100,15 @@
     "restoreAllTitle": "Restore default categories",
     "restoreAllMessage": "Show all built-in categories again, including photos already assigned to them.",
     "restoreAllConfirm": "Restore",
-    "hide": "Hide"
+    "hide": "Hide",
+    "editBuiltinRule": "Edit rule",
+    "resetRule": "Restore default rule",
+    "resetRuleTitle": "Restore default rule?",
+    "resetRuleMessage": "Restore this category’s default rule, scenarios and exclusions. Existing photos will not be reclassified.",
+    "ruleRequired": "Enter a rule or restore the default rule.",
+    "ruleCustomized": "Customized rule",
+    "ruleDefault": "Default rule",
+    "builtinRuleHint": "Rules apply to new classifications and explicit reclassification; existing photo assignments are preserved. Supported by Gemma 2, E2B and online models, not fixed-label classifiers. Category names and IDs stay unchanged."
   },
   "aiModelConfig": {
     "title": "AI model settings",

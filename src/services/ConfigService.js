@@ -1,3 +1,4 @@
+import {normalizeBuiltinCategoryRules} from './classify/builtinCategoryRules';
 /**
  * ConfigService - 配置管理服务
  * 负责读取和管理 initialSettings.json 配置文件
@@ -49,10 +50,12 @@ class ConfigService {
   }
 
   /** 取自定义分类的判定规则映射 { id: rule }（供本地 VLM 提示词用）。 */
-  getCustomCategoryMatching() { return this.customCategoryMatching || {}; }
+  setBuiltinCategoryRules(value) { this.builtinCategoryRules = normalizeBuiltinCategoryRules(value); }
+
+  getCustomCategoryMatching() { return {...(this.builtinCategoryRules || {}), ...(this.customCategoryMatching || {})}; }
 
   getCustomCategoryRules() {
-    return this.customCategoryRules || {};
+    return {...Object.fromEntries(Object.entries(this.builtinCategoryRules || {}).map(([id, value]) => [id, value.rule])), ...(this.customCategoryRules || {})};
   }
 
   /** 取自定义分类名映射 { id: name }（getAllCategoriesWithUI 只含内置，VLM 清单需补自定义）。 */

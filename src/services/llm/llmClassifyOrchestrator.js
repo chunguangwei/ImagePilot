@@ -1,3 +1,5 @@
+import {SUBJECT_GUIDANCE} from '../classify/subjectPolicy';
+import {normalizeBuiltinCategoryRules} from '../classify/builtinCategoryRules';
 import { categoryMatchingRule } from '../classify/categorySemantics';
 /**
  * LLMClassifyOrchestrator — 基于多模态大模型的新一代云端分类（最佳实践）
@@ -52,15 +54,16 @@ function getLLM(imageClassifier, platform, taskConfig) {
  * @param {string} lang  'zh' | 'en'
  * @returns {Array<{id:string,name:string,rule:string}>}
  */
-function buildTaxonomy(aiCfg, lang) {
+export function buildTaxonomy(aiCfg, lang) {
+  const overrides = normalizeBuiltinCategoryRules(aiCfg?.builtinCategoryRules);
   const out = [];
   const builtIn = (configService.getAllCategoriesWithUI && configService.getAllCategoriesWithUI()) || [];
   for (const c of builtIn) {
-    if (!c || !c.id || c.id === 'NA') continue;
+    if (!c || !c.id || ['NA','NA_video'].includes(c.id)) continue;
     const name = lang === 'en'
       ? (c.english || c.chinese || c.id)
       : (c.chinese || c.english || c.id);
-    out.push({ id: c.id, name, rule: '' });
+    out.push({ id: c.id, name, rule: categoryMatchingRule({...c,...overrides[c.id]},lang) });
   }
   const customs = Array.isArray(aiCfg?.customCategories) ? aiCfg.customCategories : [];
   for (const c of customs) {
@@ -76,6 +79,8 @@ function buildPromptZH(taxonomy, detailed = false) {
     .map(t => `  - ${t.id}：${t.name}${t.rule ? `（${t.rule}）` : ''}`)
     .join('\n');
   return `你是一个专业的照片整理助手。请"先理解后归类"：先看清图片内容，再从用户清单里选最贴近的一类，最后严格返回一个 JSON 对象。
+
+${SUBJECT_GUIDANCE.zh}
 
 【用户分类清单】primaryCategory 必须是下方某个 id：
 ${taxoLines}
@@ -102,6 +107,8 @@ function buildPromptEN(taxonomy, detailed = false) {
     .map(t => `  - ${t.id}: ${t.name}${t.rule ? ` (${t.rule})` : ''}`)
     .join('\n');
   return `You are a professional photo-organization assistant. Work in two steps: first understand the image, then pick the best fit from the user's taxonomy. Return strictly ONE JSON object.
+
+${SUBJECT_GUIDANCE.en}
 
 [User Taxonomy] primaryCategory must be one of these ids:
 ${taxoLines}

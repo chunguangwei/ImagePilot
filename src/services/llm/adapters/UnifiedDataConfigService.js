@@ -1,3 +1,4 @@
+import {isEditableBuiltinCategory, normalizeBuiltinCategoryRules} from '../../classify/builtinCategoryRules';
 /**
  * UnifiedDataConfigService — 把 LLM Provider 配置接到本仓库真实的「用户设置」存储
  *
@@ -29,6 +30,7 @@ const DEFAULTS = {
     custom: { baseURL: '', model: '', apiKeyRef: 'kc:custom_key', headersExtra: {} },
   },
   promptOverride: null,
+  builtinCategoryRules: {},
   customCategories: [], // [{ id, name, rule }]，A 方案：LLM 按规则归入自定义分类
   hiddenBuiltinCategories: [], // 被用户「删除」的内置分类 id；从展示与分类器候选集中剔除，可一键恢复
 };
@@ -72,6 +74,24 @@ export class UnifiedDataConfigService {
   /** 设置自定义分类列表 [{ id, name, rule }] */
   async setCustomCategories(list) {
     await this._mergeTopLevel({ customCategories: Array.isArray(list) ? list : [] });
+  }
+
+  async mergeBuiltinCategoryRules(value) {
+    const incoming = normalizeBuiltinCategoryRules(value);
+    if (!Object.keys(incoming).length) return;
+    const settings = (await this.data.readSettings()) || {};
+    const current = normalizeBuiltinCategoryRules(settings.aiProvider?.builtinCategoryRules);
+    await this.data.writeSettings({...settings, aiProvider:{...(settings.aiProvider || {}), builtinCategoryRules:{...incoming,...current}}});
+  }
+
+  async setBuiltinCategoryRule(id, value) {
+    if (!isEditableBuiltinCategory(id)) throw new Error('Invalid builtin category');
+    if (value !== null && !normalizeBuiltinCategoryRules({[id]:value})[id]) throw new Error('A category rule is required');
+    const settings = (await this.data.readSettings()) || {};
+    const rules = normalizeBuiltinCategoryRules(settings.aiProvider?.builtinCategoryRules);
+    if (value === null) delete rules[id];
+    else rules[id] = normalizeBuiltinCategoryRules({[id]:value})[id];
+    await this.data.writeSettings({...settings, aiProvider:{...(settings.aiProvider || {}), builtinCategoryRules:rules}});
   }
 
   /** 设置「已删除的内置分类」id 列表（空数组＝恢复全部默认分类） */

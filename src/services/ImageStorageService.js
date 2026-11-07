@@ -317,10 +317,6 @@ class SQLiteAdapter {
       CREATE INDEX IF NOT EXISTS idx_city ON images(city);
       CREATE INDEX IF NOT EXISTS idx_timestamp ON images(timestamp DESC);
       CREATE INDEX IF NOT EXISTS idx_takenAt ON images(takenAt DESC);
-      CREATE INDEX IF NOT EXISTS idx_isoCategory ON images(isoCategory);
-      CREATE INDEX IF NOT EXISTS idx_apertureCategory ON images(apertureCategory);
-      CREATE INDEX IF NOT EXISTS idx_shutterCategory ON images(shutterCategory);
-      CREATE INDEX IF NOT EXISTS idx_focalLengthCategory ON images(focalLengthCategory);
 
       -- 设置表
       CREATE TABLE IF NOT EXISTS settings (
@@ -402,7 +398,7 @@ class SQLiteAdapter {
     // 迁移：添加 background_color 字段（如果不存在）
     await this.migrateAddBackgroundColor();
     
-    // 迁移：添加拍摄参数字段（如果不存在）
+    // 先补旧库的拍摄参数列，再由迁移方法创建依赖这些列的索引。
     await this.migrateAddCameraSettings();
     
     // 迁移：将现有的 tobecleaned 分类迁移到 staging_box 表

@@ -231,7 +231,9 @@ class GalleryScannerService {
 
       // 保留已分类图的 category / classification 等字段（见 mergeScannerRecord 注释）。
       const fresh = items.map(toImageRecord);
-      const existing = await UnifiedDataService.readAllImages().catch(() => []);
+      // A failed/invalid read must never turn existing classifications into an empty library.
+      const existing = await UnifiedDataService.readAllImages();
+      if (!Array.isArray(existing)) throw new Error('Cannot read existing photo records safely');
       const records = mergeScannerRecords(fresh, existing);
       emit({ stage: 'saving', message: `落库 ${records.length} 张…`, processed: 0, total: records.length });
       await UnifiedDataService.writeImageDetailedInfo(records, true);
@@ -367,7 +369,9 @@ class GalleryScannerService {
     if (inserted.length || changed.length) {
       // 同 scanGalleryWithProgress：按 id 合并已有库的分类字段（防 edit 清空分类）。
       const fresh = [...inserted, ...changed].map(toImageRecord);
-      const existing = await UnifiedDataService.readAllImages().catch(() => []);
+      // A failed/invalid read must never turn existing classifications into an empty library.
+      const existing = await UnifiedDataService.readAllImages();
+      if (!Array.isArray(existing)) throw new Error('Cannot read existing photo records safely');
       const upserts = mergeScannerRecords(fresh, existing);
       await UnifiedDataService.writeImageDetailedInfo(upserts, false);
     }

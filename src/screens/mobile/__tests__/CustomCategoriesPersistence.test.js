@@ -6,8 +6,8 @@ import Haptics from '../../../utils/haptics';
 jest.mock('react-native', () => ({ View:'View', Text:'Text', TextInput:'Input', TouchableOpacity:'Button', ScrollView:'Scroll', ActivityIndicator:'Spinner', KeyboardAvoidingView:'Keyboard', Platform:{OS:'ios'}, StyleSheet:{create: v=>v}, Alert:{alert:jest.fn()} }));
 jest.mock('react-i18next', () => ({useTranslation:()=>({t:k=>k,i18n:{language:'zh'}})}));
 jest.mock('../../../adapters/WebAdapters', () => ({SafeAreaView:'Safe',Icon:'Icon'}));
-jest.mock('../../../services/llm/adapters/UnifiedDataConfigService', () => ({getAIProviderConfig:jest.fn(),setCustomCategories:jest.fn(),setHiddenBuiltinCategories:jest.fn()}));
-jest.mock('../../../services/ConfigService', () => ({isConfigLoaded:()=>true,getCategoryDisplayOrder:()=>[],getCategoryNameMap:()=>({})}));
+jest.mock('../../../services/llm/adapters/UnifiedDataConfigService', () => ({getAIProviderConfig:jest.fn(),setCustomCategories:jest.fn(),setHiddenBuiltinCategories:jest.fn(),setBuiltinCategoryRule:jest.fn()}));
+jest.mock('../../../services/ConfigService', () => ({isConfigLoaded:()=>true,getCategoryDisplayOrder:()=>['travel_scenery'],getCategoryNameMap:()=>({travel_scenery:{chinese:'旅行风景',english:'Travel Scenery'}})}));
 jest.mock('../../../services/UnifiedDataService', () => ({}));
 jest.mock('../../../components/shared/categoryUI', () => ({CUSTOM_ICON_PRESETS:[{key:'photo',icon:'photo'}],getCategoryIconMeta:()=>({})}));
 jest.mock('../../../ui/ios/theme', () => ({useIosColors:()=>({})}));
@@ -54,4 +54,35 @@ test('editing preserves optional scenarios and exclusions when the details remai
  config.setCustomCategories.mockResolvedValueOnce();
  await act(async()=>{await byText(tree,'common.save').props.onPress();});
  expect(config.setCustomCategories).toHaveBeenCalledWith([category]);
+});
+
+test('builtin rule save failure retains draft; success saves only the builtin override',async()=>{
+ const tree=await mount();
+ act(()=>byText(tree,'customCategories.editBuiltinRule').props.onPress());
+ const input=tree.root.findAllByType('Input').find(i=>i.props.accessibilityLabel==='customCategories.editRulePlaceholder');
+ act(()=>input.props.onChangeText('整体景观为主体，人物仅为点缀'));
+ config.setBuiltinCategoryRule.mockRejectedValueOnce(new Error('disk full'));
+ await act(async()=>{await byText(tree,'common.save').props.onPress();});
+ expect(byText(tree,'common.save')).toBeDefined();
+ expect(config.setCustomCategories).not.toHaveBeenCalled();
+ config.setBuiltinCategoryRule.mockResolvedValueOnce();
+ await act(async()=>{await byText(tree,'common.save').props.onPress();});
+ expect(config.setBuiltinCategoryRule).toHaveBeenLastCalledWith('travel_scenery',{rule:'整体景观为主体，人物仅为点缀',scenarios:[],exclusions:''});
+ expect(byText(tree,'common.save')).toBeUndefined();
+});
+test('saving untouched builtin defaults does not replace builtin subtypes with a single text rule',async()=>{
+ const tree=await mount();act(()=>byText(tree,'customCategories.editBuiltinRule').props.onPress());
+ config.setBuiltinCategoryRule.mockResolvedValueOnce();
+ await act(async()=>{await byText(tree,'common.save').props.onPress();});
+ expect(config.setBuiltinCategoryRule).toHaveBeenCalledWith('travel_scenery',null);
+});
+test('restoring a builtin clears only its override after the user taps restore',async()=>{
+ const {Alert}=require('react-native');const tree=await mount();
+ act(()=>byText(tree,'customCategories.editBuiltinRule').props.onPress());
+ act(()=>byText(tree,'customCategories.resetRule').props.onPress());
+ expect(config.setBuiltinCategoryRule).not.toHaveBeenCalled();
+ const buttons=Alert.alert.mock.calls.at(-1)[2];
+ await act(async()=>{await buttons[1].onPress();});
+ expect(config.setBuiltinCategoryRule).toHaveBeenCalledWith('travel_scenery',null);
+ expect(config.setCustomCategories).not.toHaveBeenCalled();
 });

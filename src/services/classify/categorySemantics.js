@@ -1,11 +1,11 @@
 // Shared category meanings, not captions generated for an individual image.
 const descriptions = {
   social_activities: ['多人聚会、同事或朋友合影、会议、庆典及集体活动的照片', 'A photograph of people together at a gathering, colleagues posing for a group photo, a meeting or a celebration.'],
-  single_person: ['人物肖像照片：以一个人的面容和身体为主体，包括自拍和个人写真', 'A portrait photograph with one person as the main subject, showing their face and body.'],
+  single_person: ['以一个人的面容或身体为主要拍摄对象的肖像、自拍或个人写真，包含以山水、公园、建筑为背景的人像；以运动动作本身为重点时归运动', 'A portrait photograph with one person as the main subject, showing their face and body.'],
   kids: ['以真实婴儿、幼儿或儿童为主要拍摄对象的照片，记录孩子的面容、玩耍或日常生活', 'A photograph whose main subject is a real baby, toddler or child, showing children playing or in everyday life.'],
   pets: ['以猫、狗或其他宠物动物为主要拍摄对象的照片', 'A photograph of a cat, dog or another pet animal as the main subject.'],
   foods: ['展示食物、菜肴、甜点、饮料或餐桌美食的照片', 'A photograph showing food, prepared dishes, desserts, drinks or a meal on a table.'],
-  travel_scenery: ['以整体环境为主体的山川、海滨、湖泊、河流、公园或乡村风景，不要求在旅行途中拍摄', 'A landscape photograph showing natural scenery, mountains, rivers, lakes, coasts, parks or countryside.'],
+  travel_scenery: ['以整体环境为主体的山川、海滨、湖泊、河流、公园或乡村风景。允许远处人物作为点缀；人物肖像、自拍或写真为主体时应归人物类，不因背景有风景而归入此类', 'A landscape photograph focused on the overall natural environment: mountains, rivers, lakes, coasts, parks or countryside. People may be small incidental figures; a portrait with scenery in the background belongs to a people category.'],
   screenshot: ['手机或电脑屏幕截取的应用界面、聊天记录、网页或游戏画面', 'A screenshot of a phone or computer app, chat conversation, web page or game interface.'],
   idcard: ['身份证件、护照等证件的照片，或正式证件用途的正面人像照', 'A photograph of an identity document or passport, or a formal front-facing identification portrait.'],
   qrcode: ['以可扫描的二维码为主要内容的图片', 'An image primarily showing a scannable QR code.'],

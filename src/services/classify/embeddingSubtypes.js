@@ -1,5 +1,5 @@
 // Complete visual descriptions. Each pair describes the same subtype; digital images are not called photographs.
-export const EMBEDDING_RULES_VERSION = 'visual-subject-v1';
+export const EMBEDDING_RULES_VERSION = 'primary-subject-v2';
 export const EMBEDDING_SUBTYPES = {
   "social_activities": [
     [
@@ -19,6 +19,7 @@ export const EMBEDDING_SUBTYPES = {
     ]
   ],
   "single_person": [
+    ["environment-portrait", "A portrait focused on one person posing outdoors, with scenery behind them.", "A person is the main subject of an outdoor portrait, with their face and body prominent against a park, landscape or building background."],
     [
       "portrait",
       "A portrait of one person, with their face or body as the main subject.",
@@ -84,23 +85,23 @@ export const EMBEDDING_SUBTYPES = {
   "travel_scenery": [
     [
       "mountain",
-      "A wide landscape view of mountains, valleys and the sky.",
+      "A wide scenic landscape focused on mountains, valleys and the sky.",
       "Natural scenery showing hills or mountains stretching into the distance."
     ],
     [
       "water",
-      "A landscape of a lake, river or coast with the surrounding scenery.",
+      "An expansive view of a lake, river or coast where the water and surrounding landscape are the main subject.",
       "A wide scenic view across water toward the opposite shore and sky."
     ],
     [
       "park",
-      "A park landscape with a lake, green trees and plants along the shore.",
+      "A wide park landscape focused on a lake, green trees and plants along the shore.",
       "Scenery of a pond or lake surrounded by greenery, with trees and sky in the background."
     ],
     [
       "countryside",
       "A wide landscape of a forest, fields or countryside.",
-      "An outdoor scenic view of woodland, grassland or a public park."
+      "An outdoor scenic view dominated by woodland, grassland or a public park, with any people appearing as small distant figures."
     ]
   ],
   "screenshot": [

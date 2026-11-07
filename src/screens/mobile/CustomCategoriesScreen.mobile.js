@@ -1,3 +1,4 @@
+import {normalizeBuiltinCategoryRules} from '../../services/classify/builtinCategoryRules';
 import { normalizeCustomMatching } from '../../services/classify/categorySemantics';
 import { categoryDescription } from '../../services/classify/categorySemantics';
 import initialSettings from '../../../public/initialSettings.json';
@@ -46,6 +47,7 @@ export default function CustomCategoriesScreen({ navigation }) {
   const [editing, setEditing] = useState(null);
   // 内置分类管理：全部内置内容分类（不含 NA/other 系统档）+ 已删除集合
   const [builtins, setBuiltins] = useState([]);          // [{ id, name }]
+  const [builtinRules, setBuiltinRules] = useState({});
   const [hidden, setHidden] = useState([]);              // 已删除的内置分类 id
 
   useEffect(() => {
@@ -53,6 +55,7 @@ export default function CustomCategoriesScreen({ navigation }) {
       try {
         const cfg = await configService.getAIProviderConfig();
         setList(Array.isArray(cfg.customCategories) ? cfg.customCategories : []);
+        setBuiltinRules(normalizeBuiltinCategoryRules(cfg.builtinCategoryRules));
         setHidden(Array.isArray(cfg.hiddenBuiltinCategories) ? cfg.hiddenBuiltinCategories : []);
         // 内置分类全集（未过滤隐藏，因为本页要展示并允许恢复）
         try {
@@ -100,11 +103,30 @@ export default function CustomCategoriesScreen({ navigation }) {
     },
   );
 
-  // 查看内置分类含义：弹出该类说明，供用户照着写自定义分类「规则」。
-  const onViewBuiltin = (cid, cname) => {
-    const desc = categoryDescription({ id: cid }, isEn ? 'en' : 'zh')
-      || t('customCategories.builtinNoDesc', { defaultValue: '此分类由模型自动识别，无需规则。' });
-    Alert.alert(cname, desc);
+  const onEditBuiltin = (b) => {
+    const current = builtinRules[b.id];
+    setEditing({id:b.id, name:b.name, builtin:true,
+      rule:current?.rule || categoryDescription({id:b.id}, isEn ? 'en' : 'zh'),
+      ...normalizeCustomMatching(current || {})});
+  };
+  const persistBuiltin = (cid, value) => saveChange(
+    () => configService.setBuiltinCategoryRule(cid, value),
+    () => {
+      setBuiltinRules(previous => {
+        const next = {...previous};
+        if (value === null) delete next[cid]; else next[cid] = value;
+        return next;
+      });
+      setEditing(null);
+    },
+  );
+  const onResetBuiltinRule = () => {
+    const cid = editing?.id;
+    if (!editing?.builtin) return;
+    Alert.alert(t('customCategories.resetRuleTitle'), t('customCategories.resetRuleMessage'), [
+      {text:t('common.cancel'),style:'cancel'},
+      {text:t('customCategories.resetRule'),onPress:()=>persistBuiltin(cid,null)},
+    ]);
   };
 
   // 删除内置分类：只加入隐藏集合（不改库）。该分类下的图在展示/统计上自动归到「待分类」，
@@ -191,6 +213,14 @@ export default function CustomCategoriesScreen({ navigation }) {
 
   const onSaveEdit = async () => {
     if (!editing) return;
+    if (editing.builtin) {
+      const value = {rule:editing.rule.trim(),...normalizeCustomMatching(editing)};
+      if (!value.rule) { Alert.alert(t('customCategories.ruleRequired')); return; }
+      const usesDefault = value.rule === categoryDescription({id:editing.id},isEn ? 'en' : 'zh')
+        && value.scenarios.length === 0 && !value.exclusions;
+      await persistBuiltin(editing.id, usesDefault ? null : value);
+      return;
+    }
     const cname = editing.name.trim();
     if (!cname) {
       Alert.alert(t('customCategories.pleaseFillTitle'), t('customCategories.nameRequiredMessage'));
@@ -341,13 +371,14 @@ export default function CustomCategoriesScreen({ navigation }) {
               </View>
               <View style={{ flex: 1, minWidth: 100 }}>
                 <Text style={[styles.itemName, { color: theme.label }, isHidden && { textDecorationLine: 'line-through' }]}>{b.name}</Text>
+                <Text style={[styles.itemRule, {color:theme.secondaryLabel}]}>{t(builtinRules[b.id] ? 'customCategories.ruleCustomized' : 'customCategories.ruleDefault')}</Text>
                 {isHidden && <Text style={[styles.itemRule, { color: theme.tertiaryLabel }]}>{t('customCategories.builtinDeletedHint')}</Text>}
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {/* 查看：弹出该内置分类的含义说明，供照着写自定义规则 */}
-                <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={() => onViewBuiltin(b.id, b.name)} style={styles.actionBtn} activeOpacity={0.6}>
-                  <Icon name="info-outline" size={18} color="#007AFF" />
-                  <Text style={styles.edit}>{t('customCategories.view', { defaultValue: '查看' })}</Text>
+                {/* 内置分类保持固定 ID，可编辑规则并恢复默认。 */}
+                <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={() => onEditBuiltin(b)} style={styles.actionBtn} activeOpacity={0.6}>
+                  <Icon name="edit" size={18} color="#007AFF" />
+                  <Text style={styles.edit}>{t('customCategories.editBuiltinRule')}</Text>
                 </TouchableOpacity>
                 {isHidden ? (
                   <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={() => onRestoreBuiltin(b.id)} style={styles.actionBtn} activeOpacity={0.6}>
@@ -387,11 +418,13 @@ export default function CustomCategoriesScreen({ navigation }) {
           >
           <View style={styles.modalCard} pointerEvents="box-none">
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('customCategories.editModalTitle')}</Text>
+              <Text style={styles.modalTitle}>{t(editing.builtin ? 'customCategories.editBuiltinRule' : 'customCategories.editModalTitle')}</Text>
               <Text style={styles.modalSubtitle}>{editing?.id}</Text>
             </View>
             <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
+              {editing.builtin && <Text style={styles.tip}>{t('customCategories.builtinRuleHint')}</Text>}
               <TextInput
+                editable={!saving && !editing.builtin}
                 style={styles.input}
                 placeholder={t('customCategories.editNamePlaceholder')}
                 placeholderTextColor="#8E8E93"
@@ -399,6 +432,8 @@ export default function CustomCategoriesScreen({ navigation }) {
                 onChangeText={(v) => setEditing((s) => ({ ...s, name: v }))}
               />
               <TextInput
+                editable={!saving}
+                accessibilityLabel={t('customCategories.editRulePlaceholder')}
                 style={[styles.input, styles.multiline]}
                 placeholder={t('customCategories.editRulePlaceholder')}
                 placeholderTextColor="#8E8E93"
@@ -407,11 +442,12 @@ export default function CustomCategoriesScreen({ navigation }) {
                 multiline
               />
               <MatchingFields value={editing} onChange={v => setEditing(s => ({...s,...v}))} disabled={saving} isEn={isEn} />
-              <Text style={styles.iconPickerLabel}>{t('customCategories.iconPickerLabel')}</Text>
+              {!editing.builtin && <><Text style={styles.iconPickerLabel}>{t('customCategories.iconPickerLabel')}</Text>
               <IconGrid
                 selectedKey={editing?.iconKey}
                 onSelect={(k) => setEditing((s) => ({ ...s, iconKey: k }))}
-              />
+              /></>}
+              {editing.builtin && <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={onResetBuiltinRule} style={styles.actionBtn}><Text style={styles.edit}>{t('customCategories.resetRule')}</Text></TouchableOpacity>}
             </ScrollView>
             <View style={styles.modalFooter}>
               <TouchableOpacity accessibilityRole="button" disabled={saving} style={[styles.modalBtn, styles.modalBtnGhost]} onPress={() => setEditing(null)}>
@@ -441,8 +477,8 @@ function MatchingFields({value, onChange, disabled, isEn}) {
     </TouchableOpacity>
     {expanded && <View>
       <Text style={{color:theme.secondaryLabel,marginBottom:8}}>{isEn
-        ? 'Keep your original rule. Add alternative visual scenarios, one per line. All categories compete together; uncertain matches go to Other.'
-        : '保留原有规则。可补充不同的画面场景，每行一个。所有分类一起比较，不确定时归入“其他”。'}</Text>
+        ? 'Keep your original rule. Add alternative visual scenarios, one per line. The highest eligible category score wins; low matches go to Other.'
+        : '保留原有规则。可补充不同的画面场景，每行一个。按最高有效类别分数匹配，低匹配度时归入“其他”。'}</Text>
       <TextInput accessibilityLabel={isEn ? 'Visual scenarios' : '画面场景'} editable={!disabled} style={inputStyle}
         placeholder={isEn ? 'For example: network equipment cabinet\nOffice printer' : '例如：网络设备机柜\n办公室打印机'} placeholderTextColor={theme.tertiaryLabel}
         value={scenarios} multiline onChangeText={scenarios => onChange({...value,scenarios})} />

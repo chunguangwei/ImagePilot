@@ -1,3 +1,4 @@
+import {normalizeBuiltinCategoryRules} from './classify/builtinCategoryRules';
 /**
  * BackupService（桌面端）—— 分类索引备份/还原（Electron 文件 IO 适配）
  *
@@ -74,9 +75,11 @@ export async function exportBackup(dir) {
 
   // 自定义分类定义也带上
   let customCategories = [];
+  let builtinCategoryRules = {};
   try {
     const cfg = await configService.getAIProviderConfig();
     customCategories = Array.isArray(cfg.customCategories) ? cfg.customCategories : [];
+    builtinCategoryRules = normalizeBuiltinCategoryRules(cfg.builtinCategoryRules);
   } catch (_) { /* 拿不到就空数组，不影响图分类还原 */ }
 
   const payload = {
@@ -85,6 +88,7 @@ export async function exportBackup(dir) {
     app: 'ImagePilot',
     matchKey: 'fileName|size|takenAt',
     customCategories,
+    builtinCategoryRules,
     items,
   };
 

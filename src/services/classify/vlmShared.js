@@ -1,3 +1,4 @@
+import {SUBJECT_GUIDANCE} from './subjectPolicy';
 /**
  * vlmShared — VLM 分类档的跨平台共享逻辑（与具体推理引擎无关）。
  *
@@ -109,6 +110,7 @@ export function buildPrompt(cats, lang, opts = {}) {
       : 'desc: one short English sentence (max 15 words) describing the image.\n';
     return (
       'Look at the image carefully, understand its content, then pick the single best category from the list.\n' +
+      SUBJECT_GUIDANCE.en + '\n' +
       'Output EXACTLY two lines:\n' +
       descLine +
       'cat: output ONE category id from the list. For categories that have a rule, prefer the one whose rule matches the image. If none fits, use other.\n\n' +
@@ -122,6 +124,7 @@ export function buildPrompt(cats, lang, opts = {}) {
     : '描述: 一句不超过15字的简体中文图片内容概括（必须用中文）。\n';
   return (
     '仔细看图，先理解图片内容，再从下面的分类清单里选出最贴近的一类。\n' +
+    SUBJECT_GUIDANCE.zh + '\n' +
     '严格输出两行：\n' +
     descLine +
     '分类: 只输出清单里的一个分类 id；带「规则」的分类优先按规则判断是否符合；都不符合时输出 other。\n\n' +
