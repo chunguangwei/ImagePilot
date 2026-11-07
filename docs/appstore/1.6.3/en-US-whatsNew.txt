@@ -1,0 +1,12 @@
+This update makes classification rules easier to customize and improves photo-library organization.
+
+• Edit built-in category rules, add visual scenarios and exclusions, or restore defaults. Custom categories are preserved.
+• Refine the distinction between a main subject and its background. Swimming descriptions have been removed from the default Sports & Fitness rules.
+• Choose a model when reclassifying photos. Download supported local models or select an online service you have configured.
+• Simplify model selection for unclassified photos and videos.
+• Select consecutive photos with a long press and drag. Fix selection state remaining after leaving a category.
+• Retry videos classified as Other using additional frames.
+• Export classification diagnostics as a text file.
+• Improve protection during database upgrades and scan failures. Backups now include edited built-in rules.
+
+Updating does not automatically reclassify existing photos. New rules apply to future or explicitly requested classification. Your edited rules are preserved.
