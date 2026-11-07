@@ -1,3 +1,4 @@
+import DisclosureRow from '../../components/shared/DisclosureRow';
 import {useReclassificationPicker} from '../../components/ReclassificationModelPicker';
 /**
  * ImagePilot - 移动端图片预览页
@@ -1315,7 +1316,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
         <View style={styles.infoPanelHeader}>
           <Text style={styles.infoPanelTitle}>{t('imagePreview.fileInfo')}</Text>
           <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.close')} style={{ minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' }} onPress={() => setShowInfo(false)}>
-            <Text style={styles.infoPanelClose}>✕</Text>
+            <VIcon name="close" size={24} color={cTheme.label} />
         </TouchableOpacity>
       </View>
 
@@ -1626,7 +1627,7 @@ const ImagePreviewScreen = ({ route, navigation }) => {
                   {result.classification.error ? `: ${result.classification.error}` : ''}
                 </Text>}
                 {!result.accepted && <Text style={styles.detectionText}>{t(result.fallbackCategory === 'other' ? (result.rejectionReason === 'low-similarity' ? 'imagePreview.embeddingLowScoreOther' : 'imagePreview.embeddingAssignedOther') : ['prototype-disagreement', 'weak-prototype-support', 'strongest-prototype-disagreement', 'category-view-disagreement', 'exclusion-conflict'].includes(result.rejectionReason) ? 'imagePreview.embeddingEvidenceConflict' : 'imagePreview.embeddingUncertain')}</Text>}
-                <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: showModelDetails }} onPress={() => setShowModelDetails(v => !v)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: cTheme.accent, fontSize: 15 }}>{t(showModelDetails ? 'imagePreview.hideModelDetails' : 'imagePreview.modelDetails')}</Text></TouchableOpacity>
+                <DisclosureRow colors={cTheme} title={t(showModelDetails ? 'imagePreview.hideModelDetails' : 'imagePreview.modelDetails')} expanded={showModelDetails} onPress={() => setShowModelDetails(v => !v)} />
                 {showModelDetails && <>
                 {result.categoryDescription ? (
                   <Text style={styles.detectionText}>{t('imagePreview.categoryMeaning')}: {result.categoryDescription}</Text>

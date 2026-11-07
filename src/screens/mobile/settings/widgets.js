@@ -14,6 +14,7 @@
  */
 
 import React from 'react';
+import VIcon from '../../../components/shared/VIcon';
 import { View, Text, TouchableOpacity } from 'react-native';
 
 // Ionicons 与父组件保持一致的 fallback 行为：拿不到字体也能渲染（不带 icon）
@@ -41,13 +42,16 @@ export function ActionButton({ styles, c, icon, title, description, onPress, dan
       activeOpacity={0.6}
     >
       <View style={styles.actionButtonRow}>
+        <View style={{ width: 36, height: 36, borderRadius: 10, marginRight: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: danger ? c.dangerSoft : c.accentSoft }}>
+          <VIcon name={icon} size={20} color={danger ? c.danger : c.readableAccent} />
+        </View>
         <View style={styles.actionButtonMain}>
           <Text style={[styles.actionButtonText, { color: c.label }, danger && styles.dangerText]}>
-            {WIonicons ? <WIonicons name={icon} size={17} color={danger ? c.danger : c.accent} /> : null} {title}
+            {title}
           </Text>
           <Text style={[styles.actionButtonDescription, { color: descColor || c.readableSecondary || c.secondaryLabel }]}>{description}</Text>
         </View>
-        {!danger ? <Text style={[styles.actionChevron, { color: c.chevron }]}>›</Text> : null}
+        {!danger ? <VIcon name="chevron-forward" size={18} color={c.readableSecondary} style={{ marginLeft: 8 }} /> : null}
       </View>
     </TouchableOpacity>
   );

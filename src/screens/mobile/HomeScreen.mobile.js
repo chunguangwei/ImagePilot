@@ -2712,9 +2712,7 @@ const HomeScreen = ({ navigation }) => {
                       {t('home.moreFilters')}
                     </Text>
                   </View>
-                  <Text style={[styles.sectionTitle, dynSectionTitle, { marginTop: 0, marginBottom: 0 }]}>
-                    {advancedExpanded ? '▾' : '›'}
-                  </Text>
+                  <VIcon name={advancedExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={c.readableSecondary} />
                 </TouchableOpacity>
               </View>
               {advancedExpanded ? (

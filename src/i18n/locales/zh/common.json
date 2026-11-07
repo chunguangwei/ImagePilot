@@ -1048,7 +1048,17 @@
       "unavailable": "本机暂不可用",
       "retry": "重试此模型"
     },
-    "similaritySection": "相似照片与搜索"
+    "similaritySection": "相似照片与搜索",
+    "ui": {
+      "librarySummary": "相册访问、相似照片与 AI 搜索",
+      "editorSummary": "清晰度增强与修图预设",
+      "dataSummary": "分类备份、还原与清理",
+      "appearanceSummary": "显示主题与界面语言",
+      "aboutSummary": "版本、更新与意见反馈",
+      "libraryTitle": "相册与搜索",
+      "rulesSummary": "编辑分类规则，不改变已有照片归属",
+      "onlineSummary": "配置服务商与 API Key"
+    }
   },
   "directoryPicker": {
     "selectScanDirectory": "选择扫描目录",

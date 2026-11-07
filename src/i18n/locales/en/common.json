@@ -1048,7 +1048,17 @@
       "unavailable": "Unavailable on this device",
       "retry": "Retry this model"
     },
-    "similaritySection": "Similar photos & search"
+    "similaritySection": "Similar photos & search",
+    "ui": {
+      "librarySummary": "Photo access, similar photos and AI search",
+      "editorSummary": "Image enhancement and editing presets",
+      "dataSummary": "Classification backups, restore and cleanup",
+      "appearanceSummary": "Display theme and interface language",
+      "aboutSummary": "Version, updates and feedback",
+      "libraryTitle": "Library & search",
+      "rulesSummary": "Edit rules without changing existing assignments",
+      "onlineSummary": "Configure providers and API keys"
+    }
   },
   "directoryPicker": {
     "selectScanDirectory": "Select Scan Directory",

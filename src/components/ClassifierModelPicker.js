@@ -1,3 +1,4 @@
+import DisclosureRow from './shared/DisclosureRow';
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -32,10 +33,8 @@ export default function ClassifierModelPicker({ models, colors: c, busy = false 
         <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: percent }} style={[styles.track, { backgroundColor: c.fillTertiary }]}><View style={{ width: `${percent}%`, height: 4, backgroundColor: c.accent }} /></View>
         {button(label(m.cancelling ? 'cancelling' : 'cancel'), m.onCancel, m.cancelling)}
       </View> : !active && button(label(m.unsupported ? 'retry' : m.downloaded ? 'use' : 'downloadUse'), m.onSelect, busy || !m.ready, false, true)}
-      <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: !!expanded[m.id] }}
-        onPress={() => setExpanded(prev => ({ ...prev, [m.id]: !prev[m.id] }))} style={styles.disclosure}>
-        <Text style={{ color: accent, fontSize: 14 }}>{label(expanded[m.id] ? 'hideDetails' : 'details')} {expanded[m.id] ? '⌄' : '›'}</Text>
-      </TouchableOpacity>
+      <DisclosureRow colors={c} title={label(expanded[m.id] ? 'hideDetails' : 'details')}
+        expanded={!!expanded[m.id]} onPress={() => setExpanded(prev => ({ ...prev, [m.id]: !prev[m.id] }))} />
       {expanded[m.id] && <View>
         <Text style={[styles.summary, { color: secondary }]}>{m.description}</Text>
         {m.onCleanup && button(m.cleanupLabel, m.onCleanup, busy, true)}
@@ -48,9 +47,8 @@ export default function ClassifierModelPicker({ models, colors: c, busy = false 
   };
   return <View style={styles.container}>
     {models.filter(m => !m.legacy).map(card)}
-    {models.some(m => m.legacy) && <TouchableOpacity style={styles.disclosure} accessibilityRole="button" accessibilityState={{ expanded: legacyOpen }} onPress={() => setLegacyOpen(v => !v)}>
-      <Text style={{ color: accent, fontSize: 15 }}>{label('legacy')} {legacyOpen ? '⌃' : '⌄'}</Text>
-    </TouchableOpacity>}
+    {models.some(m => m.legacy) && <DisclosureRow colors={c} title={label('legacy')}
+      expanded={legacyOpen} onPress={() => setLegacyOpen(v => !v)} />}
     {legacyOpen && models.filter(m => m.legacy).map(card)}
   </View>;
 }

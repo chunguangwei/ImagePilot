@@ -1,0 +1,5 @@
+• Streamlined settings with clear groups and expandable options.
+• Consistent disclosure arrows, icons and spacing, with improved dark mode and accessibility.
+• Edit built-in classification rules, scenarios and exclusions; export diagnostics as TXT.
+• Improved product promotion and custom-rule matching, with refined sports defaults.
+• Existing photo assignments and custom rules are preserved. Updated rules apply when you reclassify.

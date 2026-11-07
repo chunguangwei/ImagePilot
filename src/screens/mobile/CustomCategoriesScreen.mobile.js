@@ -1,3 +1,4 @@
+import DisclosureRow from '../../components/shared/DisclosureRow';
 import {normalizeBuiltinCategoryRules} from '../../services/classify/builtinCategoryRules';
 import { normalizeCustomMatching } from '../../services/classify/categorySemantics';
 import { categoryDescription } from '../../services/classify/categorySemantics';
@@ -471,10 +472,8 @@ function MatchingFields({value, onChange, disabled, isEn}) {
   const scenarios = Array.isArray(value.scenarios) ? value.scenarios.join('\n') : (value.scenarios || '');
   const inputStyle = [styles.input, styles.multiline, {backgroundColor:theme.groupedBg, color:theme.label, borderColor:theme.separator}];
   return <View>
-    <TouchableOpacity accessibilityRole="button" accessibilityState={{expanded}} disabled={disabled}
-      style={{minHeight:44,justifyContent:'center'}} onPress={() => setExpanded(!expanded)}>
-      <Text style={{color:theme.tint || '#007AFF'}}>{isEn ? 'Matching details (optional)' : '匹配细节（可选）'} {expanded ? '⌃' : '⌄'}</Text>
-    </TouchableOpacity>
+    <DisclosureRow colors={theme} title={isEn ? 'Matching details (optional)' : '匹配细节（可选）'}
+      expanded={expanded} disabled={disabled} onPress={() => setExpanded(!expanded)} />
     {expanded && <View>
       <Text style={{color:theme.secondaryLabel,marginBottom:8}}>{isEn
         ? 'Keep your original rule. Add alternative visual scenarios, one per line. The highest eligible category score wins; low matches go to Other.'

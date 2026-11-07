@@ -14,6 +14,6 @@ try {
 } catch (_) { Ionicons = null; }
 
 export default function VIcon({ name, size = 18, color = '#FFFFFF', emoji = '', style }) {
-  if (Ionicons) return <Ionicons name={name} size={size} color={color} style={style} />;
-  return <Text style={[{ fontSize: size, color }, style]}>{emoji}</Text>;
+  if (Ionicons) return <Ionicons name={name} size={size} color={color} style={style} accessible={false} importantForAccessibility="no" />;
+  return <Text accessible={false} importantForAccessibility="no" style={[{ fontSize: size, color }, style]}>{emoji}</Text>;
 }

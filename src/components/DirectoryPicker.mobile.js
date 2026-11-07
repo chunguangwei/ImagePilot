@@ -1,3 +1,4 @@
+import VIcon from './shared/VIcon';
 /**
  * 目录选择器组件 - 移动端目录浏览和选择
  * 
@@ -188,8 +189,8 @@ const DirectoryPicker = ({ visible, onClose, onSelectDirectory, currentPath = nu
         {/* 标题栏 */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{t('directoryPicker.selectScanDirectory')}</Text>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>✕</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.close')} style={styles.closeButton} onPress={onClose}>
+            <VIcon name="close" size={24} color="#636366" />
           </TouchableOpacity>
         </View>
 
@@ -244,8 +245,8 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
   closeButton: {
-    width: 32,
-    height: 32,
+    width: 48,
+    height: 48,
     borderRadius: 16,
     backgroundColor: '#F2F2F7',
     alignItems: 'center',

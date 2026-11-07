@@ -1,3 +1,6 @@
+import DisclosureRow from '../../components/shared/DisclosureRow';
+import VIcon from '../../components/shared/VIcon';
+import SettingsGroup from './settings/SettingsGroup';
 import ClassifierModelPicker from '../../components/ClassifierModelPicker';
 /**
  * ImagePilot - 移动端设置页
@@ -93,7 +96,6 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
   const [cancellingModel, setCancellingModel] = useState(false);
   const selectingModelRef = useRef(false);
   const [selectingModel, setSelectingModel] = useState(false);
-  const [srExpanded, setSrExpanded] = useState(false);
   // AI 向量索引（CLIP embedding，「AI 相似/AI 搜图」用）：覆盖率 + 手动补全/重建
   const [vecReady, setVecReady] = useState(false);
   const [vecStats, setVecStats] = useState(null);          // { indexed, total }
@@ -1442,19 +1444,11 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
   const renderClassifierModel = () => {
     const activeTierLabel = t('settings.classifierModel.tierLabel.' + classifierTier, { defaultValue: (CLASSIFIER_TIERS[classifierTier] && CLASSIFIER_TIERS[classifierTier].label) || classifierTier });
     return (
-      <View style={styles.actionButton}>
+      <View style={[styles.actionButton, { paddingVertical: 0 }]}>
         {/* 折叠头：点击展开/收起；收起时只显示「当前：xx」 */}
-        <TouchableOpacity style={{ minHeight: 48, justifyContent: 'center' }} activeOpacity={0.7} accessibilityRole="button" accessibilityState={{ expanded: classifierExpanded }} onPress={() => setClassifierExpanded((v) => !v)}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={styles.actionButtonText}>
-              {SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color={c.accent} /> : null} {t('settings.classifierModel.title')}
-            </Text>
-            {SetIonicons ? <SetIonicons name={classifierExpanded ? 'chevron-down' : 'chevron-forward'} size={18} color={c.subtext || '#9aa0a6'} /> : <Text style={{ color: c.subtext || '#9aa0a6' }}>{classifierExpanded ? '⌄' : '›'}</Text>}
-          </View>
-          <Text style={styles.actionButtonDescription}>
-            {classifierExpanded ? t('settings.classifierModel.desc') : t('settings.classifierModel.current', { name: activeTierLabel, defaultValue: `当前：${activeTierLabel}` })}
-          </Text>
-        </TouchableOpacity>
+        <DisclosureRow title={t('settings.classifierModel.title')} icon="hardware-chip-outline"
+          subtitle={classifierExpanded ? t('settings.classifierModel.desc') : t('settings.classifierModel.current', { name: activeTierLabel })}
+          colors={c} expanded={classifierExpanded} onPress={() => setClassifierExpanded(v => !v)} />
         {classifierExpanded && <ClassifierModelPicker colors={c}
           busy={selectingModel || !!classifierDownloadingKey || !!vlmDownloadingId}
           models={CLASSIFIER_TIER_ORDER.map(tierKey => {
@@ -1642,13 +1636,34 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
               · 分类模型三档（renderClassifierModel）
               · 本地分类（MobileNetV3 开关 + 相似度阈值）子卡
               · 目录设置（Android-only，iOS 没用户可访问目录概念） */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.titleRow}>
-              <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">{SetIonicons ? <SetIonicons name="hardware-chip-outline" size={17} color={c.accent} /> : null} {t('settings.smartClassification')}</Text>
-            </View>
-          </View>
+        <SettingsGroup colors={c} title={t('settings.smartClassification')} icon="grid-outline" defaultExpanded
+          subtitle={t('settings.customCategories.title')}>
+          {/* 分类模型：basic / scene / clip 三档（按需下载 + 推荐说明） */}
+          {renderClassifierModel()}
 
+          {/* 自定义分类：定义规则，云端大模型按规则归类 */}
+          <ActionButton
+            styles={styles}
+            c={c}
+            icon="pricetag-outline"
+            title={t('settings.customCategories.title')}
+            description={t('settings.ui.rulesSummary')}
+            onPress={() => navigation.navigate('CustomCategories')}
+          />
+
+          {/* AI 模型设置：配置个人 LLM API Key，启用云端在线分类 */}
+          <ActionButton
+            styles={styles}
+            c={c}
+            icon="cloud-outline"
+            title={t('settings.aiModelConfig') || 'AI 模型设置（在线分类）'}
+            description={t('settings.ui.onlineSummary')}
+            onPress={() => navigation.navigate('AIModelConfig')}
+          />
+
+        </SettingsGroup>
+        <SettingsGroup colors={c} title={t('settings.ui.libraryTitle')} icon="images-outline"
+          subtitle={t('settings.ui.librarySummary')}>
           {/* iOS 专属：相册权限层级显示
               · limited → 弹原生 Limited Library Picker（增删可见照片）
               · 其它    → 跳系统设置（Linking.openSettings） */}
@@ -1667,32 +1682,9 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
             );
           })()}
 
-          {/* 分类模型：basic / scene / clip 三档（按需下载 + 推荐说明） */}
-          {renderClassifierModel()}
-
-          {/* 自定义分类：定义规则，云端大模型按规则归类 */}
-          <ActionButton
-            styles={styles}
-            c={c}
-            icon="pricetag-outline"
-            title={t('settings.customCategories.title')}
-            description={t('settings.customCategories.desc')}
-            onPress={() => navigation.navigate('CustomCategories')}
-          />
-
-          {/* AI 模型设置：配置个人 LLM API Key，启用云端在线分类 */}
-          <ActionButton
-            styles={styles}
-            c={c}
-            icon="cloud-outline"
-            title={t('settings.aiModelConfig') || 'AI 模型设置（在线分类）'}
-            description={t('settings.aiModelConfigDesc') || '配置 OpenAI / Kimi 等大模型 API Key，启用云端在线分类'}
-            onPress={() => navigation.navigate('AIModelConfig')}
-          />
-
           {/* 本地分类设置 - 与目录设置平级，使用actionButton样式 */}
           <View style={styles.actionButton}>
-            <Text style={styles.actionButtonText}>{SetIonicons ? <SetIonicons name="phone-portrait-outline" size={17} color={c.accent} /> : null} {t('settings.similaritySection')}</Text>
+
 
             {/* 「本地辅助识别」(enableMobileNetV3Classification) 开关已移除：默认关、与 CLIP
                 「AI智能识别」概念重叠、开启反而拖慢扫描，属多余选项。扫描侧读取该 setting 的
@@ -1809,7 +1801,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                   disabled={!!detectingDirectory}
                 >
                   <Text style={styles.quickDirectoryButtonText}>
-                    {detectingDirectory === 'wechat' ? `🔍 ${t('settings.detecting')}` : `💬 ${t('settings.directorySettings.wechatDirectory')}`}
+                    <VIcon name={detectingDirectory === 'wechat' ? 'search-outline' : 'chatbubbles-outline'} size={16} color={c.readableAccent} /> {detectingDirectory === 'wechat' ? t('settings.detecting') : t('settings.directorySettings.wechatDirectory')}
                   </Text>
                 </TouchableOpacity>
 
@@ -1819,7 +1811,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                   disabled={!!detectingDirectory}
                 >
                   <Text style={styles.quickDirectoryButtonText}>
-                    {detectingDirectory === 'qq' ? `🔍 ${t('settings.detecting')}` : `💬 ${t('settings.directorySettings.qqDirectory')}`}
+                    <VIcon name={detectingDirectory === 'qq' ? 'search-outline' : 'chatbubble-outline'} size={16} color={c.readableAccent} /> {detectingDirectory === 'qq' ? t('settings.detecting') : t('settings.directorySettings.qqDirectory')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1831,7 +1823,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                   disabled={!!detectingDirectory}
                 >
                   <Text style={styles.quickDirectoryButtonText}>
-                    {detectingDirectory === 'camera' ? `🔍 ${t('settings.detecting')}` : `📷 ${t('settings.directorySettings.cameraDirectory')}`}
+                    <VIcon name={detectingDirectory === 'camera' ? 'search-outline' : 'camera-outline'} size={16} color={c.readableAccent} /> {detectingDirectory === 'camera' ? t('settings.detecting') : t('settings.directorySettings.cameraDirectory')}
                   </Text>
                 </TouchableOpacity>
 
@@ -1841,7 +1833,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                   disabled={!!detectingDirectory}
                 >
                   <Text style={styles.quickDirectoryButtonText}>
-                    {detectingDirectory === 'screenshots' ? `🔍 ${t('settings.detecting')}` : `📸 ${t('settings.directorySettings.screenshotsDirectory')}`}
+                    <VIcon name={detectingDirectory === 'screenshots' ? 'search-outline' : 'scan-outline'} size={16} color={c.readableAccent} /> {detectingDirectory === 'screenshots' ? t('settings.detecting') : t('settings.directorySettings.screenshotsDirectory')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1855,28 +1847,21 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                 </Text>
                 <TouchableOpacity
                   style={styles.removeButton}
+                  accessibilityRole="button" accessibilityLabel={`${t('common.delete')} ${path}`}
                   onPress={() => removeGalleryPath(path)}
                 >
-                  <Text style={styles.removeButtonText}>×</Text>
+                  <VIcon name="close" size={20} color={c.danger} />
                 </TouchableOpacity>
               </View>
             ))}
           </View>
           )}
-        </View>
+        </SettingsGroup>
 
         {/* === Section 2：修图引擎 ===
             归口"把照片本身处理一下"的设置：超分(AI增强)模型 + 照片创玩 AI 修图预设 */}
-        <View style={styles.section}>
-          {/* 整段折叠：点段标题展开/收起「修图引擎」（AI增强模型 + 修图预设） */}
-          <TouchableOpacity activeOpacity={0.7} onPress={() => setSrExpanded((v) => !v)} style={[styles.sectionHeader, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
-            <View style={[styles.titleRow, { flex: 1 }]}>
-              <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">{SetIonicons ? <SetIonicons name="color-wand-outline" size={17} color={c.accent} /> : null} {t('settings.imageEngine') || '修图引擎'}</Text>
-            </View>
-            {SetIonicons ? <SetIonicons name={srExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={c.subtext || '#9aa0a6'} /> : <Text style={{ color: c.subtext || '#9aa0a6' }}>{srExpanded ? '⌃' : '⌄'}</Text>}
-          </TouchableOpacity>
-
-          {srExpanded && (<>
+        <SettingsGroup colors={c} title={t('settings.imageEngine')} icon="color-wand-outline"
+          subtitle={t('settings.ui.editorSummary')}>
           {/* 超分(AI增强)模型：小/大/自定义 + 按需下载 */}
           {renderSuperResModel()}
 
@@ -1939,24 +1924,19 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                       trackColor={{ false: c.separator, true: c.success }}
                     />
                     <TouchableOpacity onPress={() => openEditPreset(presetId)} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
-                      <Text style={[styles.actionChevron, { color: c.chevron, marginLeft: 8 }]}>›</Text>
+                      <VIcon name="chevron-forward" size={18} color={c.readableSecondary} />
                     </TouchableOpacity>
                   </View>
                 </View>
               );
             })}
-          </>)}
-        </View>
+        </SettingsGroup>
 
         {/* === Section 3：数据管理 ===
             按 HIG，destructive 操作（清空相册信息）放最底独立一段；
             备份与还原是导出/导入分类索引，跟"清空"是同一数据生命周期的两端 */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.titleRow}>
-              <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">{SetIonicons ? <SetIonicons name="archive-outline" size={17} color={c.accent} /> : null} {t('settings.dataManagement') || '数据管理'}</Text>
-            </View>
-          </View>
+        <SettingsGroup colors={c} title={t('settings.dataManagement')} icon="archive-outline"
+          subtitle={t('settings.ui.dataSummary')}>
 
           {/* 分类备份与还原：导出 JSON 到 Downloads / 从 Downloads 还原 */}
           <ActionButton
@@ -1978,7 +1958,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
             onPress={handleClearData}
             danger
           />
-        </View>
+        </SettingsGroup>
 
         {/* 会员服务（fork 已下线第三方后端，整段移除；微信轮询 / 二维码 / 额度都不再出现） */}
 
@@ -1986,12 +1966,8 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
             主题三档：system / light / dark。
             点击 row：setThemeScheme 立即写 Provider state → 全屏 useThemeColors 重渲染；
             同时 updateSetting('colorScheme', value) 持久化，下次启动 App.js 读回来。 */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.titleRow}>
-              <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">{SetIonicons ? <SetIonicons name="contrast-outline" size={17} color={c.accent} /> : null} {t('settings.appearance.title')}</Text>
-            </View>
-          </View>
+        <SettingsGroup colors={c} title={t('settings.appearance.title')} icon="contrast-outline"
+          subtitle={t('settings.ui.appearanceSummary')}>
 
           <View style={styles.actionButton}>
             <View style={styles.classifierList}>
@@ -2006,6 +1982,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
                   <View key={opt.key}>
                     <TouchableOpacity
                       style={styles.classifierTierRow}
+                      accessibilityRole="radio" accessibilityState={{ checked: isActive }}
                       onPress={async () => {
                         setThemeScheme(opt.key);
                         try { await updateSetting('colorScheme', opt.key); } catch (_) {}
@@ -2029,17 +2006,14 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
               })}
             </View>
           </View>
-        </View>
+          {renderLanguageItem()}
+        </SettingsGroup>
 
         {/* === Section 4：关于 ===
             检查更新挪到版本号旁边（更新和版本是同一类信息）；
             其他依旧是版本 / 存储类型 / 存储大小 / 语言切换 */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.titleRow}>
-              <Text style={styles.sectionTitle}>{SetIonicons ? <SetIonicons name="information-circle-outline" size={17} color={c.accent} /> : null} {t('settings.appInfo')}</Text>
-            </View>
-          </View>
+        <SettingsGroup colors={c} title={t('settings.appInfo')} icon="information-circle-outline"
+          subtitle={t('settings.ui.aboutSummary')}>
 
           {/* 检查更新：从 GitHub Releases 升级到客户端（紧贴 version，同一类信息）。
               iOS 不显示——App Store 自带更新逻辑，且应用内引导外部下载/自更新违反审核指南
@@ -2059,7 +2033,6 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
           <InfoItem styles={styles} label={t('settings.version')} value={`${BUILD_VERSION} (${BUILD_VERSION_CODE})`} />
           <InfoItem styles={styles} label={t('settings.storageType')} value={storageType} />
           <InfoItem styles={styles} label={t('settings.storageSize')} value={storageSize} />
-          {renderLanguageItem()}
 
           {/* 授权协议：非商业免费 · 商用须授权（PolyForm Noncommercial 1.0.0） */}
           <ActionButton
@@ -2083,7 +2056,7 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
             onPress={handleFeedback}
           />
           <InfoItem styles={styles} label={t('settings.copyright', { defaultValue: '版权' })} value="© 2026 Chunguang Wei" />
-        </View>
+        </SettingsGroup>
 
         {/* 底部空白由 ScrollView contentContainerStyle 处理 */}
       </ScrollView>
@@ -2110,11 +2083,12 @@ const SettingsScreen = ({ navigation, route, startSmartScan, onScanProgress }) =
               <Text style={styles.modalTitle}>{editingPreset?.name || t('common.edit')}</Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
+                accessibilityRole="button" accessibilityLabel={t('common.close')}
                 onPress={() => {
                   setShowEditModal(false);
                   setEditingPreset(null);
                 }}>
-                <Text style={styles.modalCloseButtonText}>×</Text>
+                <VIcon name="close" size={24} color={c.label} />
               </TouchableOpacity>
             </View>
 
@@ -2402,10 +2376,10 @@ const createStyles = (c) => StyleSheet.create({
   },
   removeButton: {
     marginLeft: 12,
-    width: 24,
-    height: 24,
+    width: 48,
+    height: 48,
     borderRadius: 12,
-    backgroundColor: c.danger,
+    backgroundColor: c.dangerSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2415,7 +2389,8 @@ const createStyles = (c) => StyleSheet.create({
     fontWeight: 'bold',
   },
   header: {
-    height: 56,
+    minHeight: 56,
+    paddingVertical: 12,
     backgroundColor: c.card,
     borderBottomWidth: 1,
     borderBottomColor: c.separator,
@@ -2450,10 +2425,10 @@ const createStyles = (c) => StyleSheet.create({
 
   // 操作按钮（iOS 风格：纯白圆角单元格 + 右侧箭头）
   actionButton: {
-    marginHorizontal: 16,
-    marginVertical: 5,
+    marginHorizontal: 0,
+    marginVertical: 0,
     paddingHorizontal: 16,
-    paddingVertical: 13,
+    paddingVertical: 12,
     backgroundColor: c.card,
     borderRadius: 12,
   },
@@ -2476,7 +2451,7 @@ const createStyles = (c) => StyleSheet.create({
   },
   actionButtonDescription: {
     fontSize: 13,
-    color: c.tertiaryLabel,
+    color: c.readableSecondary,
     marginTop: 3,
     lineHeight: 18,
   },
@@ -2545,7 +2520,7 @@ const createStyles = (c) => StyleSheet.create({
   },
   infoValue: {
     fontSize: 14,
-    color: c.tertiaryLabel,
+    color: c.readableSecondary,
     textAlign: 'right',
     flex: 1,
     marginLeft: 16,
@@ -2766,6 +2741,7 @@ const createStyles = (c) => StyleSheet.create({
     marginBottom: 8,
   },
   quickDirectoryButton: {
+    minHeight: 48,
     flex: 1,
     padding: 10,
     backgroundColor: c.groupedBg,
